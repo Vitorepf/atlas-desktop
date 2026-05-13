@@ -25,10 +25,10 @@ Atlas Server capabilities and adds native macOS power.
 | ---------------- | --------------------------------------------- |
 | Shell            | Tauri 2 (WKWebView native)                    |
 | Frontend         | React 19 + Vite + TypeScript + vanilla CSS    |
-| Terminal UI      | xterm.js + WebGL renderer (planned)           |
+| Terminal UI      | Atlas native terminal over portable-pty (MVP) |
 | Diff highlight   | shiki (planned)                               |
 | Core daemon      | Rust + Tokio (Cargo workspace, 5 crates)      |
-| PTY              | portable-pty (planned)                        |
+| PTY              | portable-pty                                  |
 | FS watcher       | notify-rs (planned)                           |
 | macOS bridge     | objc2-* family (planned)                      |
 | Receipt signing  | ed25519-dalek + Apple Keychain (planned)      |
@@ -75,6 +75,8 @@ npm run tauri:build         # production .app + .dmg
 - Cargo workspace declared with 5 crate stubs; each documents its boundary.
 - Atlas Server bridge is the only source for real work data. When neither
   Tauri nor HTTP is configured, the UI enters explicit offline mode.
+- Cartography has a dedicated implementation contract in
+  `docs/architecture/0003-cartography-surface.md`.
 
 ## Non-Goals
 
@@ -91,3 +93,11 @@ npm run tauri:build         # production .app + .dmg
    the MVP needs) wired to atlas-server endpoints with explicit offline states.
 3. **After (passo 3)** — `atlas-code-mvp-endpoints` branch on atlas-server
    adding the 3 new controllers + 3 wraps the audit identified.
+
+## Architecture Docs
+
+| Doc | Purpose |
+| --- | --- |
+| `docs/architecture/0001-atlas-desktop-boundaries.md` | Desktop vs Server ownership boundaries |
+| `docs/architecture/0002-code-cartography-production-readiness.md` | Full readiness plan for Code + Cartography |
+| `docs/architecture/0003-cartography-surface.md` | Cartography screen contract, API, states and roadmap |

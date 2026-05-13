@@ -5,11 +5,12 @@ import { LeftRail } from './components/LeftRail'
 import { MainStage } from './components/MainStage'
 import { ObraBar } from './components/ObraBar'
 import { RightRail } from './components/RightRail'
-import { TerminalDock } from './components/TerminalDock'
+import { TerminalTabs } from './components/TerminalTabs'
 import { TopBar } from './components/TopBar'
-import { idlePipeline, noTerminalLines } from './data/empty'
+import { useBoot } from './hooks/useBoot'
 import { useBridge } from './hooks/useBridge'
 import { useKernelStatus } from './hooks/useKernelStatus'
+import { useMcpStatus } from './hooks/useMcpStatus'
 import { useSurface } from './hooks/useSurface'
 
 /**
@@ -18,16 +19,11 @@ import { useSurface } from './hooks/useSurface'
  * - Code:        cabine onde você dirige o Atlas (programa).
  * - Cartografia: mapa read-only do canon (audita a verdade).
  *
- * Enterprise lifecycle:
- *   atlas-tauri sobe o atlas-server como sidecar (php artisan serve + queue
- *   worker). useKernelStatus polla o status; quando vira 'ready', invocamos
- *   atlas_bridge_reconfigure (Tauri rehidrata AtlasBridge com ATLAS_TOKEN
- *   real) e disparamos useBridge.refresh() pra puxar dados frescos. O
- *   usuário vê tudo acontecer sem abrir terminal.
- *
- * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
- *   No invented data. The cockpit renders exactly what the Kernel returns.
- *   When nothing is returned, components show honest empty states.
+ * Lifecycle:
+ *   atlas-tauri sobe atlas-server como sidecar (php artisan serve + queue
+ *   worker). useKernelStatus polla até `ready` (com retry+diagnóstico),
+ *   onReady chama atlas_bridge_reconfigure (rehidrata AtlasBridge com
+ *   ATLAS_TOKEN real) e dispara useBridge.refresh() pra puxar dados frescos.
  */
 function App() {
   const { surface, setSurface } = useSurface()
@@ -46,6 +42,8 @@ function App() {
   }, [b])
 
   const kernel = useKernelStatus({ onReady: onKernelReady })
+  const { boot } = useBoot(kernel.status === 'ready' || b.mode !== 'tauri')
+  const { mcp } = useMcpStatus(kernel.status === 'ready' || b.mode !== 'tauri')
 
   return (
     <div className={`atlas-shell surface-${surface}`}>
@@ -56,6 +54,7 @@ function App() {
         surface={surface}
         onSurfaceChange={setSurface}
         kernel={kernel}
+        mcp={mcp}
       />
 
       {surface === 'code' ? (
@@ -71,7 +70,7 @@ function App() {
             onSelectObra={b.selectObra}
           />
           <MainStage
-            stages={idlePipeline}
+            stages={b.sdd}
             messages={b.messages}
             receiptHash={b.receipt?.id ?? ''}
             loading={b.loading}
@@ -84,12 +83,14 @@ function App() {
               receipt={b.receipt}
               gates={b.gates}
               core={b.core}
+              evidence={b.evidence}
+              boot={boot}
               busy={b.busy}
               onSignReceipt={b.signReceipt}
               onRunGate={b.runGate}
             />
           </ErrorBoundary>
-          <TerminalDock lines={noTerminalLines} ptyMode={b.core.pty} cwd={b.core.workspacePath} />
+          <TerminalTabs initialCwd={b.core.workspacePath} ptyMode={b.core.pty} />
         </>
       ) : (
         <ErrorBoundary label="Cartografia">

@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use atlas_bridge::{AtlasBridge, AtlasServerConfig};
+use atlas_platform::PtyManager;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, RunEvent};
 use tokio::sync::Mutex;
@@ -35,13 +36,37 @@ fn atlas_core_status() -> CoreStatus {
     CoreStatus {
         mode: "tauri-core",
         db_path: shellexpand_default("~/.atlas/atlas.db"),
-        workspace_path: std::env::current_dir()
-            .ok()
-            .and_then(|p| p.to_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| "~/develop/Atlas/atlas-server".to_string()),
-        pty: "unavailable",
-        signing: "unavailable",
+        workspace_path: atlas_workspace_path(),
+        pty: "portable-pty",
+        signing: "ed25519",
     }
+}
+
+fn atlas_workspace_path() -> String {
+    if let Ok(path) = std::env::var("ATLAS_DESKTOP_WORKSPACE") {
+        if std::path::Path::new(&path).is_dir() {
+            return path;
+        }
+    }
+
+    if let Ok(path) = std::env::current_dir() {
+        if path.is_dir() && path != std::path::Path::new("/") {
+            return path.to_string_lossy().to_string();
+        }
+    }
+
+    for candidate in [
+        "~/develop/Atlas/atlas-desktop",
+        "~/develop/Atlas/atlas-server",
+        "~/develop/Atlas",
+    ] {
+        let expanded = shellexpand_default(candidate);
+        if std::path::Path::new(&expanded).is_dir() {
+            return expanded;
+        }
+    }
+
+    shellexpand_default("~/develop/Atlas")
 }
 
 #[tauri::command]
@@ -49,6 +74,31 @@ async fn atlas_kernel_status(
     state: tauri::State<'_, Arc<KernelManagerState>>,
 ) -> Result<KernelStatusReport, String> {
     Ok(state.snapshot().await)
+}
+
+/// Re-runs the kernel boot sequence. Idempotent — adopts an already-running
+/// server if /health responds. Returns the fresh status report.
+#[tauri::command]
+async fn atlas_kernel_retry(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<KernelManagerState>>,
+) -> Result<KernelStatusReport, String> {
+    // Kill any old children before re-spawning, to avoid two artisan serves
+    // on :8001 both crashing.
+    state.shutdown().await;
+
+    let report = kernel_manager::boot(Arc::clone(&state)).await;
+    if matches!(report.status, kernel_manager::KernelStatus::Ready) {
+        if let Ok(new_bridge) = AtlasBridge::new(AtlasServerConfig::default()) {
+            let app_state: tauri::State<'_, AppState> = app.state();
+            let mut guard = app_state.bridge.lock().await;
+            *guard = new_bridge;
+        }
+        let _ = app.emit("kernel://ready", &report);
+    } else {
+        let _ = app.emit("kernel://failed", &report);
+    }
+    Ok(report)
 }
 
 #[tauri::command]
@@ -96,6 +146,7 @@ pub fn run() {
         .init();
 
     let kernel_state: Arc<KernelManagerState> = Arc::new(KernelManagerState::default());
+    let pty_manager: Arc<PtyManager> = PtyManager::new();
 
     let app = tauri::Builder::default()
         .setup({
@@ -109,6 +160,7 @@ pub fn run() {
                     bridge: Mutex::new(bridge),
                 });
                 app.manage(Arc::clone(&kernel_state));
+                app.manage(Arc::clone(&pty_manager));
 
                 // Boot the Kernel sidecar in the background; the UI polls
                 // atlas_kernel_status until status=ready, then re-reads
@@ -137,7 +189,25 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             atlas_core_status,
             atlas_kernel_status,
+            atlas_kernel_retry,
             atlas_bridge_reconfigure,
+            commands_bridge::bridge_boot,
+            commands_bridge::bridge_mcp_status,
+            commands_bridge::bridge_list_works,
+            commands_bridge::bridge_create_work,
+            commands_bridge::bridge_get_work_state,
+            commands_bridge::bridge_get_thread,
+            commands_bridge::bridge_send_intent_v2,
+            commands_bridge::bridge_get_receipt_v2,
+            commands_bridge::bridge_list_gate_runs,
+            commands_bridge::pty_open,
+            commands_bridge::pty_write,
+            commands_bridge::pty_resize,
+            commands_bridge::pty_close,
+            commands_bridge::sign_canonical,
+            commands_bridge::open_external,
+            commands_bridge::reveal_in_finder,
+            commands_bridge::git_branch,
             commands_bridge::bridge_health,
             commands_bridge::bridge_list_obras,
             commands_bridge::bridge_create_obra,

@@ -1,14 +1,16 @@
 /**
- * SystemScene · 7 sistemas dentro do continente Atlas (canon).
+ * SystemScene · sistemas/fluxos dentro de um continente.
  *
- * Apenas Atlas AI Kernel tem fluxo navegável (FlowScene). Os outros são
- * placeholders read-only que linkam pro doc canônico.
+ * Preferencia: semanticGraph.hierarchy vindo do backend. Fallback: lista
+ * canonica antiga apenas se o backend ainda nao devolver semantic_graph.
  */
-import type { Continent } from '@atlas/domain'
+import type { Continent, SemanticGraph, SemanticNode } from '@atlas/domain'
 
 interface SystemSceneProps {
   continent: Continent | null
+  semanticGraph: SemanticGraph | null | undefined
   onEnterFlow: () => void
+  onEnterNode: (graphId: string) => void
 }
 
 interface SystemDef {
@@ -65,18 +67,45 @@ const SYSTEMS: readonly SystemDef[] = [
   },
 ]
 
-export function SystemScene({ continent, onEnterFlow }: SystemSceneProps) {
+export function SystemScene({ continent, semanticGraph, onEnterFlow, onEnterNode }: SystemSceneProps) {
+  const semanticNodes = semanticChildren(continent?.graphId ?? 'atlas', semanticGraph)
+  const useSemantic = semanticNodes.length > 0
+
   return (
     <div className="scene scene-system">
       <header className="scene-head">
         <div className="scene-eyebrow">Continente · {continent?.name ?? 'Atlas'}</div>
         <h2 className="scene-title">Sistemas do Atlas</h2>
         <p className="scene-lede">
-          7 sistemas canônicos. O AI Kernel é o pipeline operacional — clique para descer.
+          {useSemantic
+            ? 'Mapa real vindo dos frontmatters: sistema, fluxo, modulo e engrenagem.'
+            : '7 sistemas canônicos. O AI Kernel é o pipeline operacional — clique para descer.'}
         </p>
       </header>
       <div className="system-grid">
-        {SYSTEMS.map((s) => (
+        {useSemantic ? semanticNodes.map((s) => (
+          <button
+            key={s.graphId}
+            type="button"
+            className={`atom system-card${s.graphId === 'atlas-ai-kernel-pipeline' ? ' system-card-flow' : ''}`}
+            onClick={() => {
+              if (s.graphId === 'atlas-ai-kernel-pipeline') onEnterFlow()
+              else onEnterNode(s.graphId)
+            }}
+          >
+            <span className="a-name">{s.graphTitle}</span>
+            <span className="a-deck">
+              {s.graphLayer ?? 'node'} · {s.summary ?? s.graphKind ?? 'sem resumo'}
+            </span>
+            <span className="a-source">
+              <span className={`a-source-badge ${s.graphSource}`}>{s.graphSource}</span>
+              <span className="a-source-path">{s.sourcePath}</span>
+            </span>
+            {s.graphId === 'atlas-ai-kernel-pipeline' ? (
+              <span className="system-card-cta">▸ tem fluxo navegável</span>
+            ) : null}
+          </button>
+        )) : SYSTEMS.map((s) => (
           <button
             key={s.id}
             type="button"
@@ -100,4 +129,19 @@ export function SystemScene({ continent, onEnterFlow }: SystemSceneProps) {
       </div>
     </div>
   )
+}
+
+function semanticChildren(parent: string, semanticGraph: SemanticGraph | null | undefined): SemanticNode[] {
+  if (!semanticGraph) return []
+  const ids = semanticGraph.hierarchy[parent] ?? []
+  if (ids.length === 0) return []
+  const byId = new Map(semanticGraph.nodes.map((n) => [n.graphId, n]))
+  return ids
+    .map((id) => byId.get(id))
+    .filter((n): n is SemanticNode => !!n)
+    .sort((a, b) => layerRank(a.graphLayer) - layerRank(b.graphLayer) || a.graphTitle.localeCompare(b.graphTitle))
+}
+
+function layerRank(layer: string | null): number {
+  return ['world', 'system', 'flow', 'module', 'gear', 'subcomponent'].indexOf(layer ?? 'module')
 }

@@ -94,6 +94,43 @@ export interface Connection {
 }
 
 /**
+ * Node vindo do `semantic_graph`: e a camada fonte-real da Cartografia.
+ * Diferente do canvas canonico, ele nasce diretamente dos frontmatters de
+ * repo docs + AtlasVault, usando graph_parent/flows_to/depends_on/unlocks.
+ */
+export interface SemanticNode {
+  graphId: string
+  graphTitle: string
+  graphWorld: string
+  graphLayer: 'world' | 'system' | 'flow' | 'module' | 'gear' | 'subcomponent' | string | null
+  graphKind: string | null
+  graphParent: string | null
+  graphStatus: string | null
+  graphSource: GraphSource
+  sourcePath: string
+  summary: string | null
+  dependsOn: string[]
+  flowsTo: string[]
+  unlocks: string[]
+  governs: string[]
+  riskLevel: string | null
+  evidence: string[]
+  nextActions: string[]
+  mtime: number | null
+}
+
+/**
+ * Grafo semantico real derivado dos arquivos. `hierarchy` responde pelo zoom
+ * mundo → sistema → fluxo → modulo → engrenagem; `relations` desenha conexoes.
+ */
+export interface SemanticGraph {
+  worlds: string[]
+  nodes: SemanticNode[]
+  hierarchy: Record<string, string[]>
+  relations: Connection[]
+}
+
+/**
  * Audit do graph: quantas peças canon foram encontradas vs missing,
  * quantos arquivos repo/vault foram indexados.
  */
@@ -114,6 +151,7 @@ export interface CartographyGraph {
   pipeline: PipelineStep[]
   lanes: Record<string, Lane>
   connections: Connection[]
+  semanticGraph: SemanticGraph | null
 }
 
 /**
@@ -160,7 +198,7 @@ export type CartographyView = 'universe' | 'system' | 'flow' | 'gear' | 'subflow
  * Indexado em `atomIndex` pra resolução O(1) de connections + breadcrumbs.
  */
 export interface CartographyAtom {
-  kind: 'pipeline' | 'lateral' | 'lane' | 'continent'
+  kind: 'pipeline' | 'lateral' | 'lane' | 'continent' | 'semantic'
   graphId: string
   name: string
   deck: string | null
@@ -179,4 +217,8 @@ export interface CartographyAtom {
   subs?: Array<[string, string]>
   regionId?: string
   regionHead?: string
+  graphLayer?: string | null
+  graphParent?: string | null
+  flowsTo?: string[]
+  governs?: string[]
 }

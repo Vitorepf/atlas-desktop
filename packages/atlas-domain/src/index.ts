@@ -19,6 +19,82 @@ export interface CoreStatus {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Boot snapshot · GET /atlas-code/boot
+
+export interface BootSnapshot {
+  status: 'ready' | 'degraded' | 'unconfigured'
+  generatedAt: string
+  kernel: {
+    service: string
+    version: string
+    env: string
+    phpVersion: string
+    dbConnected: boolean
+    dbError: string | null
+    storagePath: string
+    storageWritable: boolean
+    ts: string
+  }
+  providers: {
+    available: number
+    degraded: number
+    source: string
+  }
+  mcp: {
+    server: string
+    protocolVersion: string
+    httpEnabled: boolean
+    status: 'active' | 'disabled' | 'degraded'
+    transport: string
+  }
+  cartography: {
+    repoRoot: string
+    repoReadable: boolean
+    vaultRoot: string
+    vaultReadable: boolean
+  }
+  workspace: {
+    cwd: string
+    isGit: boolean
+  }
+  queue: {
+    connection: string
+    pending: number
+    failed: number
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MCP pill · GET /atlas-code/mcp/status
+
+export interface McpToolBrief {
+  name: string
+  summary: string | null
+}
+
+export interface McpStatus {
+  server: string
+  status: 'active' | 'disabled' | 'degraded'
+  protocolVersion: string
+  transport: string
+  httpEnabled: boolean
+  toolsCount: number
+  tools: McpToolBrief[]
+  docsIndexed: number
+  symbolsIndexed: number
+  lastCall: {
+    tool: string
+    operatorId: string
+    durationMs: number
+    at: string | null
+  } | null
+  freshness: {
+    indexedAt: string | null
+    drift: string
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Obras (Atlas Server: Atlas Project)
 
 export type ObraStatus = 'active' | 'idle' | 'archived'
@@ -54,9 +130,9 @@ export interface Session {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SDD pipeline · 5 estágios MVP
+// SDD pipeline · 6 estágios canônicos (com `learn`)
 
-export type SddStageId = 'context' | 'spec' | 'plan' | 'execute' | 'verify'
+export type SddStageId = 'context' | 'spec' | 'plan' | 'execute' | 'verify' | 'learn'
 
 export type SddStageState = 'todo' | 'now' | 'done' | 'blocked'
 
@@ -66,23 +142,60 @@ export interface SddStage {
   state: SddStageState
 }
 
+// Snapshot canon coming from /atlas-code/works/{id}/state.sdd
+export interface WorkStateSnapshot {
+  workId: string
+  workTitle: string
+  workObjective: string
+  workStatus: ObraStatus
+  sessions: Array<{
+    id: string
+    title: string
+    status: 'running' | 'paused' | 'done' | 'failed'
+    turns: number
+    lastMessageAt: string | null
+  }>
+  activeThreadId: string | null
+  messages: Message[]
+  sdd: {
+    stage: SddStageId | 'idle'
+    steps: SddStage[]
+  }
+  receipt: DecisionReceipt | null
+  gates: QualityGate[]
+  evidence: Array<{
+    id: string
+    kind: string
+    summary: string
+    createdAt: string | null
+  }>
+  generatedAt: string
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Decision Receipt v2 (Atlas Server: AiDecision)
 
-export type Confidence = 'low' | 'med' | 'high'
+export type Confidence = 'low' | 'medium' | 'high' | 'unknown'
 
 export interface DecisionReceipt {
   id: string
-  obraId: string
+  obraId?: string
+  traceId?: string | null
   primary: string
+  model?: string
   confidence: Confidence
   confidenceScore: number
+  routeMode?: string
+  taskType?: string
+  riskLevel?: string
   budgetEstUsd: number
   budgetUsedUsd: number
   fallbackChain: string[]
-  signedBy?: string
-  signature?: string
-  signedAt?: string
+  signedBy?: string | null
+  signature?: string | null
+  signedAt?: string | null
+  reason?: string
+  createdAt?: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -108,6 +221,9 @@ export interface Message {
   body: string
   channel?: 'text' | 'voice'
   ts: string
+  occurredAt?: string
+  provider?: string
+  model?: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -162,4 +278,6 @@ export type {
   LateralNode,
   PipelineStep,
   RecentChange,
+  SemanticGraph,
+  SemanticNode,
 } from './cartography'

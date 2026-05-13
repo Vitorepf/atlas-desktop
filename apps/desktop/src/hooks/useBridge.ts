@@ -1,14 +1,17 @@
 /**
  * useBridge · loads cockpit data + exposes interactive actions.
  *
+ * V2 (production-readiness ADR-0002):
+ *   - listObras hits /atlas-code/works (normalised list)
+ *   - selectObra hits /atlas-code/works/{id}/state (snapshot includes
+ *     sessions, sdd, receipt, gates, evidence in one call)
+ *   - sendIntent uses bridge.sendIntent → polls /atlas-code/threads/{id}
+ *
  * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
  *   Bridge failures NEVER fall back to invented data. They fall back to:
  *   - empty array (sessions, messages, gates, evidence)
  *   - null (obra, receipt) → components render "—" / "aguardando Kernel"
  *   - error string captured in `errors[]`
- *
- * Actions trigger refetch of the relevant slice so the UI reflects the new
- * Kernel state.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { bridge, type BridgeMode } from '../lib/bridge'
@@ -18,9 +21,11 @@ import type {
   Message,
   Obra,
   QualityGate,
+  SddStage,
   Session,
+  WorkStateSnapshot,
 } from '@atlas/domain'
-import { browserCoreStatus, noGates, noMessages, noSessions } from '../data/empty'
+import { browserCoreStatus, idlePipeline, noGates, noMessages, noSessions } from '../data/empty'
 
 export interface BridgeSnapshot {
   mode: BridgeMode
@@ -34,25 +39,22 @@ export interface BridgeSnapshot {
   messages: Message[]
   receipt: DecisionReceipt | null
   gates: QualityGate[]
+  sdd: SddStage[]
+  evidence: WorkStateSnapshot['evidence']
   core: CoreStatus
   /** True while a write action (createObra, sendIntent, etc.) is in flight. */
   busy: boolean
+  /** Active threadId (from snapshot) so the composer/streamer knows where to send. */
+  activeThreadId: string | null
 }
 
 export interface BridgeActions {
-  /** Refresh everything (used after large state changes). */
   refresh: () => Promise<void>
-  /** Switch active obra (refetches sessions/messages). */
   selectObra: (obraId: string) => Promise<void>
-  /** Create a new obra and select it. */
   createObra: (intent: string, objective: string) => Promise<Obra | null>
-  /** Send a user message (creates new thread if no obra session yet). */
   sendIntent: (text: string) => Promise<void>
-  /** Run a single quality gate by id. */
   runGate: (gateId: string) => Promise<void>
-  /** Sign the current receipt only when the native ed25519 signer is available. */
   signReceipt: () => Promise<void>
-  /** Apply a diff patch (id from streamed event). */
   applyDiff: (patchId: string) => Promise<void>
 }
 
@@ -67,8 +69,11 @@ const INITIAL: BridgeSnapshot = {
   messages: noMessages,
   receipt: null,
   gates: noGates,
+  sdd: idlePipeline,
+  evidence: [],
   core: browserCoreStatus,
   busy: false,
+  activeThreadId: null,
 }
 
 export function useBridge(): BridgeSnapshot & BridgeActions {
@@ -83,7 +88,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
   }, [])
 
   const loadObrasAndCore = useCallback(async (): Promise<{ core: CoreStatus; obras: Obra[]; gates: QualityGate[] }> => {
-    const [core, obrasRaw, gates] = await Promise.all([
+    const [core, obrasRaw] = await Promise.all([
       bridge.coreStatus().catch((e: unknown) => {
         pushError('coreStatus', e)
         return browserCoreStatus
@@ -92,39 +97,47 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         pushError('listObras', e)
         return [] as Obra[]
       }),
-      bridge.listGates().catch((e: unknown) => {
-        pushError('listGates', e)
-        return noGates
-      }),
     ])
-    const obras = normaliseObras(obrasRaw)
-    return { core, obras, gates }
+    return { core, obras: obrasRaw, gates: noGates }
   }, [pushError])
 
   const loadObraDetail = useCallback(
-    async (obra: Obra): Promise<{ active: Session[]; recent: Session[]; messages: Message[] }> => {
-      const [activeRaw, recentRaw] = await Promise.all([
-        bridge.listSessions(obra.id).catch((e: unknown) => {
-          pushError('listSessions', e)
-          return noSessions
-        }),
-        bridge.listRecentSessions().catch((e: unknown) => {
-          pushError('listRecentSessions', e)
-          return noSessions
-        }),
-      ])
-      const active = normaliseSessions(activeRaw)
-      const recent = normaliseSessions(recentRaw)
-      const firstThread = active[0]?.threadId
-      const messages = firstThread
-        ? await bridge.getSession(firstThread).catch((e: unknown) => {
-            pushError('getSession', e)
-            return noMessages
-          })
-        : noMessages
-      return { active, recent, messages }
+    async (obra: Obra): Promise<Partial<BridgeSnapshot>> => {
+      const state = await bridge.getWorkState(obra.id).catch((e: unknown) => {
+        pushError('getWorkState', e)
+        return null
+      })
+      if (!state) {
+        return {
+          active: noSessions,
+          messages: noMessages,
+          sdd: idlePipeline,
+          evidence: [],
+          receipt: null,
+          activeThreadId: null,
+        }
+      }
+      const sessions: Session[] = state.sessions.map((s) => ({
+        id: s.id,
+        obraId: obra.id,
+        threadId: s.id,
+        title: s.title,
+        status: s.status,
+        turns: s.turns,
+        durationMs: 0,
+        origin: 'manual',
+      }))
+      return {
+        active: sessions,
+        messages: state.messages,
+        sdd: state.sdd.steps.length > 0 ? state.sdd.steps : idlePipeline,
+        gates: state.gates.length > 0 ? state.gates : snap.gates,
+        evidence: state.evidence,
+        receipt: state.receipt,
+        activeThreadId: state.activeThreadId,
+      }
     },
-    [pushError]
+    [pushError, snap.gates]
   )
 
   const refresh = useCallback(async () => {
@@ -133,9 +146,10 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     const obra = obras[0] ?? null
     const detail = obra
       ? await loadObraDetail(obra)
-      : { active: [] as Session[], recent: [] as Session[], messages: [] as Message[] }
+      : {}
     if (cancelRef.current) return
-    setSnap({
+    setSnap((s) => ({
+      ...s,
       mode: bridge.mode,
       loading: false,
       busy: false,
@@ -145,8 +159,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       obra,
       gates,
       ...detail,
-      receipt: null,
-    })
+    }))
   }, [loadObrasAndCore, loadObraDetail])
 
   const selectObra = useCallback(
@@ -155,7 +168,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       let resolved: Obra | null = fromState ?? null
       if (!resolved) {
         try {
-          const fresh = normaliseObras(await bridge.listObras())
+          const fresh = await bridge.listObras()
           resolved = fresh.find((o) => o.id === obraId) ?? null
         } catch (e) {
           pushError('selectObra', e)
@@ -165,7 +178,13 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       setSnap((s) => ({ ...s, busy: true }))
       const detail = await loadObraDetail(resolved)
       if (cancelRef.current) return
-      setSnap((s) => ({ ...s, busy: false, obra: resolved, ...detail, errors: [...errorBufRef.current] }))
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        obra: resolved,
+        ...detail,
+        errors: [...errorBufRef.current],
+      }))
     },
     [snap.obras, loadObraDetail, pushError]
   )
@@ -175,23 +194,22 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       setSnap((s) => ({ ...s, busy: true }))
       try {
         const created = await bridge.createObra(intent, objective)
-        const obra = normaliseObras([created])[0] ?? null
-        if (!obra) {
+        if (!created?.id) {
           pushError('createObra', new Error('server returned no obra'))
           setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
           return null
         }
-        const detail = await loadObraDetail(obra)
-        if (cancelRef.current) return obra
+        const detail = await loadObraDetail(created)
+        if (cancelRef.current) return created
         setSnap((s) => ({
           ...s,
           busy: false,
-          obra,
-          obras: [obra, ...s.obras.filter((o) => o.id !== obra.id)],
+          obra: created,
+          obras: [created, ...s.obras.filter((o) => o.id !== created.id)],
           ...detail,
           errors: [...errorBufRef.current],
         }))
-        return obra
+        return created
       } catch (e) {
         pushError('createObra', e)
         setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
@@ -203,10 +221,10 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
 
   const sendIntent = useCallback(
     async (text: string) => {
-      const threadId = snap.active[0]?.threadId ?? null
+      const threadId = snap.activeThreadId ?? snap.active[0]?.threadId ?? null
       const obraId = snap.obra?.id
       setSnap((s) => ({ ...s, busy: true }))
-      // Optimistic user message (rendered immediately while Kernel processes).
+
       const optimisticId = `local-${Date.now()}`
       const optimistic: Message = {
         id: optimisticId,
@@ -219,54 +237,60 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       try {
         const res = await bridge.sendIntent(threadId, text, 'text', obraId)
         const newThreadId = res.threadId
-
         if (!newThreadId) {
           setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
           return
         }
 
-        // Poll until the assistant replies or we time out (~30s · 15 × 2s).
-        for (let attempt = 0; attempt < 15; attempt++) {
-          await new Promise((r) => setTimeout(r, 2000))
-          if (cancelRef.current) return
+        // Try SSE first; if no events arrive in 2s, fall back to polling /atlas-code/threads/{id}.
+        let sseClosed = false
+        let assistantSeen = false
+        const unsubscribe = bridge.streamSession(res.traceId, (event) => {
+          if (sseClosed) return
+          if (event.eventType === 'message' || event.eventType === 'assistant_message') {
+            assistantSeen = true
+            void (async () => {
+              try {
+                const fresh = await bridge.getSession(newThreadId)
+                if (!cancelRef.current && fresh.length > 0) {
+                  setSnap((s) => ({ ...s, messages: fresh }))
+                }
+              } catch { /* ignore */ }
+            })()
+          }
+        })
+
+        // Polling fallback
+        for (let attempt = 0; attempt < 20; attempt++) {
+          await new Promise((r) => setTimeout(r, 1500))
+          if (cancelRef.current) {
+            unsubscribe()
+            return
+          }
           try {
             const fresh = await bridge.getSession(newThreadId)
             if (fresh.length > 0) {
               setSnap((s) => ({ ...s, messages: fresh }))
-              if (fresh.some((m) => m.role === 'atlas' || m.role === 'system')) break
+              if (fresh.some((m) => m.role === 'atlas' || m.role === 'system')) {
+                assistantSeen = true
+                break
+              }
             }
           } catch {
             /* keep polling */
           }
+          if (assistantSeen) break
         }
+        sseClosed = true
+        unsubscribe()
 
-        // Sidebar sync — inject the thread if AtlasCodeSessionController didn't
-        // find it (atlas-server doesn't always link ai_threads → atlas_projects).
-        if (obraId) {
-          try {
-            const sessRaw = await bridge.listSessions(obraId)
-            const sessions = normaliseSessions(sessRaw)
-            if (sessions.length === 0) {
-              sessions.push({
-                id: newThreadId,
-                obraId,
-                threadId: newThreadId,
-                title: 'thread atual',
-                status: 'running',
-                turns: 0,
-                durationMs: 0,
-                origin: 'manual',
-              })
-            }
-            if (!cancelRef.current) {
-              setSnap((s) => ({ ...s, active: sessions }))
-            }
-          } catch {
-            /* sidebar best-effort */
+        if (obraId && snap.obra) {
+          // Refresh snapshot so SDD pipeline + sessions reflect new turn.
+          const detail = await loadObraDetail(snap.obra)
+          if (!cancelRef.current) {
+            setSnap((s) => ({ ...s, ...detail, busy: false, errors: [...errorBufRef.current] }))
           }
-        }
-
-        if (!cancelRef.current) {
+        } else if (!cancelRef.current) {
           setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
         }
       } catch (e) {
@@ -279,7 +303,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         }))
       }
     },
-    [snap.obra, snap.active, pushError]
+    [snap.obra, snap.active, snap.activeThreadId, loadObraDetail, pushError]
   )
 
   const runGate = useCallback(
@@ -300,15 +324,18 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     if (!snap.receipt?.id) return
     setSnap((s) => ({ ...s, busy: true }))
     try {
-      if (snap.core.signing !== 'ed25519') {
-        throw new Error('assinatura ed25519 indisponível · atlas-receipts ainda não está conectado')
+      const ack = await bridge.signAndSubmit(snap.receipt.id)
+      if (!ack.signatureValid) throw new Error('server rejected signature')
+      // Refresh receipt to reflect signed state
+      const refreshed = await bridge.getReceipt(snap.receipt.id)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, busy: false, receipt: refreshed ?? s.receipt, errors: [...errorBufRef.current] }))
       }
-      throw new Error('assinatura ed25519 real ainda precisa expor payload assinado via atlas-tauri')
     } catch (e) {
       pushError('signReceipt', e)
       setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
     }
-  }, [snap.receipt, snap.core.signing, pushError])
+  }, [snap.receipt, pushError])
 
   const applyDiff = useCallback(
     async (patchId: string) => {
@@ -343,68 +370,4 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     signReceipt,
     applyDiff,
   }
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Shape normalisers — strip ambiguous payloads to camelCase domain shape.
-
-function normaliseObras(raw: unknown): Obra[] {
-  const list: unknown[] = Array.isArray(raw)
-    ? raw
-    : Array.isArray((raw as { projects?: unknown[] })?.projects)
-      ? (raw as { projects: unknown[] }).projects
-      : Array.isArray((raw as { project?: unknown })?.project)
-        ? [(raw as { project: unknown }).project]
-        : (raw as { project?: unknown })?.project
-          ? [(raw as { project: unknown }).project]
-          : []
-
-  const obras: Obra[] = []
-  for (const item of list) {
-    if (!item || typeof item !== 'object') continue
-    const o = item as Record<string, unknown>
-    const id = (o.id ?? o.uuid) as string | undefined
-    if (!id) continue
-    obras.push({
-      id,
-      title: (o.title ?? o.name ?? id) as string,
-      objective: (o.objective ?? o.description ?? o.goal ?? o.title ?? '') as string,
-      status: ((o.status as Obra['status']) ?? 'active'),
-      workspacePath: (o.workspace_path ?? o.workspacePath ?? '') as string,
-      createdAt: (o.created_at ?? o.createdAt ?? '') as string,
-    })
-  }
-  return obras
-}
-
-function normaliseSessions(raw: unknown): Session[] {
-  const list: unknown[] = Array.isArray(raw)
-    ? raw
-    : Array.isArray((raw as { data?: unknown[] })?.data)
-      ? (raw as { data: unknown[] }).data
-      : []
-
-  const sessions: Session[] = []
-  for (const item of list) {
-    if (!item || typeof item !== 'object') continue
-    const s = item as Record<string, unknown>
-    const id = (s.id ?? s.threadId ?? s.thread_id) as string | undefined
-    if (!id) continue
-    sessions.push({
-      id,
-      obraId: (s.obraId ?? s.obra_id ?? '') as string,
-      threadId: (s.threadId ?? s.thread_id ?? id) as string,
-      title: (s.title ?? '') as string,
-      status: ((s.status as Session['status']) ?? 'paused'),
-      turns: typeof s.turns === 'number' ? s.turns : 0,
-      durationMs: typeof s.durationMs === 'number'
-        ? s.durationMs
-        : typeof s.duration_ms === 'number'
-          ? s.duration_ms
-          : 0,
-      origin: ((s.origin as Session['origin']) ?? 'manual'),
-      snapshot: undefined,
-    })
-  }
-  return sessions
 }

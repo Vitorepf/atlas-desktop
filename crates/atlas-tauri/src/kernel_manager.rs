@@ -9,19 +9,23 @@
 //! - on app exit: SIGTERM both processes
 //!
 //! Honest empty states preserved: if the atlas-server folder isn't found, we
-//! mark status=Failed and the UI shows a clear "Kernel não encontrado" path.
+//! mark status=Failed with `failure_code` + `repair_hint` so the UI can
+//! render an actionable error and `atlas_kernel_retry` can re-run boot().
 
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
 use serde::Serialize;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
 const KERNEL_PORT: u16 = 8001;
 const KERNEL_HOST: &str = "127.0.0.1";
+const TAIL_LINES: usize = 30;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -37,9 +41,36 @@ pub enum KernelStatus {
 pub struct KernelStatusReport {
     pub status: KernelStatus,
     pub message: String,
+    /// Stable code for the UI to switch on, e.g. `php_missing`,
+    /// `server_path_missing`, `health_timeout`, `port_in_use`.
+    pub failure_code: Option<String>,
+    /// Actionable next step the user can take to fix it.
+    pub repair_hint: Option<String>,
     pub server_path: Option<String>,
+    pub php_path: Option<String>,
     pub url: String,
+    pub port: u16,
     pub queue_running: bool,
+    pub stdout_tail: Vec<String>,
+    pub stderr_tail: Vec<String>,
+}
+
+impl KernelStatusReport {
+    fn booting() -> Self {
+        Self {
+            status: KernelStatus::Booting,
+            message: "iniciando…".to_string(),
+            failure_code: None,
+            repair_hint: None,
+            server_path: None,
+            php_path: None,
+            url: kernel_url(),
+            port: KERNEL_PORT,
+            queue_running: false,
+            stdout_tail: vec![],
+            stderr_tail: vec![],
+        }
+    }
 }
 
 /// Active state shared with Tauri command handlers.
@@ -53,18 +84,20 @@ struct Inner {
     status: Option<KernelStatusReport>,
     server_child: Option<Child>,
     worker_child: Option<Child>,
+    stdout_tail: Arc<Mutex<VecDeque<String>>>,
+    stderr_tail: Arc<Mutex<VecDeque<String>>>,
 }
 
 impl KernelManagerState {
     pub async fn snapshot(&self) -> KernelStatusReport {
         let guard = self.inner.lock().await;
-        guard.status.clone().unwrap_or_else(|| KernelStatusReport {
-            status: KernelStatus::Booting,
-            message: "iniciando…".to_string(),
-            server_path: None,
-            url: kernel_url(),
-            queue_running: false,
-        })
+        let mut report = guard.status.clone().unwrap_or_else(KernelStatusReport::booting);
+        // Always replace tails with the freshest copy from the rolling buffers.
+        let stdout = guard.stdout_tail.lock().await.iter().cloned().collect::<Vec<_>>();
+        let stderr = guard.stderr_tail.lock().await.iter().cloned().collect::<Vec<_>>();
+        report.stdout_tail = stdout;
+        report.stderr_tail = stderr;
+        report
     }
 
     pub async fn shutdown(&self) {
@@ -86,6 +119,13 @@ pub fn kernel_url() -> String {
 /// adopt the existing server instead of spawning a new one (useful for
 /// developers running `php artisan serve` manually).
 pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
+    // Reset rolling tails so previous-run noise doesn't leak.
+    {
+        let guard = state.inner.lock().await;
+        guard.stdout_tail.lock().await.clear();
+        guard.stderr_tail.lock().await.clear();
+    }
+
     // 1. Adopt existing server if /health already responds.
     if probe_health(Duration::from_millis(800)).await {
         let token = locate_atlas_server()
@@ -95,9 +135,15 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
         let report = KernelStatusReport {
             status: KernelStatus::Ready,
             message: "adopted existing atlas-server on :8001".to_string(),
+            failure_code: None,
+            repair_hint: None,
             server_path: locate_atlas_server().ok().map(path_string),
+            php_path: resolve_php_binary().map(path_string),
             url: kernel_url(),
+            port: KERNEL_PORT,
             queue_running: false,
+            stdout_tail: vec![],
+            stderr_tail: vec![],
         };
         let mut guard = state.inner.lock().await;
         guard.status = Some(report.clone());
@@ -111,9 +157,18 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
             let report = KernelStatusReport {
                 status: KernelStatus::Unconfigured,
                 message,
+                failure_code: Some("server_path_missing".to_string()),
+                repair_hint: Some(
+                    "Set ATLAS_SERVER_PATH or place atlas-server at ~/develop/Atlas/atlas-server"
+                        .to_string(),
+                ),
                 server_path: None,
+                php_path: resolve_php_binary().map(path_string),
                 url: kernel_url(),
+                port: KERNEL_PORT,
                 queue_running: false,
+                stdout_tail: vec![],
+                stderr_tail: vec![],
             };
             let mut guard = state.inner.lock().await;
             guard.status = Some(report.clone());
@@ -121,16 +176,56 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
         }
     };
 
-    // 3. Spawn `php artisan serve --port=8001 --host=127.0.0.1`.
-    let server_child = match spawn_artisan_serve(&server_path).await {
+    // 3. Resolve php binary up front so we can surface a clear error.
+    let php = match resolve_php_binary() {
+        Some(p) => p,
+        None => {
+            let report = KernelStatusReport {
+                status: KernelStatus::Failed,
+                message: "php not found on PATH".to_string(),
+                failure_code: Some("php_missing".to_string()),
+                repair_hint: Some(
+                    "Install PHP 8.4+ (brew install php) or set PHP_BINARY env var".to_string(),
+                ),
+                server_path: Some(path_string(server_path.clone())),
+                php_path: None,
+                url: kernel_url(),
+                port: KERNEL_PORT,
+                queue_running: false,
+                stdout_tail: vec![],
+                stderr_tail: vec![],
+            };
+            let mut guard = state.inner.lock().await;
+            guard.status = Some(report.clone());
+            return report;
+        }
+    };
+
+    // 4. Spawn `php artisan serve --port=8001 --host=127.0.0.1`.
+    let stdout_tail = {
+        let guard = state.inner.lock().await;
+        Arc::clone(&guard.stdout_tail)
+    };
+    let stderr_tail = {
+        let guard = state.inner.lock().await;
+        Arc::clone(&guard.stderr_tail)
+    };
+    let server_child = match spawn_artisan_serve(&php, &server_path, &stdout_tail, &stderr_tail).await
+    {
         Ok(c) => c,
         Err(e) => {
             let report = KernelStatusReport {
                 status: KernelStatus::Failed,
                 message: format!("artisan serve failed: {e}"),
+                failure_code: Some("artisan_spawn_failed".to_string()),
+                repair_hint: Some("Run `php artisan serve` manually to inspect the error".to_string()),
                 server_path: Some(path_string(server_path.clone())),
+                php_path: Some(path_string(php.clone())),
                 url: kernel_url(),
+                port: KERNEL_PORT,
                 queue_running: false,
+                stdout_tail: vec![],
+                stderr_tail: vec![],
             };
             let mut guard = state.inner.lock().await;
             guard.status = Some(report.clone());
@@ -138,7 +233,7 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
         }
     };
 
-    // 4. Poll /health up to 15s.
+    // 5. Poll /health up to 15s.
     let mut ready = false;
     for _ in 0..30 {
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -152,9 +247,17 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
         let report = KernelStatusReport {
             status: KernelStatus::Failed,
             message: format!("kernel did not become ready within 15s at {}", kernel_url()),
+            failure_code: Some("health_timeout".to_string()),
+            repair_hint: Some(
+                "Check stderr_tail for migration errors or port conflicts; try retry".to_string(),
+            ),
             server_path: Some(path_string(server_path.clone())),
+            php_path: Some(path_string(php.clone())),
             url: kernel_url(),
+            port: KERNEL_PORT,
             queue_running: false,
+            stdout_tail: vec![],
+            stderr_tail: vec![],
         };
         let mut guard = state.inner.lock().await;
         guard.server_child = Some(server_child);
@@ -162,19 +265,25 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
         return report;
     }
 
-    // 5. Server is ready · load token + spawn queue worker.
+    // 6. Server is ready · load token + spawn queue worker.
     let token = read_token_from_env(&server_path);
     export_env(&kernel_url(), token.as_deref());
 
-    let worker_child = spawn_queue_worker(&server_path).await.ok();
+    let worker_child = spawn_queue_worker(&php, &server_path, &stdout_tail, &stderr_tail).await.ok();
     let queue_running = worker_child.is_some();
 
     let report = KernelStatusReport {
         status: KernelStatus::Ready,
         message: "Kernel pronto".to_string(),
+        failure_code: None,
+        repair_hint: None,
         server_path: Some(path_string(server_path.clone())),
+        php_path: Some(path_string(php.clone())),
         url: kernel_url(),
+        port: KERNEL_PORT,
         queue_running,
+        stdout_tail: vec![],
+        stderr_tail: vec![],
     };
 
     let mut guard = state.inner.lock().await;
@@ -198,22 +307,21 @@ async fn probe_health(timeout: Duration) -> bool {
     )
 }
 
-async fn spawn_artisan_serve(server_path: &PathBuf) -> std::io::Result<Child> {
-    let php = resolve_php_binary().ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "php not found · install with `brew install php` and try again",
-        )
-    })?;
-    let mut cmd = Command::new(&php);
+async fn spawn_artisan_serve(
+    php: &PathBuf,
+    server_path: &PathBuf,
+    stdout_tail: &Arc<Mutex<VecDeque<String>>>,
+    stderr_tail: &Arc<Mutex<VecDeque<String>>>,
+) -> std::io::Result<Child> {
+    let mut cmd = Command::new(php);
     apply_env(&mut cmd);
     cmd.current_dir(server_path)
         .arg("artisan")
         .arg("serve")
         .arg(format!("--port={KERNEL_PORT}"))
         .arg(format!("--host={KERNEL_HOST}"))
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .stdin(Stdio::null())
         .kill_on_drop(true);
     tracing::info!(
@@ -222,17 +330,19 @@ async fn spawn_artisan_serve(server_path: &PathBuf) -> std::io::Result<Child> {
         path = ?server_path,
         "spawning atlas-server"
     );
-    cmd.spawn()
+    let mut child = cmd.spawn()?;
+    pump_stream(child.stdout.take(), Arc::clone(stdout_tail));
+    pump_stream(child.stderr.take(), Arc::clone(stderr_tail));
+    Ok(child)
 }
 
-async fn spawn_queue_worker(server_path: &PathBuf) -> std::io::Result<Child> {
-    let php = resolve_php_binary().ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "php not found for queue worker",
-        )
-    })?;
-    let mut cmd = Command::new(&php);
+async fn spawn_queue_worker(
+    php: &PathBuf,
+    server_path: &PathBuf,
+    stdout_tail: &Arc<Mutex<VecDeque<String>>>,
+    stderr_tail: &Arc<Mutex<VecDeque<String>>>,
+) -> std::io::Result<Child> {
+    let mut cmd = Command::new(php);
     apply_env(&mut cmd);
     cmd.current_dir(server_path)
         .arg("artisan")
@@ -240,12 +350,33 @@ async fn spawn_queue_worker(server_path: &PathBuf) -> std::io::Result<Child> {
         .arg("--queue=default,ai-interactions,ai")
         .arg("--timeout=120")
         .arg("--tries=1")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .stdin(Stdio::null())
         .kill_on_drop(true);
     tracing::info!(target: "kernel_manager", path = ?server_path, "spawning queue:work");
-    cmd.spawn()
+    let mut child = cmd.spawn()?;
+    pump_stream(child.stdout.take(), Arc::clone(stdout_tail));
+    pump_stream(child.stderr.take(), Arc::clone(stderr_tail));
+    Ok(child)
+}
+
+/// Spawn a task that drains an AsyncRead line-by-line into a rolling tail buffer.
+fn pump_stream<R>(reader: Option<R>, tail: Arc<Mutex<VecDeque<String>>>)
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+{
+    let Some(r) = reader else { return };
+    tokio::spawn(async move {
+        let mut lines = BufReader::new(r).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let mut tail = tail.lock().await;
+            if tail.len() >= TAIL_LINES {
+                tail.pop_front();
+            }
+            tail.push_back(line);
+        }
+    });
 }
 
 /// Pre-load child env with a PATH that always includes brew + system bins.

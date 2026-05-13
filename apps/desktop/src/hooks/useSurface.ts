@@ -19,7 +19,8 @@ function readInitial(): Surface {
   } catch {
     /* storage unavailable */
   }
-  return 'code'
+  // Cartografia é tela 1 (mapa da verdade canônica entra antes da cabine).
+  return 'cartografia'
 }
 
 export function useSurface(): {
@@ -43,10 +44,10 @@ export function useSurface(): {
       if (!(e.metaKey || e.ctrlKey)) return
       if (e.key === '1') {
         e.preventDefault()
-        setSurface('code')
+        setSurface('cartografia')
       } else if (e.key === '2') {
         e.preventDefault()
-        setSurface('cartografia')
+        setSurface('code')
       }
     }
     document.addEventListener('keydown', onKey)

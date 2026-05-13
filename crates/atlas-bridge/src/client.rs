@@ -243,6 +243,88 @@ impl AtlasBridge {
     }
 
     // ────────────────────────────────────────────────────────────────────
+    // V2 · production-readiness endpoints (ADR-0002)
+    // Returned as raw serde_json::Value so the frontend adapter owns shape.
+
+    pub async fn boot_snapshot(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_BOOT)).await
+    }
+
+    pub async fn mcp_status(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_MCP_STATUS)).await
+    }
+
+    pub async fn list_works(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_WORKS_LIST)).await
+    }
+
+    pub async fn create_work(
+        &self,
+        intent: &str,
+        objective: &str,
+        domain: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let mut body = serde_json::json!({
+            "intent": intent,
+            "objective": objective,
+        });
+        if let Some(d) = domain {
+            body["domain"] = serde_json::Value::String(d.to_string());
+        }
+        self.execute(
+            self.build(Method::POST, endpoints::ATLAS_CODE_WORKS_CREATE).json(&body),
+        )
+        .await
+    }
+
+    pub async fn send_intent_v2(
+        &self,
+        thread_id: Option<&str>,
+        body: &str,
+        _channel: Option<&str>,
+        obra_id: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let mut payload = serde_json::json!({
+            "input_text": body,
+            "source_type": "app",
+            "kind": "interaction",
+        });
+
+        match thread_id.map(str::trim).filter(|id| !id.is_empty()) {
+            Some(id) => payload["thread_id"] = serde_json::Value::String(id.to_string()),
+            None => payload["new_thread"] = serde_json::Value::Bool(true),
+        }
+
+        if let Some(id) = obra_id.map(str::trim).filter(|id| !id.is_empty()) {
+            payload["source_id"] = serde_json::Value::String(id.to_string());
+        }
+
+        self.execute(
+            self.build(Method::POST, endpoints::INTERACTION_CREATE).json(&payload),
+        )
+        .await
+    }
+
+    pub async fn get_work_state(&self, work_id: &str) -> BridgeResult<serde_json::Value> {
+        let path = format!("{}{}/state", endpoints::ATLAS_CODE_WORK_STATE, work_id);
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn get_thread_v2(&self, thread_id: &str) -> BridgeResult<serde_json::Value> {
+        let path = format!("{}{}", endpoints::ATLAS_CODE_THREAD, thread_id);
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn get_receipt_v2(&self, decision_id: &str) -> BridgeResult<serde_json::Value> {
+        let path = format!("{}{}/receipt", endpoints::ATLAS_CODE_RECEIPT, decision_id);
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn list_gate_runs_raw(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::TOOLS_GATE)).await
+    }
+
+    // ────────────────────────────────────────────────────────────────────
     // CARTOGRAPHY · read-only graph + notes + recent changes
     // The cartography never writes to the filesystem; we just proxy GETs.
 

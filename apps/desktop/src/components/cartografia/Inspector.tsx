@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import type { CartographyAtom, CartographyNote, RecentChange } from '@atlas/domain'
 import { formatTimeAgo, toRoman } from './layout'
 import { parseMarkdown } from './markdown'
+import { bridge } from '../../lib/bridge'
 
 interface InspectorProps {
   /** atom do hover/isolate/focus, ou null pra default */
@@ -133,10 +134,24 @@ export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorPro
         <div className="ins-section">
           <h3>Ações</h3>
           <div className="ins-actions">
-            <ActionRow label="Abrir arquivo no editor" glyph="↗" />
-            <ActionRow label="Ver loop de evidência" glyph="↻" />
-            <ActionRow label="Filtrar peças conectadas" glyph="∴" />
-            <ActionRow label="Copiar caminho do arquivo" glyph="⎘" />
+            <ActionRow
+              label={atom.graphSource === 'vault' ? 'Abrir nota no Obsidian' : 'Abrir doc no editor'}
+              glyph="↗"
+              onClick={() => void openDocument(atom, note)}
+              disabled={atom.missingSource}
+            />
+            <ActionRow
+              label="Copiar caminho canônico"
+              glyph="⎘"
+              onClick={() => void copyPath(atom)}
+              disabled={!atom.sourcePath}
+            />
+            <ActionRow
+              label="Revelar no Finder"
+              glyph="✦"
+              onClick={() => void revealInFinder(atom, note)}
+              disabled={atom.missingSource || bridge.mode !== 'tauri'}
+            />
           </div>
         </div>
 
@@ -221,11 +236,110 @@ function Ficha({ fields }: { fields: FichaField[] }) {
   )
 }
 
-function ActionRow({ label, glyph }: { label: string; glyph: string }) {
+function ActionRow({
+  label,
+  glyph,
+  onClick,
+  disabled = false,
+}: {
+  label: string
+  glyph: string
+  onClick?: () => void
+  disabled?: boolean
+}) {
   return (
-    <div className="ins-action">
+    <button
+      type="button"
+      className="ins-action"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        appearance: 'none',
+        width: '100%',
+        textAlign: 'left',
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+        font: 'inherit',
+        color: 'inherit',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
       <span className="a-label">{label}</span>
       <span className="a-glyph">{glyph}</span>
-    </div>
+    </button>
   )
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Real action handlers · open repo doc / vault note / reveal in finder
+
+async function openDocument(atom: CartographyAtom, note: CartographyNote | null): Promise<void> {
+  const source = note?.source ?? atom.graphSource
+  const relativePath = note?.sourcePath ?? atom.sourcePath
+  if (!relativePath) return
+
+  if (source === 'vault') {
+    // obsidian:// URI scheme · falls back to file: if Obsidian isn't installed.
+    const vault = 'AtlasVault'
+    const file = encodeURIComponent(stripExtension(relativePath))
+    const uri = `obsidian://open?vault=${encodeURIComponent(vault)}&file=${file}`
+    try {
+      await bridge.openExternal(uri)
+    } catch {
+      /* swallow · best-effort */
+    }
+    return
+  }
+
+  // Repo docs · prefer absolute path so external editor can read it.
+  // We send `file://...` for the absolute repo path joined with relative.
+  try {
+    const path = absoluteRepoPath(relativePath)
+    await bridge.openExternal(`file://${path}`)
+  } catch {
+    /* ignore */
+  }
+}
+
+async function copyPath(atom: CartographyAtom): Promise<void> {
+  const path = atom.sourcePath
+  if (!path) return
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(path)
+    }
+  } catch {
+    /* clipboard permission denied · silent */
+  }
+}
+
+async function revealInFinder(atom: CartographyAtom, note: CartographyNote | null): Promise<void> {
+  const relative = note?.sourcePath ?? atom.sourcePath
+  if (!relative) return
+  const absolute = note?.source === 'vault' ? absoluteVaultPath(relative) : absoluteRepoPath(relative)
+  try {
+    await bridge.revealInFinder(absolute)
+  } catch {
+    /* ignore */
+  }
+}
+
+function stripExtension(path: string): string {
+  return path.replace(/\.md$/i, '')
+}
+
+function absoluteRepoPath(relative: string): string {
+  // Convention: repo docs root is fixed under the canonical atlas-server checkout.
+  // The bridge has no access to the server-side path, so we use the user's
+  // canonical layout.
+  const base = '/Users/vitorepf/develop/Atlas/atlas-server'
+  return relative.startsWith('/') ? relative : `${base}/${relative}`
+}
+
+function absoluteVaultPath(relative: string): string {
+  const base =
+    '/Users/vitorepf/Library/Mobile Documents/iCloud~md~obsidian/Documents/AtlasVault'
+  return relative.startsWith('/') ? relative : `${base}/${relative}`
 }

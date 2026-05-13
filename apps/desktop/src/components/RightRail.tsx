@@ -1,19 +1,30 @@
 import { useState } from 'react'
 import { PanelTitle } from '@atlas/ui'
-import type { CoreStatus, DecisionReceipt, QualityGate } from '@atlas/domain'
+import type { BootSnapshot, CoreStatus, DecisionReceipt, QualityGate, WorkStateSnapshot } from '@atlas/domain'
 
 interface RightRailProps {
   receipt: DecisionReceipt | null
   gates: QualityGate[]
   core: CoreStatus
+  evidence: WorkStateSnapshot['evidence']
+  boot: BootSnapshot | null
   busy: boolean
   onSignReceipt: () => Promise<void>
   onRunGate: (gateId: string) => Promise<void>
 }
 
-type OpsTab = 'plan' | 'verify'
+type OpsTab = 'plan' | 'verify' | 'evidence'
 
-export function RightRail({ receipt, gates, core, busy, onSignReceipt, onRunGate }: RightRailProps) {
+export function RightRail({
+  receipt,
+  gates,
+  core,
+  evidence,
+  boot,
+  busy,
+  onSignReceipt,
+  onRunGate,
+}: RightRailProps) {
   const [tab, setTab] = useState<OpsTab>('plan')
 
   const passed = gates.filter((g) => g.state === 'passed').length
@@ -34,6 +45,13 @@ export function RightRail({ receipt, gates, core, busy, onSignReceipt, onRunGate
           onClick={() => setTab('verify')}
         >
           Verify
+        </button>
+        <button
+          type="button"
+          className={`ops-tab${tab === 'evidence' ? ' on' : ''}`}
+          onClick={() => setTab('evidence')}
+        >
+          Evidence
         </button>
       </nav>
 
@@ -71,6 +89,76 @@ export function RightRail({ receipt, gates, core, busy, onSignReceipt, onRunGate
               <Row k="db" v={core.dbPath || '—'} />
               <Row k="workspace" v={core.workspacePath || '—'} />
             </dl>
+          </div>
+
+          {boot && (
+            <div className="ops-section">
+              <PanelTitle label="Boot snapshot" meta={boot.status} />
+              <dl style={{ margin: 0 }}>
+                <Row k="kernel" v={`${boot.kernel.service} · ${boot.kernel.version}`} />
+                <Row k="env" v={boot.kernel.env} />
+                <Row k="db" v={boot.kernel.dbConnected ? 'connected' : 'offline'} ok={boot.kernel.dbConnected} />
+                <Row k="storage" v={boot.kernel.storageWritable ? 'writable' : 'read-only'} ok={boot.kernel.storageWritable} />
+                <Row k="repo docs" v={boot.cartography.repoReadable ? boot.cartography.repoRoot : 'missing'} ok={boot.cartography.repoReadable} />
+                <Row k="vault" v={boot.cartography.vaultReadable ? boot.cartography.vaultRoot : 'missing'} ok={boot.cartography.vaultReadable} />
+                <Row k="queue" v={`${boot.queue.connection} · ${boot.queue.pending} pending · ${boot.queue.failed} failed`} />
+                <Row k="providers" v={`${boot.providers.available} ok · ${boot.providers.degraded} degraded`} />
+              </dl>
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'evidence' && (
+        <section className="ops-panel">
+          <div className="ops-section">
+            <PanelTitle
+              label="Evidence Ledger"
+              meta={evidence.length === 0 ? 'sem evidências' : `${evidence.length} eventos`}
+            />
+            {evidence.length === 0 ? (
+              <div
+                style={{
+                  padding: '12px 0',
+                  fontFamily: 'var(--serif)',
+                  fontStyle: 'italic',
+                  fontSize: 12.5,
+                  color: 'var(--ink3)',
+                }}
+              >
+                nenhuma evidência registrada para esta obra.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 4 }}>
+                {evidence.map((e) => (
+                  <div
+                    key={e.id}
+                    style={{
+                      padding: '6px 8px',
+                      background: 'var(--cream)',
+                      border: '1px solid var(--bronze-soft)',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: 'var(--mono)',
+                        fontSize: 8.5,
+                        letterSpacing: '1.3px',
+                        color: 'var(--bronze)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {e.kind}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>{e.summary}</div>
+                    <div style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--mono)' }}>
+                      {e.createdAt ? new Date(e.createdAt).toLocaleString('pt-BR') : '—'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -146,7 +234,7 @@ function ReceiptCard({ receipt }: { receipt: DecisionReceipt }) {
       {receipt.primary && <Row k="primary" v={receipt.primary} />}
       <Row
         k="confidence"
-        v={`${(receipt.confidence ?? 'med').toUpperCase()} · ${(receipt.confidenceScore ?? 0).toFixed(2)}`}
+        v={`${(receipt.confidence ?? 'unknown').toUpperCase()} · ${(receipt.confidenceScore ?? 0).toFixed(2)}`}
         ok
       />
       <Row

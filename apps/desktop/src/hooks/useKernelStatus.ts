@@ -10,12 +10,10 @@
  *
  * Quando o status muda pra `ready`, dispara `onReady` UMA SÓ VEZ.
  *
- * IMPORTANTE: o useEffect roda APENAS uma vez (deps vazias). O callback
- * `onReady` é capturado por ref pra que mudanças de identidade no callback
- * (ex: closure que muda quando state da App.tsx muda) NÃO recriem o
- * polling — o que causaria loop infinito de refresh.
+ * `retry()` re-roda o boot (Tauri command `atlas_kernel_retry`). Em modo
+ * HTTP/offline a função é no-op (não há sidecar pra ressuscitar).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { bridge } from '../lib/bridge'
 
 export type KernelStatus = 'booting' | 'ready' | 'failed' | 'unconfigured'
@@ -23,34 +21,55 @@ export type KernelStatus = 'booting' | 'ready' | 'failed' | 'unconfigured'
 export interface KernelStatusReport {
   status: KernelStatus
   message: string
+  failureCode: string | null
+  repairHint: string | null
   serverPath: string | null
+  phpPath: string | null
   url: string
+  port: number
   queueRunning: boolean
+  stdoutTail: string[]
+  stderrTail: string[]
 }
 
 const HTTP_READY_REPORT: KernelStatusReport = {
   status: 'ready',
   message: 'Atlas Server configured via HTTP env',
+  failureCode: null,
+  repairHint: null,
   serverPath: null,
+  phpPath: null,
   url: (import.meta.env.VITE_ATLAS_SERVER_URL as string | undefined) ?? '',
+  port: 8001,
   queueRunning: false,
+  stdoutTail: [],
+  stderrTail: [],
 }
 
 const OFFLINE_REPORT: KernelStatusReport = {
   status: 'unconfigured',
   message: 'Bridge offline · sem Atlas Server alcançável',
+  failureCode: 'no_bridge',
+  repairHint: 'Set VITE_ATLAS_SERVER_URL or run inside the Atlas Code .app',
   serverPath: null,
+  phpPath: null,
   url: '',
+  port: 0,
   queueRunning: false,
+  stdoutTail: [],
+  stderrTail: [],
 }
 
 interface UseKernelStatusOpts {
   onReady?: () => void
 }
 
-export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusReport {
-  // Capture onReady em ref · estável entre renders. O useEffect abaixo NÃO
-  // depende de onReady, então o polling não é recriado a cada render do App.
+export interface UseKernelStatusResult extends KernelStatusReport {
+  retry: () => Promise<void>
+  retrying: boolean
+}
+
+export function useKernelStatus(opts: UseKernelStatusOpts = {}): UseKernelStatusResult {
   const onReadyRef = useRef(opts.onReady)
   useEffect(() => {
     onReadyRef.current = opts.onReady
@@ -62,15 +81,21 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusRep
     return {
       status: 'booting',
       message: 'iniciando Atlas Server…',
+      failureCode: null,
+      repairHint: null,
       serverPath: null,
+      phpPath: null,
       url: '',
+      port: 8001,
       queueRunning: false,
+      stdoutTail: [],
+      stderrTail: [],
     }
   })
 
+  const [retrying, setRetrying] = useState(false)
+
   useEffect(() => {
-    // For http mode the initial report is already 'ready'; ainda fire onReady
-    // uma vez pra triggerar o refresh do useBridge.
     if (bridge.mode === 'http') {
       onReadyRef.current?.()
       return
@@ -91,45 +116,35 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusRep
 
     function announce(next: KernelStatusReport) {
       if (cancelled) return
-      // Comparação rasa pra não disparar setState (que causaria re-render do
-      // App + qualquer subscriber) quando o report é igual ao último.
       setReport((prev) => (sameReport(prev, next) ? prev : next))
       if (!reachedReady && next.status === 'ready') {
         reachedReady = true
         onReadyRef.current?.()
-        // Uma vez que ficou ready, podemos parar o polling. O backend
-        // continua emitindo via evento `kernel://ready` se quisermos
-        // re-disparar (não é o caso hoje).
         stopPolling()
       }
-      if (
-        next.status === 'failed' ||
-        next.status === 'unconfigured'
-      ) {
+      if (next.status === 'failed' || next.status === 'unconfigured') {
         stopPolling()
       }
     }
 
     void (async () => {
-      // Subscribe pra evento push do Tauri (chega assim que ready)
       try {
         const eventApi = await import('@tauri-apps/api/event')
         const off = await eventApi.listen<KernelStatusReport>('kernel://ready', (e) => {
-          announce(e.payload)
+          announce(normalise(e.payload))
         })
         listenUnsub = off
       } catch {
         /* no-op */
       }
 
-      // Polling fallback (e captura o estado initial booting)
       const tick = async () => {
         try {
           const tauri = await import('@tauri-apps/api/core')
           const next = await tauri.invoke<KernelStatusReport>('atlas_kernel_status')
-          announce(next)
+          announce(normalise(next))
         } catch {
-          /* keep polling — kernel manager not yet registered */
+          /* keep polling */
         }
       }
 
@@ -145,15 +160,70 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusRep
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return report
+  const retry = useCallback(async () => {
+    if (bridge.mode !== 'tauri') return
+    setRetrying(true)
+    try {
+      const tauri = await import('@tauri-apps/api/core')
+      const next = await tauri.invoke<KernelStatusReport>('atlas_kernel_retry')
+      const normalised = normalise(next)
+      setReport(normalised)
+      if (normalised.status === 'ready') {
+        onReadyRef.current?.()
+      }
+    } catch (e) {
+      setReport((prev) => ({
+        ...prev,
+        status: 'failed',
+        message: `retry failed · ${e instanceof Error ? e.message : String(e)}`,
+        failureCode: 'retry_failed',
+        repairHint: 'Check stderr_tail for the underlying error',
+      }))
+    } finally {
+      setRetrying(false)
+    }
+  }, [])
+
+  return { ...report, retry, retrying }
 }
 
 function sameReport(a: KernelStatusReport, b: KernelStatusReport): boolean {
   return (
     a.status === b.status &&
     a.message === b.message &&
+    a.failureCode === b.failureCode &&
+    a.repairHint === b.repairHint &&
     a.serverPath === b.serverPath &&
+    a.phpPath === b.phpPath &&
     a.url === b.url &&
-    a.queueRunning === b.queueRunning
+    a.port === b.port &&
+    a.queueRunning === b.queueRunning &&
+    sameStrArr(a.stdoutTail, b.stdoutTail) &&
+    sameStrArr(a.stderrTail, b.stderrTail)
   )
+}
+
+function sameStrArr(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+function normalise(raw: unknown): KernelStatusReport {
+  const r = (raw ?? {}) as Record<string, unknown>
+  return {
+    status: (r.status as KernelStatus) ?? 'booting',
+    message: String(r.message ?? ''),
+    failureCode: (r.failureCode ?? r.failure_code ?? null) as string | null,
+    repairHint: (r.repairHint ?? r.repair_hint ?? null) as string | null,
+    serverPath: (r.serverPath ?? r.server_path ?? null) as string | null,
+    phpPath: (r.phpPath ?? r.php_path ?? null) as string | null,
+    url: String(r.url ?? ''),
+    port: Number(r.port ?? 0),
+    queueRunning: Boolean(r.queueRunning ?? r.queue_running ?? false),
+    stdoutTail: Array.isArray(r.stdoutTail) ? (r.stdoutTail as string[])
+      : Array.isArray(r.stdout_tail) ? (r.stdout_tail as string[]) : [],
+    stderrTail: Array.isArray(r.stderrTail) ? (r.stderrTail as string[])
+      : Array.isArray(r.stderr_tail) ? (r.stderr_tail as string[]) : [],
+  }
 }

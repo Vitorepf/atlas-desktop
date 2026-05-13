@@ -162,7 +162,12 @@ export function CartografiaSurface() {
             ) : null}
 
             {c.graph && c.view === 'system' ? (
-              <SystemScene continent={continent} onEnterFlow={() => c.setView('flow')} />
+              <SystemScene
+                continent={continent}
+                semanticGraph={c.graph.semanticGraph}
+                onEnterFlow={() => c.setView('flow')}
+                onEnterNode={c.enterGear}
+              />
             ) : null}
 
             {c.graph && c.view === 'flow' ? (

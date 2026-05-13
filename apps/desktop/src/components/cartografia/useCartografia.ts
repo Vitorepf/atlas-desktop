@@ -146,6 +146,28 @@ export function useCartografia(): CartografiaState {
         }
       }
     }
+    for (const n of graph.semanticGraph?.nodes ?? []) {
+      if (!n.graphId || idx[n.graphId]) continue
+      idx[n.graphId] = {
+        kind: 'semantic',
+        graphId: n.graphId,
+        name: n.graphTitle,
+        deck: n.summary,
+        graphSource: n.graphSource,
+        sourcePath: n.sourcePath,
+        missingSource: false,
+        role: n.summary,
+        depends: n.dependsOn,
+        unblocks: n.unlocks,
+        evidence: n.evidence.length === 0 ? null : n.evidence.join(' · '),
+        risk: n.riskLevel,
+        next: n.nextActions.length === 0 ? null : n.nextActions.join(' · '),
+        graphLayer: n.graphLayer,
+        graphParent: n.graphParent,
+        flowsTo: n.flowsTo,
+        governs: n.governs,
+      }
+    }
     return idx
   }, [graph])
 
