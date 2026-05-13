@@ -82,9 +82,16 @@ function ReceiptCard({ receipt }: { receipt: DecisionReceipt }) {
       <Row k="id" v={receipt.id} mono />
       <Row k="obra" v={receipt.obraId} />
       <Row k="primary" v={receipt.primary} />
-      <Row k="confidence" v={`${receipt.confidence.toUpperCase()} · ${receipt.confidenceScore.toFixed(2)}`} ok />
-      <Row k="budget" v={`est $${receipt.budgetEstUsd.toFixed(3)} · used $${receipt.budgetUsedUsd.toFixed(2)}`} />
-      <Row k="fallback" v={receipt.fallbackChain.join(' → ')} />
+      <Row
+        k="confidence"
+        v={`${(receipt.confidence ?? 'med').toUpperCase()} · ${(receipt.confidenceScore ?? 0).toFixed(2)}`}
+        ok
+      />
+      <Row
+        k="budget"
+        v={`est $${(receipt.budgetEstUsd ?? 0).toFixed(3)} · used $${(receipt.budgetUsedUsd ?? 0).toFixed(2)}`}
+      />
+      <Row k="fallback" v={(receipt.fallbackChain ?? []).join(' → ') || '—'} />
       <Row k="signature" v={receipt.signature ?? '— pendente'} />
     </div>
   )

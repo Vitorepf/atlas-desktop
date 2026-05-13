@@ -69,9 +69,16 @@ async function fetchHttp<T>(
   path: string,
   init?: { method?: string; body?: unknown }
 ): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  }
+  const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
+  if (token) headers['X-Atlas-Token'] = token
+
   const response = await fetch(`${HTTP_BASE}${path}`, {
     method: init?.method ?? 'GET',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers,
     body: init?.body ? JSON.stringify(init.body) : undefined,
   })
   if (!response.ok) {
@@ -138,35 +145,35 @@ export const bridge = {
   // 1 · health
   async health(): Promise<HealthDto> {
     if (MODE === 'tauri') return invokeTauri<HealthDto>('bridge_health')
-    if (MODE === 'http') return fetchHttp<HealthDto>('/api/health')
+    if (MODE === 'http') return fetchHttp<HealthDto>('/health')
     return { kernel: 'mock', providers: ['claude', 'codex'], mcp: ['atlas-open-brain'], queue: 0 }
   },
 
   // 2 · list obras
   async listObras(): Promise<Obra[]> {
     if (MODE === 'tauri') return invokeTauri<Obra[]>('bridge_list_obras')
-    if (MODE === 'http') return fetchHttp<Obra[]>('/api/projects')
+    if (MODE === 'http') return fetchHttp<Obra[]>('/projects')
     return [mockObra]
   },
 
   // 3 · create obra
   async createObra(intent: string, objective: string): Promise<Obra> {
     if (MODE === 'tauri') return invokeTauri<Obra>('bridge_create_obra', { intent, objective })
-    if (MODE === 'http') return fetchHttp<Obra>('/api/projects', { method: 'POST', body: { intent, objective } })
+    if (MODE === 'http') return fetchHttp<Obra>('/projects', { method: 'POST', body: { intent, objective } })
     return { ...mockObra, id: `OBRA-${Date.now()}`, objective, title: objective }
   },
 
   // 4 · list sessions for obra
   async listSessions(obraId: string): Promise<Session[]> {
     if (MODE === 'tauri') return invokeTauri<Session[]>('bridge_list_sessions', { obraId })
-    if (MODE === 'http') return fetchHttp<Session[]>(`/api/atlas-code/works/${obraId}/sessions`)
+    if (MODE === 'http') return fetchHttp<Session[]>(`/atlas-code/works/${obraId}/sessions`)
     return mockSessions.filter((s) => s.obraId === obraId)
   },
 
   // 5 · get session messages
   async getSession(threadId: string): Promise<Message[]> {
     if (MODE === 'tauri') return invokeTauri<Message[]>('bridge_get_session', { threadId })
-    if (MODE === 'http') return fetchHttp<Message[]>(`/api/ai/threads/${threadId}`)
+    if (MODE === 'http') return fetchHttp<Message[]>(`/ai/threads/${threadId}`)
     return mockMessages
   },
 
@@ -192,7 +199,7 @@ export const bridge = {
       }
     }
     if (MODE === 'http') {
-      const es = new EventSource(`${HTTP_BASE}/api/ai/interactions/${traceId}/stream`)
+      const es = new EventSource(`${HTTP_BASE}/ai/interactions/${traceId}/stream`)
       es.onmessage = (msg) => {
         try {
           onEvent(JSON.parse(msg.data) as StreamEventDto)
@@ -211,7 +218,7 @@ export const bridge = {
   async sendIntent(sessionId: string, body: string, channel = 'text'): Promise<Message> {
     if (MODE === 'tauri') return invokeTauri<Message>('bridge_send_intent', { sessionId, body, channel })
     if (MODE === 'http')
-      return fetchHttp<Message>('/api/ai/interactions', {
+      return fetchHttp<Message>('/ai/interactions', {
         method: 'POST',
         body: { sessionId, body, channel },
       })
@@ -227,7 +234,7 @@ export const bridge = {
   // 8 · get receipt
   async getReceipt(decisionId: string): Promise<DecisionReceipt> {
     if (MODE === 'tauri') return invokeTauri<DecisionReceipt>('bridge_get_receipt', { decisionId })
-    if (MODE === 'http') return fetchHttp<DecisionReceipt>(`/api/ai/decisions/${decisionId}`)
+    if (MODE === 'http') return fetchHttp<DecisionReceipt>(`/ai/decisions/${decisionId}`)
     return mockReceipt
   },
 
@@ -236,7 +243,7 @@ export const bridge = {
     if (MODE === 'tauri')
       return invokeTauri<SignedReceiptAck>('bridge_sign_receipt', { decisionId, signature })
     if (MODE === 'http')
-      return fetchHttp<SignedReceiptAck>(`/api/atlas-code/decisions/${decisionId}/sign`, {
+      return fetchHttp<SignedReceiptAck>(`/atlas-code/decisions/${decisionId}/sign`, {
         method: 'POST',
         body: signature,
       })
@@ -246,14 +253,14 @@ export const bridge = {
   // 10 · list evidence by obra
   async listEvidence(obraId: string): Promise<EvidenceDto[]> {
     if (MODE === 'tauri') return invokeTauri<EvidenceDto[]>('bridge_list_evidence', { obraId })
-    if (MODE === 'http') return fetchHttp<EvidenceDto[]>(`/api/atlas-code/works/${obraId}/evidence`)
+    if (MODE === 'http') return fetchHttp<EvidenceDto[]>(`/atlas-code/works/${obraId}/evidence`)
     return []
   },
 
   // 11a · list quality gates
   async listGates(): Promise<QualityGate[]> {
     if (MODE === 'tauri') return invokeTauri<QualityGate[]>('bridge_list_gates')
-    if (MODE === 'http') return fetchHttp<QualityGate[]>('/api/tools/gate')
+    if (MODE === 'http') return fetchHttp<QualityGate[]>('/tools/gate')
     return mockGates
   },
 
@@ -261,7 +268,7 @@ export const bridge = {
   async runGate(gateId: string): Promise<{ gateId: string; runId: string; state: string }> {
     if (MODE === 'tauri') return invokeTauri('bridge_run_gate', { gateId })
     if (MODE === 'http')
-      return fetchHttp(`/api/tools/${gateId}/run`, { method: 'POST', body: {} })
+      return fetchHttp(`/tools/${gateId}/run`, { method: 'POST', body: {} })
     return { gateId, runId: `run-mock-${Date.now()}`, state: 'pending' }
   },
 
@@ -269,7 +276,7 @@ export const bridge = {
   async applyDiff(patchId: string, runGates: string[]): Promise<ApplyDiffAck> {
     if (MODE === 'tauri') return invokeTauri<ApplyDiffAck>('bridge_apply_diff', { patchId, runGates })
     if (MODE === 'http')
-      return fetchHttp<ApplyDiffAck>(`/api/atlas-code/diffs/${patchId}/apply`, {
+      return fetchHttp<ApplyDiffAck>(`/atlas-code/diffs/${patchId}/apply`, {
         method: 'POST',
         body: { confirm: true, runGates },
       })
@@ -288,7 +295,7 @@ export const bridge = {
     try {
       const all = MODE === 'tauri'
         ? await invokeTauri<Session[]>('bridge_list_obras')
-        : await fetchHttp<Session[]>('/api/ai/threads?status=done')
+        : await fetchHttp<Session[]>('/ai/threads?status=done')
       // best effort — server shape may vary
       return Array.isArray(all) ? mockRecentSessions : mockRecentSessions
     } catch {

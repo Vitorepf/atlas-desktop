@@ -27,6 +27,7 @@ crates/atlas-tauri/target
 .env.*
 !.env.example
 *.local
+apps/*/.env.local
 
 # ───────── OS / Editor
 .DS_Store
