@@ -1,7 +1,7 @@
 //! Bridge error taxonomy.
 //!
-//! Errors are classified so the UI can decide between retry, fallback to mock,
-//! show "Kernel offline", or escalate.
+//! Errors are classified so the UI can decide between retry, show "Kernel
+//! offline", or escalate.
 
 use thiserror::Error;
 
@@ -37,7 +37,7 @@ impl BridgeError {
         }
     }
 
-    /// True if the UI should fall back to mock + show offline indicator.
+    /// True if the UI should show an explicit offline indicator.
     pub fn is_offline(&self) -> bool {
         matches!(self, Self::KernelOffline { .. })
     }

@@ -1,14 +1,9 @@
 /**
- * apps/desktop/src/data/empty.ts (formerly mock.ts)
+ * Empty states used when the Kernel has not returned data yet.
  *
- * CANON · feedback_atlas_no_mock.md
- *   Atlas Code never paints invented data. When the Kernel hasn't produced
- *   evidence yet, the cockpit shows the empty state honestly.
- *
- * The exports below are NOT mocks. They are the typed empty/default values
- * components fall back to when there's literally nothing to render — same
- * shape as the domain types, but populated with neutral sentinels (`—`,
- * empty arrays, "todo" pipeline state). Never call these "mock data".
+ * Atlas Code must never paint invented Obras, packets, receipts, terminal
+ * output or evidence. These values are neutral sentinels so components can
+ * render "aguardando Kernel" without pretending work happened.
  */
 import type {
   CoreStatus,
@@ -21,19 +16,14 @@ import type {
   Session,
 } from '@atlas/domain'
 
-/**
- * Browser fallback core status — accurate when running `npm run dev` outside
- * the Tauri shell. PTY/signing are honestly labeled "unavailable".
- */
 export const browserCoreStatus: CoreStatus = {
-  mode: 'browser-fallback',
+  mode: 'browser-offline',
   dbPath: '—',
   workspacePath: '—',
-  pty: 'mock',
-  signing: 'mock',
+  pty: 'unavailable',
+  signing: 'unavailable',
 }
 
-/** SDD pipeline before any obra has started — every stage is `todo`. */
 export const idlePipeline: SddStage[] = [
   { id: 'context', label: 'Context', state: 'todo' },
   { id: 'spec', label: 'Spec', state: 'todo' },
@@ -42,7 +32,6 @@ export const idlePipeline: SddStage[] = [
   { id: 'verify', label: 'Verify', state: 'todo' },
 ]
 
-/** Default obra placeholder when the user hasn't selected one. */
 export const noObra: Obra = {
   id: '',
   title: '',
@@ -52,7 +41,6 @@ export const noObra: Obra = {
   createdAt: '',
 }
 
-/** Default empty receipt — components show "aguardando" when this is used. */
 export const noReceipt: DecisionReceipt = {
   id: '',
   obraId: '',

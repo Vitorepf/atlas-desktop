@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { CartografiaSurface } from './components/cartografia/CartografiaSurface'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LeftRail } from './components/LeftRail'
@@ -6,8 +7,9 @@ import { ObraBar } from './components/ObraBar'
 import { RightRail } from './components/RightRail'
 import { TerminalDock } from './components/TerminalDock'
 import { TopBar } from './components/TopBar'
-import { idlePipeline, noTerminalLines } from './data/mock'
+import { idlePipeline, noTerminalLines } from './data/empty'
 import { useBridge } from './hooks/useBridge'
+import { useKernelStatus } from './hooks/useKernelStatus'
 import { useSurface } from './hooks/useSurface'
 
 /**
@@ -16,13 +18,34 @@ import { useSurface } from './hooks/useSurface'
  * - Code:        cabine onde você dirige o Atlas (programa).
  * - Cartografia: mapa read-only do canon (audita a verdade).
  *
- * CANON · feedback_atlas_no_mock.md
+ * Enterprise lifecycle:
+ *   atlas-tauri sobe o atlas-server como sidecar (php artisan serve + queue
+ *   worker). useKernelStatus polla o status; quando vira 'ready', invocamos
+ *   atlas_bridge_reconfigure (Tauri rehidrata AtlasBridge com ATLAS_TOKEN
+ *   real) e disparamos useBridge.refresh() pra puxar dados frescos. O
+ *   usuário vê tudo acontecer sem abrir terminal.
+ *
+ * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
  *   No invented data. The cockpit renders exactly what the Kernel returns.
  *   When nothing is returned, components show honest empty states.
  */
 function App() {
   const { surface, setSurface } = useSurface()
   const b = useBridge()
+
+  const onKernelReady = useCallback(() => {
+    void (async () => {
+      try {
+        const tauri = await import('@tauri-apps/api/core')
+        await tauri.invoke('atlas_bridge_reconfigure')
+      } catch {
+        /* http/offline mode · nothing to reconfigure */
+      }
+      void b.refresh()
+    })()
+  }, [b])
+
+  const kernel = useKernelStatus({ onReady: onKernelReady })
 
   return (
     <div className={`atlas-shell surface-${surface}`}>
@@ -32,6 +55,7 @@ function App() {
         errors={b.errors}
         surface={surface}
         onSurfaceChange={setSurface}
+        kernel={kernel}
       />
 
       {surface === 'code' ? (

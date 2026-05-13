@@ -12,7 +12,7 @@ interface LeftRailProps {
 
 /**
  * Sessions sidebar · obras list (clickable) + sessions in current obra.
- * Empty states are honest — never paints fake placeholders.
+ * Empty states are honest — never paints invented records.
  */
 export function LeftRail({ obras, activeObraId, active, recent, loading, busy, onSelectObra }: LeftRailProps) {
   return (

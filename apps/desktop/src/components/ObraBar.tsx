@@ -9,7 +9,7 @@ interface ObraBarProps {
 
 /**
  * ObraBar · shows the active obra. When none exists, opens an inline form
- * that posts to bridge.createObra. NEVER paints a fake OBRA-ID.
+ * that posts to bridge.createObra. NEVER paints an invented OBRA-ID.
  */
 export function ObraBar({ obra, onCreate, busy }: ObraBarProps) {
   const [creating, setCreating] = useState(false)

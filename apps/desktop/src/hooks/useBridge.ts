@@ -1,7 +1,7 @@
 /**
  * useBridge · loads cockpit data + exposes interactive actions.
  *
- * CANON · feedback_atlas_no_mock.md
+ * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
  *   Bridge failures NEVER fall back to invented data. They fall back to:
  *   - empty array (sessions, messages, gates, evidence)
  *   - null (obra, receipt) → components render "—" / "aguardando Kernel"
@@ -20,7 +20,7 @@ import type {
   QualityGate,
   Session,
 } from '@atlas/domain'
-import { browserCoreStatus, noGates, noMessages, noSessions } from '../data/mock'
+import { browserCoreStatus, noGates, noMessages, noSessions } from '../data/empty'
 
 export interface BridgeSnapshot {
   mode: BridgeMode
@@ -50,7 +50,7 @@ export interface BridgeActions {
   sendIntent: (text: string) => Promise<void>
   /** Run a single quality gate by id. */
   runGate: (gateId: string) => Promise<void>
-  /** Sign the current receipt (placeholder ed25519 stub). */
+  /** Sign the current receipt only when the native ed25519 signer is available. */
   signReceipt: () => Promise<void>
   /** Apply a diff patch (id from streamed event). */
   applyDiff: (patchId: string) => Promise<void>
@@ -300,22 +300,15 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     if (!snap.receipt?.id) return
     setSnap((s) => ({ ...s, busy: true }))
     try {
-      // MVP: send a placeholder ed25519 payload. atlas-receipts crate (Rust)
-      // generates real signatures when atlas-tauri is wired.
-      const stubSig = btoa(String.fromCharCode(...new Uint8Array(64))).replace(/=+$/, '')
-      const stubPub = btoa(String.fromCharCode(...new Uint8Array(32))).replace(/=+$/, '')
-      await bridge.signReceipt(snap.receipt.id, {
-        signature: stubSig,
-        publicKey: stubPub,
-        signedAt: new Date().toISOString(),
-        signerId: 'atlas-desktop-mvp',
-      })
-      await refresh()
+      if (snap.core.signing !== 'ed25519') {
+        throw new Error('assinatura ed25519 indisponível · atlas-receipts ainda não está conectado')
+      }
+      throw new Error('assinatura ed25519 real ainda precisa expor payload assinado via atlas-tauri')
     } catch (e) {
       pushError('signReceipt', e)
       setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
     }
-  }, [snap.receipt, refresh, pushError])
+  }, [snap.receipt, snap.core.signing, pushError])
 
   const applyDiff = useCallback(
     async (patchId: string) => {

@@ -7,16 +7,16 @@ interface TerminalLine {
 
 interface TerminalDockProps {
   lines: TerminalLine[]
-  ptyMode: 'mock' | 'portable-pty'
+  ptyMode: 'unavailable' | 'portable-pty'
   cwd: string
 }
 
 /**
  * Terminal dock · single zsh tab in the MVP.
  *
- * CANON · feedback_atlas_no_mock.md
- *   When PTY isn't actually connected (mock mode), the dock shows an honest
- *   placeholder explaining what's missing. NEVER paints fake CLI output.
+ * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
+ *   When PTY isn't actually connected, the dock shows an honest empty state.
+ *   NEVER paints invented CLI output.
  */
 export function TerminalDock({ lines, ptyMode, cwd }: TerminalDockProps) {
   const ptyLive = ptyMode === 'portable-pty'
@@ -27,8 +27,8 @@ export function TerminalDock({ lines, ptyMode, cwd }: TerminalDockProps) {
         <div className="term-tab">zsh · {ptyLive ? 'atlas' : '— sem PTY'}</div>
         <div className="term-meta">
           {cwd || '—'}
-          <span className={`pty-badge${ptyLive ? '' : ' mock'}`}>
-            {ptyLive ? 'pty real' : 'pty mock'}
+          <span className={`pty-badge${ptyLive ? '' : ' unavailable'}`}>
+            {ptyLive ? 'pty real' : 'pty indisponível'}
           </span>
         </div>
       </div>
@@ -45,7 +45,7 @@ export function TerminalDock({ lines, ptyMode, cwd }: TerminalDockProps) {
           >
             {ptyLive
               ? 'aguardando comando…'
-              : 'PTY não conectado · atlas-platform crate é placeholder · wire portable-pty no passo 5'}
+              : 'PTY não conectado · aguardando implementação real do atlas-platform'}
           </div>
         ) : (
           lines.map((l, i) => (

@@ -1,16 +1,19 @@
 //! Tauri command wrappers around AtlasBridge.
 //!
 //! Each command:
-//! - Takes a `State<'_, AppState>` to reach the shared bridge.
-//! - Returns `Result<DTO, String>` (Tauri serializes the error string for JS).
-//! - Logs via `tracing` so observability stays at the boundary.
+//! - Takes a `State<'_, AppState>` to reach the shared bridge
+//! - Clones the bridge out of the Mutex (cheap · reqwest::Client clone is Arc'd)
+//!   so we hold the lock only for the snapshot, not for the network call
+//! - Returns `Result<DTO, String>` (Tauri serializes the error string for JS)
+//! - Logs via `tracing` so observability stays at the boundary
 
 use crate::AppState;
+use atlas_bridge::ApplyDiffAck;
+use atlas_bridge::AtlasBridge;
 use atlas_bridge::{
     DecisionReceiptDto, EvidenceDto, GateRunDto, HealthDto, MessageDto, ObraDto,
     QualityGateDto, ReceiptSignaturePayload, SessionDto, SignedReceiptAck,
 };
-use atlas_bridge::ApplyDiffAck;
 use tauri::{Emitter, State};
 
 fn into_str_err<E: std::fmt::Display>(e: E) -> String {
@@ -19,16 +22,20 @@ fn into_str_err<E: std::fmt::Display>(e: E) -> String {
     msg
 }
 
+async fn bridge_of(state: &State<'_, AppState>) -> AtlasBridge {
+    state.bridge.lock().await.clone()
+}
+
 // 1
 #[tauri::command]
 pub async fn bridge_health(state: State<'_, AppState>) -> Result<HealthDto, String> {
-    state.bridge.health().await.map_err(into_str_err)
+    bridge_of(&state).await.health().await.map_err(into_str_err)
 }
 
 // 2
 #[tauri::command]
 pub async fn bridge_list_obras(state: State<'_, AppState>) -> Result<Vec<ObraDto>, String> {
-    state.bridge.list_obras().await.map_err(into_str_err)
+    bridge_of(&state).await.list_obras().await.map_err(into_str_err)
 }
 
 // 3
@@ -38,8 +45,7 @@ pub async fn bridge_create_obra(
     intent: String,
     objective: String,
 ) -> Result<ObraDto, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .create_obra(&intent, &objective)
         .await
         .map_err(into_str_err)
@@ -51,8 +57,7 @@ pub async fn bridge_list_sessions(
     state: State<'_, AppState>,
     obra_id: String,
 ) -> Result<Vec<SessionDto>, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .list_sessions(&obra_id)
         .await
         .map_err(into_str_err)
@@ -64,16 +69,13 @@ pub async fn bridge_get_session(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<Vec<MessageDto>, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .get_session(&thread_id)
         .await
         .map_err(into_str_err)
 }
 
-// 6 — streaming exposed via Tauri events (channel pattern). For MVP we emit
-// `bridge://stream/{trace_id}` events. This thin command just kicks off the
-// stream; the JS side listens on `tauri://event`.
+// 6 — streaming exposed via Tauri events.
 #[tauri::command]
 pub async fn bridge_stream_session(
     state: State<'_, AppState>,
@@ -83,8 +85,8 @@ pub async fn bridge_stream_session(
 ) -> Result<(), String> {
     use futures_util::StreamExt;
 
-    let mut stream = state
-        .bridge
+    let bridge = bridge_of(&state).await;
+    let mut stream = bridge
         .stream_session(&trace_id, after_sequence)
         .await
         .map_err(into_str_err)?;
@@ -112,8 +114,7 @@ pub async fn bridge_send_intent(
     body: String,
     channel: String,
 ) -> Result<MessageDto, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .send_intent(&session_id, &body, &channel)
         .await
         .map_err(into_str_err)
@@ -125,8 +126,7 @@ pub async fn bridge_get_receipt(
     state: State<'_, AppState>,
     decision_id: String,
 ) -> Result<DecisionReceiptDto, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .get_receipt(&decision_id)
         .await
         .map_err(into_str_err)
@@ -139,8 +139,7 @@ pub async fn bridge_sign_receipt(
     decision_id: String,
     signature: ReceiptSignaturePayload,
 ) -> Result<SignedReceiptAck, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .sign_receipt(&decision_id, signature)
         .await
         .map_err(into_str_err)
@@ -152,8 +151,7 @@ pub async fn bridge_list_evidence(
     state: State<'_, AppState>,
     obra_id: String,
 ) -> Result<Vec<EvidenceDto>, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .list_evidence(&obra_id)
         .await
         .map_err(into_str_err)
@@ -164,7 +162,7 @@ pub async fn bridge_list_evidence(
 pub async fn bridge_list_gates(
     state: State<'_, AppState>,
 ) -> Result<Vec<QualityGateDto>, String> {
-    state.bridge.list_gates().await.map_err(into_str_err)
+    bridge_of(&state).await.list_gates().await.map_err(into_str_err)
 }
 
 // 11b
@@ -173,7 +171,7 @@ pub async fn bridge_run_gate(
     state: State<'_, AppState>,
     gate_id: String,
 ) -> Result<GateRunDto, String> {
-    state.bridge.run_gate(&gate_id).await.map_err(into_str_err)
+    bridge_of(&state).await.run_gate(&gate_id).await.map_err(into_str_err)
 }
 
 // 12
@@ -183,8 +181,7 @@ pub async fn bridge_apply_diff(
     patch_id: String,
     run_gates: Vec<String>,
 ) -> Result<ApplyDiffAck, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .apply_diff(&patch_id, run_gates)
         .await
         .map_err(into_str_err)
@@ -197,15 +194,14 @@ pub async fn bridge_apply_diff(
 pub async fn bridge_cartography_graph(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    state.bridge.cartography_graph().await.map_err(into_str_err)
+    bridge_of(&state).await.cartography_graph().await.map_err(into_str_err)
 }
 
 #[tauri::command]
 pub async fn bridge_cartography_recent_changes(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .cartography_recent_changes()
         .await
         .map_err(into_str_err)
@@ -216,8 +212,7 @@ pub async fn bridge_cartography_note(
     state: State<'_, AppState>,
     graph_id: String,
 ) -> Result<serde_json::Value, String> {
-    state
-        .bridge
+    bridge_of(&state).await
         .cartography_note(&graph_id)
         .await
         .map_err(into_str_err)

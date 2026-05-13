@@ -3,14 +3,14 @@
  *
  * Single transport boundary the React shell talks to. Dispatch order:
  *   1. Tauri    → invoke() the matching `bridge_*` command in atlas-tauri
- *   2. HTTP     → fetch() against atlas-server (browser fallback when
+ *   2. HTTP     → fetch() against atlas-server (browser mode when
  *                 VITE_ATLAS_SERVER_URL is set)
- *   3. Offline  → returns honest empty values (NOT fake data)
+ *   3. Offline  → returns honest empty values for read-only calls
  *
- * CANON · feedback_atlas_no_mock.md
+ * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
  *   When neither Tauri nor HTTP is reachable, we DO NOT invent records.
- *   Components render empty states. The bridge mode badge says "mock"
- *   to make the offline state explicit.
+ *   Components render empty states. Mutating calls throw explicit offline
+ *   errors so the UI never pretends that the Kernel accepted work.
  */
 
 import type {
@@ -31,14 +31,13 @@ import {
   noGates,
   noMessages,
   noPackets,
-  noReceipt,
   noSessions,
-} from '../data/mock'
+} from '../data/empty'
 
 // ──────────────────────────────────────────────────────────────────────────
 // Mode detection
 
-export type BridgeMode = 'tauri' | 'http' | 'mock'
+export type BridgeMode = 'tauri' | 'http' | 'offline'
 
 declare global {
   interface Window {
@@ -53,7 +52,7 @@ export function detectMode(): BridgeMode {
   if (import.meta.env.VITE_ATLAS_SERVER_URL) {
     return 'http'
   }
-  return 'mock'
+  return 'offline'
 }
 
 const MODE: BridgeMode = detectMode()
@@ -142,7 +141,7 @@ export interface StreamEventDto {
 
 // ──────────────────────────────────────────────────────────────────────────
 // Bridge surface · 12 typed functions matching the audit
-// In OFFLINE mode, returns empty/neutral values (NOT fake data).
+// In OFFLINE mode, read-only calls return neutral values; writes throw.
 
 export const bridge = {
   mode: MODE as BridgeMode,
@@ -289,7 +288,7 @@ export const bridge = {
   async getReceipt(decisionId: string): Promise<DecisionReceipt> {
     if (MODE === 'tauri') return invokeTauri<DecisionReceipt>('bridge_get_receipt', { decisionId })
     if (MODE === 'http') return fetchHttp<DecisionReceipt>(`/ai/decisions/${decisionId}`)
-    return noReceipt
+    offline('getReceipt')
   },
 
   // 9 · sign receipt

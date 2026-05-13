@@ -8,14 +8,14 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // Core (atlas-tauri command bridge)
 
-export type CoreMode = 'tauri-core' | 'browser-fallback'
+export type CoreMode = 'tauri-core' | 'browser-offline'
 
 export interface CoreStatus {
   mode: CoreMode
   dbPath: string
   workspacePath: string
-  pty: 'mock' | 'portable-pty'
-  signing: 'mock' | 'ed25519'
+  pty: 'unavailable' | 'portable-pty'
+  signing: 'unavailable' | 'ed25519'
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

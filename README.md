@@ -41,7 +41,7 @@ atlas-desktop/
 ├─ apps/
 │  └─ desktop/              React + Vite cockpit app (frontend)
 │     ├─ src/components/    layout-first React components
-│     ├─ src/data/mock.ts   placeholder payloads (no business logic)
+│     ├─ src/data/empty.ts  honest empty states (no invented records)
 │     ├─ src/hooks/         atlas-tauri command bridge
 │     └─ src/index.css      editorial DNA tokens (cream + bronze + Cormorant)
 ├─ crates/
@@ -70,11 +70,11 @@ npm run tauri:build         # production .app + .dmg
 
 ## Current State
 
-- React/Vite shell builds and renders the Atlas Code MVP layout against mock
-  payloads in `apps/desktop/src/data/mock.ts`.
+- React/Vite shell builds and renders the Atlas Code MVP layout against
+  honest empty states until the Kernel returns real payloads.
 - Cargo workspace declared with 5 crate stubs; each documents its boundary.
-- No Atlas Server bridge wired yet — `apps/desktop/src/hooks/useAtlasCore.ts`
-  falls back to mock when Tauri is absent.
+- Atlas Server bridge is the only source for real work data. When neither
+  Tauri nor HTTP is configured, the UI enters explicit offline mode.
 
 ## Non-Goals
 
@@ -88,6 +88,6 @@ npm run tauri:build         # production .app + .dmg
 
 1. **Done · this commit** — monorepo scaffold + layout-only React + 5 Rust crate stubs.
 2. **Next (passo 2)** — `atlas-bridge` contracts (12 typed functions covering
-   the MVP needs) wired to atlas-server endpoints with mock fallback.
+   the MVP needs) wired to atlas-server endpoints with explicit offline states.
 3. **After (passo 3)** — `atlas-code-mvp-endpoints` branch on atlas-server
    adding the 3 new controllers + 3 wraps the audit identified.

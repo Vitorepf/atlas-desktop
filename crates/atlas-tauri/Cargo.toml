@@ -17,10 +17,11 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde.workspace = true
 serde_json.workspace = true
-tokio.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "io-util", "time", "fs"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
 # Workspace siblings · the Tauri shell composes the native crates.
 atlas-bridge = { path = "../atlas-bridge" }

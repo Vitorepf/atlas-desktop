@@ -1,5 +1,6 @@
 import type { BridgeMode } from '../lib/bridge'
 import type { Surface } from '../hooks/useSurface'
+import type { KernelStatusReport } from '../hooks/useKernelStatus'
 
 interface TopBarProps {
   mode: BridgeMode
@@ -7,6 +8,7 @@ interface TopBarProps {
   errors: string[]
   surface: Surface
   onSurfaceChange: (s: Surface) => void
+  kernel: KernelStatusReport
 }
 
 interface SurfaceTab {
@@ -22,17 +24,40 @@ const SURFACES: SurfaceTab[] = [
 ]
 
 /**
- * TopBar · brand + surface switcher + bridge badge + folio.
+ * TopBar · brand + surface switcher + kernel status pill + bridge badge.
  *
  * Atlas Desktop is a single .app with multiple sovereign surfaces — Code
  * (cabine que dirige Atlas) and Cartografia (mapa do canon). Cmd+1/Cmd+2
  * navega entre elas; sessionStorage preserva escolha após reload.
+ *
+ * Kernel pill mostra status do atlas-server sidecar gerenciado pelo .app:
+ *   booting → ready → (failed | unconfigured)
  */
-export function TopBar({ mode, loading, errors, surface, onSurfaceChange }: TopBarProps) {
-  const errorTitle =
+export function TopBar({
+  mode,
+  loading,
+  errors,
+  surface,
+  onSurfaceChange,
+  kernel,
+}: TopBarProps) {
+  const bridgeTitle =
     errors.length > 0 ? `Bridge errors:\n${errors.join('\n')}` : `bridge dispatch: ${mode}`
 
   const active = SURFACES.find((s) => s.id === surface) ?? SURFACES[0]!
+
+  const kernelLabel: Record<KernelStatusReport['status'], string> = {
+    booting: 'Kernel iniciando…',
+    ready: 'Kernel pronto',
+    failed: 'Kernel falhou',
+    unconfigured: 'Kernel não encontrado',
+  }
+  const kernelTone: Record<KernelStatusReport['status'], string> = {
+    booting: 'kernel-booting',
+    ready: 'kernel-ready',
+    failed: 'kernel-failed',
+    unconfigured: 'kernel-unconfigured',
+  }
 
   return (
     <header className="topbar">
@@ -61,8 +86,16 @@ export function TopBar({ mode, loading, errors, surface, onSurfaceChange }: TopB
 
       <div className="topbar-meta">
         <span
+          className={`v kernel-pill ${kernelTone[kernel.status]}`}
+          title={`${kernel.message}${kernel.serverPath ? `\n${kernel.serverPath}` : ''}`}
+        >
+          <span className="kernel-dot" />
+          {kernelLabel[kernel.status]}
+          {kernel.queueRunning ? ' · worker' : ''}
+        </span>
+        <span
           className={`v bridge-mode bridge-mode-${mode}${errors.length > 0 ? ' bridge-mode-degraded' : ''}`}
-          title={errorTitle}
+          title={bridgeTitle}
         >
           bridge · {mode}
           {loading ? ' · loading' : ''}

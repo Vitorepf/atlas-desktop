@@ -73,8 +73,8 @@ desktop power:
 ## Definition of Done · v1
 
 - `npm install` resolves all workspaces with zero conflicts.
-- `npm run dev` boots the React shell against mock payloads at parity with
-  `public/atlas-code-cockpit-mockup-mvp.html`.
+- `npm run dev` boots the React shell with honest empty states until a Kernel
+  endpoint is configured.
 - `npm run tauri:dev` (when Rust is installed) boots the Tauri window.
 - Each crate compiles with `cargo check`.
 - No business logic in the desktop — only UI composition + bridge transport
@@ -83,5 +83,5 @@ desktop power:
 ## Repo Status
 
 This commit lands the monorepo scaffold (apps/desktop + crates/* + packages/*
-+ docs/architecture). Layout-only React renders mock payloads. The bridge
++ docs/architecture). Layout-only React renders empty states. The bridge
 (passo 2) and atlas-server endpoints (passo 3) are next.
