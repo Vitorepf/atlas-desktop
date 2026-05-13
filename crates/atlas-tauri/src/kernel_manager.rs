@@ -199,7 +199,14 @@ async fn probe_health(timeout: Duration) -> bool {
 }
 
 async fn spawn_artisan_serve(server_path: &PathBuf) -> std::io::Result<Child> {
-    let mut cmd = Command::new(php_binary());
+    let php = resolve_php_binary().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "php not found · install with `brew install php` and try again",
+        )
+    })?;
+    let mut cmd = Command::new(&php);
+    apply_env(&mut cmd);
     cmd.current_dir(server_path)
         .arg("artisan")
         .arg("serve")
@@ -209,12 +216,24 @@ async fn spawn_artisan_serve(server_path: &PathBuf) -> std::io::Result<Child> {
         .stderr(Stdio::null())
         .stdin(Stdio::null())
         .kill_on_drop(true);
-    tracing::info!(target: "kernel_manager", path = ?server_path, "spawning atlas-server");
+    tracing::info!(
+        target: "kernel_manager",
+        php = %php.display(),
+        path = ?server_path,
+        "spawning atlas-server"
+    );
     cmd.spawn()
 }
 
 async fn spawn_queue_worker(server_path: &PathBuf) -> std::io::Result<Child> {
-    let mut cmd = Command::new(php_binary());
+    let php = resolve_php_binary().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "php not found for queue worker",
+        )
+    })?;
+    let mut cmd = Command::new(&php);
+    apply_env(&mut cmd);
     cmd.current_dir(server_path)
         .arg("artisan")
         .arg("queue:work")
@@ -227,6 +246,25 @@ async fn spawn_queue_worker(server_path: &PathBuf) -> std::io::Result<Child> {
         .kill_on_drop(true);
     tracing::info!(target: "kernel_manager", path = ?server_path, "spawning queue:work");
     cmd.spawn()
+}
+
+/// Pre-load child env with a PATH that always includes brew + system bins.
+/// macOS GUI launches start with `/usr/bin:/bin:/usr/sbin:/sbin` only — `php`
+/// installed via `brew install php` (default `/opt/homebrew/bin`) is unreachable
+/// without help. We prepend the well-known brew prefixes plus any existing PATH.
+fn apply_env(cmd: &mut Command) {
+    let extra = [
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/local/sbin",
+    ];
+    let existing = std::env::var("PATH").unwrap_or_default();
+    let mut parts: Vec<String> = extra.iter().map(|s| (*s).to_string()).collect();
+    if !existing.is_empty() {
+        parts.push(existing);
+    }
+    cmd.env("PATH", parts.join(":"));
 }
 
 /// Look for atlas-server in known locations.
@@ -301,12 +339,40 @@ fn export_env(url: &str, token: Option<&str>) {
     }
 }
 
-fn php_binary() -> String {
-    std::env::var("PHP_BINARY").unwrap_or_else(|_| {
-        // /opt/homebrew/bin/php is the default on Apple Silicon brew installs.
-        // PATH lookup also covers system php and asdf shims.
-        "php".to_string()
-    })
+/// Find a usable `php` binary, falling back through known install paths
+/// because macOS GUI app launches don't inherit the user's shell PATH.
+fn resolve_php_binary() -> Option<PathBuf> {
+    // 1. Explicit override.
+    if let Ok(p) = std::env::var("PHP_BINARY") {
+        let path = PathBuf::from(p);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    // 2. Well-known install paths (Apple Silicon brew, Intel brew, MacPorts,
+    //    asdf shim, system).
+    let candidates = [
+        "/opt/homebrew/bin/php",
+        "/opt/homebrew/opt/php/bin/php",
+        "/usr/local/bin/php",
+        "/usr/local/opt/php/bin/php",
+        "/opt/local/bin/php",
+        "/usr/bin/php",
+    ];
+    for c in candidates {
+        let path = PathBuf::from(c);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    // 3. Last resort: `which php` inside the augmented PATH.
+    if let Some(home) = std::env::var_os("HOME") {
+        let asdf = PathBuf::from(home).join(".asdf/shims/php");
+        if asdf.exists() {
+            return Some(asdf);
+        }
+    }
+    None
 }
 
 fn path_string(p: PathBuf) -> String {
