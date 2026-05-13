@@ -1,3 +1,4 @@
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { LeftRail } from './components/LeftRail'
 import { MainStage } from './components/MainStage'
 import { ObraBar } from './components/ObraBar'
@@ -14,27 +15,45 @@ import { useBridge } from './hooks/useBridge'
  *   No invented data. The cockpit renders exactly what the Kernel returns.
  *   When nothing is returned, components show honest empty states.
  *
- * The shell is layout-only. All payloads come from `useBridge()` which
- * dispatches to Tauri (in the desktop app), HTTP (browser fallback against
- * atlas-server) or — when both are unreachable — empty defaults from
- * data/mock.ts (which contains ZERO fake records, only neutral sentinels).
+ * Interactive: composer → bridge.sendIntent, ObraBar → bridge.createObra,
+ * sidebar → bridge.selectObra, RightRail → bridge.signReceipt + runGate.
  */
 function App() {
-  const snap = useBridge()
+  const b = useBridge()
 
   return (
     <div className="atlas-shell">
-      <TopBar mode={snap.mode} loading={snap.loading} errors={snap.errors} />
-      <ObraBar obra={snap.obra} />
-      <LeftRail active={snap.active} recent={snap.recent} loading={snap.loading} />
+      <TopBar mode={b.mode} loading={b.loading || b.busy} errors={b.errors} />
+      <ObraBar obra={b.obra} onCreate={b.createObra} busy={b.busy} />
+      <LeftRail
+        obras={b.obras}
+        activeObraId={b.obra?.id ?? null}
+        active={b.active}
+        recent={b.recent}
+        loading={b.loading}
+        busy={b.busy}
+        onSelectObra={b.selectObra}
+      />
       <MainStage
         stages={idlePipeline}
-        messages={snap.messages}
-        receiptHash={snap.receipt?.id ?? ''}
-        loading={snap.loading}
+        messages={b.messages}
+        receiptHash={b.receipt?.id ?? ''}
+        loading={b.loading}
+        busy={b.busy}
+        hasObra={!!b.obra}
+        onSend={b.sendIntent}
       />
-      <RightRail receipt={snap.receipt} gates={snap.gates} core={snap.core} />
-      <TerminalDock lines={noTerminalLines} ptyMode={snap.core.pty} cwd={snap.core.workspacePath} />
+      <ErrorBoundary label="RightRail">
+        <RightRail
+          receipt={b.receipt}
+          gates={b.gates}
+          core={b.core}
+          busy={b.busy}
+          onSignReceipt={b.signReceipt}
+          onRunGate={b.runGate}
+        />
+      </ErrorBoundary>
+      <TerminalDock lines={noTerminalLines} ptyMode={b.core.pty} cwd={b.core.workspacePath} />
     </div>
   )
 }

@@ -1,53 +1,82 @@
-import type { Session } from '@atlas/domain'
+import type { Obra, Session } from '@atlas/domain'
 
 interface LeftRailProps {
+  obras: Obra[]
+  activeObraId: string | null
   active: Session[]
   recent: Session[]
   loading: boolean
+  busy: boolean
+  onSelectObra: (obraId: string) => Promise<void>
 }
 
 /**
- * Sessions sidebar · running obras + recent obras + ✦ nova obra.
- * Empty states are honest — never paints fake OBRA-XXX placeholders.
+ * Sessions sidebar · obras list (clickable) + sessions in current obra.
+ * Empty states are honest — never paints fake placeholders.
  */
-export function LeftRail({ active, recent, loading }: LeftRailProps) {
+export function LeftRail({ obras, activeObraId, active, recent, loading, busy, onSelectObra }: LeftRailProps) {
   return (
     <aside className="left-rail">
       <section className="sess-section">
         <h3>
-          Em curso <span className="meta">{active.length} ao vivo</span>
+          Obras <span className="meta">{obras.length}</span>
         </h3>
-        {active.length === 0 && (
-          <EmptyRow text={loading ? 'consultando Kernel…' : 'nenhuma sessão em curso'} />
+        {obras.length === 0 ? (
+          <EmptyRow text={loading ? 'consultando Kernel…' : 'nenhuma obra · ✦ cria a primeira'} />
+        ) : (
+          obras.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`sess-entry${o.id === activeObraId ? ' active' : ''}`}
+              onClick={() => void onSelectObra(o.id)}
+              disabled={busy}
+              style={{ textAlign: 'left', width: '100%', background: 'transparent', border: 0, padding: 0 }}
+            >
+              <article style={{ padding: '8px 0 9px' }}>
+                <div className="meta">
+                  <span className="origin">{shortId(o.id)}</span>
+                </div>
+                <div className="title">{o.title || o.objective || `obra ${shortId(o.id)}`}</div>
+              </article>
+            </button>
+          ))
         )}
-        {active.map((s, i) => (
-          <article key={s.id} className={`sess-entry${i === 0 ? ' active' : ''}`}>
-            <div className="meta">
-              <span className="origin">{s.origin === 'voice' ? 'voz' : s.origin}</span>
-              {s.turns > 0 && <span>{s.turns} turnos</span>}
-              {s.durationMs > 0 && <span>{Math.round(s.durationMs / 1000 / 60)}min</span>}
-            </div>
-            <div className="title">{s.title || `sessão ${shortId(s.id)}`}</div>
-          </article>
-        ))}
       </section>
 
       <section className="sess-section">
         <h3>
-          Recentes <span className="meta">{recent.length} totais</span>
+          Sessões em curso <span className="meta">{active.length}</span>
         </h3>
-        {recent.length === 0 && (
-          <EmptyRow text={loading ? '…' : 'sem histórico ainda'} />
+        {active.length === 0 ? (
+          <EmptyRow text={loading ? '…' : 'nenhuma sessão nessa obra'} />
+        ) : (
+          active.map((s) => (
+            <article key={s.id} className="sess-entry">
+              <div className="meta">
+                <span className="origin">{s.origin}</span>
+                {s.turns > 0 && <span>{s.turns} turnos</span>}
+              </div>
+              <div className="title">{s.title || `thread ${shortId(s.threadId)}`}</div>
+            </article>
+          ))
         )}
-        {recent.map((s) => (
-          <article key={s.id} className="sess-entry">
-            <div className="meta">
-              <span className="origin">{s.origin}</span>
-              {s.turns > 0 && <span>{s.turns} turnos</span>}
-            </div>
-            <div className="title">{s.title || `sessão ${shortId(s.id)}`}</div>
-          </article>
-        ))}
+      </section>
+
+      <section className="sess-section">
+        <h3>
+          Recentes <span className="meta">{recent.length}</span>
+        </h3>
+        {recent.length === 0 ? (
+          <EmptyRow text="—" />
+        ) : (
+          recent.map((s) => (
+            <article key={s.id} className="sess-entry">
+              <div className="meta"><span className="origin">{s.origin}</span></div>
+              <div className="title">{s.title || `sessão ${shortId(s.id)}`}</div>
+            </article>
+          ))
+        )}
       </section>
     </aside>
   )

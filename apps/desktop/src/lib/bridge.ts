@@ -164,11 +164,30 @@ export const bridge = {
     return []
   },
 
-  // 3 · create obra
-  async createObra(intent: string, objective: string): Promise<Obra> {
-    if (MODE === 'tauri') return invokeTauri<Obra>('bridge_create_obra', { intent, objective })
-    if (MODE === 'http')
-      return fetchHttp<Obra>('/projects', { method: 'POST', body: { intent, objective } })
+  // 3 · create obra · sends intent+objective (passo-3.5 wrap) + the legacy
+  // fields atlas-server still requires (domain, title for non-MVP clients).
+  async createObra(intent: string, objective: string, domain = 'atlas'): Promise<Obra> {
+    if (MODE === 'tauri') return invokeTauri<Obra>('bridge_create_obra', { intent, objective, domain })
+    if (MODE === 'http') {
+      const wrap = await fetchHttp<{ project?: Record<string, unknown> }>('/projects', {
+        method: 'POST',
+        body: {
+          intent,
+          objective,
+          domain,
+          title: objective || `Atlas Code · ${new Date().toLocaleTimeString('pt-BR')}`,
+        },
+      })
+      const p = (wrap.project ?? wrap) as Record<string, unknown>
+      return {
+        id: (p.id ?? '') as string,
+        title: (p.title ?? '') as string,
+        objective: (p.objective ?? p.description ?? p.goal ?? p.title ?? objective) as string,
+        status: ((p.status as Obra['status']) ?? 'active'),
+        workspacePath: (p.workspace_path ?? p.workspacePath ?? '') as string,
+        createdAt: (p.created_at ?? p.createdAt ?? new Date().toISOString()) as string,
+      }
+    }
     offline('createObra')
   },
 
@@ -182,7 +201,10 @@ export const bridge = {
   // 5 · get session messages
   async getSession(threadId: string): Promise<Message[]> {
     if (MODE === 'tauri') return invokeTauri<Message[]>('bridge_get_session', { threadId })
-    if (MODE === 'http') return fetchHttp<Message[]>(`/ai/threads/${threadId}`)
+    if (MODE === 'http') {
+      const wrap = await fetchHttp<{ thread?: { messages?: unknown[] } }>(`/ai/threads/${threadId}`)
+      return normaliseAiMessages(wrap?.thread?.messages ?? [])
+    }
     return noMessages
   },
 
@@ -223,14 +245,40 @@ export const bridge = {
     }
   },
 
-  // 7 · send intent
-  async sendIntent(sessionId: string, body: string, channel = 'text'): Promise<Message> {
-    if (MODE === 'tauri') return invokeTauri<Message>('bridge_send_intent', { sessionId, body, channel })
-    if (MODE === 'http')
-      return fetchHttp<Message>('/ai/interactions', {
-        method: 'POST',
-        body: { sessionId, body, channel },
+  // 7 · send intent · returns the AiTrace (async — the actual assistant
+  // message arrives later via the queue worker). Caller polls getSession
+  // to pull the new messages.
+  async sendIntent(
+    threadId: string | null,
+    body: string,
+    channel = 'text',
+    obraId?: string
+  ): Promise<{ traceId: string; threadId?: string }> {
+    if (MODE === 'tauri') {
+      return invokeTauri<{ traceId: string; threadId?: string }>('bridge_send_intent', {
+        threadId, body, channel, obraId,
       })
+    }
+    if (MODE === 'http') {
+      const payload: Record<string, unknown> = {
+        input_text: body,
+        source_type: 'app',
+        kind: 'interaction',
+      }
+      if (threadId) payload.thread_id = threadId
+      else payload.new_thread = true
+      // Vincula a thread à obra (AtlasProject) para que /atlas-code/works/{id}/sessions
+      // encontre essa thread via source_id (AiInteractionController salva isso).
+      if (obraId) payload.source_id = obraId
+      const res = await fetchHttp<{ trace?: { id?: string; thread_id?: string } }>('/ai/interactions', {
+        method: 'POST',
+        body: payload,
+      })
+      return {
+        traceId: (res.trace?.id ?? '') as string,
+        threadId: (res.trace?.thread_id ?? threadId ?? undefined) as string | undefined,
+      }
+    }
     offline('sendIntent')
   },
 
@@ -260,10 +308,14 @@ export const bridge = {
     return []
   },
 
-  // 11a · list quality gates
+  // 11a · list quality gates · atlas-server returns `{ runs: [...] }` with
+  // tool_slug + status; we map each run to a QualityGate.
   async listGates(): Promise<QualityGate[]> {
     if (MODE === 'tauri') return invokeTauri<QualityGate[]>('bridge_list_gates')
-    if (MODE === 'http') return fetchHttp<QualityGate[]>('/tools/gate')
+    if (MODE === 'http') {
+      const raw = await fetchHttp<{ runs?: unknown[] }>('/tools/gate')
+      return normaliseGateRuns(raw?.runs ?? [])
+    }
     return noGates
   },
 
@@ -297,3 +349,57 @@ export const bridge = {
 }
 
 export type Bridge = typeof bridge
+
+// ──────────────────────────────────────────────────────────────────────────
+// Normalisers from atlas-server snake_case shapes to @atlas/domain camelCase
+
+function normaliseGateRuns(raw: unknown[]): QualityGate[] {
+  const out: QualityGate[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const r = item as Record<string, unknown>
+    const slug = (r.tool_slug ?? r.slug ?? r.id) as string | undefined
+    if (!slug || seen.has(slug)) continue
+    seen.add(slug)
+    const statusRaw = (r.status as string | undefined) ?? 'pending'
+    const state: QualityGate['state'] =
+      statusRaw === 'passed' ? 'passed'
+      : statusRaw === 'failed' || statusRaw === 'timeout' || statusRaw === 'denied' ? 'failed'
+      : statusRaw === 'requires_approval' ? 'blocked'
+      : 'pending'
+    out.push({
+      id: slug,
+      name: slug,
+      state,
+      detail: (r.message as string | undefined) ?? undefined,
+    })
+  }
+  return out
+}
+
+function normaliseAiMessages(raw: unknown[]): Message[] {
+  const out: Message[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const m = item as Record<string, unknown>
+    const id = m.id as string | undefined
+    if (!id) continue
+    const roleRaw = (m.role as string | undefined) ?? 'system'
+    const role = roleRaw === 'assistant' ? 'atlas' : roleRaw === 'user' ? 'user' : 'system'
+    const content = m.content
+    const body = typeof content === 'string'
+      ? content
+      : content && typeof content === 'object' && 'text' in content
+        ? String((content as { text: unknown }).text ?? '')
+        : JSON.stringify(content ?? '')
+    const tsRaw = (m.occurred_at ?? m.created_at ?? '') as string
+    out.push({
+      id,
+      role: role as Message['role'],
+      body,
+      ts: tsRaw ? new Date(tsRaw).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+    })
+  }
+  return out
+}

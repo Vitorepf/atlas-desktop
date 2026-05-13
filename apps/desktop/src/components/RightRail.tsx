@@ -6,15 +6,14 @@ interface RightRailProps {
   receipt: DecisionReceipt | null
   gates: QualityGate[]
   core: CoreStatus
+  busy: boolean
+  onSignReceipt: () => Promise<void>
+  onRunGate: (gateId: string) => Promise<void>
 }
 
 type OpsTab = 'plan' | 'verify'
 
-/**
- * Plan + Verify ops panels.
- * Empty states are honest. Receipt with no signature reads "aguardando".
- */
-export function RightRail({ receipt, gates, core }: RightRailProps) {
+export function RightRail({ receipt, gates, core, busy, onSignReceipt, onRunGate }: RightRailProps) {
   const [tab, setTab] = useState<OpsTab>('plan')
 
   const passed = gates.filter((g) => g.state === 'passed').length
@@ -43,9 +42,25 @@ export function RightRail({ receipt, gates, core }: RightRailProps) {
           <div className="ops-section">
             <PanelTitle
               label="Decision Receipt"
-              meta={receipt && receipt.id ? 'aguardando assinatura' : 'sem receipt ainda'}
+              meta={receipt?.signature ? 'assinado' : receipt?.id ? 'aguardando assinatura' : 'sem receipt ainda'}
             />
-            {receipt && receipt.id ? <ReceiptCard receipt={receipt} /> : <EmptyReceipt />}
+            {receipt?.id ? (
+              <>
+                <ReceiptCard receipt={receipt} />
+                {!receipt.signature && (
+                  <button
+                    type="button"
+                    onClick={() => void onSignReceipt()}
+                    disabled={busy}
+                    style={{ ...btnPrimary, marginTop: 8, width: '100%' }}
+                  >
+                    {busy ? 'assinando…' : '✦ assinar receipt'}
+                  </button>
+                )}
+              </>
+            ) : (
+              <EmptyReceipt />
+            )}
           </div>
 
           <div className="ops-section">
@@ -82,7 +97,7 @@ export function RightRail({ receipt, gates, core }: RightRailProps) {
             ) : (
               <div style={{ display: 'grid', gap: 4 }}>
                 {gates.map((g) => (
-                  <GateRow key={g.id} gate={g} />
+                  <GateRow key={g.id} gate={g} busy={busy} onRun={() => void onRunGate(g.id)} />
                 ))}
               </div>
             )}
@@ -110,7 +125,7 @@ function EmptyReceipt() {
     >
       aguardando primeira execução
       <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 6 }}>
-        Receipt aparece após a primeira Decision do Kernel.
+        receipt aparece após a primeira Decision do Kernel.
       </div>
     </div>
   )
@@ -139,7 +154,7 @@ function ReceiptCard({ receipt }: { receipt: DecisionReceipt }) {
         v={`est $${(receipt.budgetEstUsd ?? 0).toFixed(3)} · used $${(receipt.budgetUsedUsd ?? 0).toFixed(2)}`}
       />
       <Row k="fallback" v={(receipt.fallbackChain ?? []).join(' → ') || '—'} />
-      <Row k="signature" v={receipt.signature ?? '— pendente'} />
+      <Row k="signature" v={receipt.signature ? 'assinado ✓' : '— pendente'} ok={!!receipt.signature} />
     </div>
   )
 }
@@ -183,7 +198,7 @@ function Row({ k, v, mono = false, ok = false }: { k: string; v: string; mono?: 
   )
 }
 
-function GateRow({ gate }: { gate: QualityGate }) {
+function GateRow({ gate, busy, onRun }: { gate: QualityGate; busy: boolean; onRun: () => void }) {
   const tone =
     gate.state === 'passed'
       ? { bg: 'var(--moss-veil)', border: 'var(--moss-soft)', color: 'var(--moss)', glyph: '✓' }
@@ -197,7 +212,7 @@ function GateRow({ gate }: { gate: QualityGate }) {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '16px 1fr auto',
+        gridTemplateColumns: '16px 1fr auto auto',
         gap: 8,
         padding: '5px 7px',
         background: tone.bg,
@@ -219,6 +234,38 @@ function GateRow({ gate }: { gate: QualityGate }) {
       >
         {gate.state}
       </span>
+      <button
+        type="button"
+        onClick={onRun}
+        disabled={busy}
+        style={{
+          padding: '1px 6px',
+          fontFamily: 'var(--mono)',
+          fontSize: 8,
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          color: 'var(--bronze)',
+          border: '1px solid var(--bronze-soft)',
+          borderRadius: 2,
+          background: 'transparent',
+          cursor: busy ? 'wait' : 'pointer',
+        }}
+      >
+        rodar
+      </button>
     </div>
   )
+}
+
+const btnPrimary: React.CSSProperties = {
+  padding: '7px 12px',
+  fontFamily: 'var(--mono)',
+  fontSize: 9.5,
+  letterSpacing: '1.3px',
+  textTransform: 'uppercase',
+  color: 'var(--cream)',
+  border: '1px solid var(--ink)',
+  borderRadius: 2,
+  background: 'var(--ink)',
+  cursor: 'pointer',
 }

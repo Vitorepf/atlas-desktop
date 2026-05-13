@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Message, SddStage } from '@atlas/domain'
 
 interface MainStageProps {
@@ -5,6 +6,9 @@ interface MainStageProps {
   messages: Message[]
   receiptHash: string
   loading: boolean
+  busy: boolean
+  hasObra: boolean
+  onSend: (text: string) => Promise<void>
 }
 
 const stateGlyph: Record<SddStage['state'], string> = {
@@ -16,17 +20,37 @@ const stateGlyph: Record<SddStage['state'], string> = {
 
 /**
  * Conversation thread + SDD pipeline mini + composer.
- * When no obra is active, shows an inviting empty state instead of fake
- * conversation history.
+ * Composer wired to bridge.sendIntent.
  */
-export function MainStage({ stages, messages, receiptHash, loading }: MainStageProps) {
+export function MainStage({
+  stages,
+  messages,
+  receiptHash,
+  loading,
+  busy,
+  hasObra,
+  onSend,
+}: MainStageProps) {
+  const [draft, setDraft] = useState('')
+  const threadRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages.length])
+
   const doneCount = stages.filter((s) => s.state === 'done').length
   const totalCount = stages.length
 
+  async function handleSend() {
+    const text = draft.trim()
+    if (!text || busy || !hasObra) return
+    setDraft('')
+    await onSend(text)
+  }
+
   return (
     <main className="main-stage">
-      <div className="conv-thread">
-        {/* SDD mini · 5 stages · all "todo" until the Kernel emits real progress */}
+      <div className="conv-thread" ref={threadRef}>
         <div className="sdd-mini">
           <span className="label">SDD</span>
           <div className="stages">
@@ -44,7 +68,7 @@ export function MainStage({ stages, messages, receiptHash, loading }: MainStageP
         </div>
 
         {messages.length === 0 ? (
-          <EmptyConversation loading={loading} />
+          <EmptyConversation loading={loading} hasObra={hasObra} />
         ) : (
           messages.map((m) => (
             <article key={m.id} className={`conv-msg ${m.role === 'user' ? 'you' : 'atlas'}`}>
@@ -63,15 +87,35 @@ export function MainStage({ stages, messages, receiptHash, loading }: MainStageP
       <div className="composer">
         <div className="composer-row">
           <textarea
-            placeholder="conversa com o Atlas… ele monta o plano, decide os agents, executa. você dirige e audita. (composer ainda não envia · passo 4)"
-            disabled
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                void handleSend()
+              }
+            }}
+            placeholder={
+              hasObra
+                ? 'conversa com o Atlas… cmd+enter envia'
+                : 'cria uma obra acima primeiro · composer ativa quando obra existe'
+            }
+            disabled={!hasObra || busy}
           />
-          <button className="send-btn" type="button" title="enviar — desabilitado no MVP" disabled>
+          <button
+            className="send-btn"
+            type="button"
+            title="enviar (cmd+enter)"
+            onClick={() => void handleSend()}
+            disabled={!hasObra || busy || !draft.trim()}
+          >
             ✦
           </button>
         </div>
         <div className="composer-meta">
-          <div>∴ composer não envia ainda · wire pra bridge.sendIntent fica no passo 4</div>
+          <div>
+            ∴ {busy ? 'enviando…' : hasObra ? 'composer ativo · cmd+enter envia' : 'aguardando obra'}
+          </div>
           <div>
             <kbd>cmd</kbd>+<kbd>enter</kbd> · <kbd>esc</kbd>
           </div>
@@ -81,7 +125,7 @@ export function MainStage({ stages, messages, receiptHash, loading }: MainStageP
   )
 }
 
-function EmptyConversation({ loading }: { loading: boolean }) {
+function EmptyConversation({ loading, hasObra }: { loading: boolean; hasObra: boolean }) {
   return (
     <div
       style={{
@@ -96,15 +140,16 @@ function EmptyConversation({ loading }: { loading: boolean }) {
     >
       {loading ? (
         <p>consultando Kernel…</p>
+      ) : !hasObra ? (
+        <p style={{ fontSize: 18, lineHeight: 1.4 }}>
+          nenhuma obra ativa.<br />
+          ✦ cria uma acima pra começar a conversar.
+        </p>
       ) : (
-        <>
-          <p style={{ fontSize: 18, lineHeight: 1.4, marginBottom: 12 }}>
-            nenhuma conversa nesta obra ainda.
-          </p>
-          <p style={{ fontSize: 13, color: 'var(--ink4)' }}>
-            o composer abaixo será wired ao bridge.sendIntent no passo 4.
-          </p>
-        </>
+        <p style={{ fontSize: 18, lineHeight: 1.4 }}>
+          obra criada · sem mensagens ainda.<br />
+          escreva embaixo pra dar a primeira intent.
+        </p>
       )}
     </div>
   )
