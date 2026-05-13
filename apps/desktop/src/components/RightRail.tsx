@@ -3,13 +3,17 @@ import { PanelTitle } from '@atlas/ui'
 import type { CoreStatus, DecisionReceipt, QualityGate } from '@atlas/domain'
 
 interface RightRailProps {
-  receipt: DecisionReceipt
+  receipt: DecisionReceipt | null
   gates: QualityGate[]
   core: CoreStatus
 }
 
 type OpsTab = 'plan' | 'verify'
 
+/**
+ * Plan + Verify ops panels.
+ * Empty states are honest. Receipt with no signature reads "aguardando".
+ */
 export function RightRail({ receipt, gates, core }: RightRailProps) {
   const [tab, setTab] = useState<OpsTab>('plan')
 
@@ -37,8 +41,11 @@ export function RightRail({ receipt, gates, core }: RightRailProps) {
       {tab === 'plan' && (
         <section className="ops-panel">
           <div className="ops-section">
-            <PanelTitle label="Decision Receipt" meta="aguardando assinatura" />
-            <ReceiptCard receipt={receipt} />
+            <PanelTitle
+              label="Decision Receipt"
+              meta={receipt && receipt.id ? 'aguardando assinatura' : 'sem receipt ainda'}
+            />
+            {receipt && receipt.id ? <ReceiptCard receipt={receipt} /> : <EmptyReceipt />}
           </div>
 
           <div className="ops-section">
@@ -46,8 +53,8 @@ export function RightRail({ receipt, gates, core }: RightRailProps) {
             <dl style={{ margin: 0 }}>
               <Row k="pty" v={core.pty} />
               <Row k="signing" v={core.signing} />
-              <Row k="db" v={core.dbPath} />
-              <Row k="workspace" v={core.workspacePath} />
+              <Row k="db" v={core.dbPath || '—'} />
+              <Row k="workspace" v={core.workspacePath || '—'} />
             </dl>
           </div>
         </section>
@@ -56,16 +63,56 @@ export function RightRail({ receipt, gates, core }: RightRailProps) {
       {tab === 'verify' && (
         <section className="ops-panel">
           <div className="ops-section">
-            <PanelTitle label="Quality Gates" meta={`${passed}/${gates.length} passed`} />
-            <div style={{ display: 'grid', gap: 4 }}>
-              {gates.map((g) => (
-                <GateRow key={g.id} gate={g} />
-              ))}
-            </div>
+            <PanelTitle
+              label="Quality Gates"
+              meta={gates.length === 0 ? 'sem gates configurados' : `${passed}/${gates.length} passed`}
+            />
+            {gates.length === 0 ? (
+              <div
+                style={{
+                  padding: '12px 0',
+                  fontFamily: 'var(--serif)',
+                  fontStyle: 'italic',
+                  fontSize: 12.5,
+                  color: 'var(--ink3)',
+                }}
+              >
+                nenhum gate retornado pelo Kernel.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 4 }}>
+                {gates.map((g) => (
+                  <GateRow key={g.id} gate={g} />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}
     </aside>
+  )
+}
+
+function EmptyReceipt() {
+  return (
+    <div
+      style={{
+        padding: '14px 12px',
+        background: 'var(--cream)',
+        border: '1px dashed var(--bronze-soft)',
+        borderRadius: 2,
+        fontFamily: 'var(--serif)',
+        fontStyle: 'italic',
+        fontSize: 13,
+        color: 'var(--ink3)',
+        textAlign: 'center',
+      }}
+    >
+      aguardando primeira execução
+      <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 6 }}>
+        Receipt aparece após a primeira Decision do Kernel.
+      </div>
+    </div>
   )
 }
 
@@ -80,8 +127,8 @@ function ReceiptCard({ receipt }: { receipt: DecisionReceipt }) {
       }}
     >
       <Row k="id" v={receipt.id} mono />
-      <Row k="obra" v={receipt.obraId} />
-      <Row k="primary" v={receipt.primary} />
+      {receipt.obraId && <Row k="obra" v={receipt.obraId} />}
+      {receipt.primary && <Row k="primary" v={receipt.primary} />}
       <Row
         k="confidence"
         v={`${(receipt.confidence ?? 'med').toUpperCase()} · ${(receipt.confidenceScore ?? 0).toFixed(2)}`}
