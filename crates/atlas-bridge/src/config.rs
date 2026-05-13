@@ -14,11 +14,17 @@ pub struct AtlasServerConfig {
 
 impl Default for AtlasServerConfig {
     fn default() -> Self {
+        let auth = std::env::var("ATLAS_TOKEN")
+            .ok()
+            .filter(|t| !t.is_empty())
+            .map(|token| BridgeAuth::Bearer { token })
+            .unwrap_or(BridgeAuth::None);
+
         Self {
             base_url: std::env::var("ATLAS_SERVER_URL")
-                .unwrap_or_else(|_| "http://127.0.0.1:8000".to_string()),
+                .unwrap_or_else(|_| "http://127.0.0.1:8001".to_string()),
             timeout_ms: 30_000,
-            auth: BridgeAuth::None,
+            auth,
         }
     }
 }

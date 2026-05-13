@@ -13,7 +13,7 @@ use crate::error::BridgeError;
 use crate::BridgeResult;
 
 use futures_util::stream::{Stream, StreamExt};
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE};
 use reqwest::{Client, Method, RequestBuilder, Response};
 use std::time::Duration;
 
@@ -29,9 +29,13 @@ impl AtlasBridge {
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         if let BridgeAuth::Bearer { token } = &config.auth {
-            let value = HeaderValue::from_str(&format!("Bearer {token}"))
+            // atlas-server middleware (AuthenticateAtlasToken) expects the
+            // shared token in `X-Atlas-Token`, not the standard Authorization
+            // header. We mirror what apps/desktop/src/lib/bridge.ts sends.
+            let value = HeaderValue::from_str(token)
                 .map_err(|e| BridgeError::InvalidPayload(e.to_string()))?;
-            headers.insert(AUTHORIZATION, value);
+            let header_name = HeaderName::from_static("x-atlas-token");
+            headers.insert(header_name, value);
         }
 
         let client = Client::builder()
