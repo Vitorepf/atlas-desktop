@@ -71,8 +71,13 @@ export function useCartografia(): CartografiaState {
   const atomIndex = useMemo<Record<string, CartographyAtom>>(() => {
     const idx: Record<string, CartographyAtom> = {}
     if (!graph) return idx
+    // Defensive: a shape badly adapted (or zero pieces returned) shouldn't
+    // crash the whole surface. Treat missing collections as empty.
+    const pipeline = Array.isArray(graph.pipeline) ? graph.pipeline : []
+    const lanes = graph.lanes && typeof graph.lanes === 'object' ? graph.lanes : {}
+    const universe = Array.isArray(graph.universe) ? graph.universe : []
 
-    for (const p of graph.pipeline) {
+    for (const p of pipeline) {
       idx[p.graphId] = {
         kind: 'pipeline',
         graphId: p.graphId,
@@ -93,7 +98,8 @@ export function useCartografia(): CartografiaState {
         subs: p.subs,
       }
     }
-    for (const lane of Object.values(graph.lanes)) {
+    for (const lane of Object.values(lanes)) {
+      if (!lane?.graphId) continue
       idx[lane.graphId] = {
         kind: 'lane',
         graphId: lane.graphId,
@@ -104,7 +110,7 @@ export function useCartografia(): CartografiaState {
         missingSource: lane.missingSource,
         role: lane.role,
       }
-      for (const node of lane.nodes) {
+      for (const node of lane.nodes ?? []) {
         idx[node.graphId] = {
           kind: 'lateral',
           graphId: node.graphId,
@@ -126,7 +132,7 @@ export function useCartografia(): CartografiaState {
         }
       }
     }
-    for (const c of graph.universe) {
+    for (const c of universe) {
       if (!idx[c.graphId]) {
         idx[c.graphId] = {
           kind: 'continent',

@@ -354,58 +354,68 @@ export const bridge = {
   // The atlas-server endpoints (/atlas-cartography/*) are GET-only by canon.
   // Cartografia nunca escreve no filesystem; só audita.
 
+  /**
+   * Both modes return the SAME raw payload from atlas-server. Adapters
+   * (adaptCartographyGraph, adaptRecentChanges, adaptCartographyNote)
+   * normalise snake_case → camelCase. NEVER bypass them — the components
+   * expect the camelCase shape.
+   */
   async loadCartographyGraph(): Promise<CartographyGraph | null> {
-    if (MODE === 'tauri')
-      return invokeTauri<CartographyGraph | null>('bridge_cartography_graph')
-    if (MODE === 'http') {
-      try {
-        const raw = await fetchHttp<unknown>('/atlas-cartography/graph')
-        return adaptCartographyGraph(raw)
-      } catch (e) {
-        console.warn('[bridge] cartography graph offline', e)
+    try {
+      let raw: unknown
+      if (MODE === 'tauri') {
+        raw = await invokeTauri<unknown>('bridge_cartography_graph')
+      } else if (MODE === 'http') {
+        raw = await fetchHttp<unknown>('/atlas-cartography/graph')
+      } else {
         return null
       }
+      return adaptCartographyGraph(raw)
+    } catch (e) {
+      console.warn('[bridge] cartography graph offline', e)
+      return null
     }
-    return null
   },
 
   async loadCartographyRecentChanges(): Promise<RecentChange[]> {
-    if (MODE === 'tauri')
-      return invokeTauri<RecentChange[]>('bridge_cartography_recent_changes')
-    if (MODE === 'http') {
-      try {
-        const raw = await fetchHttp<{ changes?: unknown[] }>(
-          '/atlas-cartography/recent-changes'
-        )
-        return adaptRecentChanges(raw?.changes ?? [])
-      } catch {
+    try {
+      let raw: { changes?: unknown[] } | undefined
+      if (MODE === 'tauri') {
+        raw = (await invokeTauri<{ changes?: unknown[] }>('bridge_cartography_recent_changes')) ?? {}
+      } else if (MODE === 'http') {
+        raw = await fetchHttp<{ changes?: unknown[] }>('/atlas-cartography/recent-changes')
+      } else {
         return []
       }
+      return adaptRecentChanges(raw?.changes ?? [])
+    } catch {
+      return []
     }
-    return []
   },
 
   async loadCartographyNote(graphId: string): Promise<CartographyNote | null> {
-    if (MODE === 'tauri')
-      return invokeTauri<CartographyNote | null>('bridge_cartography_note', { graphId })
-    if (MODE === 'http') {
-      try {
-        const raw = await fetchHttp<Record<string, unknown>>(
+    try {
+      let raw: Record<string, unknown> | undefined
+      if (MODE === 'tauri') {
+        raw = (await invokeTauri<Record<string, unknown>>('bridge_cartography_note', { graphId })) ?? undefined
+      } else if (MODE === 'http') {
+        raw = await fetchHttp<Record<string, unknown>>(
           `/atlas-cartography/note/${encodeURIComponent(graphId)}`
         )
-        if (!raw) return null
-        return {
-          graphId: (raw.graph_id ?? raw.graphId ?? graphId) as string,
-          body: (raw.body ?? '') as string,
-          source: ((raw.source ?? 'repo') as CartographyNote['source']),
-          sourcePath: (raw.source_path ?? raw.sourcePath ?? '') as string,
-          modifiedAt: (raw.modified_at ?? raw.modifiedAt ?? null) as string | null,
-        }
-      } catch {
+      } else {
         return null
       }
+      if (!raw) return null
+      return {
+        graphId: (raw.graph_id ?? raw.graphId ?? graphId) as string,
+        body: (raw.body ?? '') as string,
+        source: ((raw.source ?? 'repo') as CartographyNote['source']),
+        sourcePath: (raw.source_path ?? raw.sourcePath ?? '') as string,
+        modifiedAt: (raw.modified_at ?? raw.modifiedAt ?? null) as string | null,
+      }
+    } catch {
+      return null
     }
-    return null
   },
 }
 

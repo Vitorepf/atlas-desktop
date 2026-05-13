@@ -40,7 +40,12 @@ export function FlowScene({
   onIsolate,
   onFocus,
 }: FlowSceneProps) {
-  const stepYs = useMemo(() => computeStepYs(graph.pipeline), [graph.pipeline])
+  // Defensive: nunca confiar 100% no shape do payload do Kernel.
+  const pipeline = Array.isArray(graph.pipeline) ? graph.pipeline : []
+  const lanes = graph.lanes && typeof graph.lanes === 'object' ? graph.lanes : {}
+  const connections = Array.isArray(graph.connections) ? graph.connections : []
+
+  const stepYs = useMemo(() => computeStepYs(pipeline), [pipeline])
   const recentByGraphId = useMemo(() => {
     const map: Record<string, RecentChange> = {}
     for (const c of recentChanges) {
@@ -54,12 +59,12 @@ export function FlowScene({
   const kinSet = useMemo(() => {
     const out = new Set<string>()
     if (!isolatedId) return out
-    for (const c of graph.connections) {
+    for (const c of connections) {
       if (c.from === isolatedId) out.add(c.to)
       if (c.to === isolatedId) out.add(c.from)
     }
     return out
-  }, [graph.connections, isolatedId])
+  }, [connections, isolatedId])
 
   return (
     <>
@@ -76,7 +81,7 @@ export function FlowScene({
       </div>
 
       {/* Pipeline atoms */}
-      {graph.pipeline.map((p, idx) => {
+      {pipeline.map((p, idx) => {
         const atom = atomIndex[p.graphId]
         if (!atom) return null
         return (
@@ -96,13 +101,15 @@ export function FlowScene({
       })}
 
       {/* Lateral lanes */}
-      {Object.entries(graph.lanes).map(([key, lane]) => {
+      {Object.entries(lanes).map(([key, lane]) => {
+        if (!lane) return null
         const layout = LANE_LAYOUT[key]
         if (!layout) return null
+        const nodes = Array.isArray(lane.nodes) ? lane.nodes : []
         const isolatedInside =
-          !!isolatedId && lane.nodes.some((n) => n.graphId === isolatedId)
+          !!isolatedId && nodes.some((n) => n.graphId === isolatedId)
         const kinInside =
-          !!isolatedId && lane.nodes.some((n) => kinSet.has(n.graphId))
+          !!isolatedId && nodes.some((n) => kinSet.has(n.graphId))
         return (
           <div
             key={key}
@@ -120,7 +127,7 @@ export function FlowScene({
               {lane.deck ? <span className="deck">{lane.deck}</span> : null}
             </div>
             <div className="region-atoms">
-              {lane.nodes.map((n) => {
+              {nodes.map((n) => {
                 const atom = atomIndex[n.graphId]
                 if (!atom) return null
                 return (
@@ -142,7 +149,7 @@ export function FlowScene({
       })}
 
       {/* SVG trails (renderiza por último para z-index) */}
-      <Trails worldElement={worldRef.current} connections={graph.connections} isolatedId={isolatedId} />
+      <Trails worldElement={worldRef.current} connections={connections} isolatedId={isolatedId} />
     </>
   )
 }
