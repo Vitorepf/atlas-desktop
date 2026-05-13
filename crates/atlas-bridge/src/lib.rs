@@ -1,19 +1,30 @@
-//! Bridge boundary between Atlas Desktop and atlas-server.
+//! atlas-bridge · HTTP/SSE client to atlas-server.
 //!
-//! This crate must stay transport-oriented. It does not decide provider,
-//! policy, memory, evidence or routing. The Kernel does that.
+//! Boundary contract:
+//! - This is the ONLY network surface in the desktop. Frontends call into Tauri
+//!   commands; the commands call into `AtlasBridge`; `AtlasBridge` calls
+//!   atlas-server.
+//! - This crate must stay transport-oriented. It does not decide provider,
+//!   policy, memory, evidence or routing — the Kernel does that.
+//! - Each function maps to one of the 12 MVP needs identified in the audit.
+//!   See README + ADR-0001 for the canonical split.
 
-use serde::{Deserialize, Serialize};
+#![forbid(unsafe_code)]
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AtlasServerConfig {
-    pub base_url: String,
-}
+pub mod config;
+pub mod dto;
+pub mod error;
 
-impl Default for AtlasServerConfig {
-    fn default() -> Self {
-        Self {
-            base_url: "http://127.0.0.1:8000".to_string(),
-        }
-    }
-}
+mod client;
+mod endpoints;
+
+pub use client::AtlasBridge;
+pub use config::{AtlasServerConfig, BridgeAuth};
+pub use error::BridgeError;
+
+pub use dto::{
+    DecisionReceiptDto, EvidenceDto, GateRunDto, HealthDto, MessageDto, ObraDto, PacketDto,
+    QualityGateDto, ReceiptSignaturePayload, SessionDto, SignedReceiptAck, StreamEventDto,
+};
+
+pub type BridgeResult<T> = Result<T, BridgeError>;

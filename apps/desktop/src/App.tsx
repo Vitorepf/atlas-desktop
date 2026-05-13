@@ -1,51 +1,44 @@
-import { useEffect, useState } from 'react'
 import { LeftRail } from './components/LeftRail'
 import { MainStage } from './components/MainStage'
 import { ObraBar } from './components/ObraBar'
 import { RightRail } from './components/RightRail'
 import { TerminalDock } from './components/TerminalDock'
 import { TopBar } from './components/TopBar'
-import {
-  coreStatus as coreStatusFallback,
-  gates,
-  messages,
-  obra,
-  recentSessions,
-  receipt,
-  sddStages,
-  sessions,
-  terminalLines,
-} from './data/mock'
-import { getCoreStatus } from './hooks/useAtlasCore'
-import type { CoreStatus } from '@atlas/domain'
+import { terminalLines } from './data/mock'
+import { useBridge } from './hooks/useBridge'
 
 /**
  * Atlas Code · cabine operacional visual do Kernel Atlas.
  *
- * Layout-only scaffold. Components render mock payloads from src/data/mock.ts
- * until atlas-bridge wires them to real atlas-server endpoints (passo 2).
- *
- * Canon:
- *   atlas-server  = Kernel · decide, route, execute, evidence, memory.
- *   atlas-desktop = cabine · show, command, sign, observe, send intents.
+ * The shell is layout-only. All payloads come from `useBridge()` which
+ * dispatches to Tauri (in the desktop app), HTTP (browser fallback against
+ * atlas-server) or mock (zero-config dev). Components never reach data
+ * directly — the bridge is the single boundary.
  */
 function App() {
-  const [core, setCore] = useState<CoreStatus>(coreStatusFallback)
-
-  useEffect(() => {
-    void getCoreStatus().then(setCore)
-  }, [])
+  const snap = useBridge()
 
   return (
     <div className="atlas-shell">
-      <TopBar />
-      <ObraBar obra={obra} />
-      <LeftRail active={sessions} recent={recentSessions} />
-      <MainStage stages={sddStages} messages={messages} receiptHash="0x4f2c" />
-      <RightRail receipt={receipt} gates={gates} core={core} />
-      <TerminalDock lines={terminalLines} ptyMode={core.pty} cwd={core.workspacePath} />
+      <TopBar mode={snap.mode} />
+      <ObraBar obra={snap.obra} />
+      <LeftRail active={snap.active} recent={snap.recent} />
+      <MainStage stages={defaultStages} messages={snap.messages} receiptHash={snap.receipt.id.slice(0, 6)} />
+      <RightRail receipt={snap.receipt} gates={snap.gates} core={snap.core} />
+      <TerminalDock lines={terminalLines} ptyMode={snap.core.pty} cwd={snap.core.workspacePath} />
     </div>
   )
 }
+
+// SDD pipeline state is part of the conversation stream — when the bridge
+// starts emitting `sdd_pipeline` events we'll derive this from the stream.
+// For the layout MVP it stays static.
+const defaultStages = [
+  { id: 'context' as const, label: 'Context', state: 'done' as const },
+  { id: 'spec' as const, label: 'Spec', state: 'done' as const },
+  { id: 'plan' as const, label: 'Plan', state: 'done' as const },
+  { id: 'execute' as const, label: 'Execute', state: 'now' as const },
+  { id: 'verify' as const, label: 'Verify', state: 'todo' as const },
+]
 
 export default App

@@ -1,16 +1,25 @@
+import type { BridgeMode } from '../lib/bridge'
+
+interface TopBarProps {
+  mode: BridgeMode
+}
+
 /**
- * TopBar · brand + folio.
+ * TopBar · brand + bridge-mode badge + folio.
  *
- * Atlas Code is one window inside Atlas Desktop. The window dock /
- * surface switcher lives at the OS shell level (future), not here.
+ * The mode badge tells you at a glance whether the cockpit is talking to the
+ * Kernel (tauri/http) or running on canned data (mock).
  */
-export function TopBar() {
+export function TopBar({ mode }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="brand">
         <strong>Atlas · Code</strong>
         <span className="v">mvp</span>
         <span className="sub">você dirige · Atlas programa</span>
+        <span className={`v bridge-mode bridge-mode-${mode}`} title={`bridge dispatch: ${mode}`}>
+          bridge · {mode}
+        </span>
       </div>
       <div />
       <div className="folio">

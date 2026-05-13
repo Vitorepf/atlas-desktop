@@ -1,15 +1,10 @@
-import type { CoreStatus } from '@atlas/domain'
-import { coreStatus as coreStatusFallback } from '../data/mock'
-
 /**
- * Bridge to atlas-tauri command `atlas_core_status`. Falls back to the
- * browser-only mock when running `npm run dev` without Tauri.
+ * @deprecated thin wrapper — kept for the existing App import path.
+ * Prefer `bridge.coreStatus()` from src/lib/bridge.ts directly.
  */
+import { bridge } from '../lib/bridge'
+import type { CoreStatus } from '@atlas/domain'
+
 export async function getCoreStatus(): Promise<CoreStatus> {
-  try {
-    const tauri = await import('@tauri-apps/api/core')
-    return await tauri.invoke<CoreStatus>('atlas_core_status')
-  } catch {
-    return coreStatusFallback
-  }
+  return bridge.coreStatus()
 }
