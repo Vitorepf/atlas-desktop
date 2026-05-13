@@ -14,12 +14,15 @@
  */
 
 import type {
+  CartographyGraph,
+  CartographyNote,
   CoreStatus,
   DecisionReceipt,
   Message,
   Obra,
   Packet,
   QualityGate,
+  RecentChange,
   Session,
 } from '@atlas/domain'
 
@@ -346,6 +349,65 @@ export const bridge = {
   async listPackets(_obraId: string): Promise<Packet[]> {
     return noPackets
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // CARTOGRAPHY · read-only surface · 3 calls
+  // The atlas-server endpoints (/atlas-cartography/*) are GET-only by canon.
+  // Cartografia nunca escreve no filesystem; só audita.
+
+  async loadCartographyGraph(): Promise<CartographyGraph | null> {
+    if (MODE === 'tauri')
+      return invokeTauri<CartographyGraph | null>('bridge_cartography_graph')
+    if (MODE === 'http') {
+      try {
+        const raw = await fetchHttp<unknown>('/atlas-cartography/graph')
+        return adaptCartographyGraph(raw)
+      } catch (e) {
+        console.warn('[bridge] cartography graph offline', e)
+        return null
+      }
+    }
+    return null
+  },
+
+  async loadCartographyRecentChanges(): Promise<RecentChange[]> {
+    if (MODE === 'tauri')
+      return invokeTauri<RecentChange[]>('bridge_cartography_recent_changes')
+    if (MODE === 'http') {
+      try {
+        const raw = await fetchHttp<{ changes?: unknown[] }>(
+          '/atlas-cartography/recent-changes'
+        )
+        return adaptRecentChanges(raw?.changes ?? [])
+      } catch {
+        return []
+      }
+    }
+    return []
+  },
+
+  async loadCartographyNote(graphId: string): Promise<CartographyNote | null> {
+    if (MODE === 'tauri')
+      return invokeTauri<CartographyNote | null>('bridge_cartography_note', { graphId })
+    if (MODE === 'http') {
+      try {
+        const raw = await fetchHttp<Record<string, unknown>>(
+          `/atlas-cartography/note/${encodeURIComponent(graphId)}`
+        )
+        if (!raw) return null
+        return {
+          graphId: (raw.graph_id ?? raw.graphId ?? graphId) as string,
+          body: (raw.body ?? '') as string,
+          source: ((raw.source ?? 'repo') as CartographyNote['source']),
+          sourcePath: (raw.source_path ?? raw.sourcePath ?? '') as string,
+          modifiedAt: (raw.modified_at ?? raw.modifiedAt ?? null) as string | null,
+        }
+      } catch {
+        return null
+      }
+    }
+    return null
+  },
 }
 
 export type Bridge = typeof bridge
@@ -376,6 +438,166 @@ function normaliseGateRuns(raw: unknown[]): QualityGate[] {
     })
   }
   return out
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cartography adapters · backend snake_case → @atlas/domain camelCase
+
+function adaptCartographyGraph(raw: unknown): CartographyGraph | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const audit = (r.audit as Record<string, unknown> | undefined) ?? {}
+  const sources = (r.sources as Record<string, unknown> | undefined) ?? {}
+  const universe = ((r.universe as unknown[]) ?? []).map(adaptContinent)
+  const view = ((r.views as Record<string, unknown> | undefined)?.[
+    'atlas-ai-kernel'
+  ] as Record<string, unknown> | undefined) ?? {}
+  const pipeline = ((view.pipeline as unknown[]) ?? []).map(adaptPipelineStep)
+  const lanes: Record<string, import('@atlas/domain').Lane> = {}
+  for (const lane of (view.lanes as unknown[]) ?? []) {
+    const adapted = adaptLane(lane)
+    if (adapted) lanes[adapted.graphId] = adapted
+  }
+  const connections = ((view.connections as unknown[]) ?? [])
+    .map(adaptConnection)
+    .filter((c): c is { from: string; to: string; kind: string } => !!c)
+
+  return {
+    audit: {
+      found: Number(audit.pieces_found ?? 0),
+      missing: Number(audit.pieces_missing ?? 0),
+      generatedAt: (r.generated_at as string | null) ?? null,
+      repoIndexed: Number(sources.repo_indexed_count ?? 0),
+      vaultIndexed: Number(sources.vault_indexed_count ?? 0),
+    },
+    universe,
+    pipeline,
+    lanes,
+    connections,
+  }
+}
+
+function adaptContinent(raw: unknown): import('@atlas/domain').Continent {
+  const r = (raw as Record<string, unknown>) ?? {}
+  const missing = !!r.missing_source
+  return {
+    graphId: String(r.graph_id ?? r.graphId ?? ''),
+    name: String(r.name ?? ''),
+    graphSource: missing
+      ? 'missing'
+      : ((r.graph_source ?? 'repo') as import('@atlas/domain').GraphSource),
+    sourcePath: String(r.source_path ?? r.expected_path ?? ''),
+    missingSource: missing,
+    count: Number(r.count ?? 0),
+    role: (r.role ?? r.summary ?? null) as string | null,
+  }
+}
+
+function adaptPipelineStep(raw: unknown): import('@atlas/domain').PipelineStep {
+  const r = (raw as Record<string, unknown>) ?? {}
+  const missing = !!r.missing_source
+  return {
+    graphId: String(r.graph_id ?? ''),
+    graphOrder: Number(r.graph_order ?? 0),
+    name: String(r.name ?? ''),
+    deck: (r.deck ?? null) as string | null,
+    graphSource: missing
+      ? 'missing'
+      : ((r.graph_source ?? 'repo') as import('@atlas/domain').GraphSource),
+    sourcePath: String(r.source_path ?? r.expected_path ?? ''),
+    missingSource: missing,
+    role: (r.role ?? r.summary ?? null) as string | null,
+    input: (r.input ?? null) as string | null,
+    output: (r.output ?? null) as string | null,
+    depends: normList(r.depends_on),
+    unblocks: normList(r.unlocks),
+    evidence: norm(r.evidence),
+    risk: norm(r.risks),
+    next: norm(r.next_actions),
+    subs: ((r.subs as Array<[string, string]> | undefined) ?? []),
+    title: (r.title ?? null) as string | null,
+  }
+}
+
+function adaptLane(raw: unknown): import('@atlas/domain').Lane | null {
+  const r = (raw as Record<string, unknown>) ?? {}
+  const id = String(r.graph_id ?? '')
+  if (!id) return null
+  const missing = !!r.missing_source
+  return {
+    graphId: id,
+    side: String(r.side ?? 'left'),
+    head: String(r.name ?? r.head ?? ''),
+    deck: (r.deck ?? null) as string | null,
+    graphSource: missing
+      ? 'missing'
+      : ((r.graph_source ?? 'repo') as import('@atlas/domain').GraphSource),
+    sourcePath: String(r.source_path ?? r.expected_path ?? ''),
+    missingSource: missing,
+    role: (r.role ?? r.summary ?? null) as string | null,
+    nodes: ((r.nodes as unknown[]) ?? []).map(adaptLateralNode),
+  }
+}
+
+function adaptLateralNode(raw: unknown): import('@atlas/domain').LateralNode {
+  const r = (raw as Record<string, unknown>) ?? {}
+  const missing = !!r.missing_source
+  return {
+    graphId: String(r.graph_id ?? ''),
+    name: String(r.name ?? ''),
+    deck: (r.deck ?? null) as string | null,
+    graphSource: missing
+      ? 'missing'
+      : ((r.graph_source ?? 'repo') as import('@atlas/domain').GraphSource),
+    sourcePath: String(r.source_path ?? r.expected_path ?? ''),
+    missingSource: missing,
+    role: (r.role ?? r.summary ?? null) as string | null,
+    input: (r.input ?? null) as string | null,
+    output: (r.output ?? null) as string | null,
+    depends: normList(r.depends_on),
+    unblocks: normList(r.unlocks),
+    evidence: norm(r.evidence),
+    risk: norm(r.risks),
+    next: norm(r.next_actions),
+  }
+}
+
+function adaptConnection(raw: unknown) {
+  const r = (raw as Record<string, unknown>) ?? {}
+  const from = r.from as string | undefined
+  const to = r.to as string | undefined
+  if (!from || !to) return null
+  return { from, to, kind: String(r.kind ?? 'sequence') }
+}
+
+function adaptRecentChanges(raw: unknown[]): RecentChange[] {
+  const out: RecentChange[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const r = item as Record<string, unknown>
+    out.push({
+      graphId: String(r.graph_id ?? ''),
+      name: String(r.name ?? ''),
+      time: String(r.time ?? ''),
+      secondsAgo: Number(r.seconds_ago ?? 0),
+      action: String(r.action ?? ''),
+      author: String(r.author ?? ''),
+      source: ((r.source ?? 'repo') as RecentChange['source']),
+      path: String(r.path ?? ''),
+    })
+  }
+  return out
+}
+
+function norm(v: unknown): string | null {
+  if (v == null) return null
+  if (Array.isArray(v)) return v.length === 0 ? null : v.join(' · ')
+  return String(v)
+}
+
+function normList(v: unknown): string[] {
+  if (!v) return []
+  return Array.isArray(v) ? v.map(String) : [String(v)]
 }
 
 function normaliseAiMessages(raw: unknown[]): Message[] {

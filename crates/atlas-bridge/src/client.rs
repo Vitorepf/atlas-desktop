@@ -241,4 +241,22 @@ impl AtlasBridge {
         };
         self.execute(self.build(Method::POST, &path).json(&payload)).await
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // CARTOGRAPHY · read-only graph + notes + recent changes
+    // The cartography never writes to the filesystem; we just proxy GETs.
+
+    /// Raw graph response — frontend adapts shape to camelCase domain types.
+    pub async fn cartography_graph(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::CARTOGRAPHY_GRAPH)).await
+    }
+
+    pub async fn cartography_recent_changes(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::CARTOGRAPHY_RECENT_CHANGES)).await
+    }
+
+    pub async fn cartography_note(&self, graph_id: &str) -> BridgeResult<serde_json::Value> {
+        let path = format!("{}{}", endpoints::CARTOGRAPHY_NOTE, graph_id);
+        self.execute(self.build(Method::GET, &path)).await
+    }
 }

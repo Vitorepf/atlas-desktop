@@ -189,3 +189,36 @@ pub async fn bridge_apply_diff(
         .await
         .map_err(into_str_err)
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// CARTOGRAPHY · read-only
+
+#[tauri::command]
+pub async fn bridge_cartography_graph(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    state.bridge.cartography_graph().await.map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_cartography_recent_changes(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    state
+        .bridge
+        .cartography_recent_changes()
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_cartography_note(
+    state: State<'_, AppState>,
+    graph_id: String,
+) -> Result<serde_json::Value, String> {
+    state
+        .bridge
+        .cartography_note(&graph_id)
+        .await
+        .map_err(into_str_err)
+}

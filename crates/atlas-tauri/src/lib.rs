@@ -80,6 +80,9 @@ pub fn run() {
             commands_bridge::bridge_list_gates,
             commands_bridge::bridge_run_gate,
             commands_bridge::bridge_apply_diff,
+            commands_bridge::bridge_cartography_graph,
+            commands_bridge::bridge_cartography_recent_changes,
+            commands_bridge::bridge_cartography_note,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Atlas Code");

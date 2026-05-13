@@ -145,3 +145,21 @@ export interface DiffPatch {
     text: string
   }>
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Cartography surface (read-only graph of the canonical truth)
+
+export type {
+  CartographyAtom,
+  CartographyGraph,
+  CartographyNote,
+  CartographyView,
+  Connection,
+  Continent,
+  GraphAudit,
+  GraphSource,
+  Lane,
+  LateralNode,
+  PipelineStep,
+  RecentChange,
+} from './cartography'

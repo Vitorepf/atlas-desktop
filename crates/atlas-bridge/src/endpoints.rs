@@ -26,3 +26,8 @@ pub const ATLAS_CODE_SESSIONS: &str = "/atlas-code/works/";                 // N
 pub const ATLAS_CODE_EVIDENCE: &str = "/atlas-code/works/";                 // NEW (+ {work}/evidence)
 pub const ATLAS_CODE_SIGN: &str = "/atlas-code/decisions/";                 // NEW (+ {id}/sign)
 pub const ATLAS_CODE_APPLY_DIFF: &str = "/atlas-code/diffs/";               // NEW (+ {patch}/apply)
+
+// CARTOGRAPHY · read-only · GET endpoints exposed by AtlasCartographyController
+pub const CARTOGRAPHY_GRAPH: &str = "/atlas-cartography/graph";
+pub const CARTOGRAPHY_RECENT_CHANGES: &str = "/atlas-cartography/recent-changes";
+pub const CARTOGRAPHY_NOTE: &str = "/atlas-cartography/note/";              // + {graph_id}

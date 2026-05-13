@@ -72,6 +72,9 @@
     height: 100vh;
     width: 100vw;
     overflow: hidden;
+  }
+  /* Code surface · 4 rows × 3 cols */
+  .atlas-shell.surface-code {
     grid-template-rows: 50px 44px minmax(0, 1fr) 168px;
     grid-template-columns: 260px minmax(0, 1fr) 320px;
     grid-template-areas:
@@ -79,6 +82,20 @@
       'obra      obra       obra'
       'left      stage      right'
       'terminal  terminal   terminal';
+  }
+  /* Cartografia surface · 2 rows · canvas + inspector lives inside CartografiaSurface */
+  .atlas-shell.surface-cartografia {
+    grid-template-rows: 50px minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'topbar'
+      'cartografia';
+  }
+  .cartografia-surface {
+    grid-area: cartografia;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .topbar {
@@ -90,6 +107,11 @@
     padding: 0 22px;
     border-bottom: 1px solid var(--bronze-soft);
     background: var(--cream-paper);
+  }
+  .topbar-meta {
+    display: flex;
+    align-items: center;
+    gap: 18px;
   }
 
   .obra-bar {
@@ -179,6 +201,58 @@
   .brand .bridge-mode-tauri { color: var(--moss); border-color: var(--moss-soft); background: var(--moss-veil); }
   .brand .bridge-mode-http  { color: var(--prussian); border-color: rgba(43,62,84,.25); background: rgba(43,62,84,.06); }
   .brand .bridge-mode-mock  { color: var(--ink3); border-color: var(--hair); background: transparent; }
+
+  /* — Surface switcher · Code | Cartografia */
+  .surface-switcher {
+    display: flex;
+    gap: 4px;
+    justify-self: center;
+    padding: 3px;
+    border: 1px solid var(--hair);
+    border-radius: 3px;
+    background: var(--cream-deep);
+  }
+  .surface-tab {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 5px 14px 5px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 180ms var(--ease-i), border-color 180ms var(--ease-i);
+  }
+  .surface-tab:hover {
+    background: var(--cream);
+    border-color: var(--hair);
+  }
+  .surface-tab.on {
+    background: var(--cream-paper);
+    border-color: var(--bronze-soft);
+    box-shadow: 0 1px 0 0 var(--bronze) inset;
+  }
+  .surface-tab .surface-tab-label {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink3);
+    letter-spacing: 0.4px;
+  }
+  .surface-tab.on .surface-tab-label {
+    color: var(--bronze-deep);
+    font-weight: 500;
+  }
+  .surface-tab .surface-tab-shortcut {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 1.1px;
+    color: var(--ink4);
+    text-transform: uppercase;
+  }
+  .surface-tab.on .surface-tab-shortcut {
+    color: var(--bronze);
+  }
   .folio {
     font-family: var(--mono);
     font-size: 9.5px;
