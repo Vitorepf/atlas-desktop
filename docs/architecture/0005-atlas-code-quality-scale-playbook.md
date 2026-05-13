@@ -24,7 +24,7 @@ falhou, aguardando assinatura, sem fonte ou degradado, a mudanca nao esta pronta
 |---|---|---|
 | Shell | `apps/desktop/src/shell/` | moldura global, topbar, surface host, diagnostico global |
 | Code surface | `apps/desktop/src/surfaces/code/` | cabine de programacao, obras, palco, governanca, terminal |
-| Cartografia surface | `apps/desktop/src/components/cartografia/` | navegacao da verdade repo/vault |
+| Cartografia surface | `apps/desktop/src/surfaces/cartografia/` | navegacao da verdade repo/vault |
 | Bridge | `apps/desktop/src/lib/bridge.ts` + `crates/atlas-bridge/` | contratos com atlas-server |
 | Platform | `crates/atlas-platform/` | PTY, filesystem, macOS local |
 | Tauri | `crates/atlas-tauri/` | comandos nativos e lifecycle do app |
@@ -178,4 +178,3 @@ Obrigatorio se tocar contrato visual sensivel:
 5. Tipar contratos de `/atlas-code/*` no `packages/atlas-domain`.
 6. Adicionar visual QA para dock bottom/right.
 7. Formalizar actions destrutivas: confirmacao, receipt ou policy gate.
-

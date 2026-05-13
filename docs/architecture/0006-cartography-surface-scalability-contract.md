@@ -17,16 +17,20 @@ vive e torna essa verdade navegavel, auditavel e verificavel.
 
 ## Problema
 
-A implementacao atual ja tem uma boa base funcional, mas ainda esta concentrada
-em `apps/desktop/src/components/cartografia/`. Isso cria risco de escala:
+A implementacao anterior estava concentrada em
+`apps/desktop/src/components/cartografia/`. A fase 2 migrou a implementacao para
+`apps/desktop/src/surfaces/cartografia/`. Os riscos abaixo continuam validos para
+qualquer tentativa de recentralizar a tela:
 
-- `CartografiaSurface.tsx` acumula layout, shortcuts, busca, resize, overlays,
-  scenes e composicao;
-- `Inspector.tsx` acumula source, ficha, markdown, acoes, timeline e resize;
-- `Trails.tsx` concentra muita geometria e relacao visual;
-- `cartografia.css` concentra todo o sistema visual em um arquivo unico;
-- nao existe README local explicando boundaries, dono de estado, anti-patterns
-  e caminho de refatoracao.
+- `CartografiaSurface.tsx` voltar a acumular layout, shortcuts, busca, resize,
+  overlays, scenes e composicao;
+- `Inspector.tsx` voltar a acumular source, ficha, markdown, acoes, timeline e
+  resize;
+- `Trails.tsx` voltar a concentrar geometria, DOM measurement e relacao visual;
+- `cartografia.css` voltar a concentrar todo o sistema visual em um arquivo
+  unico;
+- subareas nascerem sem README local explicando boundaries, dono de estado,
+  anti-patterns e caminho de refatoracao.
 
 Sem contrato, a proxima feature tende a entrar no arquivo mais facil e a tela
 vira um monolito visual dificil de validar.
@@ -37,19 +41,21 @@ Toda evolucao da Cartografia deve obedecer a este contrato:
 
 ```text
 features novas entram em surfaces/cartografia/
-components/cartografia/ vira legado congelado ate a migracao terminar
+components/cartografia/ permanece legado congelado
 ```
 
-A fase 2 deve migrar a Cartografia para uma surface modular:
+A Cartografia deve permanecer modular nesta estrutura:
 
 ```text
 apps/desktop/src/surfaces/cartografia/
   CartografiaSurface.tsx
+  CartografiaViewportSlot.tsx
   README.md
   layout/
   state/
   viewport/
   inspector/
+  floaters/
   map/
   scenes/
   timeline/
@@ -58,8 +64,8 @@ apps/desktop/src/surfaces/cartografia/
   styles/
 ```
 
-`components/cartografia/` pode continuar funcionando durante a transicao, mas
-nao deve receber feature nova grande.
+`components/cartografia/` nao deve receber feature nova. Se algo precisar
+voltar para la, isso exige justificativa arquitetural explicita.
 
 ## Principios nao negociaveis
 
@@ -143,18 +149,33 @@ flowchart TB
 Regra: feature nova precisa declarar uma destas regioes ou criar uma subarea
 registrada. Nao existe feature "solta" dentro de `CartografiaSurface.tsx`.
 
+`CartografiaSurface.tsx` e permitido apenas como composition root:
+
+- chama hooks;
+- passa props;
+- conecta layout;
+- nao calcula grafo;
+- nao renderiza markdown;
+- nao roteia geometry.
+
+`CartografiaViewportSlot.tsx` monta somente a regiao navegavel: floaters,
+world e overlay. Ele pode adaptar callbacks de UI, mas nao pode buscar dados,
+parsear source nem calcular relacoes.
+
 ## Estrutura obrigatoria da fase 2
 
 ### `layout/`
 
 Responsavel por grid, inspector/canvas, resize, colapso e composicao de slots.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `CartografiaLayout.tsx`
-- `InspectorColumn.tsx`
-- `CanvasRegion.tsx`
-- `layoutStore.ts`
+- `CartographyOverlay.tsx`
+- `useInspectorColumn.ts`
+- `useHorizontalResizeDrag.ts`
+- `inspectorLayout.ts`
+- `currentLocationLabel.ts`
 
 Nao pode:
 
@@ -167,12 +188,32 @@ Nao pode:
 
 Responsavel por graph, recent changes, note cache e maquina de estados.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `useCartografiaData.ts`
 - `useCartografiaNavigation.ts`
 - `cartografiaStateTypes.ts`
 - `cartografiaSelectors.ts`
+- `navigationModel.ts`
+- `atomBuilders.ts`
+- `shortcutModel.ts`
+
+Implementacao atual:
+
+- `useCartografia.ts`: composition root;
+- `useCartografiaData.ts`: graph, recent changes, polling e erros;
+- `useCartografiaNotes.ts`: note cache lazy;
+- `useCartografiaNavigation.ts`: state machine de navegacao;
+- `navigationModel.ts`: transicoes puras de navegacao;
+- `atomIndex.ts`: indice O(1) de atoms;
+- `atomBuilders.ts`: adapters puros para `CartographyAtom`;
+- `browserStorage.ts`: API unica de persistencia local defensiva da Cartografia;
+- `cartografiaTypes.ts`: contrato exportado;
+- `useCartografiaViewModel.ts`: selectors derivados;
+- `useCartografiaShortcuts.ts`: atalhos globais;
+- `shortcutModel.ts`: protocolo puro de atalhos;
+- `useVisualLens.ts`: hook de lente visual persistida;
+- `visualLens.ts`: modelo puro de lente visual.
 
 Nao pode:
 
@@ -185,11 +226,13 @@ Nao pode:
 
 Responsavel por pan, zoom, fit, transform e gestos.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `useCartografiaViewport.ts`
 - `viewportMath.ts`
 - `viewportTypes.ts`
+- `useViewportPanBindings.ts`
+- `viewportInteraction.ts`
 
 Nao pode:
 
@@ -201,14 +244,34 @@ Nao pode:
 
 Responsavel por atom, trails, geometry, lenses e realce de relacoes.
 
-Arquivos esperados:
+Arquivos canonicos:
 
-- `MapCanvas.tsx`
+- `CartographyWorld.tsx`
+- `WorldSceneSwitch.tsx`
+- `WorldSceneRenderers.tsx`
+- `worldSceneTypes.ts`
+- `worldSceneModel.ts`
+- `worldModel.ts`
 - `Atom.tsx`
+- `AtomVariants.tsx`
+- `atomStyle.ts`
 - `Trails.tsx`
+- `TrailPrimitives.tsx`
 - `trailGeometry.ts`
-- `atomViewModel.ts`
-- `visualLens.ts`
+- `trailRouting.ts`
+- `trailRouteModel.ts`
+- `trailVisibility.ts`
+- `trailShapes.ts`
+- `trailLanes.ts`
+- `trailMotion.ts`
+- `trailPathBuilders.ts`
+- `trailDom.ts`
+- `trailTypes.ts`
+- `useTrailPaths.ts`
+- `atomModel.ts`
+- `useAtomActivation.ts`
+- `AtomSourceLine.tsx`
+- `layout.ts`
 
 Nao pode:
 
@@ -217,18 +280,53 @@ Nao pode:
 - fazer polling;
 - escrever no store global diretamente.
 
+### `floaters/`
+
+Responsavel por controles flutuantes de orientacao e navegacao.
+
+Arquivos canonicos:
+
+- `CartographyFloaters.tsx`
+- `Minimap.tsx`
+- `minimapModel.ts`
+- `Breadcrumb.tsx`
+- `VisualLensToolbar.tsx`
+- `ZoomControls.tsx`
+
+Nao pode:
+
+- fazer fetch;
+- carregar markdown;
+- abrir arquivo externo diretamente;
+- manter estado global fora de preferencias locais;
+- esconder fonte/path/erro que pertencem ao inspector.
+
 ### `scenes/`
 
 Responsavel por `universe`, `system`, `flow`, `gear`, `subflow`.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `UniverseScene.tsx`
 - `SystemScene.tsx`
+- `SystemCard.tsx`
+- `systemSceneModel.ts`
 - `FlowScene.tsx`
+- `FlowStageFrame.tsx`
+- `FlowPipeline.tsx`
+- `FlowLanes.tsx`
+- `FlowLaneRegion.tsx`
+- `flowModel.ts`
+- `flowLaneModel.ts`
+- `flowTypes.ts`
 - `GearScene.tsx`
+- `GearHeader.tsx`
+- `GearSatellites.tsx`
+- `GearFicha.tsx`
+- `GearActions.tsx`
+- `gearModel.ts`
+- `gearTypes.ts`
 - `SubflowScene.tsx`
-- `sceneRegistry.ts`
 
 Nao pode:
 
@@ -240,16 +338,22 @@ Nao pode:
 
 Responsavel por leitura canonica do node focado.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `Inspector.tsx`
 - `InspectorHeader.tsx`
-- `InspectorSource.tsx`
-- `InspectorFicha.tsx`
-- `InspectorMarkdown.tsx`
-- `InspectorActions.tsx`
-- `InspectorEmpty.tsx`
-- `InspectorResizeToolbar.tsx`
+- `InspectorResizeControls.tsx`
+- `InspectorRows.tsx`
+- `Ficha.tsx`
+- `InspectorSections.tsx`
+- `InspectorFileContent.tsx`
+- `DefaultInspector.tsx`
+- `DefaultInspectorContent.tsx`
+- `RecentChangesDock.tsx`
+- `buildFichaFields.ts`
+- `inspectorModel.ts`
+- `useInspectorNote.ts`
+- `types.ts`
 
 Nao pode:
 
@@ -262,7 +366,7 @@ Nao pode:
 
 Responsavel por mudancas recentes.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `TimelinePanel.tsx`
 - `TimelineFloater.tsx`
@@ -278,11 +382,13 @@ Nao pode:
 
 Responsavel por busca local no snapshot carregado.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `CartografiaSearch.tsx`
+- `searchModel.ts`
 - `searchScoring.ts`
-- `searchTypes.ts`
+- `useCartografiaSearch.ts`
+- `types.ts`
 
 Nao pode:
 
@@ -294,11 +400,10 @@ Nao pode:
 
 Responsavel por acoes read-only de fonte.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `sourceActions.ts`
 - `sourcePath.ts`
-- `sourceTypes.ts`
 
 Nao pode:
 
@@ -311,16 +416,20 @@ Nao pode:
 
 Responsavel por dividir `cartografia.css`.
 
-Arquivos esperados:
+Arquivos canonicos:
 
 - `cartografia.css`
-- `layout.css`
-- `inspector.css`
-- `canvas.css`
-- `atoms.css`
-- `trails.css`
-- `floaters.css`
-- `responsive.css`
+- `00-work.css`
+- `01-viewport-world.css`
+- `02-trails.css`
+- `03-regions.css`
+- `04-atoms.css`
+- `05-scenes.css`
+- `06-floaters.css`
+- `06-floaters-core.css`
+- `07-floaters-controls.css`
+- `08-inspector.css`
+- `09-overlay-responsive.css`
 
 Nao pode:
 
@@ -432,16 +541,16 @@ Se passar do limite, criar subcomponente, selector, primitive ou helper.
 
 ## Plano obrigatorio da fase 2
 
-1. Criar `surfaces/cartografia/` com a estrutura deste ADR.
-2. Mover `CartografiaSurface.tsx` para a surface nova sem mudar comportamento.
-3. Extrair `layout/` e manter screenshot/visual equivalente.
-4. Extrair `state/` de `useCartografia`.
-5. Extrair `viewport/`.
-6. Extrair `inspector/`.
-7. Extrair `map/Trails` e geometry.
-8. Extrair `search/`, `timeline/`, `source/`.
-9. Dividir CSS.
-10. Transformar `components/cartografia/*` em fachadas legadas ou remover.
+1. Criar `surfaces/cartografia/` com a estrutura deste ADR. Concluido.
+2. Mover `CartografiaSurface.tsx` para a surface nova sem mudar comportamento. Concluido.
+3. Extrair `layout/` e manter screenshot/visual equivalente. Concluido.
+4. Extrair `state/` de `useCartografia`. Concluido.
+5. Extrair `viewport/`. Concluido como subarea dedicada.
+6. Extrair `inspector/`. Concluido.
+7. Extrair `map/Trails` e geometry. Concluido.
+8. Extrair `search/`, `timeline/`, `source/`. Concluido.
+9. Dividir CSS. Concluido.
+10. Transformar `components/cartografia/*` em fachadas legadas ou remover. Concluido como pasta congelada.
 
 Cada passo precisa passar:
 
@@ -472,16 +581,27 @@ git diff --check
 - `npm run build` passa.
 - `git diff --check` passa.
 
-## Estado atual aceito antes da fase 2
+## Estado atual da fase 2
 
-Aceitamos temporariamente:
+Ja foi realizado:
 
-- implementacao ainda em `components/cartografia/`;
-- CSS monolitico;
-- `CartografiaSurface.tsx` grande;
-- `Inspector.tsx` grande;
-- `Trails.tsx` grande;
+- implementacao real em `apps/desktop/src/surfaces/cartografia/`;
+- `CartografiaSurface.tsx` reduzido para composition root com
+  `CartografiaViewportSlot` e `CartografiaInspectorSlot`;
+- `layout/` separado para shell, overlay, largura do inspector e label atual;
+- `state/` separado para dados, note cache, navegacao, atom index, view model, atalhos e lente visual;
+- `search/` separado em hook + componente + scoring;
+- `map/` separado para world, scene switch, scene renderers, scene types, atom, atom model, source line, click protocol, renderer de trails, hook de paths, DOM measurement, lanes, motion, path builders e roteamento;
+- `scenes/flow` quebrado em frame, pipeline, lanes, model e types;
+- `scenes/gear` quebrado em header, satellites, ficha, actions, model e types;
+- `floaters/` separado para breadcrumb, minimap, lentes, busca e zoom;
+- `source/` separado entre action read-only e resolucao deterministica de path;
+- `viewport/` separado em composition root, refit semantico, matematica pura, bindings e tipos;
+- `timeline/`, `inspector/` com boundaries documentados.
+
+Ainda aceitamos temporariamente:
+
 - polling em vez de SSE.
 
-Mas estas condicoes sao divida tecnica documentada. Elas nao autorizam novas
-features grandes no modelo antigo.
+Esta condicao e divida tecnica documentada. Ela nao autoriza novas features
+grandes fora das subareas canonicas.

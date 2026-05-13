@@ -1,0 +1,57 @@
+/* ─── VIEWPORT (canvas com pan/zoom) ─────── */
+.cartografia-surface .viewport {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(rgba(138, 106, 53, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--cream);
+  cursor: grab;
+}
+.cartografia-surface .viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 240ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .viewport.viewport-relations::after {
+  opacity: 1;
+  background: radial-gradient(circle at 62% 24%, rgba(138, 106, 53, 0.045), transparent 34%);
+}
+.cartografia-surface .viewport.viewport-risk::after {
+  opacity: 1;
+  background: radial-gradient(circle at 52% 52%, rgba(138, 48, 37, 0.045), transparent 36%);
+}
+.cartografia-surface .viewport.viewport-recent::after {
+  opacity: 1;
+  background: radial-gradient(circle at 18% 84%, rgba(138, 106, 53, 0.052), transparent 30%);
+}
+.cartografia-surface .viewport.viewport-evidence::after {
+  opacity: 1;
+  background: radial-gradient(circle at 72% 48%, rgba(74, 95, 58, 0.05), transparent 38%);
+}
+.cartografia-surface .viewport.is-panning { cursor: grabbing; }
+
+/* ─── WORLD (transformed) ────────────────── */
+.cartografia-surface .world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  transition: transform 420ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.no-transition { transition: none; }
+.cartografia-surface .world-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+

@@ -1,0 +1,16 @@
+/*
+ * Cartografia · CSS canon · Atlas Desktop.
+ *
+ * Este arquivo e somente o indice da surface. CSS novo deve entrar no arquivo
+ * da regiao responsavel, sempre escopado por `.cartografia-surface`.
+ */
+
+@import './00-work.css';
+@import './01-viewport-world.css';
+@import './02-trails.css';
+@import './03-regions.css';
+@import './04-atoms.css';
+@import './05-scenes.css';
+@import './06-floaters.css';
+@import './08-inspector.css';
+@import './09-overlay-responsive.css';

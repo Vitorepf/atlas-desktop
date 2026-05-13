@@ -1,28 +1,19 @@
 # Cartografia Legacy Components
 
-Esta pasta contem a implementacao atual da Cartografia.
+Esta pasta nao contem mais a implementacao ativa da Cartografia.
 
 Regra principal:
 
 ```text
-components/cartografia/ esta congelado para features grandes.
-A fase 2 deve migrar a implementacao para surfaces/cartografia/.
+components/cartografia/ esta congelado.
+A implementacao real vive em apps/desktop/src/surfaces/cartografia/.
 ```
 
-## Por que esta pasta e legado
+## Por que esta pasta existe
 
-A Cartografia nasceu como port visual do mockup `atlas-truth-cartography.html`.
-Ela ja le fontes reais e possui bons componentes, mas ainda concentra muita
-responsabilidade:
-
-- `CartografiaSurface.tsx`: layout, busca, viewport, shortcuts, scenes,
-  overlays e composicao;
-- `Inspector.tsx`: source, ficha, markdown, acoes, timeline, resize e empty
-  states;
-- `Trails.tsx`: geometria, relacoes, DOM measurement e SVG;
-- `cartografia.css`: todo o sistema visual em um unico arquivo.
-
-Isso e aceitavel apenas como estado transitorio.
+Ela preserva o historico da migracao e impede que agentes adicionem features
+no caminho antigo por engano. Se um import novo apontar para esta pasta, trate
+como regressao arquitetural.
 
 ## Contrato obrigatorio
 
@@ -39,18 +30,17 @@ Antes de mudar esta area, leia:
 - Nao adicionar fallback hardcoded que pareca dado real.
 - Nao escrever arquivo pela Cartografia.
 - Nao esconder `source`, `sourcePath` ou `missingSource`.
-- Nao misturar path repo/vault dentro de componente visual; use `sourceActions`
-  ate a migracao para `surfaces/cartografia/source/`.
+- Nao misturar path repo/vault dentro de componente visual; use sempre
+  `surfaces/cartografia/source/`.
 
-## Permitido antes da fase 2
+## Permitido
 
-- Correcoes pequenas de bug visual.
-- Acessibilidade pontual.
-- Ajustes de copy/icone.
-- Fix de contrato com backend.
-- Preparacao de docs para a migracao.
+- Atualizar este README.
+- Remover a pasta quando nao houver mais referencia historica util.
+- Criar fachada temporaria somente se um teste legado exigir, com comentario
+  apontando para `surfaces/cartografia/`.
 
-## Destino da fase 2
+## Surface canonica
 
 ```text
 apps/desktop/src/surfaces/cartografia/

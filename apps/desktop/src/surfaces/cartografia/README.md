@@ -1,6 +1,6 @@
 # Atlas Cartografia Surface
 
-Esta pasta e o destino canonico da fase 2 da Cartografia.
+Esta pasta contem a implementacao canonica da Cartografia no Atlas Desktop.
 
 Regra principal:
 
@@ -11,14 +11,18 @@ copia e nunca escreve na fonte.
 
 ## Estado atual
 
-A implementacao real ainda esta em:
+A fase 2 foi iniciada e a implementacao real esta aqui. A pasta antiga
+`apps/desktop/src/components/cartografia/` ficou apenas como legado
+documentado. Novas features entram nesta surface e precisam respeitar os
+boundaries abaixo.
 
-```text
-apps/desktop/src/components/cartografia/
-```
+## Arquivos de composicao
 
-Esta pasta existe para travar o contrato de migracao. Durante a fase 2, os
-modulos devem ser movidos para ca em passos pequenos e verificaveis.
+- `CartografiaSurface.tsx`: conecta hooks e entrega slots para o layout.
+- `CartografiaViewportSlot.tsx`: monta floaters, mundo e overlay dentro do
+  viewport.
+- `inspector/CartografiaInspectorSlot.tsx`: adapta estado da surface para o
+  inspector sem mover regra de leitura para o root.
 
 ## Subareas obrigatorias
 
@@ -29,6 +33,7 @@ modulos devem ser movidos para ca em passos pequenos e verificaveis.
 | `viewport/` | pan, zoom, fit, transform e gestos |
 | `map/` | atoms, trails, geometry, lenses e relacoes |
 | `scenes/` | universe, system, flow, gear e subflow |
+| `floaters/` | minimap, breadcrumb, busca, lentes, zoom e controles flutuantes |
 | `inspector/` | source, ficha, markdown real, actions e empty states |
 | `timeline/` | mudancas recentes reais |
 | `search/` | busca local e navegacao por resultado |
@@ -39,6 +44,7 @@ modulos devem ser movidos para ca em passos pequenos e verificaveis.
 
 - Nova feature grande em `components/cartografia/`.
 - `CartografiaSurface.tsx` como arquivo central de toda logica.
+- `CartografiaViewportSlot.tsx` contendo regra de dados, busca ou source.
 - `Inspector.tsx` como deposito de todo painel lateral.
 - CSS monolitico crescendo sem limite.
 - Mostrar mock como se fosse fonte real.
@@ -47,7 +53,7 @@ modulos devem ser movidos para ca em passos pequenos e verificaveis.
 
 ## Validacao minima
 
-Sempre que a fase 2 mover uma peca:
+Sempre que a Cartografia mudar:
 
 ```bash
 npm run build

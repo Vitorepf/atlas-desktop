@@ -1,0 +1,435 @@
+/* ─── TRAILS (SVG paths) ─────────────────── */
+.cartografia-surface .trail-group {
+  color: var(--bronze);
+  opacity: 0;
+  transition:
+    opacity 240ms cubic-bezier(0.4, 1, 0.2, 1),
+    filter 240ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .trail-group.path-visible { opacity: 1; }
+.cartografia-surface .trail-group.path-hidden { opacity: 0; }
+.cartografia-surface .trail-motion-path {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 0;
+}
+.cartografia-surface .trail-halo,
+.cartografia-surface .trail,
+.cartografia-surface .trail-current,
+.cartografia-surface .trail-pulse {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.cartografia-surface .trail-halo {
+  stroke: currentColor;
+  stroke-width: 8;
+  opacity: 0.05;
+}
+.cartografia-surface .trail {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 1;
+  transition:
+    stroke 220ms cubic-bezier(0.4, 1, 0.2, 1),
+    stroke-width 220ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .trail-current {
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-dasharray: 12 88;
+  stroke-dashoffset: 100;
+  opacity: 0.08;
+  animation: trail-current-sweep 4.8s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+.cartografia-surface .trail-pulse {
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-dasharray: 1 26;
+  stroke-dashoffset: 0;
+  opacity: 0.34;
+  animation: trail-pulse-forward 2.9s linear infinite;
+  pointer-events: none;
+}
+.cartografia-surface .trail-node {
+  fill: var(--cream);
+  stroke: currentColor;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.38;
+}
+.cartografia-surface .trail-node-target {
+  fill: currentColor;
+  stroke: var(--cream);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 1px 2px rgba(77, 61, 34, 0.18));
+}
+.cartografia-surface .trail-node-ripple {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.08;
+  animation: trail-node-breathe 2.8s ease-in-out infinite;
+}
+.cartografia-surface .trail-node-ripple-target {
+  opacity: 0.12;
+  animation-duration: 2.2s;
+}
+.cartografia-surface .trail-gate {
+  color: inherit;
+  opacity: 0.68;
+  filter: drop-shadow(0 1px 4px rgba(77, 61, 34, 0.14));
+}
+.cartografia-surface .trail-gate-shape {
+  fill: rgba(247, 241, 227, 0.86);
+  stroke: currentColor;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.cartografia-surface .trail-gate-core {
+  fill: currentColor;
+  stroke: var(--cream);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.cartografia-surface .trail-beacon {
+  color: inherit;
+  opacity: 0.46;
+  filter: drop-shadow(0 1px 2px rgba(77, 61, 34, 0.18));
+}
+.cartografia-surface .trail-beacon.secondary {
+  opacity: 0.28;
+}
+.cartografia-surface .trail-beacon-shape {
+  fill: currentColor;
+  stroke: rgba(247, 241, 227, 0.84);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cartografia-surface .trail-vessel {
+  color: inherit;
+  opacity: 0.58;
+  filter: drop-shadow(0 1px 3px rgba(77, 61, 34, 0.24));
+}
+.cartografia-surface .trail-vessel.secondary {
+  opacity: 0.32;
+}
+.cartografia-surface .trail-vessel-shape {
+  fill: currentColor;
+  stroke: var(--cream);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.cartografia-surface .trail-vessel-wake {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0.34;
+  vector-effect: non-scaling-stroke;
+}
+.cartografia-surface .world.lens-relations .atom:not(.has-relations),
+.cartografia-surface .world.lens-relations .region:not(.has-relations) {
+  opacity: 0.36;
+}
+.cartografia-surface .world.lens-relations .atom.has-relations {
+  opacity: 1;
+  border-color: var(--bronze-soft);
+  box-shadow: 0 12px 28px rgba(77, 61, 34, 0.08);
+}
+.cartografia-surface .world.lens-relations .trail-group.trail-feed.path-visible {
+  opacity: 0.72;
+}
+.cartografia-surface .world.lens-relations .trail-group.trail-feedback.path-visible {
+  opacity: 0.82;
+}
+.cartografia-surface .atom .a-relation-port {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--bronze);
+  background: var(--cream);
+  box-shadow: 0 0 0 5px rgba(138, 106, 53, 0.08);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 180ms cubic-bezier(0.32, 0.72, 0.24, 1);
+  pointer-events: none;
+}
+.cartografia-surface .world.lens-relations .atom.has-relations .a-relation-port,
+.cartografia-surface .atom.has-relations:hover .a-relation-port,
+.cartografia-surface .atom.has-relations.active .a-relation-port {
+  opacity: 1;
+}
+.cartografia-surface .world.lens-risk .trail-group:not(.trail-sequence),
+.cartografia-surface .world.lens-recent .trail-group:not(.trail-sequence) {
+  opacity: 0;
+}
+.cartografia-surface .trail-sequence {
+  color: rgba(38, 31, 23, 0.76);
+}
+.cartografia-surface .trail-sequence .trail-core {
+  stroke-width: 1.35;
+}
+.cartografia-surface .trail-sequence .trail-pulse {
+  stroke-width: 2.1;
+  opacity: 0.28;
+  stroke-dasharray: 2 24;
+  animation-duration: 2.2s;
+}
+.cartografia-surface .trail-sequence .trail-current {
+  stroke-width: 3;
+  opacity: 0.06;
+  animation-duration: 3.6s;
+}
+.cartografia-surface .trail-sequence .trail-vessel {
+  opacity: 0.30;
+}
+.cartografia-surface .trail-sequence .trail-vessel-shape {
+  stroke-width: 0.8;
+}
+.cartografia-surface .trail-feed {
+  color: rgba(138, 106, 53, 0.42);
+}
+.cartografia-surface .trail-feed .trail-core {
+  stroke-width: 1.15;
+}
+.cartografia-surface .trail-feed .trail-halo {
+  stroke-width: 11;
+  opacity: 0.045;
+}
+.cartografia-surface .trail-feedback {
+  color: rgba(74, 95, 58, 0.70);
+}
+.cartografia-surface .trail-feedback .trail-core {
+  stroke-width: 1.45;
+}
+.cartografia-surface .trail-feedback .trail-pulse {
+  stroke-width: 2.8;
+  opacity: 0.46;
+  animation-duration: 3.4s;
+}
+.cartografia-surface .trail-feedback .trail-current {
+  stroke-width: 5.5;
+  opacity: 0.16;
+  animation-duration: 5.6s;
+}
+.cartografia-surface .trail-feedback .trail-vessel-shape {
+  fill: var(--moss);
+}
+.cartografia-surface .trail-feedback .trail-vessel {
+  opacity: 0.72;
+}
+.cartografia-surface .trail-feedback .trail-gate {
+  opacity: 0.86;
+}
+.cartografia-surface .trail-feedback .trail-beacon {
+  opacity: 0.48;
+}
+.cartografia-surface .trail-span-inbound {
+  color: rgba(151, 112, 57, 0.52);
+}
+.cartografia-surface .trail-span-outbound {
+  color: rgba(47, 75, 91, 0.46);
+}
+.cartografia-surface .trail-span-return {
+  color: rgba(74, 95, 58, 0.74);
+}
+.cartografia-surface .trail-feed .trail-core { stroke-dasharray: 10 8; }
+.cartografia-surface .trail-feedback .trail-core { stroke-dasharray: 8 6; }
+.cartografia-surface .trail-group.trail-lane-1 { opacity: 0.88; }
+.cartografia-surface .trail-group.trail-lane-2 { opacity: 0.70; }
+.cartografia-surface .trail-group.trail-lane-3 { opacity: 0.58; }
+.cartografia-surface .trail-group.path-active {
+  color: var(--bronze-deep);
+  opacity: 1;
+  filter: drop-shadow(0 2px 3px rgba(94, 69, 32, 0.18));
+}
+.cartografia-surface .trail-group.path-active .trail-halo {
+  stroke-width: 14;
+  opacity: 0.16;
+}
+.cartografia-surface .trail-group.path-active .trail-core {
+  stroke-width: 2.15;
+}
+.cartografia-surface .trail-group.path-active .trail-pulse {
+  stroke-width: 3.4;
+  opacity: 0.72;
+  stroke-dasharray: 2 18;
+  animation-duration: 1.45s;
+}
+.cartografia-surface .trail-group.path-active .trail-current {
+  stroke-width: 6;
+  opacity: 0.22;
+  animation-duration: 2.8s;
+}
+.cartografia-surface .trail-group.path-active .trail-node {
+  opacity: 1;
+}
+.cartografia-surface .trail-group.path-active .trail-node-ripple {
+  opacity: 0.28;
+}
+.cartografia-surface .trail-group.path-active .trail-gate {
+  opacity: 1;
+}
+.cartografia-surface .trail-group.path-active .trail-gate-shape {
+  stroke-width: 1.8;
+}
+.cartografia-surface .trail-group.path-active .trail-beacon {
+  opacity: 0.78;
+}
+.cartografia-surface .trail-group.path-active .trail-node-source {
+  fill: var(--cream);
+  stroke-width: 1.8;
+}
+.cartografia-surface .trail-group.path-active .trail-node-target {
+  stroke-width: 2.8;
+}
+.cartografia-surface .trail-group.path-active .trail-vessel {
+  opacity: 0.88;
+}
+.cartografia-surface .world.dim-others .trail-group:not(.path-active):not(.trail-sequence) { opacity: 0.18; }
+.cartografia-surface .world.lens-evidence .trail-group.trail-feedback.path-visible {
+  opacity: 0.92;
+}
+.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-halo {
+  opacity: 0.18;
+}
+.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-current {
+  opacity: 0.22;
+}
+.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-vessel {
+  opacity: 0.90;
+}
+.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-gate {
+  opacity: 1;
+}
+.cartografia-surface .world.lens-evidence .trail-group.trail-feed.path-visible {
+  opacity: 0.24;
+}
+.cartografia-surface .world.lens-evidence .trail-group.trail-sequence.path-visible,
+.cartografia-surface .world.lens-relations .trail-group.trail-sequence.path-visible {
+  opacity: 0.44;
+}
+.cartografia-surface .world.lens-risk .atom:not(.has-risk),
+.cartografia-surface .world.lens-risk .region:not(.has-risk) {
+  opacity: 0.22;
+}
+.cartografia-surface .world.lens-risk .atom.has-risk {
+  opacity: 1;
+  border-color: var(--rec-red-soft);
+  box-shadow: inset 4px 0 0 var(--rec-red), 0 16px 34px rgba(138, 48, 37, 0.14);
+}
+.cartografia-surface .world.lens-risk .region.has-risk {
+  opacity: 1;
+  border-color: rgba(138, 48, 37, 0.24);
+  box-shadow: 0 20px 42px rgba(138, 48, 37, 0.08);
+}
+.cartografia-surface .world.lens-recent .atom:not(.recently-touched),
+.cartografia-surface .world.lens-recent .region:not(.has-recent) {
+  opacity: 0.24;
+}
+.cartografia-surface .world.lens-recent .atom.recently-touched {
+  opacity: 1;
+  border-color: var(--bronze-soft);
+  box-shadow: 0 0 0 2px var(--bronze-veil), 0 14px 30px rgba(138, 106, 53, 0.13);
+}
+.cartografia-surface .world.lens-recent .region.has-recent {
+  opacity: 1;
+  border-color: var(--bronze-soft);
+  box-shadow: 0 20px 42px rgba(138, 106, 53, 0.10);
+}
+.cartografia-surface .world.lens-evidence .region:not(.territory-evidence):not(.territory-docs):not(.has-evidence),
+.cartografia-surface .world.lens-evidence .atom:not(.has-evidence):not(.has-next):not(.just-edited) {
+  opacity: 0.34;
+}
+.cartografia-surface .world.lens-evidence .territory-evidence,
+.cartografia-surface .world.lens-evidence .territory-docs,
+.cartografia-surface .world.lens-evidence .region.has-evidence,
+.cartografia-surface .world.lens-evidence .atom.has-evidence {
+  opacity: 1;
+  border-color: var(--moss-soft);
+  box-shadow: 0 18px 42px rgba(74, 95, 58, 0.10);
+}
+
+/* ─── ISOLATE MODE ───────────────────────── */
+.cartografia-surface .world.isolate-mode .atom:not(.active):not(.kin) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.isolate-mode .region:not(.kin-host) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.isolate-mode .ribbon {
+  opacity: 0.18;
+  transition: opacity 320ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.isolate-mode .trail-group:not(.path-active) {
+  opacity: 0;
+  transition: opacity 320ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.isolate-mode .atom.active {
+  border: 2px solid var(--bronze);
+  background: var(--cream);
+  box-shadow: 0 22px 44px rgba(138, 106, 53, 0.22), 0 0 0 6px var(--bronze-glow);
+  transform: scale(1.035);
+  z-index: 10;
+  transition:
+    transform 320ms cubic-bezier(0.4, 1, 0.2, 1),
+    box-shadow 320ms cubic-bezier(0.4, 1, 0.2, 1),
+    border-color 320ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.isolate-mode .atom.kin {
+  opacity: 1;
+  border-color: var(--bronze-soft);
+  transition:
+    opacity 320ms cubic-bezier(0.4, 1, 0.2, 1) 80ms,
+    border-color 320ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.isolate-mode .region.kin-host { opacity: 1; }
+.cartografia-surface .world.isolate-mode .region.kin-host .region-head { opacity: 0.55; }
+.cartografia-surface .world.isolate-mode .trail-group.path-active {
+  color: var(--bronze-deep);
+  opacity: 1;
+}
+.cartografia-surface .world.isolate-mode .trail-group.path-active .trail-core {
+  stroke-width: 2.45;
+}
+
+@keyframes trail-pulse-forward {
+  from { stroke-dashoffset: 28; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes trail-current-sweep {
+  from { stroke-dashoffset: 104; }
+  62% { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes trail-node-breathe {
+  0%, 100% {
+    opacity: 0.12;
+    stroke-width: 1;
+  }
+  50% {
+    opacity: 0.36;
+    stroke-width: 2.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .trail-current,
+  .cartografia-surface .trail-pulse,
+  .cartografia-surface .trail-node-ripple {
+    animation: none;
+  }
+  .cartografia-surface .trail-vessel {
+    display: none;
+  }
+}

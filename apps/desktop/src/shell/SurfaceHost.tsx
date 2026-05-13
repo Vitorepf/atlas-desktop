@@ -1,8 +1,8 @@
 import type { BootSnapshot } from '@atlas/domain'
-import { CartografiaSurface } from '../components/cartografia/CartografiaSurface'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Surface } from '../hooks/useSurface'
 import type { BridgeActions, BridgeSnapshot } from '../hooks/useBridge'
+import { CartografiaSurface } from '../surfaces/cartografia/CartografiaSurface'
 import { CodeSurface } from '../surfaces/code/CodeSurface'
 
 interface SurfaceHostProps {
