@@ -1,0 +1,28 @@
+[package]
+name = "atlas-tauri"
+description = "Tauri shell · the operational cabin around the Kernel."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "atlas_tauri"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Workspace siblings · the Tauri shell composes the native crates.
+atlas-bridge = { path = "../atlas-bridge" }
+atlas-platform = { path = "../atlas-platform" }
+atlas-receipts = { path = "../atlas-receipts" }
+atlas-canon = { path = "../atlas-canon" }

@@ -1,0 +1,21 @@
+{
+  "name": "atlas-desktop-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Atlas Code desktop cockpit · Tauri/React operational surface for the Atlas Engineering Operations System.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@atlas/desktop",
+    "build": "npm run build --workspace=@atlas/desktop",
+    "lint": "npm run lint --workspaces --if-present",
+    "tauri": "npm run tauri --workspace=@atlas/desktop",
+    "tauri:dev": "npm run tauri:dev --workspace=@atlas/desktop",
+    "tauri:build": "npm run tauri:build --workspace=@atlas/desktop"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.1"
+  }
+}

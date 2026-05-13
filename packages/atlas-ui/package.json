@@ -1,0 +1,24 @@
+{
+  "name": "@atlas/ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Atlas Code · shared React components and editorial primitives. CSS tokens live in the consuming app; this package is composition only.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "~6.0.2"
+  }
+}

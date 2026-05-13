@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Atlas Code",
+  "version": "0.1.0",
+  "identifier": "com.atlas.code",
+  "build": {
+    "beforeDevCommand": "npm run dev --workspace=@atlas/desktop",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build --workspace=@atlas/desktop",
+    "frontendDist": "../../apps/desktop/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Atlas Code",
+        "width": 1440,
+        "height": 960,
+        "minWidth": 1180,
+        "minHeight": 760,
+        "decorations": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": []
+  }
+}
