@@ -142,11 +142,17 @@ export interface GraphAudit {
   vaultIndexed: number
 }
 
+export interface CartographySources {
+  repoDocsPath: string
+  obsidianVaultPath: string
+}
+
 /**
  * Resposta canônica de `/atlas-cartography/graph`.
  */
 export interface CartographyGraph {
   audit: GraphAudit
+  sources: CartographySources
   universe: Continent[]
   pipeline: PipelineStep[]
   lanes: Record<string, Lane>

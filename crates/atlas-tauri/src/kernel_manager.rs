@@ -91,10 +91,25 @@ struct Inner {
 impl KernelManagerState {
     pub async fn snapshot(&self) -> KernelStatusReport {
         let guard = self.inner.lock().await;
-        let mut report = guard.status.clone().unwrap_or_else(KernelStatusReport::booting);
+        let mut report = guard
+            .status
+            .clone()
+            .unwrap_or_else(KernelStatusReport::booting);
         // Always replace tails with the freshest copy from the rolling buffers.
-        let stdout = guard.stdout_tail.lock().await.iter().cloned().collect::<Vec<_>>();
-        let stderr = guard.stderr_tail.lock().await.iter().cloned().collect::<Vec<_>>();
+        let stdout = guard
+            .stdout_tail
+            .lock()
+            .await
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        let stderr = guard
+            .stderr_tail
+            .lock()
+            .await
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
         report.stdout_tail = stdout;
         report.stderr_tail = stderr;
         report
@@ -210,28 +225,30 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
         let guard = state.inner.lock().await;
         Arc::clone(&guard.stderr_tail)
     };
-    let server_child = match spawn_artisan_serve(&php, &server_path, &stdout_tail, &stderr_tail).await
-    {
-        Ok(c) => c,
-        Err(e) => {
-            let report = KernelStatusReport {
-                status: KernelStatus::Failed,
-                message: format!("artisan serve failed: {e}"),
-                failure_code: Some("artisan_spawn_failed".to_string()),
-                repair_hint: Some("Run `php artisan serve` manually to inspect the error".to_string()),
-                server_path: Some(path_string(server_path.clone())),
-                php_path: Some(path_string(php.clone())),
-                url: kernel_url(),
-                port: KERNEL_PORT,
-                queue_running: false,
-                stdout_tail: vec![],
-                stderr_tail: vec![],
-            };
-            let mut guard = state.inner.lock().await;
-            guard.status = Some(report.clone());
-            return report;
-        }
-    };
+    let server_child =
+        match spawn_artisan_serve(&php, &server_path, &stdout_tail, &stderr_tail).await {
+            Ok(c) => c,
+            Err(e) => {
+                let report = KernelStatusReport {
+                    status: KernelStatus::Failed,
+                    message: format!("artisan serve failed: {e}"),
+                    failure_code: Some("artisan_spawn_failed".to_string()),
+                    repair_hint: Some(
+                        "Run `php artisan serve` manually to inspect the error".to_string(),
+                    ),
+                    server_path: Some(path_string(server_path.clone())),
+                    php_path: Some(path_string(php.clone())),
+                    url: kernel_url(),
+                    port: KERNEL_PORT,
+                    queue_running: false,
+                    stdout_tail: vec![],
+                    stderr_tail: vec![],
+                };
+                let mut guard = state.inner.lock().await;
+                guard.status = Some(report.clone());
+                return report;
+            }
+        };
 
     // 5. Poll /health up to 15s.
     let mut ready = false;
@@ -269,7 +286,9 @@ pub async fn boot(state: Arc<KernelManagerState>) -> KernelStatusReport {
     let token = read_token_from_env(&server_path);
     export_env(&kernel_url(), token.as_deref());
 
-    let worker_child = spawn_queue_worker(&php, &server_path, &stdout_tail, &stderr_tail).await.ok();
+    let worker_child = spawn_queue_worker(&php, &server_path, &stdout_tail, &stderr_tail)
+        .await
+        .ok();
     let queue_running = worker_child.is_some();
 
     let report = KernelStatusReport {

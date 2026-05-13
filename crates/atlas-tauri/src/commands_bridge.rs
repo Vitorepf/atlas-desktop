@@ -14,9 +14,8 @@ use crate::AppState;
 use atlas_bridge::ApplyDiffAck;
 use atlas_bridge::AtlasBridge;
 use atlas_bridge::{
-    DecisionReceiptDto, EvidenceDto, GateRunDto, HealthDto, MessageDto, ObraDto,
-    QualityGateDto, ReceiptSignaturePayload as BridgeReceiptSignaturePayload, SessionDto,
-    SignedReceiptAck,
+    DecisionReceiptDto, EvidenceDto, GateRunDto, HealthDto, MessageDto, ObraDto, QualityGateDto,
+    ReceiptSignaturePayload as BridgeReceiptSignaturePayload, SessionDto, SignedReceiptAck,
 };
 use atlas_platform::{PtyManager, PtyOpenRequest, PtySpawnedEvent};
 use atlas_receipts::ReceiptSigner;
@@ -43,7 +42,11 @@ pub async fn bridge_health(state: State<'_, AppState>) -> Result<HealthDto, Stri
 // 2
 #[tauri::command]
 pub async fn bridge_list_obras(state: State<'_, AppState>) -> Result<Vec<ObraDto>, String> {
-    bridge_of(&state).await.list_obras().await.map_err(into_str_err)
+    bridge_of(&state)
+        .await
+        .list_obras()
+        .await
+        .map_err(into_str_err)
 }
 
 // 3
@@ -53,7 +56,8 @@ pub async fn bridge_create_obra(
     intent: String,
     objective: String,
 ) -> Result<ObraDto, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .create_obra(&intent, &objective)
         .await
         .map_err(into_str_err)
@@ -65,7 +69,8 @@ pub async fn bridge_list_sessions(
     state: State<'_, AppState>,
     obra_id: String,
 ) -> Result<Vec<SessionDto>, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .list_sessions(&obra_id)
         .await
         .map_err(into_str_err)
@@ -77,7 +82,8 @@ pub async fn bridge_get_session(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<Vec<MessageDto>, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .get_session(&thread_id)
         .await
         .map_err(into_str_err)
@@ -122,7 +128,8 @@ pub async fn bridge_send_intent(
     body: String,
     channel: String,
 ) -> Result<MessageDto, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .send_intent(&session_id, &body, &channel)
         .await
         .map_err(into_str_err)
@@ -134,7 +141,8 @@ pub async fn bridge_get_receipt(
     state: State<'_, AppState>,
     decision_id: String,
 ) -> Result<DecisionReceiptDto, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .get_receipt(&decision_id)
         .await
         .map_err(into_str_err)
@@ -147,7 +155,8 @@ pub async fn bridge_sign_receipt(
     decision_id: String,
     signature: BridgeReceiptSignaturePayload,
 ) -> Result<SignedReceiptAck, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .sign_receipt(&decision_id, signature)
         .await
         .map_err(into_str_err)
@@ -159,7 +168,8 @@ pub async fn bridge_list_evidence(
     state: State<'_, AppState>,
     obra_id: String,
 ) -> Result<Vec<EvidenceDto>, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .list_evidence(&obra_id)
         .await
         .map_err(into_str_err)
@@ -167,10 +177,12 @@ pub async fn bridge_list_evidence(
 
 // 11a
 #[tauri::command]
-pub async fn bridge_list_gates(
-    state: State<'_, AppState>,
-) -> Result<Vec<QualityGateDto>, String> {
-    bridge_of(&state).await.list_gates().await.map_err(into_str_err)
+pub async fn bridge_list_gates(state: State<'_, AppState>) -> Result<Vec<QualityGateDto>, String> {
+    bridge_of(&state)
+        .await
+        .list_gates()
+        .await
+        .map_err(into_str_err)
 }
 
 // 11b
@@ -179,7 +191,11 @@ pub async fn bridge_run_gate(
     state: State<'_, AppState>,
     gate_id: String,
 ) -> Result<GateRunDto, String> {
-    bridge_of(&state).await.run_gate(&gate_id).await.map_err(into_str_err)
+    bridge_of(&state)
+        .await
+        .run_gate(&gate_id)
+        .await
+        .map_err(into_str_err)
 }
 
 // 12
@@ -189,7 +205,8 @@ pub async fn bridge_apply_diff(
     patch_id: String,
     run_gates: Vec<String>,
 ) -> Result<ApplyDiffAck, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .apply_diff(&patch_id, run_gates)
         .await
         .map_err(into_str_err)
@@ -200,24 +217,30 @@ pub async fn bridge_apply_diff(
 // All return raw serde_json::Value — frontend adapter owns the shape.
 
 #[tauri::command]
-pub async fn bridge_boot(
-    state: State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await.boot_snapshot().await.map_err(into_str_err)
+pub async fn bridge_boot(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .boot_snapshot()
+        .await
+        .map_err(into_str_err)
 }
 
 #[tauri::command]
-pub async fn bridge_mcp_status(
-    state: State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await.mcp_status().await.map_err(into_str_err)
+pub async fn bridge_mcp_status(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .mcp_status()
+        .await
+        .map_err(into_str_err)
 }
 
 #[tauri::command]
-pub async fn bridge_list_works(
-    state: State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await.list_works().await.map_err(into_str_err)
+pub async fn bridge_list_works(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .list_works()
+        .await
+        .map_err(into_str_err)
 }
 
 #[tauri::command]
@@ -227,7 +250,8 @@ pub async fn bridge_create_work(
     objective: String,
     domain: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .create_work(&intent, &objective, domain.as_deref())
         .await
         .map_err(into_str_err)
@@ -238,7 +262,8 @@ pub async fn bridge_get_work_state(
     state: State<'_, AppState>,
     work_id: String,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .get_work_state(&work_id)
         .await
         .map_err(into_str_err)
@@ -249,7 +274,8 @@ pub async fn bridge_get_thread(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .get_thread_v2(&thread_id)
         .await
         .map_err(into_str_err)
@@ -263,7 +289,8 @@ pub async fn bridge_send_intent_v2(
     channel: Option<String>,
     obra_id: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .send_intent_v2(
             thread_id.as_deref(),
             &body,
@@ -279,7 +306,8 @@ pub async fn bridge_get_receipt_v2(
     state: State<'_, AppState>,
     decision_id: String,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .get_receipt_v2(&decision_id)
         .await
         .map_err(into_str_err)
@@ -289,7 +317,8 @@ pub async fn bridge_get_receipt_v2(
 pub async fn bridge_list_gate_runs(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .list_gate_runs_raw()
         .await
         .map_err(into_str_err)
@@ -302,14 +331,19 @@ pub async fn bridge_list_gate_runs(
 pub async fn bridge_cartography_graph(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await.cartography_graph().await.map_err(into_str_err)
+    bridge_of(&state)
+        .await
+        .cartography_graph()
+        .await
+        .map_err(into_str_err)
 }
 
 #[tauri::command]
 pub async fn bridge_cartography_recent_changes(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .cartography_recent_changes()
         .await
         .map_err(into_str_err)
@@ -320,7 +354,8 @@ pub async fn bridge_cartography_note(
     state: State<'_, AppState>,
     graph_id: String,
 ) -> Result<serde_json::Value, String> {
-    bridge_of(&state).await
+    bridge_of(&state)
+        .await
         .cartography_note(&graph_id)
         .await
         .map_err(into_str_err)
@@ -381,10 +416,7 @@ pub async fn pty_resize(
 }
 
 #[tauri::command]
-pub async fn pty_close(
-    pty: State<'_, Arc<PtyManager>>,
-    id: String,
-) -> Result<(), String> {
+pub async fn pty_close(pty: State<'_, Arc<PtyManager>>, id: String) -> Result<(), String> {
     pty.close(&id)
 }
 

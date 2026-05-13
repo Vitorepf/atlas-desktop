@@ -31,6 +31,7 @@ export interface CartografiaState {
 
   view: CartographyView
   continent: string
+  systemParentId: string | null
   focusedId: string | null
   isolatedId: string | null
   hoverId: string | null
@@ -38,6 +39,7 @@ export interface CartografiaState {
 
   setView: (v: CartographyView) => void
   selectContinent: (id: string) => void
+  enterNode: (graphId: string) => void
   enterIsolate: (graphId: string) => void
   exitIsolate: () => void
   enterGear: (graphId: string) => void
@@ -58,6 +60,7 @@ export function useCartografia(): CartografiaState {
 
   const [view, setViewState] = useState<CartographyView>('flow')
   const [continent, setContinent] = useState<string>('atlas')
+  const [systemParentId, setSystemParentId] = useState<string | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [isolatedId, setIsolatedId] = useState<string | null>(null)
   const [hoverId, setHover] = useState<string | null>(null)
@@ -179,7 +182,7 @@ export function useCartografia(): CartografiaState {
       const g = await bridge.loadCartographyGraph()
       if (cancelledRef.current) return
       if (g) setGraph(g)
-      else setErrors((e) => ['cartography graph offline', ...e].slice(0, 8))
+      else setErrors((e) => ['cartography graph unavailable', ...e].slice(0, 8))
     } catch (e) {
       if (!cancelledRef.current)
         setErrors((es) => [`graph · ${String(e)}`, ...es].slice(0, 8))
@@ -248,12 +251,16 @@ export function useCartografia(): CartografiaState {
     if (v === 'flow' || v === 'universe' || v === 'system') {
       setFocusedId(null)
     }
-  }, [])
+    if (v === 'universe') setSystemParentId(null)
+    if (v === 'system') setSystemParentId(continent === 'atlas' ? 'atlas' : continent)
+    if (v === 'flow') setSystemParentId('atlas-ai-kernel-pipeline')
+  }, [continent])
 
   const selectContinent = useCallback((id: string) => {
     setContinent(id)
     setFocusedId(null)
     setIsolatedId(null)
+    setSystemParentId(id === 'atlas' ? 'atlas-ai-kernel-pipeline' : id)
     // Atlas continent has the canonical kernel pipeline; outros mostram system grid.
     setViewState(id === 'atlas' ? 'flow' : 'system')
   }, [])
@@ -272,10 +279,33 @@ export function useCartografia(): CartografiaState {
     },
     [loadNoteFor]
   )
+
+  const enterNode = useCallback(
+    (graphId: string) => {
+      const children = graph?.semanticGraph?.hierarchy?.[graphId] ?? []
+      if (children.length > 0 && graphId !== 'atlas-ai-kernel-pipeline') {
+        setSystemParentId(graphId)
+        setFocusedId(null)
+        setIsolatedId(null)
+        setViewState('system')
+        return
+      }
+      if (graphId === 'atlas-ai-kernel-pipeline') {
+        setSystemParentId(graphId)
+        setFocusedId(null)
+        setIsolatedId(null)
+        setViewState('flow')
+        return
+      }
+      enterGear(graphId)
+    },
+    [enterGear, graph?.semanticGraph?.hierarchy]
+  )
+
   const exitGear = useCallback(() => {
     setFocusedId(null)
-    setViewState('flow')
-  }, [])
+    setViewState(systemParentId && systemParentId !== 'atlas-ai-kernel-pipeline' ? 'system' : 'flow')
+  }, [systemParentId])
 
   const enterSubflow = useCallback(() => setViewState('subflow'), [])
 
@@ -286,7 +316,11 @@ export function useCartografia(): CartografiaState {
       if (view === 'subflow') setViewState('gear')
       else if (view === 'gear') exitGear()
       else if (isolatedId) exitIsolate()
-      else if (view === 'universe' || view === 'system') setViewState('flow')
+      else if (view === 'system') {
+        setSystemParentId(continent === 'atlas' ? 'atlas-ai-kernel-pipeline' : continent)
+        setViewState(continent === 'atlas' ? 'flow' : 'universe')
+      }
+      else if (view === 'universe') setViewState('flow')
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -302,6 +336,7 @@ export function useCartografia(): CartografiaState {
 
     view,
     continent,
+    systemParentId,
     focusedId,
     isolatedId,
     hoverId,
@@ -309,6 +344,7 @@ export function useCartografia(): CartografiaState {
 
     setView,
     selectContinent,
+    enterNode,
     enterIsolate,
     exitIsolate,
     enterGear,

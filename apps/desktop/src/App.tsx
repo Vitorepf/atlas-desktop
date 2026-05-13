@@ -1,17 +1,13 @@
 import { useCallback } from 'react'
-import { CartografiaSurface } from './components/cartografia/CartografiaSurface'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { LeftRail } from './components/LeftRail'
-import { MainStage } from './components/MainStage'
-import { ObraBar } from './components/ObraBar'
-import { RightRail } from './components/RightRail'
-import { TerminalTabs } from './components/TerminalTabs'
 import { TopBar } from './components/TopBar'
 import { useBoot } from './hooks/useBoot'
 import { useBridge } from './hooks/useBridge'
 import { useKernelStatus } from './hooks/useKernelStatus'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useSurface } from './hooks/useSurface'
+import { AtlasShell } from './shell/AtlasShell'
+import { SurfaceHost } from './shell/SurfaceHost'
+import { useTerminalStore } from './state/terminalStore'
 
 /**
  * Atlas Desktop · single .app, multiple sovereign surfaces.
@@ -28,6 +24,7 @@ import { useSurface } from './hooks/useSurface'
 function App() {
   const { surface, setSurface } = useSurface()
   const b = useBridge()
+  const terminalPlacement = useTerminalStore((s) => s.dockPlacement)
 
   const onKernelReady = useCallback(() => {
     void (async () => {
@@ -46,7 +43,7 @@ function App() {
   const { mcp } = useMcpStatus(kernel.status === 'ready' || b.mode !== 'tauri')
 
   return (
-    <div className={`atlas-shell surface-${surface}`}>
+    <AtlasShell surface={surface} terminalPlacement={terminalPlacement}>
       <TopBar
         mode={b.mode}
         loading={b.loading || b.busy}
@@ -57,47 +54,8 @@ function App() {
         mcp={mcp}
       />
 
-      {surface === 'code' ? (
-        <>
-          <ObraBar obra={b.obra} onCreate={b.createObra} busy={b.busy} />
-          <LeftRail
-            obras={b.obras}
-            activeObraId={b.obra?.id ?? null}
-            active={b.active}
-            recent={b.recent}
-            loading={b.loading}
-            busy={b.busy}
-            onSelectObra={b.selectObra}
-          />
-          <MainStage
-            stages={b.sdd}
-            messages={b.messages}
-            receiptHash={b.receipt?.id ?? ''}
-            loading={b.loading}
-            busy={b.busy}
-            hasObra={!!b.obra}
-            onSend={b.sendIntent}
-          />
-          <ErrorBoundary label="RightRail">
-            <RightRail
-              receipt={b.receipt}
-              gates={b.gates}
-              core={b.core}
-              evidence={b.evidence}
-              boot={boot}
-              busy={b.busy}
-              onSignReceipt={b.signReceipt}
-              onRunGate={b.runGate}
-            />
-          </ErrorBoundary>
-          <TerminalTabs initialCwd={b.core.workspacePath} ptyMode={b.core.pty} />
-        </>
-      ) : (
-        <ErrorBoundary label="Cartografia">
-          <CartografiaSurface />
-        </ErrorBoundary>
-      )}
-    </div>
+      <SurfaceHost surface={surface} bridge={b} boot={boot} />
+    </AtlasShell>
   )
 }
 

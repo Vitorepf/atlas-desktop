@@ -1,5 +1,5 @@
 /**
- * TimelineFloater · top-right ao-vivo das mudanças recentes no canon.
+ * TimelineFloater · painel ao-vivo das mudanças recentes no canon.
  *
  * Cada row clicável → entra em foco daquela peça. "fresh" se < 60s.
  */
@@ -15,7 +15,7 @@ interface TimelineFloaterProps {
 export function TimelineFloater({ changes, atomIndex, onPick }: TimelineFloaterProps) {
   const top = changes.slice(0, 5)
   return (
-    <aside className="timeline-floater floater no-pan">
+    <aside className="timeline-panel">
       <div className="tl-head">
         <span className="tl-title">Mudanças recentes</span>
         <span className="tl-live">ao vivo</span>

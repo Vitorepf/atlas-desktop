@@ -16,6 +16,9 @@ pub enum BridgeError {
     #[error("kernel response was not valid json: {0}")]
     KernelJson(#[source] reqwest::Error),
 
+    #[error("kernel response was not valid json: {0}")]
+    KernelInvalidJson(String),
+
     #[error("kernel stream broke mid-flight: {0}")]
     StreamBroken(#[source] reqwest::Error),
 

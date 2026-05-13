@@ -1,6 +1,6 @@
 # ADR-0003 · Cartografia do Atlas Desktop
 
-Status: proposed · 2026-05-13
+Status: accepted · 2026-05-13
 
 ## Resumo
 
@@ -8,6 +8,10 @@ A Cartografia do Atlas Desktop e a interface navegavel da verdade canonica do
 Atlas. Ela nao e editor, nao e Obsidian reimplementado e nao e uma copia do
 Vault. Ela le fontes reais, mostra origem e caminho de cada peca, permite
 navegar do universo ate a engrenagem e torna verificavel o que foi documentado.
+
+Este ADR define o que a Cartografia e. O contrato obrigatorio de escala,
+modularizacao e refatoracao vive em
+`docs/architecture/0006-cartography-surface-scalability-contract.md`.
 
 Frase canonica:
 
@@ -304,4 +308,3 @@ Sem audit, a Cartografia vira uma tela bonita sem confianca operacional.
 ADR-0002 define prontidao profissional do Atlas Desktop inteiro. Este documento
 detalha apenas a Cartografia e deve ser usado como contrato de implementacao da
 tela `Cartografia #1`.
-

@@ -4,11 +4,11 @@
  * world canvas keeps the canonical visual.
  */
 
-export const WORLD_WIDTH = 1800
+export const WORLD_WIDTH = 2200
 export const WORLD_HEIGHT = 1380
 
 export const PIPELINE_LAYOUT = {
-  x: 660,
+  x: 780,
   y: 80,
   w: 480,
   stepHeight: 84,
@@ -16,12 +16,12 @@ export const PIPELINE_LAYOUT = {
 }
 
 export const LANE_LAYOUT: Record<string, { x: number; y: number; w: number }> = {
-  'domain-plane': { x: 40, y: 100, w: 240 },
-  capabilities: { x: 40, y: 760, w: 240 },
-  'business-context-side': { x: 340, y: 380, w: 260 },
-  hks: { x: 1200, y: 100, w: 280 },
-  'evidence-loop': { x: 1200, y: 480, w: 280 },
-  'doc-os': { x: 1200, y: 1100, w: 280 },
+  'domain-plane': { x: 80, y: 100, w: 260 },
+  capabilities: { x: 80, y: 760, w: 260 },
+  'business-context-side': { x: 420, y: 380, w: 280 },
+  hks: { x: 1540, y: 100, w: 310 },
+  'evidence-loop': { x: 1540, y: 480, w: 310 },
+  'doc-os': { x: 1540, y: 1100, w: 310 },
 }
 
 /**

@@ -1,21 +1,27 @@
 /**
- * Inspector · right-rail editorial · sempre presente.
+ * Inspector · left-rail editorial · sempre presente.
  *
  * Renderiza:
  * - source line (badge repo|vault + path + status / "atualizado há Xs")
  * - kind eyebrow + title + lede
  * - ficha 7 (entrada/saída/depende/alimenta/evidência/gargalo/próxima ação)
  * - markdown viewer do .md real (lazy-loaded via loadNoteFor)
- * - actions list (read-only · placeholders pra ações futuras)
+ * - actions list (read-only · open/copy/reveal source actions)
  * - tags
  *
  * Quando nada está hover/foco, mostra default "Atlas AI Kernel Pipeline".
  * Quando uma peça está sob hover/isolate/focus, mostra a ficha dela.
  */
 import { useEffect, useState } from 'react'
-import type { CartographyAtom, CartographyNote, RecentChange } from '@atlas/domain'
+import type { CartographyAtom, CartographyNote, CartographySources, RecentChange } from '@atlas/domain'
 import { formatTimeAgo, toRoman } from './layout'
 import { parseMarkdown } from './markdown'
+import {
+  copyCartographyPath,
+  openCartographyDocument,
+  revealCartographyDocument,
+} from './sourceActions'
+import { TimelineFloater } from './TimelineFloater'
 import { bridge } from '../../lib/bridge'
 
 interface InspectorProps {
@@ -24,6 +30,17 @@ interface InspectorProps {
   recent: RecentChange | null
   noteCache: Record<string, CartographyNote | null>
   loadNoteFor: (graphId: string) => Promise<CartographyNote | null>
+  sourceRoots: CartographySources | null
+  recentChanges: RecentChange[]
+  atomIndex: Record<string, CartographyAtom>
+  onPickRecent: (graphId: string) => void
+  collapsed: boolean
+  width: number
+  minWidth: number
+  maxWidth: number
+  onToggleCollapsed: () => void
+  onNudgeWidth: (delta: number) => void
+  onResetWidth: () => void
 }
 
 interface FichaField {
@@ -34,7 +51,23 @@ interface FichaField {
   next?: boolean
 }
 
-export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorProps) {
+export function Inspector({
+  atom,
+  recent,
+  noteCache,
+  loadNoteFor,
+  sourceRoots,
+  recentChanges,
+  atomIndex,
+  onPickRecent,
+  collapsed,
+  width,
+  minWidth,
+  maxWidth,
+  onToggleCollapsed,
+  onNudgeWidth,
+  onResetWidth,
+}: InspectorProps) {
   const [, forceTick] = useState(0)
 
   useEffect(() => {
@@ -43,7 +76,22 @@ export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorPro
     void loadNoteFor(atom.graphId).then(() => forceTick((n) => n + 1))
   }, [atom, noteCache, loadNoteFor])
 
-  if (!atom) return <DefaultInspector />
+  if (!atom) {
+    return (
+      <DefaultInspector
+        recentChanges={recentChanges}
+        atomIndex={atomIndex}
+        onPickRecent={onPickRecent}
+        collapsed={collapsed}
+        width={width}
+        minWidth={minWidth}
+        maxWidth={maxWidth}
+        onToggleCollapsed={onToggleCollapsed}
+        onNudgeWidth={onNudgeWidth}
+        onResetWidth={onResetWidth}
+      />
+    )
+  }
 
   const isPipeline = atom.kind === 'pipeline'
   const isLateral = atom.kind === 'lateral'
@@ -89,7 +137,18 @@ export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorPro
     : ['lateral', atom.regionId ?? '', atom.graphId].filter(Boolean)
 
   return (
-    <aside className="cart-inspector">
+    <aside className={`cart-inspector${collapsed ? ' is-collapsed' : ''}`}>
+      <InspectorResizeToolbar
+        collapsed={collapsed}
+        width={width}
+        minWidth={minWidth}
+        maxWidth={maxWidth}
+        onToggleCollapsed={onToggleCollapsed}
+        onNudgeWidth={onNudgeWidth}
+        onResetWidth={onResetWidth}
+      />
+      {collapsed ? <CollapsedInspectorRail onToggleCollapsed={onToggleCollapsed} /> : null}
+      <div className="ins-content" aria-hidden={collapsed}>
       <div className="ins-header">
         <div className="ins-source">
           <span className={`ins-source-badge ${atom.graphSource}`}>{atom.graphSource}</span>
@@ -103,6 +162,16 @@ export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorPro
 
       <div className="ins-body">
         <Ficha fields={fields} />
+
+        <div className="ins-section ins-fit">
+          <h3>Onde Isso Encaixa</h3>
+          <div className="fit-grid">
+            <FitRow label="Mundo" value={atom.graphSource === 'vault' ? 'AtlasVault' : 'Repo oficial'} />
+            <FitRow label="Camada" value={atom.graphLayer ?? atom.kind} />
+            <FitRow label="Pai" value={atom.graphParent ?? atom.regionHead ?? '—'} />
+            <FitRow label="Arquivo" value={atom.sourcePath || '—'} mono />
+          </div>
+        </div>
 
         <details className="ins-md" open>
           <summary>
@@ -137,19 +206,19 @@ export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorPro
             <ActionRow
               label={atom.graphSource === 'vault' ? 'Abrir nota no Obsidian' : 'Abrir doc no editor'}
               glyph="↗"
-              onClick={() => void openDocument(atom, note)}
+              onClick={() => void openCartographyDocument(atom, note, sourceRoots)}
               disabled={atom.missingSource}
             />
             <ActionRow
               label="Copiar caminho canônico"
               glyph="⎘"
-              onClick={() => void copyPath(atom)}
+              onClick={() => void copyCartographyPath(atom)}
               disabled={!atom.sourcePath}
             />
             <ActionRow
               label="Revelar no Finder"
               glyph="✦"
-              onClick={() => void revealInFinder(atom, note)}
+              onClick={() => void revealCartographyDocument(atom, note, sourceRoots)}
               disabled={atom.missingSource || bridge.mode !== 'tauri'}
             />
           </div>
@@ -165,52 +234,183 @@ export function Inspector({ atom, recent, noteCache, loadNoteFor }: InspectorPro
             ))}
           </div>
         </div>
+
       </div>
+      </div>
+      <RecentChangesDock
+        collapsed={collapsed}
+        changes={recentChanges}
+        atomIndex={atomIndex}
+        onPickRecent={onPickRecent}
+      />
     </aside>
   )
 }
 
-function DefaultInspector() {
+function DefaultInspector({
+  recentChanges,
+  atomIndex,
+  onPickRecent,
+  collapsed,
+  width,
+  minWidth,
+  maxWidth,
+  onToggleCollapsed,
+  onNudgeWidth,
+  onResetWidth,
+}: {
+  recentChanges: RecentChange[]
+  atomIndex: Record<string, CartographyAtom>
+  onPickRecent: (graphId: string) => void
+  collapsed: boolean
+  width: number
+  minWidth: number
+  maxWidth: number
+  onToggleCollapsed: () => void
+  onNudgeWidth: (delta: number) => void
+  onResetWidth: () => void
+}) {
   return (
-    <aside className="cart-inspector">
+    <aside className={`cart-inspector${collapsed ? ' is-collapsed' : ''}`}>
+      <InspectorResizeToolbar
+        collapsed={collapsed}
+        width={width}
+        minWidth={minWidth}
+        maxWidth={maxWidth}
+        onToggleCollapsed={onToggleCollapsed}
+        onNudgeWidth={onNudgeWidth}
+        onResetWidth={onResetWidth}
+      />
+      {collapsed ? <CollapsedInspectorRail onToggleCollapsed={onToggleCollapsed} /> : null}
+      <div className="ins-content" aria-hidden={collapsed}>
       <div className="ins-header">
         <div className="ins-source">
-          <span className="ins-source-badge repo">repo</span>
-          <span className="ins-source-path">
-            docs/engineering-knowledge-base/atlas-ai-pipeline.md
-          </span>
-          <span className="ins-source-status">sincronizado</span>
+          <span className="ins-source-badge mixed">cartografia</span>
+          <span className="ins-source-path">repo oficial + AtlasVault</span>
+          <span className="ins-source-status">aguardando seleção</span>
         </div>
-        <div className="ins-kind">Fluxo operacional</div>
-        <h2 className="ins-title">Atlas AI Kernel Pipeline</h2>
+        <div className="ins-kind">Leitura canônica</div>
+        <h2 className="ins-title">Selecione uma peça do mapa</h2>
         <p className="ins-lede">
-          17 etapas em sequência. Lateral alimenta; loop de evidência volta ao Decide. Passe o
-          mouse sobre uma peça pra ver conexões; clique pra entrar em Foco.
+          O painel carrega o arquivo real quando uma engrenagem, sistema ou nota fica em foco.
         </p>
       </div>
       <div className="ins-body">
         <details className="ins-md" open>
           <summary>
             <span className="ins-md-title">Conteúdo do arquivo</span>
-            <span className="ins-md-meta">— passe o mouse sobre uma peça</span>
+            <span className="ins-md-meta">— nenhum arquivo selecionado</span>
           </summary>
           <div className="ins-md-body">
             <p style={{ color: 'var(--ink3)', fontStyle: 'italic' }}>
-              Selecione uma engrenagem ou lateral pra carregar o arquivo canônico
-              correspondente.
+              Este painel só renderiza conteúdo depois que a Cartografia recebe uma fonte real do backend.
             </p>
           </div>
         </details>
-        <div className="ins-section">
-          <h3>Tags</h3>
-          <div className="ins-tags">
-            <span className="ins-tag">kernel</span>
-            <span className="ins-tag">pipeline</span>
-            <span className="ins-tag">atlas-system-graph</span>
-          </div>
-        </div>
       </div>
+      </div>
+      <RecentChangesDock
+        collapsed={collapsed}
+        changes={recentChanges}
+        atomIndex={atomIndex}
+        onPickRecent={onPickRecent}
+      />
     </aside>
+  )
+}
+
+function RecentChangesDock({
+  collapsed,
+  changes,
+  atomIndex,
+  onPickRecent,
+}: {
+  collapsed: boolean
+  changes: RecentChange[]
+  atomIndex: Record<string, CartographyAtom>
+  onPickRecent: (graphId: string) => void
+}) {
+  if (collapsed) return null
+  return (
+    <div className="ins-recent-dock">
+      <TimelineFloater
+        changes={changes}
+        atomIndex={atomIndex}
+        onPick={onPickRecent}
+      />
+    </div>
+  )
+}
+
+function InspectorResizeToolbar({
+  collapsed,
+  width,
+  minWidth,
+  maxWidth,
+  onToggleCollapsed,
+  onNudgeWidth,
+  onResetWidth,
+}: {
+  collapsed: boolean
+  width: number
+  minWidth: number
+  maxWidth: number
+  onToggleCollapsed: () => void
+  onNudgeWidth: (delta: number) => void
+  onResetWidth: () => void
+}) {
+  return (
+    <div className="ins-resize-toolbar" aria-label="Controles da coluna de navegação">
+      <button
+        type="button"
+        className="ins-tool"
+        onClick={onToggleCollapsed}
+        title={collapsed ? 'Restaurar coluna' : 'Minimizar coluna e ampliar navegação'}
+        aria-label={collapsed ? 'Restaurar coluna' : 'Minimizar coluna e ampliar navegação'}
+      >
+        <span className={`ins-tool-icon${collapsed ? ' restore' : ''}`} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="ins-tool"
+        onClick={() => onNudgeWidth(-40)}
+        disabled={collapsed || width <= minWidth}
+        title="Diminuir coluna"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        className="ins-tool"
+        onClick={() => onNudgeWidth(40)}
+        disabled={collapsed || width >= maxWidth}
+        title="Aumentar coluna"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        className="ins-tool text"
+        onClick={onResetWidth}
+        disabled={collapsed}
+        title="Voltar para largura padrão"
+      >
+        reset
+      </button>
+    </div>
+  )
+}
+
+function CollapsedInspectorRail({ onToggleCollapsed }: { onToggleCollapsed: () => void }) {
+  return (
+    <button
+      type="button"
+      className="collapsed-inspector-rail"
+      onClick={onToggleCollapsed}
+      title="Restaurar coluna da Cartografia"
+    >
+      <span>Abrir painel</span>
+    </button>
   )
 }
 
@@ -232,6 +432,23 @@ function Ficha({ fields }: { fields: FichaField[] }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function FitRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className="fit-row">
+      <span>{label}</span>
+      <strong className={mono ? 'mono' : ''}>{value}</strong>
     </div>
   )
 }
@@ -270,76 +487,4 @@ function ActionRow({
       <span className="a-glyph">{glyph}</span>
     </button>
   )
-}
-
-// ──────────────────────────────────────────────────────────────────────
-// Real action handlers · open repo doc / vault note / reveal in finder
-
-async function openDocument(atom: CartographyAtom, note: CartographyNote | null): Promise<void> {
-  const source = note?.source ?? atom.graphSource
-  const relativePath = note?.sourcePath ?? atom.sourcePath
-  if (!relativePath) return
-
-  if (source === 'vault') {
-    // obsidian:// URI scheme · falls back to file: if Obsidian isn't installed.
-    const vault = 'AtlasVault'
-    const file = encodeURIComponent(stripExtension(relativePath))
-    const uri = `obsidian://open?vault=${encodeURIComponent(vault)}&file=${file}`
-    try {
-      await bridge.openExternal(uri)
-    } catch {
-      /* swallow · best-effort */
-    }
-    return
-  }
-
-  // Repo docs · prefer absolute path so external editor can read it.
-  // We send `file://...` for the absolute repo path joined with relative.
-  try {
-    const path = absoluteRepoPath(relativePath)
-    await bridge.openExternal(`file://${path}`)
-  } catch {
-    /* ignore */
-  }
-}
-
-async function copyPath(atom: CartographyAtom): Promise<void> {
-  const path = atom.sourcePath
-  if (!path) return
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(path)
-    }
-  } catch {
-    /* clipboard permission denied · silent */
-  }
-}
-
-async function revealInFinder(atom: CartographyAtom, note: CartographyNote | null): Promise<void> {
-  const relative = note?.sourcePath ?? atom.sourcePath
-  if (!relative) return
-  const absolute = note?.source === 'vault' ? absoluteVaultPath(relative) : absoluteRepoPath(relative)
-  try {
-    await bridge.revealInFinder(absolute)
-  } catch {
-    /* ignore */
-  }
-}
-
-function stripExtension(path: string): string {
-  return path.replace(/\.md$/i, '')
-}
-
-function absoluteRepoPath(relative: string): string {
-  // Convention: repo docs root is fixed under the canonical atlas-server checkout.
-  // The bridge has no access to the server-side path, so we use the user's
-  // canonical layout.
-  const base = '/Users/vitorepf/develop/Atlas/atlas-server'
-  return relative.startsWith('/') ? relative : `${base}/${relative}`
-}
-
-function absoluteVaultPath(relative: string): string {
-  const base =
-    '/Users/vitorepf/Library/Mobile Documents/iCloud~md~obsidian/Documents/AtlasVault'
-  return relative.startsWith('/') ? relative : `${base}/${relative}`
 }

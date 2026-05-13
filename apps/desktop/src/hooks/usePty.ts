@@ -45,6 +45,8 @@ export function usePty(opts: PtyOptions): UsePtyResult {
   const onDataRef = useRef(opts.onData)
   const onExitRef = useRef(opts.onExit)
   const idRef = useRef<string | null>(null)
+  const spawnedRef = useRef<{ id: string; shell: string; cwd: string; cols: number; rows: number } | null>(null)
+  const pendingWritesRef = useRef<string[]>([])
   const dataUnsubRef = useRef<(() => void) | null>(null)
   const exitUnsubRef = useRef<(() => void) | null>(null)
 
@@ -91,12 +93,20 @@ export function usePty(opts: PtyOptions): UsePtyResult {
         rows: opts.rows ?? 36,
       })
       idRef.current = sp.id
+      spawnedRef.current = sp
       setId(sp.id)
       setSpawned(sp)
       setLastError(null)
+
+      const pending = pendingWritesRef.current.splice(0)
+      for (const chunk of pending) {
+        await bridge.ptyWrite(sp.id, chunk)
+      }
+
       return sp
     } catch (e) {
       idRef.current = null
+      spawnedRef.current = null
       setId(null)
       setLastError(e instanceof Error ? e.message : String(e))
       return null
@@ -106,8 +116,9 @@ export function usePty(opts: PtyOptions): UsePtyResult {
 
   const write = useCallback(async (data: string) => {
     const currentId = idRef.current
-    if (!currentId) {
-      setLastError('PTY ainda não está pronto para receber teclado.')
+    if (!currentId || !spawnedRef.current) {
+      pendingWritesRef.current.push(data)
+      setLastError(null)
       return
     }
     try {
@@ -134,6 +145,8 @@ export function usePty(opts: PtyOptions): UsePtyResult {
     dataUnsubRef.current = null
     exitUnsubRef.current = null
     idRef.current = null
+    spawnedRef.current = null
+    pendingWritesRef.current = []
     setId(null)
     setSpawned(null)
   }, [])
@@ -146,6 +159,8 @@ export function usePty(opts: PtyOptions): UsePtyResult {
       if (currentId) {
         void bridge.ptyClose(currentId).catch(() => undefined)
       }
+      spawnedRef.current = null
+      pendingWritesRef.current = []
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

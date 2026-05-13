@@ -89,7 +89,17 @@ async function fetchHttp<T>(
     const body = await response.text()
     throw new Error(`bridge http ${response.status}: ${body.slice(0, 120)}`)
   }
-  return response.json() as Promise<T>
+  return parseJsonBody<T>(await response.text())
+}
+
+function parseJsonBody<T>(body: string): T {
+  try {
+    return JSON.parse(body) as T
+  } catch (firstError) {
+    const start = body.search(/[\[{]/)
+    if (start < 0) throw firstError
+    return JSON.parse(body.slice(start)) as T
+  }
 }
 
 /** Throws explicitly when offline so useBridge can report errors honestly. */
@@ -454,10 +464,12 @@ export const bridge = {
       if (MODE === 'tauri') raw = await invokeTauri<unknown>('bridge_cartography_graph')
       else if (MODE === 'http') raw = await fetchHttp<unknown>('/atlas-cartography/graph')
       else return null
-      return adaptCartographyGraph(raw)
+      const graph = adaptCartographyGraph(raw)
+      if (!graph) throw new Error('cartography graph payload invalid')
+      return graph
     } catch (e) {
-      console.warn('[bridge] cartography graph offline', e)
-      return null
+      console.warn('[bridge] cartography graph failed', e)
+      throw e
     }
   },
 
@@ -877,6 +889,10 @@ function adaptCartographyGraph(raw: unknown): CartographyGraph | null {
       generatedAt: (r.generated_at as string | null) ?? null,
       repoIndexed: Number(sources.repo_indexed_count ?? 0),
       vaultIndexed: Number(sources.vault_indexed_count ?? 0),
+    },
+    sources: {
+      repoDocsPath: String(sources.repo_docs_path ?? ''),
+      obsidianVaultPath: String(sources.obsidian_vault_path ?? ''),
     },
     universe,
     pipeline,

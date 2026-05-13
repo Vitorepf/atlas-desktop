@@ -45,8 +45,6 @@ zstyle ':vcs_info:git:*' formats ' · %b'
 zstyle ':vcs_info:*' enable git
 
 setopt prompt_subst
-setopt transient_rprompt
-
 _atlas_cmd_started_at=0
 _atlas_last_duration=''
 
@@ -64,12 +62,12 @@ _atlas_node_segment() {
   if command -v node >/dev/null 2>&1; then
     version=" $(node -v 2>/dev/null)"
   fi
-  print -n "%F{green} via ${version}%f"
+  print -n "%F{green} via node${version}%f"
 }
 
 _atlas_docker_segment() {
   _atlas_has_any_file Dockerfile docker-compose.yml docker-compose.yaml compose.yml compose.yaml || return
-  print -n "%F{cyan} · 󰡨 docker%f"
+  print -n "%F{cyan} · docker%f"
 }
 
 _atlas_duration_segment() {
@@ -92,14 +90,18 @@ _atlas_format_duration() {
 
 _atlas_terminal_precmd() {
   local atlas_exit=$?
+  local atlas_had_command=0
   if (( _atlas_cmd_started_at > 0 )); then
+    atlas_had_command=1
     local elapsed=$(( EPOCHSECONDS - _atlas_cmd_started_at ))
     _atlas_last_duration="$(_atlas_format_duration "$elapsed")"
     _atlas_cmd_started_at=0
   fi
   vcs_info 2>/dev/null || true
   printf '\e]7;file://%s%s\a' "${HOST:-localhost}" "$PWD"
-  printf '\e]133;D;%d\a' "$atlas_exit"
+  if (( atlas_had_command )); then
+    printf '\e]133;D;%d\a' "$atlas_exit"
+  fi
   printf '\e]133;A\a'
 }
 
@@ -133,8 +135,8 @@ fi
 add-zsh-hook precmd _atlas_terminal_precmd 2>/dev/null || true
 add-zsh-hook preexec _atlas_terminal_preexec 2>/dev/null || true
 
-PROMPT=$'%F{green}❯%f '
-RPROMPT=$'$(_atlas_duration_segment)'
+PROMPT=$'%F{blue}%~%f${vcs_info_msg_0_}$(_atlas_node_segment)$(_atlas_docker_segment)\n%F{green}❯%f %{\e]133;B\a%}'
+RPROMPT=''
 "#;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -387,5 +389,13 @@ mod tests {
 
         let _ = manager.close(&spawned.id);
         assert!(seen, "expected command output, got: {output:?}");
+    }
+
+    #[test]
+    fn zsh_bootstrap_emits_complete_prompt_protocol() {
+        assert!(ATLAS_ZSHRC.contains("printf '\\e]133;C\\a'"));
+        assert!(ATLAS_ZSHRC.contains("printf '\\e]133;D;%d\\a'"));
+        assert!(ATLAS_ZSHRC.contains("printf '\\e]133;A\\a'"));
+        assert!(ATLAS_ZSHRC.contains("%{\\e]133;B\\a%}"));
     }
 }

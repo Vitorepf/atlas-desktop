@@ -102,14 +102,11 @@ async fn atlas_kernel_retry(
 }
 
 #[tauri::command]
-async fn atlas_bridge_reconfigure(
-    app: AppHandle,
-) -> Result<(), String> {
+async fn atlas_bridge_reconfigure(app: AppHandle) -> Result<(), String> {
     // Rebuild AtlasBridge from current env (after the kernel becomes ready
     // we exported ATLAS_SERVER_URL + ATLAS_TOKEN, so the new bridge picks them
     // up automatically).
-    let new_bridge = AtlasBridge::new(AtlasServerConfig::default())
-        .map_err(|e| e.to_string())?;
+    let new_bridge = AtlasBridge::new(AtlasServerConfig::default()).map_err(|e| e.to_string())?;
     let state: tauri::State<'_, AppState> = app.state();
     let mut guard = state.bridge.lock().await;
     *guard = new_bridge;
@@ -136,10 +133,9 @@ pub struct AppState {
 pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| {
-                    "atlas_tauri=info,atlas_bridge=info,kernel_manager=info".into()
-                }),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "atlas_tauri=info,atlas_bridge=info,kernel_manager=info".into()
+            }),
         )
         .with_target(true)
         .compact()

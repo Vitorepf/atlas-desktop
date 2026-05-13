@@ -48,8 +48,14 @@ export function Atom({
     'atom',
     isPipeline ? 'atom-pipe' : '',
     atom.missingSource ? 'missing-source' : '',
+    atom.risk ? 'has-risk' : '',
+    atom.next ? 'has-next' : '',
+    hasRelations(atom) ? 'has-relations' : '',
+    atom.evidence ? 'has-evidence' : '',
+    isOperationalOrphan(atom) ? 'is-orphan' : '',
     isActive ? 'active' : '',
     isKin ? 'kin' : '',
+    recent ? 'recently-touched' : '',
     recent && recent.secondsAgo < 60 ? 'just-edited' : '',
   ]
     .filter(Boolean)
@@ -94,6 +100,8 @@ export function Atom({
       onMouseLeave={() => onHover?.(null)}
       onClick={handleClick}
     >
+      {hasRelations(atom) ? <span className="a-relation-port" aria-hidden="true" /> : null}
+
       {recent && recent.secondsAgo < 60 ? (
         <span className="a-live-badge">atualizado {formatTimeAgo(recent.secondsAgo)}</span>
       ) : null}
@@ -101,6 +109,7 @@ export function Atom({
       {isPipeline ? (
         <>
           <span className="a-num">{toRoman(atom.graphOrder ?? 0)}.</span>
+          <span className="a-symbol" aria-hidden="true">{pipelineSymbol(atom.graphOrder ?? 0)}</span>
           <div className="a-body">
             <span className="a-name">{atom.name}</span>
             {atom.deck ? <span className="a-deck">{atom.deck}</span> : null}
@@ -128,6 +137,14 @@ export function Atom({
   )
 }
 
+function pipelineSymbol(order: number): string {
+  if (order <= 3) return 'in'
+  if (order <= 8) return 'ctx'
+  if (order <= 12) return 'run'
+  if (order <= 15) return 'ok'
+  return 'out'
+}
+
 function SourceLine({ atom }: { atom: CartographyAtom }) {
   return (
     <span className="a-source">
@@ -135,4 +152,22 @@ function SourceLine({ atom }: { atom: CartographyAtom }) {
       <span className="a-source-path">{atom.sourcePath || '—'}</span>
     </span>
   )
+}
+
+function isOperationalOrphan(atom: CartographyAtom): boolean {
+  if (atom.kind === 'continent' || atom.kind === 'lane') return false
+  const depends = atom.depends ?? []
+  const unblocks = atom.unblocks ?? []
+  const flowsTo = atom.flowsTo ?? []
+  return depends.length === 0 && unblocks.length === 0 && flowsTo.length === 0
+}
+
+function hasRelations(atom: CartographyAtom): boolean {
+  return [
+    atom.graphParent,
+    ...(atom.depends ?? []),
+    ...(atom.unblocks ?? []),
+    ...(atom.flowsTo ?? []),
+    ...(atom.governs ?? []),
+  ].some(Boolean)
 }

@@ -66,13 +66,10 @@ impl AtlasBridge {
     where
         T: serde::de::DeserializeOwned,
     {
-        let response = req
-            .send()
-            .await
-            .map_err(|e| BridgeError::KernelOffline {
-                url: self.config.base_url.clone(),
-                source: e,
-            })?;
+        let response = req.send().await.map_err(|e| BridgeError::KernelOffline {
+            url: self.config.base_url.clone(),
+            source: e,
+        })?;
         Self::extract_json(response).await
     }
 
@@ -85,18 +82,42 @@ impl AtlasBridge {
             let body = response.text().await.unwrap_or_default();
             return Err(BridgeError::from_status(status.as_u16(), body));
         }
-        response.json::<T>().await.map_err(BridgeError::KernelJson)
+        let body = response.text().await.map_err(BridgeError::KernelJson)?;
+        Self::parse_json_body(&body)
+    }
+
+    fn parse_json_body<T>(body: &str) -> BridgeResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        serde_json::from_str::<T>(body).or_else(|first_error| {
+            let Some(start) = body.find(|ch| ch == '{' || ch == '[') else {
+                return Err(BridgeError::KernelInvalidJson(format!(
+                    "{first_error}; response prefix: {}",
+                    body.chars().take(160).collect::<String>()
+                )));
+            };
+
+            serde_json::from_str::<T>(&body[start..]).map_err(|second_error| {
+                BridgeError::KernelInvalidJson(format!(
+                    "{second_error}; original parse error: {first_error}; response prefix: {}",
+                    body.chars().take(160).collect::<String>()
+                ))
+            })
+        })
     }
 
     // ────────────────────────────────────────────────────────────────────────
     // 1 · health · REUSE
     pub async fn health(&self) -> BridgeResult<HealthDto> {
-        self.execute(self.build(Method::GET, endpoints::HEALTH)).await
+        self.execute(self.build(Method::GET, endpoints::HEALTH))
+            .await
     }
 
     // 2 · list obras · REUSE
     pub async fn list_obras(&self) -> BridgeResult<Vec<ObraDto>> {
-        self.execute(self.build(Method::GET, endpoints::PROJECTS_LIST)).await
+        self.execute(self.build(Method::GET, endpoints::PROJECTS_LIST))
+            .await
     }
 
     // 3 · create obra · WRAP (intent + objective added to POST /projects body)
@@ -208,7 +229,8 @@ impl AtlasBridge {
         signature: ReceiptSignaturePayload,
     ) -> BridgeResult<SignedReceiptAck> {
         let path = format!("{}{}/sign", endpoints::ATLAS_CODE_SIGN, decision_id);
-        self.execute(self.build(Method::POST, &path).json(&signature)).await
+        self.execute(self.build(Method::POST, &path).json(&signature))
+            .await
     }
 
     // 10 · list evidence by obra · NEW (wraps /tools/evidence + /engineering/runs)
@@ -219,7 +241,8 @@ impl AtlasBridge {
 
     // 11a · list quality gates · REUSE
     pub async fn list_gates(&self) -> BridgeResult<Vec<QualityGateDto>> {
-        self.execute(self.build(Method::GET, endpoints::TOOLS_GATE)).await
+        self.execute(self.build(Method::GET, endpoints::TOOLS_GATE))
+            .await
     }
 
     // 11b · run quality gate · REUSE
@@ -239,7 +262,8 @@ impl AtlasBridge {
             confirm: true,
             run_gates,
         };
-        self.execute(self.build(Method::POST, &path).json(&payload)).await
+        self.execute(self.build(Method::POST, &path).json(&payload))
+            .await
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -247,15 +271,18 @@ impl AtlasBridge {
     // Returned as raw serde_json::Value so the frontend adapter owns shape.
 
     pub async fn boot_snapshot(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_BOOT)).await
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_BOOT))
+            .await
     }
 
     pub async fn mcp_status(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_MCP_STATUS)).await
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_MCP_STATUS))
+            .await
     }
 
     pub async fn list_works(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_WORKS_LIST)).await
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_WORKS_LIST))
+            .await
     }
 
     pub async fn create_work(
@@ -272,7 +299,8 @@ impl AtlasBridge {
             body["domain"] = serde_json::Value::String(d.to_string());
         }
         self.execute(
-            self.build(Method::POST, endpoints::ATLAS_CODE_WORKS_CREATE).json(&body),
+            self.build(Method::POST, endpoints::ATLAS_CODE_WORKS_CREATE)
+                .json(&body),
         )
         .await
     }
@@ -300,7 +328,8 @@ impl AtlasBridge {
         }
 
         self.execute(
-            self.build(Method::POST, endpoints::INTERACTION_CREATE).json(&payload),
+            self.build(Method::POST, endpoints::INTERACTION_CREATE)
+                .json(&payload),
         )
         .await
     }
@@ -321,7 +350,8 @@ impl AtlasBridge {
     }
 
     pub async fn list_gate_runs_raw(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::TOOLS_GATE)).await
+        self.execute(self.build(Method::GET, endpoints::TOOLS_GATE))
+            .await
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -330,15 +360,34 @@ impl AtlasBridge {
 
     /// Raw graph response — frontend adapts shape to camelCase domain types.
     pub async fn cartography_graph(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::CARTOGRAPHY_GRAPH)).await
+        self.execute(self.build(Method::GET, endpoints::CARTOGRAPHY_GRAPH))
+            .await
     }
 
     pub async fn cartography_recent_changes(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::CARTOGRAPHY_RECENT_CHANGES)).await
+        self.execute(self.build(Method::GET, endpoints::CARTOGRAPHY_RECENT_CHANGES))
+            .await
     }
 
     pub async fn cartography_note(&self, graph_id: &str) -> BridgeResult<serde_json::Value> {
-        let path = format!("{}{}", endpoints::CARTOGRAPHY_NOTE, graph_id);
+        let path = format!(
+            "{}{}",
+            endpoints::CARTOGRAPHY_NOTE,
+            encode_path_segment(graph_id)
+        );
         self.execute(self.build(Method::GET, &path)).await
     }
+}
+
+fn encode_path_segment(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char);
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
 }

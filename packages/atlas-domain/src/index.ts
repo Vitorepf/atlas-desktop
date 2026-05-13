@@ -269,6 +269,7 @@ export type {
   CartographyAtom,
   CartographyGraph,
   CartographyNote,
+  CartographySources,
   CartographyView,
   Connection,
   Continent,

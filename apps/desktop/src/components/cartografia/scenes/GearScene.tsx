@@ -7,6 +7,7 @@
  */
 import type { CartographyAtom } from '@atlas/domain'
 import { toRoman } from '../layout'
+import { openCartographyDocument } from '../sourceActions'
 
 interface GearSceneProps {
   atom: CartographyAtom
@@ -114,7 +115,7 @@ export function GearScene({
         <button
           type="button"
           className="focus-action primary"
-          onClick={() => alert(`Abrir no editor (read-only):\n${atom.sourcePath}`)}
+          onClick={() => void openCartographyDocument(atom)}
         >
           ↗ Abrir arquivo no editor
         </button>

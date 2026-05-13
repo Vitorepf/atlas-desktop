@@ -1,6 +1,6 @@
 # ADR-0002 · Prontidao Profissional do Atlas Code e Cartografia
 
-Status: proposed · 2026-05-13
+Status: accepted · 2026-05-13
 
 Este documento transforma o mockup atual do Atlas Desktop em plano executavel
 de produto. A meta nao e apenas "conectar a tela". A meta e fazer a cabine
@@ -118,6 +118,15 @@ observavel e seguro.
 - Sessao terminal deve gerar evidencia quando usada em execucao Atlas.
 - Comandos destrutivos exigem contrato ou confirmacao humana.
 
+Estado atualizado em 2026-05-13:
+
+- PTY real ja existe em `crates/atlas-platform`.
+- Frontend ja isola `TerminalDock`, `TerminalTabs`, `TerminalSession`,
+  `TerminalToolbar`, `TerminalStatusBar` e `session/`.
+- O contrato OSC `A/B/C/D` ja foi separado em protocolo proprio.
+- A prioridade restante e regressao de confianca: comando rapido precisa voltar
+  para estado `ready` de forma visualmente inequívoca.
+
 ## P3 · Cartografia viva
 
 A Cartografia nao e projecao do Vault. Ela e interface de leitura da verdade.
@@ -185,10 +194,16 @@ O MCP precisa aparecer como sistema vivo, nao como texto.
 ## Estado atual auditado
 
 - A tela ja tem visual forte e estados vazios honestos.
+- O shell foi extraido para `apps/desktop/src/shell/`.
+- A surface Code foi separada em slots: obra, left, stage, right e terminal.
+- `components/` virou fachada legada; nao deve receber feature nova.
 - Cartografia ja possui componentes e backend inicial.
 - Server ja possui rotas iniciais `/atlas-cartography/*` e `/atlas-code/*`.
-- O bridge ainda tem divergencias de contrato com rotas legadas.
-- PTY e signing ainda sao indisponiveis.
-- O Kernel manager existe, mas a UI precisa diagnostico acionavel quando falha.
-- O SDD pipeline da tela ainda esta estatico e precisa vir do Kernel.
-
+- O bridge ainda pode ter divergencias de contrato com rotas legadas.
+- PTY real existe, mas precisa regressao de prompt/ready/failed para uso diario
+  sem ambiguidade.
+- Signing existe como boundary arquitetural, mas precisa validacao end-to-end
+  com payload canonico e Ledger.
+- O Kernel manager existe e a UI tem diagnostico acionavel no TopBar.
+- O SDD pipeline da tela ainda precisa evoluir para estado real completo vindo
+  do Kernel.

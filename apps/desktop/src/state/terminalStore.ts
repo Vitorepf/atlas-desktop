@@ -8,22 +8,35 @@ export interface TerminalTabState {
   createdAt: string
 }
 
+export type TerminalPlacement = 'bottom' | 'right'
+
 interface TerminalStore {
   sessions: TerminalTabState[]
   activeId: string | null
   dockHeight: number
   dockMaximized: boolean
+  dockPlacement: TerminalPlacement
   open: (cwd: string, label?: string) => string
   close: (id: string) => void
   select: (id: string) => void
   rename: (id: string, label: string) => void
   setHeight: (px: number) => void
   toggleMaximize: () => void
+  togglePlacement: () => void
   hydrateInitial: (fallbackCwd: string) => void
 }
 
+interface PersistedTerminalState {
+  sessions: TerminalTabState[]
+  activeId: string | null
+  dockHeight: number
+  dockMaximized: boolean
+  dockPlacement: TerminalPlacement
+}
+
 const DEFAULT_HEIGHT = 260
-const MIN_HEIGHT = 168
+const DEFAULT_PLACEMENT: TerminalPlacement = 'right'
+const MIN_HEIGHT = 120
 const MAX_HEIGHT_RATIO = 0.85
 
 function freshId(): string {
@@ -52,6 +65,7 @@ export const useTerminalStore = create<TerminalStore>()(
       activeId: null,
       dockHeight: DEFAULT_HEIGHT,
       dockMaximized: false,
+      dockPlacement: DEFAULT_PLACEMENT,
 
       open: (cwd, label) => {
         const id = freshId()
@@ -98,6 +112,14 @@ export const useTerminalStore = create<TerminalStore>()(
         set({ dockMaximized: !dockMaximized })
       },
 
+      togglePlacement: () => {
+        const { dockPlacement } = get()
+        set({
+          dockPlacement: dockPlacement === 'bottom' ? 'right' : 'bottom',
+          dockMaximized: false,
+        })
+      },
+
       hydrateInitial: (fallbackCwd) => {
         const { sessions, activeId } = get()
         if (sessions.length > 0) {
@@ -124,11 +146,24 @@ export const useTerminalStore = create<TerminalStore>()(
     }),
     {
       name: 'atlas.terminal.v3',
+      version: 4,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<PersistedTerminalState> | undefined
+        return {
+          sessions: Array.isArray(state?.sessions) ? state.sessions : [],
+          activeId: state?.activeId ?? null,
+          dockHeight:
+            typeof state?.dockHeight === 'number' ? state.dockHeight : DEFAULT_HEIGHT,
+          dockMaximized: false,
+          dockPlacement: DEFAULT_PLACEMENT,
+        }
+      },
       partialize: (s) => ({
         sessions: s.sessions,
         activeId: s.activeId,
         dockHeight: s.dockHeight,
         dockMaximized: s.dockMaximized,
+        dockPlacement: s.dockPlacement,
       }),
     },
   ),

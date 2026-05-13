@@ -1,18 +1,21 @@
 import { create } from 'zustand'
 
-interface SessionRuntime {
+export interface SessionRuntime {
   liveCwd: string | null
   lastExit: number | null
   running: boolean
+  inputReady: boolean
+  lastPromptAt: number | null
   commandStartedAt: number | null
   lastDurationMs: number | null
-  completionKind: 'exit' | 'prompt' | 'cwd' | null
+  completionKind: 'exit' | 'prompt' | 'input' | null
 }
 
 interface TerminalRuntimeStore {
   byId: Record<string, SessionRuntime>
   setCwd: (sessionId: string, cwd: string) => void
   markPromptStart: (sessionId: string) => void
+  markPromptInputReady: (sessionId: string) => void
   markCommandStart: (sessionId: string) => void
   markExit: (sessionId: string, code: number | null) => void
   forget: (sessionId: string) => void
@@ -22,6 +25,8 @@ const EMPTY: SessionRuntime = {
   liveCwd: null,
   lastExit: null,
   running: false,
+  inputReady: false,
+  lastPromptAt: null,
   commandStartedAt: null,
   lastDurationMs: null,
   completionKind: null,
@@ -41,14 +46,13 @@ export const useTerminalRuntime = create<TerminalRuntimeStore>((set) => ({
   setCwd: (id, cwd) =>
     set((s) => {
       const prev = s.byId[id] ?? EMPTY
-      const completedByCwd = prev.running
       return {
         byId: patch(s.byId, id, {
           liveCwd: cwd,
-          running: completedByCwd ? false : prev.running,
-          commandStartedAt: completedByCwd ? null : prev.commandStartedAt,
-          lastDurationMs: completedByCwd ? durationSince(prev.commandStartedAt) : prev.lastDurationMs,
-          completionKind: completedByCwd ? 'cwd' : prev.completionKind,
+          running: prev.running,
+          commandStartedAt: prev.commandStartedAt,
+          lastDurationMs: prev.lastDurationMs,
+          completionKind: prev.completionKind,
         }),
       }
     }),
@@ -59,16 +63,29 @@ export const useTerminalRuntime = create<TerminalRuntimeStore>((set) => ({
       return {
         byId: patch(s.byId, id, {
           running: false,
+          inputReady: false,
+          lastPromptAt: Date.now(),
           commandStartedAt: null,
           lastDurationMs: completedByPrompt ? durationSince(prev.commandStartedAt) : prev.lastDurationMs,
           completionKind: completedByPrompt ? 'prompt' : prev.completionKind,
         }),
       }
     }),
+  markPromptInputReady: (id) =>
+    set((s) => ({
+      byId: patch(s.byId, id, {
+        running: false,
+        inputReady: true,
+        lastPromptAt: Date.now(),
+        commandStartedAt: null,
+        completionKind: 'input',
+      }),
+    })),
   markCommandStart: (id) =>
     set((s) => ({
       byId: patch(s.byId, id, {
         running: true,
+        inputReady: false,
         commandStartedAt: Date.now(),
         lastDurationMs: null,
         completionKind: null,
@@ -82,6 +99,7 @@ export const useTerminalRuntime = create<TerminalRuntimeStore>((set) => ({
         byId: patch(s.byId, id, {
           lastExit: code,
           running: false,
+          inputReady: false,
           commandStartedAt: null,
           lastDurationMs,
           completionKind: 'exit',
