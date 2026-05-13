@@ -8,10 +8,14 @@
  * - Subscreve o evento `kernel://ready` pra reagir instantaneamente
  * - Em modo HTTP (browser), assume "ready" pq o usuário sobe o server manual
  *
- * Quando o status muda pra `ready`, dispara `onReady` (a UI faz refetch
- * de tudo via useBridge.refresh).
+ * Quando o status muda pra `ready`, dispara `onReady` UMA SÓ VEZ.
+ *
+ * IMPORTANTE: o useEffect roda APENAS uma vez (deps vazias). O callback
+ * `onReady` é capturado por ref pra que mudanças de identidade no callback
+ * (ex: closure que muda quando state da App.tsx muda) NÃO recriem o
+ * polling — o que causaria loop infinito de refresh.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { bridge } from '../lib/bridge'
 
 export type KernelStatus = 'booting' | 'ready' | 'failed' | 'unconfigured'
@@ -45,7 +49,13 @@ interface UseKernelStatusOpts {
 }
 
 export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusReport {
-  const onReady = opts.onReady
+  // Capture onReady em ref · estável entre renders. O useEffect abaixo NÃO
+  // depende de onReady, então o polling não é recriado a cada render do App.
+  const onReadyRef = useRef(opts.onReady)
+  useEffect(() => {
+    onReadyRef.current = opts.onReady
+  }, [opts.onReady])
+
   const [report, setReport] = useState<KernelStatusReport>(() => {
     if (bridge.mode === 'http') return HTTP_READY_REPORT
     if (bridge.mode === 'offline') return OFFLINE_REPORT
@@ -59,6 +69,12 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusRep
   })
 
   useEffect(() => {
+    // For http mode the initial report is already 'ready'; ainda fire onReady
+    // uma vez pra triggerar o refresh do useBridge.
+    if (bridge.mode === 'http') {
+      onReadyRef.current?.()
+      return
+    }
     if (bridge.mode !== 'tauri') return
 
     let cancelled = false
@@ -66,12 +82,31 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusRep
     let listenUnsub: (() => void) | null = null
     let reachedReady = false
 
+    const stopPolling = () => {
+      if (pollHandle) {
+        clearInterval(pollHandle)
+        pollHandle = null
+      }
+    }
+
     function announce(next: KernelStatusReport) {
       if (cancelled) return
-      setReport(next)
+      // Comparação rasa pra não disparar setState (que causaria re-render do
+      // App + qualquer subscriber) quando o report é igual ao último.
+      setReport((prev) => (sameReport(prev, next) ? prev : next))
       if (!reachedReady && next.status === 'ready') {
         reachedReady = true
-        onReady?.()
+        onReadyRef.current?.()
+        // Uma vez que ficou ready, podemos parar o polling. O backend
+        // continua emitindo via evento `kernel://ready` se quisermos
+        // re-disparar (não é o caso hoje).
+        stopPolling()
+      }
+      if (
+        next.status === 'failed' ||
+        next.status === 'unconfigured'
+      ) {
+        stopPolling()
       }
     }
 
@@ -93,27 +128,32 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): KernelStatusRep
           const tauri = await import('@tauri-apps/api/core')
           const next = await tauri.invoke<KernelStatusReport>('atlas_kernel_status')
           announce(next)
-          if (next.status === 'ready' || next.status === 'failed' || next.status === 'unconfigured') {
-            if (pollHandle) {
-              clearInterval(pollHandle)
-              pollHandle = null
-            }
-          }
         } catch {
           /* keep polling — kernel manager not yet registered */
         }
       }
 
       void tick()
-      pollHandle = setInterval(tick, 600)
+      pollHandle = setInterval(tick, 800)
     })()
 
     return () => {
       cancelled = true
-      if (pollHandle) clearInterval(pollHandle)
+      stopPolling()
       if (listenUnsub) listenUnsub()
     }
-  }, [onReady])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return report
+}
+
+function sameReport(a: KernelStatusReport, b: KernelStatusReport): boolean {
+  return (
+    a.status === b.status &&
+    a.message === b.message &&
+    a.serverPath === b.serverPath &&
+    a.url === b.url &&
+    a.queueRunning === b.queueRunning
+  )
 }
