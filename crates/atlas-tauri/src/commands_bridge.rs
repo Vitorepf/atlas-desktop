@@ -10,8 +10,8 @@ use atlas_bridge::{
     DecisionReceiptDto, EvidenceDto, GateRunDto, HealthDto, MessageDto, ObraDto,
     QualityGateDto, ReceiptSignaturePayload, SessionDto, SignedReceiptAck,
 };
-use atlas_bridge::{ApplyDiffAck, StreamEventDto};
-use tauri::State;
+use atlas_bridge::ApplyDiffAck;
+use tauri::{Emitter, State};
 
 fn into_str_err<E: std::fmt::Display>(e: E) -> String {
     let msg = e.to_string();

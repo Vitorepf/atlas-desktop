@@ -9,9 +9,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "tauri": "tauri --config ../../crates/atlas-tauri/tauri.conf.json",
-    "tauri:dev": "tauri --config ../../crates/atlas-tauri/tauri.conf.json dev",
-    "tauri:build": "tauri --config ../../crates/atlas-tauri/tauri.conf.json build"
+    "tauri": "cd ../../crates/atlas-tauri && tauri",
+    "tauri:dev": "cd ../../crates/atlas-tauri && tauri dev",
+    "tauri:build": "cd ../../crates/atlas-tauri && tauri build"
   },
   "dependencies": {
     "@atlas/domain": "*",

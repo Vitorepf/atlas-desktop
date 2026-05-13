@@ -23,8 +23,9 @@ pub use config::{AtlasServerConfig, BridgeAuth};
 pub use error::BridgeError;
 
 pub use dto::{
-    DecisionReceiptDto, EvidenceDto, GateRunDto, HealthDto, MessageDto, ObraDto, PacketDto,
-    QualityGateDto, ReceiptSignaturePayload, SessionDto, SignedReceiptAck, StreamEventDto,
+    ApplyDiffAck, ApplyDiffPayload, CreateObraPayload, DecisionReceiptDto, EvidenceDto, GateRunDto,
+    HealthDto, MessageDto, ObraDto, PacketDto, QualityGateDto, ReceiptSignaturePayload,
+    SendIntentPayload, SessionDto, SignedReceiptAck, StreamEventDto,
 };
 
 pub type BridgeResult<T> = Result<T, BridgeError>;
