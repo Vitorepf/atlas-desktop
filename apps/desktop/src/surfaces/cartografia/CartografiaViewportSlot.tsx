@@ -92,9 +92,6 @@ export function CartografiaViewportSlot({
           continents={cartografia.graph.universe}
           activeContinentId={cartografia.continent}
           hereLabel={viewModel.hereLabel}
-          view={cartografia.view}
-          continent={viewModel.continent}
-          focusedName={viewModel.focusedAtom?.name ?? null}
           showBackToMap={
             cartografia.view === 'gear' || cartografia.view === 'subflow' || !!cartografia.isolatedId
           }
@@ -103,7 +100,6 @@ export function CartografiaViewportSlot({
           search={search}
           zoomPercent={Math.round(viewport.transform.scale * 100)}
           onSelectContinent={cartografia.selectContinent}
-          onNavigate={cartografia.setView}
           onSetVisualLens={setVisualLens}
           onBackToMap={() => {
             if (cartografia.view === 'gear' || cartografia.view === 'subflow') cartografia.exitGear()

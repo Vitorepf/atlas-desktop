@@ -16,6 +16,7 @@ interface TerminalStore {
   dockHeight: number
   dockMaximized: boolean
   dockPlacement: TerminalPlacement
+  dockVisible: boolean
   open: (cwd: string, label?: string) => string
   close: (id: string) => void
   select: (id: string) => void
@@ -24,6 +25,9 @@ interface TerminalStore {
   toggleMaximize: () => void
   togglePlacement: () => void
   hydrateInitial: (fallbackCwd: string) => void
+  closeDock: () => void
+  openDock: () => void
+  toggleDock: () => void
 }
 
 interface PersistedTerminalState {
@@ -32,6 +36,7 @@ interface PersistedTerminalState {
   dockHeight: number
   dockMaximized: boolean
   dockPlacement: TerminalPlacement
+  dockVisible: boolean
 }
 
 const DEFAULT_HEIGHT = 260
@@ -66,6 +71,7 @@ export const useTerminalStore = create<TerminalStore>()(
       dockHeight: DEFAULT_HEIGHT,
       dockMaximized: false,
       dockPlacement: DEFAULT_PLACEMENT,
+      dockVisible: true,
 
       open: (cwd, label) => {
         const id = freshId()
@@ -120,6 +126,10 @@ export const useTerminalStore = create<TerminalStore>()(
         })
       },
 
+      closeDock: () => set({ dockVisible: false }),
+      openDock: () => set({ dockVisible: true }),
+      toggleDock: () => set({ dockVisible: !get().dockVisible }),
+
       hydrateInitial: (fallbackCwd) => {
         const { sessions, activeId } = get()
         if (sessions.length > 0) {
@@ -156,6 +166,7 @@ export const useTerminalStore = create<TerminalStore>()(
             typeof state?.dockHeight === 'number' ? state.dockHeight : DEFAULT_HEIGHT,
           dockMaximized: false,
           dockPlacement: DEFAULT_PLACEMENT,
+          dockVisible: state?.dockVisible ?? true,
         }
       },
       partialize: (s) => ({
@@ -164,6 +175,7 @@ export const useTerminalStore = create<TerminalStore>()(
         dockHeight: s.dockHeight,
         dockMaximized: s.dockMaximized,
         dockPlacement: s.dockPlacement,
+        dockVisible: s.dockVisible,
       }),
     },
   ),

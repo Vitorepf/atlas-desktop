@@ -1,17 +1,18 @@
 # Cartografia Floaters
 
 Responsavel pelos controles flutuantes que orbitam o mapa sem virar parte do
-canvas: minimap, breadcrumb, busca, lentes visuais, zoom e botoes de retorno.
+canvas: minimap, busca, lentes visuais, zoom e botoes de retorno.
 
 Floaters sao navegacao e orientacao. Eles nao sao fonte canonica, nao carregam
-arquivo, nao fazem polling e nao escrevem no Vault ou no repo.
+arquivo, nao fazem polling e nao escrevem no Vault ou no repo. A trilha de
+localizacao da Cartografia vive no TopBar global e usa `breadcrumbModel.ts`.
 
 ## Arquivos ativos
 
 - `CartographyFloaters.tsx`: composition root dos controles flutuantes.
 - `Minimap.tsx`: lista de continentes, estado recolhido e "voce esta aqui".
 - `minimapModel.ts`: persistencia do minimap e label de source.
-- `Breadcrumb.tsx`: caminho semantico atual e navegacao por nivel.
+- `breadcrumbModel.ts`: modelo puro da trilha semantica publicada no TopBar.
 - `VisualLensToolbar.tsx`: seletor de lentes `flow`, `relations`, `risk`,
   `recent` e `evidence`.
 - `ZoomControls.tsx`: zoom, fit e volta ao universo.

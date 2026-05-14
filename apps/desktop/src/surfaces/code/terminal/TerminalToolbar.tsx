@@ -23,6 +23,7 @@ interface TerminalToolbarProps {
   onToggleMaximize: () => void
   onTogglePlacement: () => void
   onInterrupt: () => void
+  onCloseDock: () => void
 }
 
 export function TerminalToolbar({
@@ -45,6 +46,7 @@ export function TerminalToolbar({
   onToggleMaximize,
   onTogglePlacement,
   onInterrupt,
+  onCloseDock,
 }: TerminalToolbarProps) {
   return (
     <div className="term-tabs" role="tablist">
@@ -110,6 +112,17 @@ export function TerminalToolbar({
             className={`term-dock-icon ${dockPlacement === 'bottom' ? 'to-right-bottom' : 'to-bottom'}`}
             aria-hidden="true"
           />
+        </button>
+        <button
+          type="button"
+          className="term-action icon term-close-dock"
+          onClick={onCloseDock}
+          title="Fechar terminal · ⌘J reabre"
+          aria-label="Fechar terminal"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none">
+            <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
         </button>
       </div>
     </div>

@@ -12,7 +12,7 @@ Arquivos ativos:
 - `04-atoms.css`: atoms e estados de node.
 - `05-scenes.css`: cenas semanticas.
 - `06-floaters.css`: indice dos floaters.
-- `06-floaters-core.css`: breadcrumb, minimap e floaters base.
+- `06-floaters-core.css`: minimap e floaters base.
 - `07-floaters-controls.css`: busca, lentes e zoom.
 - `08-inspector.css`: inspector e leitura canonica.
 - `09-overlay-responsive.css`: overlay e responsividade.

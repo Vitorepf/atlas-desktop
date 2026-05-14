@@ -3,6 +3,38 @@
   position: absolute;
   z-index: 8;
 }
+.cartografia-surface .cartography-top-rail {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: 280px minmax(300px, 420px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  pointer-events: none;
+}
+.cartografia-surface .cartography-top-rail > .floater {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  z-index: auto;
+  pointer-events: auto;
+}
+.cartografia-surface .cartography-top-rail .minimap-floater {
+  width: 100%;
+}
+.cartografia-surface .cartography-top-rail .search-floater {
+  width: 100%;
+}
+.cartografia-surface .cartography-top-rail .visual-lens-floater {
+  justify-self: end;
+  max-width: 100%;
+}
 .cartografia-surface .minimap-floater {
   top: 18px;
   left: 18px;
@@ -273,4 +305,3 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-

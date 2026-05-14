@@ -7,6 +7,7 @@ import { useMcpStatus } from './hooks/useMcpStatus'
 import { useSurface } from './hooks/useSurface'
 import { AtlasShell } from './shell/AtlasShell'
 import { SurfaceHost } from './shell/SurfaceHost'
+import { TopBarLocationTrailProvider } from './shell/topbar/TopBarLocationTrailProvider'
 import { useTerminalStore } from './state/terminalStore'
 
 /**
@@ -43,19 +44,21 @@ function App() {
   const { mcp } = useMcpStatus(kernel.status === 'ready' || b.mode !== 'tauri')
 
   return (
-    <AtlasShell surface={surface} terminalPlacement={terminalPlacement}>
-      <TopBar
-        mode={b.mode}
-        loading={b.loading || b.busy}
-        errors={b.errors}
-        surface={surface}
-        onSurfaceChange={setSurface}
-        kernel={kernel}
-        mcp={mcp}
-      />
+    <TopBarLocationTrailProvider>
+      <AtlasShell surface={surface} terminalPlacement={terminalPlacement}>
+        <TopBar
+          mode={b.mode}
+          loading={b.loading || b.busy}
+          errors={b.errors}
+          surface={surface}
+          onSurfaceChange={setSurface}
+          kernel={kernel}
+          mcp={mcp}
+        />
 
-      <SurfaceHost surface={surface} bridge={b} boot={boot} />
-    </AtlasShell>
+        <SurfaceHost surface={surface} bridge={b} boot={boot} />
+      </AtlasShell>
+    </TopBarLocationTrailProvider>
   )
 }
 

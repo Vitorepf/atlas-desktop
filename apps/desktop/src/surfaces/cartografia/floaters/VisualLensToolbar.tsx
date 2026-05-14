@@ -9,10 +9,10 @@ interface VisualLensToolbarProps {
 export function VisualLensToolbar({ active, stats, onChange }: VisualLensToolbarProps) {
   const items: Array<{ id: VisualLens; label: string; glyph: string; shortcut: string; meta?: number }> = [
     { id: 'flow', label: 'fluxo', glyph: 'I', shortcut: '1' },
-    { id: 'relations', label: 'relacoes', glyph: '↔', shortcut: '2' },
+    { id: 'relations', label: 'relações', glyph: '↔', shortcut: '2' },
     { id: 'risk', label: 'risco', glyph: '△', shortcut: '3' },
     { id: 'recent', label: 'recentes', glyph: '●', shortcut: '4', meta: stats.recent },
-    { id: 'evidence', label: 'evidencia', glyph: '☷', shortcut: '5' },
+    { id: 'evidence', label: 'evidência', glyph: '☷', shortcut: '5' },
   ]
 
   return (

@@ -754,7 +754,7 @@ body.cart-resizing .cart-resize-handle {
 /* ─── Floaters · search + visual lens toolbar slate raised + frosted glass. */
 .cartografia-surface .search-floater,
 .cartografia-surface .visual-lens-floater {
-  background: rgba(45, 67, 81, 0.78) !important;
+  background: rgba(45, 67, 81, 0.82) !important;
   border: 1px solid var(--cc-border-soft) !important;
   border-radius: 6px !important;
   backdrop-filter: blur(12px) saturate(140%) !important;
@@ -1565,18 +1565,296 @@ body.cart-resizing .cart-resize-handle {
   border-color: var(--cc-accent) !important;
 }
 
-/* ─── Search-floater input slate. */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FIX CRÍTICO · BREADCRUMB ↔ VISUAL-LENS TOOLBAR COLLISION
+   Bug: breadcrumb centralizado + toolbar colada à direita colidem quando
+   breadcrumb cresce (ex.: 'AtlasVault › Atlas › AI Kernel · Pipeline').
+   Fix: (1) breadcrumb max-width considera toolbar (520px reservados);
+   (2) overflow hidden + ellipsis no breadcrumb; (3) crumb individual
+   white-space:nowrap mas o container faz clipping editorial.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cartografia-surface .breadcrumb-floater {
+  /* Reserva segura: 360px à esquerda (minimap expanded com padding interno
+     real ~310-320px + margem de respiro 40-50px) e 540px à direita
+     (visual-lens-floater ~500px + margem). z-index 5 garante que se algo
+     der overlap, o minimap (z 8) e a toolbar (z 7) ficam por cima. */
+  left: 360px !important;
+  transform: none !important;
+  right: 540px !important;
+  max-width: none !important;
+  width: auto !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  z-index: 5 !important;
+  background-color: rgba(45, 67, 81, 0.86) !important;
+  background-image: none !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  border-radius: 6px !important;
+  color: var(--cc-text) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'kern' 1 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: none !important;
+  padding: 8px 14px !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.16) !important;
+}
+.cartografia-surface .breadcrumb-floater .crumb {
+  color: var(--cc-text-muted) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  white-space: nowrap !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.cartografia-surface .breadcrumb-floater .crumb:hover {
+  color: var(--cc-accent-strong) !important;
+}
+.cartografia-surface .breadcrumb-floater .crumb.current {
+  color: var(--cc-text-strong) !important;
+  font-variation-settings: 'wght' 620 !important;
+  cursor: default !important;
+}
+.cartografia-surface .breadcrumb-floater .sep {
+  color: var(--cc-accent-strong) !important;
+  padding: 0 4px !important;
+}
+
+/* Visual-lens-floater fica fixo à direita com largura previsível · z-index 7
+   acima do breadcrumb, mas eles não colidem porque breadcrumb termina em
+   right:540 que reserva 522px (largura real ~480-500) + 22px margem. */
+.cartografia-surface .visual-lens-floater {
+  z-index: 7 !important;
+}
+
+/* Quando minimap collapsed (width real ~225px na prática), breadcrumb pode
+   encostar mais à esquerda mas com margem segura de 60px. */
+.cartografia-surface:has(.minimap-floater.is-collapsed) .breadcrumb-floater {
+  left: 285px !important;
+}
+
+/* Viewports estreitos: breadcrumb encolhe right agressivamente. */
+@media (max-width: 1300px) {
+  .cartografia-surface .breadcrumb-floater {
+    right: 520px !important;
+  }
+}
+@media (max-width: 1100px) {
+  .cartografia-surface .breadcrumb-floater {
+    right: 500px !important;
+    font-size: 10px !important;
+    padding: 6px 10px !important;
+  }
+}
+
+/* ─── Search-floater · compact command slot, same palette as Code list. */
+.cartografia-surface .search-floater {
+  top: 18px !important;
+  left: 330px !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: 420px !important;
+  max-width: calc(100% - 920px) !important;
+  min-width: 320px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 10px !important;
+  gap: 8px !important;
+  z-index: 6 !important;
+  background:
+    linear-gradient(180deg, rgba(19, 32, 41, 0.96) 0%, rgba(12, 22, 30, 0.96) 100%) !important;
+  border-color: rgba(127, 167, 196, 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 24px rgba(0, 0, 0, 0.28) !important;
+}
+.cartografia-surface .search-floater:focus-within {
+  border-color: rgba(212, 168, 90, 0.44) !important;
+  box-shadow:
+    inset 2px 0 0 rgba(212, 168, 90, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(212, 168, 90, 0.12),
+    0 12px 28px rgba(0, 0, 0, 0.34) !important;
+}
+.cartografia-surface .search-floater .glyph {
+  color: var(--cc-accent-strong) !important;
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+  opacity: 0.88 !important;
+}
 .cartografia-surface .search-floater input {
   background: transparent !important;
   border: none !important;
-  color: var(--cc-text-strong) !important;
+  box-shadow: none !important;
+  color: var(--cc-text) !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-variation-settings: 'wght' 500 !important;
   font-size: 13px !important;
-  letter-spacing: -0.005em !important;
+  font-style: italic !important;
+  letter-spacing: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  caret-color: var(--cc-accent-strong) !important;
 }
 .cartografia-surface .search-floater input::placeholder {
+  color: var(--cc-text-muted) !important;
+  opacity: 0.72 !important;
+}
+.cartografia-surface .search-floater input::-webkit-search-cancel-button {
+  opacity: 0.34 !important;
+  filter: invert(72%) sepia(9%) saturate(493%) hue-rotate(160deg) brightness(88%) !important;
+}
+.cartografia-surface .search-results {
+  top: calc(100% + 8px) !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-height: min(284px, calc(100vh - 180px)) !important;
+  overflow: auto !important;
+  background:
+    linear-gradient(180deg, rgba(13, 24, 32, 0.985) 0%, rgba(9, 17, 24, 0.985) 100%) !important;
+  border-color: rgba(127, 167, 196, 0.20) !important;
+  border-radius: 6px !important;
+  color: var(--cc-text) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 18px 42px rgba(0, 0, 0, 0.46) !important;
+}
+.cartografia-surface .search-result {
+  border-bottom-color: var(--cc-border-soft) !important;
+  color: var(--cc-text) !important;
+  padding: 11px 14px !important;
+}
+.cartografia-surface .search-result:hover,
+.cartografia-surface .search-result.active,
+.cartografia-surface .search-result[aria-selected='true'] {
+  background:
+    linear-gradient(90deg, rgba(45, 67, 81, 0.78) 0%, rgba(36, 55, 67, 0.56) 100%) !important;
+}
+.cartografia-surface .search-result.active {
+  box-shadow: inset 2px 0 0 var(--cc-accent), inset 0 0 0 1px rgba(127, 167, 196, 0.10) !important;
+}
+.cartografia-surface .search-result .sr-title {
+  color: var(--cc-text-strong) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 13.5px !important;
+  font-variation-settings: 'wght' 650 !important;
+}
+.cartografia-surface .search-result .sr-meta {
   color: var(--cc-text-faint) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+}
+
+@media (max-width: 1280px) {
+  .cartografia-surface .search-floater {
+    top: 64px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(420px, calc(100% - 64px)) !important;
+    max-width: none !important;
+    min-width: 280px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .cartografia-surface .search-floater {
+    width: calc(100% - 32px) !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ─── Top rail ownership · minimap/search/lens never overlap. */
+.cartografia-surface .cartography-top-rail {
+  position: absolute !important;
+  top: 18px !important;
+  left: 18px !important;
+  right: 18px !important;
+  z-index: 10 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(300px, 420px) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: start !important;
+  pointer-events: none !important;
+}
+.cartografia-surface .cartography-top-rail > .floater {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: auto !important;
+  pointer-events: auto !important;
+}
+.cartografia-surface .cartography-top-rail .minimap-floater {
+  grid-column: 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+.cartografia-surface .cartography-top-rail .search-floater {
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+.cartografia-surface .cartography-top-rail .visual-lens-floater {
+  grid-column: 3 !important;
+  justify-self: end !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 1900px) {
+  .cartografia-surface .cartography-top-rail {
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+    grid-template-areas:
+      'minimap lens'
+      'search search' !important;
+    row-gap: 10px !important;
+  }
+  .cartografia-surface .cartography-top-rail .minimap-floater {
+    grid-area: minimap !important;
+  }
+  .cartografia-surface .cartography-top-rail .visual-lens-floater {
+    grid-area: lens !important;
+    max-width: 100% !important;
+  }
+  .cartografia-surface .cartography-top-rail .search-floater {
+    grid-area: search !important;
+    width: 420px !important;
+    max-width: min(420px, calc(100vw - 72px)) !important;
+    justify-self: start !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .cartografia-surface .cartography-top-rail {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      'minimap'
+      'lens'
+      'search' !important;
+  }
+  .cartografia-surface .cartography-top-rail .visual-lens-floater,
+  .cartografia-surface .cartography-top-rail .search-floater {
+    justify-self: stretch !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
 }
 
 /* ─── Viewport bg ambient gradients · slate gold (era bronze warm). */

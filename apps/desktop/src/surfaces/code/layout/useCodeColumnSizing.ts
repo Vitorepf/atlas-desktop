@@ -6,6 +6,7 @@ type ResizeSide = 'left' | 'right'
 export function useCodeColumnSizing() {
   const leftWidth = useCodeLayoutStore((s) => s.leftWidth)
   const rightWidth = useCodeLayoutStore((s) => s.rightWidth)
+  const leftCollapsed = useCodeLayoutStore((s) => s.leftCollapsed)
   const setLeftWidth = useCodeLayoutStore((s) => s.setLeftWidth)
   const setRightWidth = useCodeLayoutStore((s) => s.setRightWidth)
   const resetColumns = useCodeLayoutStore((s) => s.resetColumns)
@@ -14,9 +15,10 @@ export function useCodeColumnSizing() {
 
   useEffect(() => {
     const root = document.documentElement
-    root.style.setProperty('--code-left-width', `${leftWidth}px`)
+    root.style.setProperty('--code-left-width', leftCollapsed ? '0px' : `${leftWidth}px`)
     root.style.setProperty('--code-right-width', `${rightWidth}px`)
-  }, [leftWidth, rightWidth])
+    root.classList.toggle('code-left-collapsed', leftCollapsed)
+  }, [leftWidth, rightWidth, leftCollapsed])
 
   useEffect(() => {
     const onResize = () => {

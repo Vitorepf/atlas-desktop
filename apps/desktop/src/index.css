@@ -680,6 +680,19 @@
   }
   .atlas-shell.surface-code .sdd-mini .meta .v { color: var(--cc-text); }
 
+  /* Aumentar comprimento do ribbon SDD: 6 pills (Context/Spec/Plan/Execute/
+     Verify/Learn) cabem sem espremer + meta à direita. Pills não encolhem. */
+  .atlas-shell.surface-code .sdd-mini {
+    max-width: 1080px;
+  }
+  .atlas-shell.surface-code .sdd-mini .stages {
+    overflow-x: visible;
+    gap: 10px;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage {
+    flex-shrink: 0;
+  }
+
   /* — Composer premium dark. */
   .atlas-shell.surface-code .composer {
     background: var(--cc-surface-sunken);
@@ -3550,10 +3563,25 @@
     color: var(--cc-text);
     box-shadow: var(--cc-shadow-xs);
   }
-  /* Cartografia mantem a topbar warm cream legacy. */
   .atlas-shell.surface-cartografia .topbar {
-    background: var(--cream-paper);
-    color: var(--ink);
+    background:
+      linear-gradient(180deg, rgba(34, 54, 67, 0.98), rgba(28, 44, 55, 0.96)),
+      var(--cc-surface-sunken);
+    color: var(--cc-text);
+    border-bottom-color: rgba(142, 168, 184, 0.16);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.035) inset,
+      0 1px 0 rgba(0, 0, 0, 0.28),
+      0 14px 34px rgba(5, 12, 18, 0.16);
+    backdrop-filter: blur(18px) saturate(125%);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+  }
+  .topbar-start {
+    justify-self: start;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
   }
   .topbar-spacer {
     min-width: 0;
@@ -3808,6 +3836,146 @@
     font-style: normal;
     font-size: 12px;
     color: var(--cc-text-muted);
+  }
+  .topbar-start .brand {
+    flex: 0 0 auto;
+  }
+  .atlas-shell.surface-cartografia .brand strong {
+    font-size: 17px;
+    font-weight: 680;
+    letter-spacing: 0;
+    color: #f2f6f8;
+    background: linear-gradient(135deg, #f7fbfc 0%, #dfe8ed 54%, rgba(212, 168, 90, 0.92) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 1px 18px rgba(212, 168, 90, 0.10);
+  }
+  .topbar-location {
+    min-width: 0;
+    max-width: min(48vw, 740px);
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 10px;
+    border: 1px solid rgba(135, 165, 184, 0.17);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(56, 80, 95, 0.68), rgba(35, 54, 67, 0.58)),
+      rgba(20, 31, 39, 0.72);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.055) inset,
+      0 10px 24px rgba(3, 10, 15, 0.16);
+    overflow: hidden;
+  }
+  .topbar-location-marker {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #d4a85a;
+    box-shadow:
+      0 0 0 3px rgba(212, 168, 90, 0.10),
+      0 0 16px rgba(212, 168, 90, 0.32);
+  }
+  .topbar-location-list {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+  }
+  .topbar-location-step {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 1 auto;
+  }
+  .topbar-location-step:last-child {
+    flex: 1 1 auto;
+  }
+  .topbar-location-separator {
+    width: 14px;
+    height: 18px;
+    flex: 0 0 14px;
+    position: relative;
+    opacity: 0.74;
+  }
+  .topbar-location-separator::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    width: 5px;
+    height: 5px;
+    border-top: 1px solid rgba(212, 168, 90, 0.72);
+    border-right: 1px solid rgba(212, 168, 90, 0.72);
+    transform: rotate(45deg);
+  }
+  .topbar-location-crumb {
+    min-width: 0;
+    max-width: 190px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(214, 226, 232, 0.72);
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    font-weight: 570;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  button.topbar-location-crumb {
+    cursor: pointer;
+    transition:
+      color 140ms var(--ease-i),
+      background 140ms var(--ease-i),
+      border-color 140ms var(--ease-i);
+  }
+  button.topbar-location-crumb:hover {
+    color: #f2f6f8;
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(212, 168, 90, 0.18);
+  }
+  .topbar-location-crumb.is-current {
+    max-width: 260px;
+    color: #f8fbfc;
+    background:
+      linear-gradient(180deg, rgba(212, 168, 90, 0.18), rgba(212, 168, 90, 0.08)),
+      rgba(255, 255, 255, 0.035);
+    border-color: rgba(212, 168, 90, 0.25);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.055) inset;
+  }
+  .topbar-location-crumb:focus-visible {
+    outline: 2px solid rgba(212, 168, 90, 0.64);
+    outline-offset: 2px;
+  }
+  @media (max-width: 1180px) {
+    .topbar-location {
+      max-width: 36vw;
+    }
+    .topbar-location-crumb {
+      max-width: 132px;
+    }
+    .topbar-location-crumb.is-current {
+      max-width: 180px;
+    }
+  }
+  @media (max-width: 900px) {
+    .topbar-location {
+      display: none;
+    }
   }
   .brand .bridge-mode {
     margin-left: 6px;
@@ -5441,4 +5609,124 @@
 
 .terminal-dock .atlas-native-terminal[data-status='error'] .atlas-terminal-output {
   color: var(--rec-red);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   OBRA BAR · LEFT RAIL TOGGLE
+   Botão ícone à esquerda do pill 019E272B que colapsa/expande LeftRail.
+   Quando `html.code-left-collapsed` ativo: --code-left-width: 0px,
+   .left-rail hidden, .code-column-resizer-left hidden.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.atlas-shell.surface-code .obra-left-toggle {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--cc-border, rgba(233, 238, 242, 0.10));
+  border-radius: 5px;
+  background: var(--cc-surface-raised, #2d4351);
+  color: var(--cc-text-muted, #95a3ac);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.atlas-shell.surface-code .obra-left-toggle:hover {
+  background: rgba(212, 168, 90, 0.08);
+  border-color: var(--cc-accent-border, rgba(212, 168, 90, 0.34));
+  color: var(--cc-accent-strong, #e6b966);
+}
+.atlas-shell.surface-code .obra-left-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 3px rgba(212, 168, 90, 0.16);
+}
+.atlas-shell.surface-code .obra-left-toggle[aria-pressed='true'] {
+  background: var(--cc-accent-veil, rgba(212, 168, 90, 0.10));
+  border-color: var(--cc-accent-border, rgba(212, 168, 90, 0.34));
+  color: var(--cc-accent-strong, #e6b966);
+}
+
+/* LeftRail + resizer escondidos quando collapsed (CSS variable já é 0px). */
+html.code-left-collapsed .atlas-shell.surface-code .left-rail {
+  display: none !important;
+}
+html.code-left-collapsed .atlas-shell.surface-code .code-column-resizer-left {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TERMINAL DOCK · TOGGLE (close X + ⌘J reabre)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+html.code-terminal-hidden {
+  --terminal-dock-height: 0px;
+}
+html.code-terminal-hidden .atlas-shell.surface-code .terminal-dock {
+  display: none !important;
+}
+
+/* Botão X de fechar terminal · slot direito do toolbar. */
+.atlas-shell.surface-code .term-close-dock {
+  margin-left: 2px;
+  color: var(--cc-text-muted, #95a3ac);
+  transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.atlas-shell.surface-code .term-close-dock:hover {
+  color: var(--cc-danger-fg, #e89a93);
+  background: rgba(208, 90, 82, 0.10);
+}
+.atlas-shell.surface-code .term-close-dock:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(208, 90, 82, 0.18);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   OBRA BAR · 3 COLUNAS + TÍTULO EDITORIAL CENTRALIZADO
+   Aplica APENAS quando há Obra ativa (.obra-bar-active). Loading/Create
+   states mantêm seu CSS legacy original.
+   Grid: [toggle+id] [título centralizado] [vazio simétrico].
+   Título: Cormorant Garamond italic 26px wght 540 cool cream forte —
+   peso digno de NOME DA OBRA, não chip metadata.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.atlas-shell.surface-code .obra-bar.obra-bar-active {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr !important;
+  align-items: center !important;
+  min-height: 44px;
+  padding: 0 24px !important;
+}
+.atlas-shell.surface-code .obra-bar-active .obra-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  justify-self: start;
+}
+.atlas-shell.surface-code .obra-bar-active .obra-bar-right {
+  justify-self: end;
+}
+.atlas-shell.surface-code .obra-bar-active .obra-objective {
+  margin: 0 !important;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-weight: 540 !important;
+  font-size: 26px !important;
+  letter-spacing: -0.014em !important;
+  line-height: 1.1 !important;
+  color: var(--cc-text-strong, #f0f4f7) !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 720px !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24) !important;
+  justify-self: center;
 }

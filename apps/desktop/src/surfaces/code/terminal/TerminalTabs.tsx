@@ -22,17 +22,21 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
   const dockHeight = useTerminalStore((s) => s.dockHeight)
   const dockMaximized = useTerminalStore((s) => s.dockMaximized)
   const dockPlacement = useTerminalStore((s) => s.dockPlacement)
+  const dockVisible = useTerminalStore((s) => s.dockVisible)
   const open = useTerminalStore((s) => s.open)
   const close = useTerminalStore((s) => s.close)
   const select = useTerminalStore((s) => s.select)
   const setHeight = useTerminalStore((s) => s.setHeight)
   const toggleMaximize = useTerminalStore((s) => s.toggleMaximize)
   const togglePlacement = useTerminalStore((s) => s.togglePlacement)
+  const closeDock = useTerminalStore((s) => s.closeDock)
   const hydrateInitial = useTerminalStore((s) => s.hydrateInitial)
 
   useEffect(() => {
     hydrateInitial(initialCwd ?? '')
   }, [hydrateInitial, initialCwd])
+
+  if (!dockVisible) return null
 
   const active = sessions.find((s) => s.id === activeId) ?? null
   const live = active != null && ptyMode === 'portable-pty'
@@ -109,6 +113,7 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
         onToggleMaximize={toggleMaximize}
         onTogglePlacement={togglePlacement}
         onInterrupt={terminalActions.interruptActive}
+        onCloseDock={closeDock}
       />
 
       {searchOpen ? (

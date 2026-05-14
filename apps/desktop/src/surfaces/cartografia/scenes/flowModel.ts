@@ -4,9 +4,9 @@ import type { RegionSignals, FlowPhase } from './flowTypes'
 export const FLOW_PHASES: FlowPhase[] = [
   { label: 'intake', deck: 'captura', from: 1, to: 3, icon: '01' },
   { label: 'shape', deck: 'contexto', from: 4, to: 8, icon: '02' },
-  { label: 'decide', deck: 'decisao', from: 9, to: 12, icon: '03' },
-  { label: 'prove', deck: 'evidencia', from: 13, to: 15, icon: '04' },
-  { label: 'render', deck: 'saida', from: 16, to: 17, icon: '05' },
+  { label: 'decide', deck: 'decisão', from: 9, to: 12, icon: '03' },
+  { label: 'prove', deck: 'evidência', from: 13, to: 15, icon: '04' },
+  { label: 'render', deck: 'saída', from: 16, to: 17, icon: '05' },
 ]
 
 export const LANE_TONE: Record<string, string> = {

@@ -13,14 +13,17 @@ const MIN_STAGE_WIDTH = 420
 interface CodeLayoutStore {
   leftWidth: number
   rightWidth: number
+  leftCollapsed: boolean
   setLeftWidth: (px: number) => void
   setRightWidth: (px: number) => void
   resetColumns: () => void
+  toggleLeftCollapsed: () => void
 }
 
 interface PersistedCodeLayoutState {
   leftWidth: number
   rightWidth: number
+  leftCollapsed: boolean
 }
 
 function viewportWidth(): number {
@@ -47,6 +50,7 @@ export const useCodeLayoutStore = create<CodeLayoutStore>()(
     (set, get) => ({
       leftWidth: DEFAULT_LEFT_WIDTH,
       rightWidth: DEFAULT_RIGHT_WIDTH,
+      leftCollapsed: false,
 
       setLeftWidth: (px) => {
         const { rightWidth } = get()
@@ -62,8 +66,11 @@ export const useCodeLayoutStore = create<CodeLayoutStore>()(
         set({
           leftWidth: DEFAULT_LEFT_WIDTH,
           rightWidth: DEFAULT_RIGHT_WIDTH,
+          leftCollapsed: false,
         })
       },
+
+      toggleLeftCollapsed: () => set({ leftCollapsed: !get().leftCollapsed }),
     }),
     {
       name: 'atlas.code.layout.v1',
@@ -77,11 +84,13 @@ export const useCodeLayoutStore = create<CodeLayoutStore>()(
         return {
           leftWidth: clampLeftWidth(leftWidth, rightWidth),
           rightWidth: clampRightWidth(rightWidth, leftWidth),
+          leftCollapsed: state?.leftCollapsed ?? false,
         }
       },
       partialize: (s) => ({
         leftWidth: s.leftWidth,
         rightWidth: s.rightWidth,
+        leftCollapsed: s.leftCollapsed,
       }),
     },
   ),

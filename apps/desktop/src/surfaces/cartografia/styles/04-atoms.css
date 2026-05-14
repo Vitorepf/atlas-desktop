@@ -44,7 +44,7 @@
   color: var(--rec-red);
 }
 .cartografia-surface .atom.has-next::before {
-  content: 'proxima';
+  content: 'próxima';
   position: absolute;
   right: 8px;
   bottom: 7px;
@@ -54,7 +54,7 @@
   outline: 1px dashed rgba(151, 112, 57, 0.45);
 }
 .cartografia-surface .atom.is-orphan .a-source::after {
-  content: ' · orfao';
+  content: ' · órfão';
   color: var(--bronze);
 }
 .cartografia-surface .atom .a-name {
