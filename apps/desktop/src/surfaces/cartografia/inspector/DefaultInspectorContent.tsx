@@ -62,7 +62,7 @@ export function DefaultInspectorContent({ graph }: DefaultInspectorContentProps)
             <div className="fit-grid">
               <div className="fit-row">
                 <span>etapas</span>
-                <strong className="mono">{pipelineCount} · romanos i..xvii</strong>
+                <strong className="mono">{pipelineCount} · sequência 1..17</strong>
               </div>
               <div className="fit-row">
                 <span>lanes</span>

@@ -1,5 +1,5 @@
 import type { CartographyAtom, RecentChange } from '@atlas/domain'
-import { formatTimeAgo, toRoman } from '../map/layout'
+import { formatTimeAgo } from '../map/layout'
 
 interface InspectorHeaderProps {
   atom: CartographyAtom
@@ -10,7 +10,7 @@ export function InspectorHeader({ atom, recent }: InspectorHeaderProps) {
   const isPipeline = atom.kind === 'pipeline'
   const isLateral = atom.kind === 'lateral'
   const kind = isPipeline
-    ? `Engrenagem · ${toRoman(atom.graphOrder ?? 0)}. Atlas AI Kernel`
+    ? `Engrenagem · ${atom.graphOrder ?? 0}. Atlas AI Kernel`
     : isLateral
       ? `Lateral · ${atom.regionHead ?? ''}`
       : `Lane · ${atom.name}`

@@ -124,9 +124,15 @@
     --cc-accent-border: rgba(107, 74, 30, 0.32);
 
     /* Tipografia · operacional. Sans pra corpo, serif só pra display. */
-    --cc-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --cc-font-sans: 'Inter', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --cc-font-serif: 'Cormorant Garamond', Georgia, serif;
-    --cc-font-mono: 'JetBrains Mono', ui-monospace, 'Menlo', monospace;
+    --cc-font-mono: 'JetBrains Mono', 'JetBrains Mono Variable', ui-monospace, 'Menlo', monospace;
+    --cc-font-display: 'Inter', 'Inter Variable', system-ui, sans-serif;
+
+    /* Easing curves Apple Pro class. */
+    --cc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --cc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --cc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
     /* Escala tipográfica curada — 12h-friendly. */
     --cc-text-display: 22px;   /* display/headlines especiais */
@@ -306,11 +312,58 @@
     --cc-dot-passed: var(--cc-success);
     --cc-dot-unknown: var(--cc-neutral);
 
-    /* Body do shell. */
-    background: var(--cc-bg);
+    /* Body do shell · gradient sutil Apple Pro. */
+    background:
+      radial-gradient(ellipse at top, rgba(45, 67, 81, 0.12) 0%, transparent 50%),
+      linear-gradient(180deg, #1d2b34 0%, #1a2832 100%);
     color: var(--cc-text);
     font-family: var(--cc-font-sans);
     line-height: var(--cc-leading-normal);
+    font-feature-settings: 'cv11', 'ss01', 'ss03', 'tnum' 0, 'kern' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numbers tabulares em monos/data · alinhamento perfeito. */
+  .atlas-shell.surface-code .cc-obra-row-id,
+  .atlas-shell.surface-code [class*='-mono'],
+  .atlas-shell.surface-code .check-tag,
+  .atlas-shell.surface-code .panel-title .muted {
+    font-feature-settings: 'tnum' 1, 'cv11' 1;
+  }
+
+  /* Focus rings premium · glow accent gold sutil. */
+  .atlas-shell.surface-code button:focus-visible,
+  .atlas-shell.surface-code input:focus-visible,
+  .atlas-shell.surface-code textarea:focus-visible,
+  .atlas-shell.surface-code [role='button']:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--cc-bg),
+      0 0 0 4px rgba(230, 185, 102, 0.45),
+      0 0 24px rgba(230, 185, 102, 0.18);
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* Scrollbar customizada · slate teal subtle. */
+  .atlas-shell.surface-code *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .atlas-shell.surface-code *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb {
+    background: rgba(149, 163, 172, 0.18);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+    transition: background 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb:hover {
+    background: rgba(149, 163, 172, 0.32);
+    background-clip: padding-box;
   }
 
   /* Atlas Code -- Premium polish overrides (legacy compatibility)
@@ -579,23 +632,52 @@
   .atlas-shell.surface-code .sdd-mini {
     background: var(--cc-surface);
     border-color: var(--cc-border-soft);
+    border-radius: var(--cc-radius-md);
     color: var(--cc-text-muted);
     font-family: var(--cc-font-sans);
     text-transform: none;
     letter-spacing: 0;
-    font-size: 11.5px;
+    font-size: 12px;
+    padding: 12px 16px;
+    box-shadow: var(--cc-shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
   .atlas-shell.surface-code .sdd-mini .label {
     color: var(--cc-text-faint);
     letter-spacing: 0.04em;
-    font-family: var(--cc-font-mono);
-    font-size: 10px;
+    font-family: var(--cc-font-sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
   }
-  .atlas-shell.surface-code .sdd-mini .stage { color: var(--cc-text-muted); }
-  .atlas-shell.surface-code .sdd-mini .stage.done { color: var(--cc-success-fg); }
-  .atlas-shell.surface-code .sdd-mini .stage.now { color: var(--cc-accent-strong); }
-  .atlas-shell.surface-code .sdd-mini .stage.todo { color: var(--cc-text-faint); }
-  .atlas-shell.surface-code .sdd-mini .meta { color: var(--cc-text-faint); }
+  .atlas-shell.surface-code .sdd-mini .stages { gap: 14px; }
+  .atlas-shell.surface-code .sdd-mini .stage {
+    color: var(--cc-text-muted);
+    font-size: 12px;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 3px 8px;
+    border-radius: var(--cc-radius-xs);
+    transition: background 120ms var(--ease-i), color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.done {
+    color: var(--cc-success-fg);
+    background: var(--cc-success-veil);
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    color: var(--cc-accent-strong);
+    background: var(--cc-accent-veil);
+    font-weight: 600;
+    animation: none;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.todo {
+    color: var(--cc-text-faint);
+  }
+  .atlas-shell.surface-code .sdd-mini .meta {
+    color: var(--cc-text-faint);
+    font-size: 10.5px;
+    font-family: var(--cc-font-mono);
+    letter-spacing: 0.02em;
+  }
   .atlas-shell.surface-code .sdd-mini .meta .v { color: var(--cc-text); }
 
   /* — Composer premium dark. */
@@ -624,11 +706,16 @@
     background: var(--cc-accent);
     color: #15212a;
   }
+  .atlas-shell.surface-code .composer {
+    padding: 14px 32px 16px;
+  }
   .atlas-shell.surface-code .composer-meta {
     color: var(--cc-text-faint);
     letter-spacing: 0;
     font-family: var(--cc-font-sans);
     text-transform: none;
+    font-size: 11.5px;
+    margin-top: 4px;
   }
   .atlas-shell.surface-code .composer-meta kbd {
     background: var(--cc-surface);
@@ -636,6 +723,9 @@
     border-color: var(--cc-border-soft);
     font-family: var(--cc-font-mono);
     letter-spacing: 0;
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border-radius: var(--cc-radius-xs);
   }
 
   /* — Generic legacy "section title" / "label" forms. */
@@ -649,6 +739,2719 @@
   .atlas-shell.surface-code .conv-msg.you .who { color: var(--cc-info-fg); }
   .atlas-shell.surface-code .conv-msg.you .body { font-family: var(--cc-font-sans); font-style: normal; color: var(--cc-text); border-left-color: var(--cc-info); font-size: 14px; }
   .atlas-shell.surface-code .conv-msg.atlas .body { font-family: var(--cc-font-sans); color: var(--cc-text); font-size: 13.5px; }
+
+  /* — Terminal status premium (slate teal status bar). */
+  .atlas-shell.surface-code .term-status {
+    font-family: var(--cc-font-sans);
+    color: var(--cc-text-faint);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11.5px;
+    padding: 8px 16px;
+    background: var(--cc-surface-sunken);
+    border-top-color: var(--cc-border-soft);
+    gap: 16px;
+  }
+  .atlas-shell.surface-code .term-status-cwd {
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .term-status-branch {
+    color: var(--cc-success-fg);
+    font-family: var(--cc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .atlas-shell.surface-code .term-status-exit.ok { color: var(--cc-success-fg); }
+  .atlas-shell.surface-code .term-status-exit.err { color: var(--cc-danger-fg); }
+  .atlas-shell.surface-code .term-status-running,
+  .atlas-shell.surface-code .term-status-pending {
+    color: var(--cc-info-fg);
+    font-size: 11px;
+  }
+  .atlas-shell.surface-code .pty-badge {
+    background: var(--cc-success-veil);
+    color: var(--cc-success-fg);
+    border-color: var(--cc-success-border);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: var(--cc-radius-xs);
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .pty-badge.unavailable {
+    background: var(--cc-info-veil);
+    color: var(--cc-info-fg);
+    border-color: var(--cc-info-border);
+  }
+  .atlas-shell.surface-code .term-tab {
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--cc-text-muted);
+    transition: color 120ms var(--ease-i), border-color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code .term-tab:hover { color: var(--cc-text); }
+  .atlas-shell.surface-code .term-tab.active {
+    color: var(--cc-accent-strong);
+    border-bottom-color: var(--cc-accent);
+    font-weight: 600;
+  }
+  .atlas-shell.surface-code .term-context-k {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-sans);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .atlas-shell.surface-code .term-context-v {
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .atlas-shell.surface-code .term-action {
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--cc-text-muted);
+    border-radius: var(--cc-radius-xs);
+    transition: color 120ms var(--ease-i), background 120ms var(--ease-i), border-color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code .term-action:hover {
+    color: var(--cc-text);
+    background: var(--cc-accent-veil);
+    border-color: var(--cc-accent-border);
+  }
+  .atlas-shell.surface-code .term-action.primary {
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    background: var(--cc-accent-veil);
+  }
+
+  /* — Hover micro-interactions Apple Pro class. */
+  .atlas-shell.surface-code .cc-obra-row {
+    transition:
+      background 280ms var(--cc-ease-out),
+      border-color 280ms var(--cc-ease-out),
+      transform 280ms var(--cc-ease-out),
+      box-shadow 280ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-obra-row:hover:not(:disabled):not([data-active='true']) {
+    transform: translateX(3px);
+    box-shadow:
+      -2px 0 0 0 var(--cc-accent-border),
+      0 0 20px rgba(212, 168, 90, 0.08);
+    background: rgba(255, 255, 255, 0.015);
+  }
+  .atlas-shell.surface-code .cc-obra-row[data-active='true'] {
+    box-shadow:
+      inset 2px 0 0 var(--cc-accent),
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* — Cards com inner highlight Apple Pro (3% em vez de 2%). */
+  .atlas-shell.surface-code .cc-card,
+  .atlas-shell.surface-code .cc-card-raised,
+  .atlas-shell.surface-code .ops-panel section[style*='border'],
+  .atlas-shell.surface-code .rail-panel > section {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* — Botões com hover Apple Pro · lift sutil + glow. */
+  .atlas-shell.surface-code .cc-btn,
+  .atlas-shell.surface-code .left-create-obra-btn,
+  .atlas-shell.surface-code .left-create-obra-actions button {
+    transition:
+      background 220ms var(--cc-ease-out),
+      border-color 220ms var(--cc-ease-out),
+      transform 180ms var(--cc-ease-out),
+      box-shadow 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:hover:not(:disabled),
+  .atlas-shell.surface-code .left-create-obra-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 16px rgba(212, 168, 90, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:active:not(:disabled),
+  .atlas-shell.surface-code .left-create-obra-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+  }
+
+  /* — SDD mini stage current · spring scale. */
+  .atlas-shell.surface-code .sdd-mini .stage {
+    transition:
+      background 220ms var(--cc-ease-out),
+      color 220ms var(--cc-ease-out),
+      transform 320ms var(--cc-ease-spring);
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    transform: scale(1.04);
+  }
+
+  /* — Workbench panels entrada cinematográfica. */
+  @keyframes cc-panel-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .atlas-shell.surface-code .cc-panel,
+  .atlas-shell.surface-code .rail-panel {
+    animation: cc-panel-enter 380ms var(--cc-ease-out) backwards;
+  }
+  .atlas-shell.surface-code .cc-panel > * {
+    animation: cc-panel-enter 380ms var(--cc-ease-out) backwards;
+  }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(2) { animation-delay: 40ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(3) { animation-delay: 80ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(4) { animation-delay: 120ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(5) { animation-delay: 160ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(6) { animation-delay: 200ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(n+7) { animation-delay: 240ms; }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-panel,
+    .atlas-shell.surface-code .cc-panel > *,
+    .atlas-shell.surface-code .rail-panel { animation: none; }
+  }
+
+  /* — Tab transitions Apple Pro. */
+  .atlas-shell.surface-code .ops-tab {
+    transition:
+      color 220ms var(--cc-ease-out),
+      background 220ms var(--cc-ease-out),
+      border-bottom-color 220ms var(--cc-ease-out);
+    position: relative;
+  }
+  .atlas-shell.surface-code .ops-tab.on::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 24px;
+    height: 2px;
+    background: var(--cc-accent);
+    border-radius: 999px 999px 0 0;
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(212, 168, 90, 0.45);
+  }
+
+  /* — Surface tab Cartografia/Code com underline glow. */
+  .atlas-shell.surface-code .surface-tab.on {
+    position: relative;
+  }
+
+  /* — Progress bar com pulse sutil quando running. */
+  .atlas-shell.surface-code .progress-fill-running {
+    background-size: 200% 100%;
+    background-image: linear-gradient(
+      90deg,
+      var(--cc-info) 0%,
+      rgba(127, 167, 196, 0.65) 50%,
+      var(--cc-info) 100%
+    );
+    animation: cc-progress-shimmer 2.4s var(--cc-ease-in-out) infinite;
+  }
+  @keyframes cc-progress-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .progress-fill-running { animation: none; }
+  }
+
+  /* — Empty state · "Recentes" e similares com mais elegância. */
+  .atlas-shell.surface-code .cc-empty {
+    background: transparent;
+    border: 1px dashed var(--cc-border-soft);
+    border-radius: var(--cc-radius-md);
+    padding: 12px 14px;
+    color: var(--cc-text-faint);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  /* — Botão primary com gradient gold premium (Apple Pro buttons). */
+  .atlas-shell.surface-code .cc-btn-primary,
+  .atlas-shell.surface-code .left-create-obra-btn {
+    background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent) 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.10) inset,
+      0 1px 2px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(212, 168, 90, 0.45) inset;
+    border: none;
+    color: #15212a;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Inputs/textareas com inner depth + focus glow. */
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea,
+  .atlas-shell.surface-code .left-create-obra-input,
+  .atlas-shell.surface-code .composer textarea {
+    background: var(--cc-surface-sunken);
+    border: 1px solid var(--cc-border);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.20);
+    transition:
+      border-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out),
+      background 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-input:focus,
+  .atlas-shell.surface-code .cc-textarea:focus,
+  .atlas-shell.surface-code .left-create-obra-input:focus,
+  .atlas-shell.surface-code .composer textarea:focus {
+    border-color: var(--cc-accent);
+    background: var(--cc-surface);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.18),
+      0 0 0 3px rgba(212, 168, 90, 0.18),
+      0 0 24px rgba(212, 168, 90, 0.10);
+  }
+
+  /* — Send button (✦) com glow premium. */
+  .atlas-shell.surface-code .send-btn {
+    transition:
+      background 200ms var(--cc-ease-out),
+      color 200ms var(--cc-ease-out),
+      transform 180ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent) 100%);
+    color: #15212a;
+    box-shadow:
+      0 0 16px rgba(212, 168, 90, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /* — Status badges com inner highlight. */
+  .atlas-shell.surface-code .cc-badge {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    font-weight: 500;
+  }
+
+  /* — Obra-id badge premium (atlas gold pill). */
+  .atlas-shell.surface-code .obra-id {
+    background: linear-gradient(180deg, var(--cc-accent-veil) 0%, transparent 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  /* — Surface switcher tabs com depth premium. */
+  .atlas-shell.surface-code .surface-switcher {
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.18);
+  }
+  .atlas-shell.surface-code .surface-tab.on {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Top bar com subtle bottom highlight. */
+  .atlas-shell.surface-code .topbar {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  }
+  .atlas-shell.surface-code .obra-bar {
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  /* — Section card heading com micro letter-spacing premium. */
+  .atlas-shell.surface-code .panel-title,
+  .atlas-shell.surface-code .cc-section-title,
+  .atlas-shell.surface-code .cc-rail-section-head {
+    font-feature-settings: 'cv11' 1, 'ss01' 1;
+  }
+
+  /* — Headings premium · variable font weight axis. */
+  .atlas-shell.surface-code h1 {
+    font-variation-settings: 'wght' 680;
+    letter-spacing: -0.018em;
+  }
+  .atlas-shell.surface-code h2 {
+    font-variation-settings: 'wght' 620;
+    letter-spacing: -0.012em;
+  }
+  .atlas-shell.surface-code h3 {
+    font-variation-settings: 'wght' 580;
+    letter-spacing: -0.006em;
+  }
+  /* — Body text com axis fino entre regular e medium. */
+  .atlas-shell.surface-code {
+    font-variation-settings: 'wght' 420;
+  }
+  .atlas-shell.surface-code strong,
+  .atlas-shell.surface-code [style*='fontWeight: 500'],
+  .atlas-shell.surface-code [style*='fontWeight: 600'] {
+    font-variation-settings: 'wght' 560;
+  }
+  /* — Mono numerics tabulares premium. */
+  .atlas-shell.surface-code .cc-obra-row-id,
+  .atlas-shell.surface-code .obra-id {
+    font-variation-settings: 'wght' 520;
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1;
+  }
+
+  /* — Smooth fade entre Obra changes. */
+  .atlas-shell.surface-code .conv-thread {
+    animation: cc-fade-in 320ms var(--cc-ease-out);
+  }
+  @keyframes cc-fade-in {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .conv-thread { animation: none; }
+  }
+
+  /* — Selection highlight slate teal subtle. */
+  .atlas-shell.surface-code ::selection {
+    background: rgba(212, 168, 90, 0.30);
+    color: var(--cc-text-strong);
+  }
+
+  /* — Empty state divider canon. */
+  .atlas-shell.surface-code .cc-rail-section + .cc-rail-section {
+    margin-top: var(--cc-space-4);
+  }
+
+  /* — Search input premium · backdrop sutil. */
+  .atlas-shell.surface-code .cc-input[type='search'] {
+    background: var(--cc-surface-sunken);
+    backdrop-filter: blur(4px);
+  }
+
+  /* — Decision inbox cards hover preview. */
+  .atlas-shell.surface-code .cc-panel li[role='listitem'],
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    transition:
+      background 220ms var(--cc-ease-out),
+      border-color 220ms var(--cc-ease-out),
+      transform 220ms var(--cc-ease-out),
+      box-shadow 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Workbench panel borders glow sutil em hover. */
+  .atlas-shell.surface-code .cc-panel section[aria-label] {
+    transition: border-color 240ms var(--cc-ease-out), box-shadow 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-panel section[aria-label]:hover {
+    border-color: rgba(212, 168, 90, 0.15);
+  }
+
+  /* — Status badges com refinement em hover. */
+  .atlas-shell.surface-code .cc-badge {
+    transition: filter 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-badge:hover {
+    filter: brightness(1.08);
+  }
+
+  /* — Progress fill com subtle inner highlight. */
+  .atlas-shell.surface-code [role='progressbar'] > div {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      0 0 12px rgba(255, 255, 255, 0.05);
+  }
+
+  /* — Conv-msg refinement Apple Pro. */
+  .atlas-shell.surface-code .conv-msg {
+    transition: opacity 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .conv-msg.you .body {
+    border-left-width: 3px;
+    padding-left: 18px;
+  }
+
+  /* — Body com kerning + ligatures. */
+  .atlas-shell.surface-code {
+    text-rendering: optimizeLegibility;
+  }
+
+  /* — Brand strong com tracking premium. */
+  .atlas-shell.surface-code .brand strong {
+    font-variation-settings: 'wght' 620;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Tabs Cartografia/Code com subtle motion. */
+  .atlas-shell.surface-code .surface-tab {
+    transition:
+      background 240ms var(--cc-ease-out),
+      color 240ms var(--cc-ease-out),
+      box-shadow 240ms var(--cc-ease-out);
+  }
+
+  /* — Ops panel sections com padding refinado. */
+  .atlas-shell.surface-code .ops-section {
+    margin-bottom: 18px;
+  }
+  .atlas-shell.surface-code .ops-panel .rail-panel > h3 {
+    margin-bottom: 12px;
+  }
+
+  /* — Borders dos cards técnicos refinados. */
+  .atlas-shell.surface-code [style*='border: 1px solid var(--hair'] {
+    border-color: var(--cc-border-soft) !important;
+  }
+
+  /* — Right rail vertical scrollbar com fade. */
+  .atlas-shell.surface-code .right-rail::-webkit-scrollbar-thumb {
+    background: rgba(212, 168, 90, 0.12);
+    background-clip: padding-box;
+  }
+  .atlas-shell.surface-code .right-rail::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 168, 90, 0.24);
+    background-clip: padding-box;
+  }
+
+  /* — Send button com pulse premium ao montar. */
+  .atlas-shell.surface-code .send-btn {
+    backdrop-filter: blur(4px);
+  }
+
+  /* — Composer com gradient backdrop premium. */
+  .atlas-shell.surface-code .composer {
+    background: linear-gradient(180deg, transparent 0%, var(--cc-surface-sunken) 30%);
+    border-top: 1px solid var(--cc-border-soft);
+  }
+
+  /* — Subtle global text-shadow para extra readability sobre slate. */
+  .atlas-shell.surface-code h1,
+  .atlas-shell.surface-code .obra-objective {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Folio (live indicator) premium. */
+  .atlas-shell.surface-code .folio {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Smooth between obra changes for main-stage. */
+  .atlas-shell.surface-code .main-stage {
+    transition: background 320ms var(--cc-ease-out);
+  }
+
+  /* — Left rail premium with subtle separator gradient. */
+  .atlas-shell.surface-code .left-rail {
+    background:
+      linear-gradient(180deg, var(--cc-surface-sunken) 0%, rgba(21, 33, 42, 0.96) 100%);
+    box-shadow: inset -1px 0 0 var(--cc-border-soft);
+  }
+
+  /* — Right rail premium with subtle separator gradient. */
+  .atlas-shell.surface-code .right-rail {
+    background:
+      linear-gradient(180deg, var(--cc-bg) 0%, rgba(26, 40, 50, 0.98) 100%);
+    box-shadow: inset 1px 0 0 var(--cc-border-soft);
+  }
+
+  /* — Ops tabs · pill-style refinement Apple Pro. */
+  .atlas-shell.surface-code .ops-tabs {
+    padding: 4px 6px 0;
+    gap: 2px;
+  }
+  .atlas-shell.surface-code .ops-tab {
+    border-radius: var(--cc-radius-sm) var(--cc-radius-sm) 0 0;
+    margin: 0 2px;
+    padding: 11px 8px;
+    border-right: none;
+    border-bottom: 2px solid transparent;
+  }
+
+  /* — Brand sub badges premium. */
+  .atlas-shell.surface-code .brand .v {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Obra-bar com refinement. */
+  .atlas-shell.surface-code .obra-bar {
+    background: var(--cc-surface-sunken);
+    border-bottom-color: var(--cc-border-soft);
+  }
+
+  /* — Section card titles com optical alignment. */
+  .atlas-shell.surface-code .panel-title {
+    font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1;
+  }
+
+  /* — Active obra row premium · subtle gradient. */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true'] {
+    background:
+      linear-gradient(90deg, var(--cc-accent-veil) 0%, transparent 60%),
+      var(--cc-surface-raised);
+  }
+
+  /* — Subtle accent line below active right rail tab (more visible). */
+  .atlas-shell.surface-code .ops-tab.on::after {
+    width: 32px;
+    height: 2.5px;
+    box-shadow: 0 0 12px rgba(212, 168, 90, 0.55), 0 0 4px rgba(212, 168, 90, 0.30);
+  }
+
+  /* — Status dot com glow ao se tornar active phase. */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true'] .cc-status-dot {
+    box-shadow: 0 0 8px rgba(212, 168, 90, 0.30);
+  }
+
+  /* — Buttons com active state Apple Pro. */
+  .atlas-shell.surface-code .cc-btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+    transition: transform 80ms var(--cc-ease-out);
+  }
+
+  /* — Live cockpit row refinement. */
+  .atlas-shell.surface-code [class*='LiveCockpit'] {
+    transition: opacity 220ms var(--cc-ease-out);
+  }
+
+  /* — Pano de fundo subtle texture (low-glare premium). */
+  .atlas-shell.surface-code .main-stage {
+    background:
+      radial-gradient(ellipse at top, rgba(45, 67, 81, 0.20) 0%, transparent 60%),
+      linear-gradient(180deg, var(--cc-bg) 0%, #1a2832 100%);
+  }
+
+  /* — Workbench panel subtle headers · uppercase só nos eyebrows pequenos. */
+  .atlas-shell.surface-code h1,
+  .atlas-shell.surface-code h2,
+  .atlas-shell.surface-code h3,
+  .atlas-shell.surface-code h4 {
+    color: var(--cc-text-strong);
+  }
+
+  /* — Composer textarea refinement. */
+  .atlas-shell.surface-code .composer textarea {
+    padding: 12px 14px;
+    line-height: 1.5;
+    font-size: 13.5px;
+  }
+
+  /* — Obra-bar refinement gold. */
+  .atlas-shell.surface-code .obra-bar .obra-id {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 0 1px rgba(212, 168, 90, 0.20);
+  }
+
+  /* — Smooth scroll behavior global. */
+  .atlas-shell.surface-code {
+    scroll-behavior: smooth;
+  }
+
+  /* — Composer textarea caret premium gold. */
+  .atlas-shell.surface-code .composer textarea {
+    caret-color: var(--cc-accent);
+  }
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea,
+  .atlas-shell.surface-code .left-create-obra-input {
+    caret-color: var(--cc-accent);
+  }
+
+  /* — Better link / kbd defaults. */
+  .atlas-shell.surface-code a {
+    color: var(--cc-accent-strong);
+    text-decoration: none;
+    transition: color 180ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code a:hover {
+    color: var(--cc-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  /* — Links em decision_inbox e descriptions. */
+  .atlas-shell.surface-code strong {
+    color: var(--cc-text-strong);
+  }
+  .atlas-shell.surface-code code {
+    font-family: var(--cc-font-mono);
+    font-size: 0.94em;
+    background: var(--cc-surface-sunken);
+    border: 1px solid var(--cc-border-soft);
+    color: var(--cc-accent-strong);
+    padding: 1px 6px;
+    border-radius: var(--cc-radius-xs);
+    font-variation-settings: 'wght' 500;
+  }
+
+  /* — Skeleton loading premium subtle. */
+  .atlas-shell.surface-code .cc-loading {
+    background: var(--cc-info-veil);
+    border: 1px solid var(--cc-info-border);
+    color: var(--cc-info-fg);
+    position: relative;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code .cc-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(127, 167, 196, 0.10) 50%,
+      transparent 100%
+    );
+    animation: cc-skeleton-shimmer 1.8s var(--cc-ease-in-out) infinite;
+  }
+  @keyframes cc-skeleton-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-loading::after { animation: none; }
+  }
+
+  /* — Atlas brand strong com hover micro animation. */
+  .atlas-shell.surface-code .brand strong {
+    transition: letter-spacing 240ms var(--cc-ease-out), color 240ms var(--cc-ease-out);
+  }
+
+  /* — Container max-widths refinados (Apple Pro readability). */
+  .atlas-shell.surface-code .cc-panel {
+    max-width: 960px !important;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 var(--cc-space-2);
+  }
+
+  /* — Panel children proper spacing. */
+  .atlas-shell.surface-code .cc-panel > section,
+  .atlas-shell.surface-code .cc-panel > article {
+    width: 100%;
+  }
+
+  /* — Right rail · paddings consistentes. */
+  .atlas-shell.surface-code .right-rail .ops-panel {
+    padding-top: 16px;
+  }
+  .atlas-shell.surface-code .rail-panel {
+    margin-bottom: 18px;
+  }
+
+  /* — Reduce eyebrow uppercase to 0.04em max. */
+  .atlas-shell.surface-code [class*='eyebrow'],
+  .atlas-shell.surface-code [style*='text-transform: uppercase'] {
+    letter-spacing: 0.04em !important;
+  }
+
+  /* — Sutil divider on ops-tab right side. */
+  .atlas-shell.surface-code .ops-tab:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 25%;
+    bottom: 25%;
+    width: 1px;
+    background: var(--cc-border-soft);
+  }
+
+  /* — Code em monos com tabular Apple Pro. */
+  .atlas-shell.surface-code code,
+  .atlas-shell.surface-code pre,
+  .atlas-shell.surface-code .cc-obra-row-id,
+  .atlas-shell.surface-code .obra-id {
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1, 'kern' 1;
+  }
+
+  /* — Composer placeholder com fade premium. */
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    color: var(--cc-text-faint);
+    font-style: normal;
+    transition: opacity 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .composer textarea:focus::placeholder {
+    opacity: 0.5;
+  }
+
+  /* — Status dots com inner shadow subtle. */
+  .atlas-shell.surface-code .cc-status-dot {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 1px 2px rgba(0, 0, 0, 0.30);
+  }
+
+  /* — Checkbox circles · premium depth. */
+  .atlas-shell.surface-code .check-circle.done,
+  .atlas-shell.surface-code [aria-label*='Checklist'] [style*='border-radius: 999'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+
+  /* — Right rail item spacing consistency. */
+  .atlas-shell.surface-code .ops-panel > * + * {
+    margin-top: 16px;
+  }
+
+  /* — Eyebrow tipografia premium. */
+  .atlas-shell.surface-code .cc-eyebrow {
+    color: var(--cc-text-faint);
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 10.5px;
+  }
+
+  /* — Workbench panel header com sutil border accent. */
+  .atlas-shell.surface-code .cc-panel header,
+  .atlas-shell.surface-code .rail-panel header,
+  .atlas-shell.surface-code .ops-panel > section > header {
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  /* — Drop shadow para floating elements. */
+  .atlas-shell.surface-code details[open] {
+    margin-bottom: 4px;
+  }
+
+  /* — Details summary hover refinement. */
+  .atlas-shell.surface-code details summary {
+    transition: color 200ms var(--cc-ease-out);
+    user-select: none;
+  }
+  .atlas-shell.surface-code details summary:hover {
+    color: var(--cc-text);
+  }
+
+  /* — Pulse on Atlas Code brand hover (premium accent). */
+  .atlas-shell.surface-code .brand:hover strong {
+    color: var(--cc-accent-strong);
+  }
+
+  /* — Subtle gradient borders on hover (Apple class). */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--cc-radius-sm);
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .atlas-shell.surface-code .cc-obra-row {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* — Loading state premium spinner subtle. */
+  .atlas-shell.surface-code [aria-busy='true']::after,
+  .atlas-shell.surface-code [data-state='loading']::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--cc-accent-veil);
+    border-top-color: var(--cc-accent);
+    border-radius: 999px;
+    animation: cc-spin 800ms linear infinite;
+  }
+  @keyframes cc-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* — Subtle hover preview em todo o app: cursor pointer + transitions. */
+  .atlas-shell.surface-code button,
+  .atlas-shell.surface-code [role='button'],
+  .atlas-shell.surface-code [role='listitem'] {
+    cursor: pointer;
+  }
+  .atlas-shell.surface-code button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* — Final premium polish · global anti-aliasing pro. */
+  .atlas-shell.surface-code,
+  .atlas-shell.surface-code * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* — Premium border radius padronizado. */
+  .atlas-shell.surface-code [style*='borderRadius: 2'] {
+    border-radius: var(--cc-radius-sm) !important;
+  }
+  .atlas-shell.surface-code [style*='borderRadius: 3'] {
+    border-radius: var(--cc-radius-sm) !important;
+  }
+  .atlas-shell.surface-code [style*='borderRadius: 4'] {
+    border-radius: var(--cc-radius-md) !important;
+  }
+
+  /* — Better focus ring para inputs/buttons em estado disabled. */
+  .atlas-shell.surface-code button:disabled,
+  .atlas-shell.surface-code input:disabled,
+  .atlas-shell.surface-code textarea:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* — Tabs hover background subtle. */
+  .atlas-shell.surface-code .ops-tab:hover:not(.on):not(:disabled) {
+    background: rgba(212, 168, 90, 0.04);
+    color: var(--cc-text);
+  }
+
+  /* — Surface switcher · ainda mais premium. */
+  .atlas-shell.surface-code .surface-switcher {
+    padding: 3px;
+    border-radius: 8px;
+  }
+  .atlas-shell.surface-code .surface-tab {
+    border-radius: 6px;
+    padding: 6px 14px;
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    margin-left: 6px;
+    font-size: 10px;
+  }
+
+  /* — Workbench panels · paddings premium uniformes. */
+  .atlas-shell.surface-code .cc-card,
+  .atlas-shell.surface-code .cc-card-raised {
+    padding: 16px 18px;
+  }
+
+  /* — Cards do command center · respiro Apple Pro. */
+  .atlas-shell.surface-code .cc-panel > section,
+  .atlas-shell.surface-code .cc-panel > article {
+    padding: 18px 20px;
+  }
+
+  /* — Section card heading espaço sutil. */
+  .atlas-shell.surface-code .cc-panel header h3,
+  .atlas-shell.surface-code .rail-panel header h3 {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.25;
+  }
+
+  /* — Sticky right rail tabs · backdrop blur. */
+  .atlas-shell.surface-code .ops-tabs {
+    background: rgba(36, 55, 67, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* — Composer com backdrop blur premium. */
+  .atlas-shell.surface-code .composer {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* — Top bar com backdrop blur. */
+  .atlas-shell.surface-code .topbar {
+    background: rgba(21, 33, 42, 0.92);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+  }
+
+  /* — Brand v badge refinement. */
+  .atlas-shell.surface-code .brand .v {
+    font-variation-settings: 'wght' 560;
+  }
+
+  /* — Decision inbox cards subtle outer glow on hover. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li[style*='var(--cc-danger'],
+  .atlas-shell.surface-code [aria-label*='Decision'] li[style*='var(--cc-danger'] {
+    border-color: var(--cc-danger-border) !important;
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li[style*='var(--cc-warning'],
+  .atlas-shell.surface-code [aria-label*='Decision'] li[style*='var(--cc-warning'] {
+    border-color: var(--cc-warning-border) !important;
+  }
+
+  /* — Workbench panel section title weight Apple Pro. */
+  .atlas-shell.surface-code .cc-section-title {
+    font-variation-settings: 'wght' 600;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Conv-thread spacing premium. */
+  .atlas-shell.surface-code .conv-thread {
+    padding: 24px 32px 20px;
+  }
+
+  /* — Status dot premium · glow ao redor. */
+  .atlas-shell.surface-code .cc-status-dot[data-status='running'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(127, 167, 196, 0.40);
+  }
+  .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(208, 90, 82, 0.40);
+  }
+  .atlas-shell.surface-code .cc-status-dot[data-status='passed'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(130, 181, 119, 0.40);
+  }
+
+  /* — Premium hierarchy entre status dot e text adjacent. */
+  .atlas-shell.surface-code .cc-obra-row-head {
+    gap: 10px;
+  }
+
+  /* — Brand strong com gradient sutil. */
+  .atlas-shell.surface-code .brand strong {
+    background: linear-gradient(135deg, var(--cc-text-strong) 0%, rgba(212, 168, 90, 0.85) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* — Subtle inner shadow nos status-cards. */
+  .atlas-shell.surface-code [role='status'],
+  .atlas-shell.surface-code [role='alert'] {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Term dock subtle gradient para depth. */
+  .atlas-shell.surface-code .terminal-dock {
+    background: linear-gradient(180deg, #16252e 0%, #11202a 100%);
+  }
+
+  /* — Term tabs subtle bottom highlight. */
+  .atlas-shell.surface-code .term-tabs {
+    background: rgba(17, 32, 42, 0.92);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: inset 0 -1px 0 var(--cc-border-soft);
+  }
+
+  /* — Refinar mais sessões em curso na left rail. */
+  .atlas-shell.surface-code .cc-rail-section-head {
+    padding-bottom: 6px;
+    padding-top: 4px;
+    border-bottom: 1px solid var(--cc-border-soft);
+    margin-bottom: 4px;
+  }
+
+  /* — Brand atlas hover · gradient subtly shifts. */
+  .atlas-shell.surface-code .brand strong {
+    transition:
+      background 320ms var(--cc-ease-out),
+      letter-spacing 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .brand:hover strong {
+    background: linear-gradient(135deg, var(--cc-accent-strong) 0%, var(--cc-text-strong) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* — Links com animated underline Apple Pro. */
+  .atlas-shell.surface-code a {
+    position: relative;
+    text-decoration: none;
+  }
+  .atlas-shell.surface-code a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 1px;
+    background: var(--cc-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code a:hover::after {
+    transform: scaleX(1);
+  }
+  .atlas-shell.surface-code a:hover {
+    text-decoration: none;
+  }
+
+  /* — Ops tab subtle gradient on active. */
+  .atlas-shell.surface-code .ops-tab.on {
+    background: linear-gradient(180deg, transparent 0%, var(--cc-accent-veil) 100%);
+  }
+
+  /* — Rail panel section refinement. */
+  .atlas-shell.surface-code .rail-panel {
+    padding-bottom: 4px;
+  }
+
+  /* — Cards section content max-width 880 (Apple class reading). */
+  .atlas-shell.surface-code .cc-panel > section[aria-label] {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* — Cards-side container · respiração horizontal. */
+  .atlas-shell.surface-code .cc-panel {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* — Conv-msg.atlas body refinement. */
+  .atlas-shell.surface-code .conv-msg.atlas .body {
+    line-height: 1.65;
+  }
+
+  /* — Conv-msg.you body refinement. */
+  .atlas-shell.surface-code .conv-msg.you .body {
+    line-height: 1.6;
+  }
+
+  /* — Premium icons (✦, ✓, ○) com letter-spacing 0. */
+  .atlas-shell.surface-code .left-create-obra-btn span[aria-hidden],
+  .atlas-shell.surface-code button span[aria-hidden] {
+    letter-spacing: 0;
+  }
+
+  /* — Buttons compactos com hover lift suave. */
+  .atlas-shell.surface-code .cc-btn-secondary {
+    transition:
+      background 220ms var(--cc-ease-out),
+      border-color 220ms var(--cc-ease-out),
+      transform 180ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-btn-secondary:hover:not(:disabled) {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border-strong);
+    transform: translateY(-0.5px);
+  }
+
+  /* — Empty state ::before subtle decoration. */
+  .atlas-shell.surface-code .cc-empty {
+    position: relative;
+  }
+
+  /* — Filter pills (Self-Imp PROPOSTAS) hover. */
+  .atlas-shell.surface-code [class*='pill-btn'] {
+    transition: all 200ms var(--cc-ease-out);
+  }
+
+  /* — Refinement nos badge tone success/danger/etc. */
+  .atlas-shell.surface-code .cc-badge[data-tone='success'] {
+    background: linear-gradient(180deg,
+      rgba(130, 181, 119, 0.16) 0%,
+      rgba(130, 181, 119, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='warning'] {
+    background: linear-gradient(180deg,
+      rgba(224, 173, 94, 0.16) 0%,
+      rgba(224, 173, 94, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='danger'] {
+    background: linear-gradient(180deg,
+      rgba(208, 90, 82, 0.16) 0%,
+      rgba(208, 90, 82, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='info'] {
+    background: linear-gradient(180deg,
+      rgba(127, 167, 196, 0.16) 0%,
+      rgba(127, 167, 196, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='accent'] {
+    background: linear-gradient(180deg,
+      rgba(212, 168, 90, 0.18) 0%,
+      rgba(212, 168, 90, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='neutral'] {
+    background: linear-gradient(180deg,
+      rgba(149, 163, 172, 0.14) 0%,
+      rgba(149, 163, 172, 0.08) 100%);
+  }
+
+  /* — Loading spinner · color accent. */
+  .atlas-shell.surface-code .cc-loading-title {
+    color: var(--cc-info-fg);
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Active state em ButtonGroup. */
+  .atlas-shell.surface-code [aria-current='true'] {
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Progressbar subtle gloss. */
+  .atlas-shell.surface-code [role='progressbar'] {
+    background: linear-gradient(180deg, var(--cc-surface-sunken) 0%, rgba(21, 33, 42, 0.7) 100%);
+  }
+
+  /* — Workbench eyebrow uppercase fine-tuned. */
+  .atlas-shell.surface-code [aria-label] > header > span:first-child {
+    text-transform: uppercase;
+    font-size: 10.5px;
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.04em;
+    color: var(--cc-text-faint);
+  }
+
+  /* — Compose action chip. */
+  .atlas-shell.surface-code .composer-meta span[title*='Papel'] {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border: 1px solid var(--cc-accent-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 200ms var(--cc-ease-out);
+  }
+
+  /* — Headings size scaling Apple Pro · optical. */
+  .atlas-shell.surface-code h1 {
+    font-size: 24px;
+    line-height: 1.18;
+  }
+  .atlas-shell.surface-code h2 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+  .atlas-shell.surface-code h3 {
+    font-size: 14.5px;
+    line-height: 1.3;
+  }
+
+  /* — Sticky behavior em headers premium. */
+  .atlas-shell.surface-code .ops-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* — Section card titles muito sutil border-top accent quando hover. */
+  .atlas-shell.surface-code section[aria-label]:hover .cc-eyebrow {
+    color: var(--cc-text-muted);
+  }
+
+  /* — Premium · Form input transition Apple cubic. */
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea {
+    transition: all 240ms var(--cc-ease-out);
+  }
+
+  /* — Refinement extra em cores de status para optical balance. */
+  .atlas-shell.surface-code .row .v.ok {
+    font-variation-settings: 'wght' 560;
+  }
+
+  /* — Subtle outline-offset Apple Pro premium. */
+  .atlas-shell.surface-code :focus-visible {
+    outline-offset: 2px;
+  }
+
+  /* — Send button (✦) com static gold subtle glow. */
+  .atlas-shell.surface-code .send-btn {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Composer meta · cmd+enter kbds com depth. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Ops-panel inner padding mais ar. */
+  .atlas-shell.surface-code .ops-panel {
+    padding: 18px 18px 0;
+  }
+
+  /* — Status board (no obra bar) refinement final. */
+  .atlas-shell.surface-code .status-board {
+    gap: 18px;
+  }
+
+  /* — Subtle separator pattern em right rail tabs · invisivel quando active. */
+  .atlas-shell.surface-code .ops-tab.on::before {
+    display: none;
+  }
+
+  /* — Composer cmd/enter kbds reset to inline-flex e alignment. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+  }
+
+  /* — Reset font-variation in body for stable rendering. */
+  .atlas-shell.surface-code body,
+  .atlas-shell.surface-code p {
+    font-variation-settings: 'wght' 440;
+  }
+
+  /* — Animacao keyframe optional para shimmer de progress. */
+  @keyframes cc-shimmer-once {
+    0%, 100% { background-position: -100% 0; }
+    50% { background-position: 100% 0; }
+  }
+
+  /* — Conv-thread thumbs more subtle. */
+  .atlas-shell.surface-code .conv-thread::-webkit-scrollbar-thumb {
+    background: rgba(212, 168, 90, 0.10);
+    background-clip: padding-box;
+  }
+
+  /* — Atlas Code app icon area · subtle. */
+  .atlas-shell.surface-code .brand {
+    transition: opacity 240ms var(--cc-ease-out);
+  }
+
+  /* — Pixel-perfect alignment em headers. */
+  .atlas-shell.surface-code .cc-rail-section-head span:first-child {
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.01em;
+  }
+
+  /* — Truly Apple class: subtle premium glow nos active items. */
+  .atlas-shell.surface-code [data-active='true']::after,
+  .atlas-shell.surface-code [aria-current='true']::after {
+    /* glow gold ao redor opcionalmente · só nos rows premium */
+  }
+
+  /* — Garantir border-radius padrão global. */
+  .atlas-shell.surface-code button {
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Premium icons em sans (sem fallback emoji estranho). */
+  .atlas-shell.surface-code .send-btn,
+  .atlas-shell.surface-code .left-create-obra-btn span[aria-hidden] {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-variation-settings: 'wght' 500;
+  }
+
+  /* — Right rail mais ar consistente. */
+  .atlas-shell.surface-code .right-rail .rail-panel {
+    padding: 4px 0;
+  }
+
+  /* — Centro do shell · padding ar para conversa. */
+  .atlas-shell.surface-code .conv-thread {
+    padding-bottom: 32px;
+  }
+
+  /* — Obra bar · tipografia premium. */
+  .atlas-shell.surface-code .obra-bar .obra-objective {
+    font-variation-settings: 'wght' 540;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Cards · refinement em borders soft. */
+  .atlas-shell.surface-code .cc-panel section[aria-label],
+  .atlas-shell.surface-code .rail-panel section {
+    border-color: var(--cc-border-soft);
+  }
+
+  /* — Premium subtle glow em badges accent. */
+  .atlas-shell.surface-code .cc-badge[data-tone='accent'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 8px rgba(212, 168, 90, 0.10);
+  }
+
+  /* — Mini icons (✦ ✓ ⌛) refinement. */
+  .atlas-shell.surface-code .send-btn {
+    font-size: 16px;
+    font-variation-settings: 'wght' 500;
+  }
+  .atlas-shell.surface-code .check-circle.done,
+  .atlas-shell.surface-code [aria-label='Checklist'] span[style*='border-radius: 999'] {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Final premium polish em buttons primary com ::before glow. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    position: relative;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code .cc-btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 50%);
+    pointer-events: none;
+    transition: opacity 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:hover::before {
+    opacity: 1.3;
+  }
+
+  /* — Premium · mini bar conv-thread separator. */
+  .atlas-shell.surface-code .conv-msg + .conv-msg {
+    margin-top: 28px;
+  }
+
+  /* — Status dot · pequeno extra ring sutil. */
+  .atlas-shell.surface-code .cc-obra-row .cc-status-dot {
+    transition: box-shadow 200ms var(--cc-ease-out);
+  }
+
+  /* — Subtle hover bg em ops-tab. */
+  .atlas-shell.surface-code .ops-tab:hover:not(.on):not(:disabled) {
+    background: rgba(212, 168, 90, 0.05);
+  }
+
+  /* — Buttons cc-btn-secondary com refinement. */
+  .atlas-shell.surface-code .cc-btn-secondary {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-text);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+  .atlas-shell.surface-code .cc-btn-secondary:hover:not(:disabled) {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 2px 4px rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Improved decision inbox cards layout. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    padding: 12px 14px;
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Conv-thread max-width premium. */
+  .atlas-shell.surface-code .conv-msg {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* — Top bar height ajustado. */
+  .atlas-shell.surface-code .topbar {
+    height: 52px;
+  }
+
+  /* — Subtle text-shadow nos progress percent. */
+  .atlas-shell.surface-code [aria-valuenow] + div strong,
+  .atlas-shell.surface-code [role='progressbar'] ~ * strong {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Forge primary action button padrão · ar generoso. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] button[style*='btnPrimary'] {
+    margin-top: 4px;
+  }
+
+  /* — Atlas Code Forge title style refined. */
+  .atlas-shell.surface-code .panel-title {
+    font-variation-settings: 'wght' 620;
+  }
+
+  /* — Right rail tabs subtle bottom border. */
+  .atlas-shell.surface-code .ops-tabs {
+    border-bottom: 1px solid var(--cc-border);
+  }
+
+  /* — Obra row id refinement (smaller, more elegant). */
+  .atlas-shell.surface-code .cc-obra-row-id {
+    font-size: 9.5px;
+    font-variation-settings: 'wght' 540;
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* — Obra row title with optical refinement. */
+  .atlas-shell.surface-code .cc-obra-row-title {
+    font-variation-settings: 'wght' 540;
+    font-size: 12.5px;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Active obra title bolder. */
+  .atlas-shell.surface-code [data-active='true'] .cc-obra-row-title {
+    font-variation-settings: 'wght' 600;
+    color: var(--cc-text-strong);
+  }
+
+  /* — Workbench panel padding consistency. */
+  .atlas-shell.surface-code .cc-section-title {
+    margin-bottom: 8px;
+  }
+
+  /* — Reset all transform-origin to center for spring scales. */
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    transform-origin: center;
+  }
+
+  /* — Premium · subtle dot indicator nas tabs com badge count. */
+  .atlas-shell.surface-code .ops-tab .badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 5px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    font-family: 'JetBrains Mono';
+    font-size: 9.5px;
+    font-variation-settings: 'wght' 600;
+    letter-spacing: 0;
+  }
+
+  /* — Status board v.ok mais saturado. */
+  .atlas-shell.surface-code .status-item .v.ok {
+    color: var(--cc-success-fg);
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Subtle ::selection refinement. */
+  .atlas-shell.surface-code ::-moz-selection {
+    background: rgba(212, 168, 90, 0.30);
+    color: var(--cc-text-strong);
+  }
+
+  /* — Section card layered subtle hover. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li,
+  .atlas-shell.surface-code [aria-label*='diagnostic'] article,
+  .atlas-shell.surface-code [aria-label*='Lifecycle'] li {
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* — Sticky obra-bar (faster perception). */
+  .atlas-shell.surface-code .obra-bar {
+    position: sticky;
+    top: 52px;
+    z-index: 9;
+  }
+
+  /* — Subtle scrollbar para conv-thread. */
+  .atlas-shell.surface-code .conv-thread::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  /* — Sutil border na conv-msg.you. */
+  .atlas-shell.surface-code .conv-msg.you .body {
+    border-left: 3px solid;
+    border-image: linear-gradient(180deg, var(--cc-info) 0%, rgba(127, 167, 196, 0.3) 100%) 1;
+  }
+
+  /* — Subtle padding refinement em sections de stats. */
+  .atlas-shell.surface-code [aria-label*='Trust'],
+  .atlas-shell.surface-code [aria-label*='Operational'],
+  .atlas-shell.surface-code [aria-label*='Evidence'],
+  .atlas-shell.surface-code [aria-label*='Provider'] {
+    padding: 14px 16px;
+  }
+
+  /* — Premium: subtle aurora glow no card primário ativo. */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at left, rgba(212, 168, 90, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Atlas Code button minimo · refinement. */
+  .atlas-shell.surface-code .cc-btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+    height: 28px;
+  }
+
+  /* — Final premium: Composer focus enters smoothly. */
+  .atlas-shell.surface-code .composer-row:focus-within {
+    transition: all 240ms var(--cc-ease-out);
+  }
+
+  /* — Refinement no spacing entre stages SDD. */
+  .atlas-shell.surface-code .sdd-mini .stages { gap: 10px; }
+
+  /* — Composer · botão send mais centralizado verticalmente. */
+  .atlas-shell.surface-code .composer-row {
+    align-items: stretch;
+  }
+  .atlas-shell.surface-code .composer .send-btn {
+    align-self: stretch;
+    height: auto;
+    min-height: 44px;
+  }
+
+  /* — Premium typography em form labels. */
+  .atlas-shell.surface-code .cc-label {
+    font-variation-settings: 'wght' 540;
+    color: var(--cc-text-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* — Sutil decoração premium em buttons primary com inner depth glow. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    backdrop-filter: blur(1px);
+  }
+
+  /* — Animação smooth em status dot mudança. */
+  .atlas-shell.surface-code .cc-status-dot {
+    transition:
+      background-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out);
+  }
+
+  /* — Compose composer-meta refinement (mais ar entre meta + textarea). */
+  .atlas-shell.surface-code .composer {
+    display: grid;
+    gap: 8px;
+  }
+
+  /* — Premium: workbench obra-id rendering. */
+  .atlas-shell.surface-code .obra-id {
+    font-variation-settings: 'wght' 540;
+    text-transform: uppercase;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Refinement final: tabela rows com hover sutil. */
+  .atlas-shell.surface-code .row,
+  .atlas-shell.surface-code .check-row,
+  .atlas-shell.surface-code .row-card {
+    transition: background 180ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code section .row:hover,
+  .atlas-shell.surface-code section .check-row:hover {
+    background: rgba(255, 255, 255, 0.012);
+  }
+
+  /* — Forge title heading premium variation. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] h3 {
+    font-variation-settings: 'wght' 640;
+  }
+
+  /* — Subtle outer glow nas hero cards. */
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Premium small text refinement. */
+  .atlas-shell.surface-code small,
+  .atlas-shell.surface-code .hint,
+  .atlas-shell.surface-code .cc-empty-hint {
+    font-variation-settings: 'wght' 440;
+    color: var(--cc-text-faint);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  /* — Premium · workbench panel separation com subtle gradient line. */
+  .atlas-shell.surface-code .cc-panel section + section {
+    position: relative;
+  }
+
+  /* — Decision badges padding mais ar. */
+  .atlas-shell.surface-code .cc-badge {
+    padding: 2px 8px;
+    line-height: 1.5;
+  }
+
+  /* — Cards layered shadows premium · 2-layer composite. */
+  .atlas-shell.surface-code .cc-panel > section {
+    box-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.20),
+      0 1px 4px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* — Premium · subtle highlight em buttons quando keyboard navigation. */
+  .atlas-shell.surface-code button:focus-visible {
+    outline-offset: 2px;
+    outline: none;
+  }
+
+  /* — Cards content padding refinement. */
+  .atlas-shell.surface-code [aria-label='Lifecycle da Obra'] {
+    padding: 16px 20px;
+  }
+
+  /* — Composer textarea refinement. */
+  .atlas-shell.surface-code .composer textarea {
+    border-radius: var(--cc-radius-sm);
+    font-variation-settings: 'wght' 440;
+  }
+
+  /* — Subtle motion em ops-panel content (transição entre tabs). */
+  .atlas-shell.surface-code .ops-panel {
+    animation: cc-fade-in 240ms var(--cc-ease-out);
+  }
+
+  /* — Refinement: progress card subtle gradient. */
+  .atlas-shell.surface-code [aria-label='Próximo passo seguro'] {
+    background: linear-gradient(180deg, var(--cc-surface) 0%, var(--cc-surface-sunken) 100%);
+  }
+
+  /* — Subtle gradient nos status cards (Apple Pro). */
+  .atlas-shell.surface-code [aria-label='Lifecycle da Obra'] {
+    background: linear-gradient(180deg, var(--cc-surface) 0%, rgba(36, 55, 67, 0.96) 100%);
+  }
+
+  /* — Premium · subtle hover en send-btn quando habilitado. */
+  .atlas-shell.surface-code .send-btn:not(:disabled) {
+    cursor: pointer;
+  }
+  .atlas-shell.surface-code .send-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* — Workbench section · subtle motion on enter. */
+  .atlas-shell.surface-code .cc-rail-section {
+    animation: cc-fade-in 320ms var(--cc-ease-out);
+  }
+
+  /* — Premium · headings hover (where applicable). */
+  .atlas-shell.surface-code [role='button'] h3,
+  .atlas-shell.surface-code button h3 {
+    transition: color 180ms var(--cc-ease-out);
+  }
+
+  /* — Workbench panel hover subtle gold border (only when interactive). */
+  .atlas-shell.surface-code button section[aria-label]:hover {
+    border-color: rgba(212, 168, 90, 0.20);
+  }
+
+  /* — Sutil texture noise overlay (Apple Pro). */
+  .atlas-shell.surface-code .main-stage::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(rgba(255, 255, 255, 0.008) 1px, transparent 1px);
+    background-size: 3px 3px;
+    opacity: 0.6;
+    z-index: 0;
+  }
+  .atlas-shell.surface-code .main-stage > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* — Premium · subtle aurora glow vertices nas cards. */
+  .atlas-shell.surface-code .cc-panel article[aria-label='Atlas Code Obra Command Center'] {
+    position: relative;
+  }
+  .atlas-shell.surface-code .cc-panel article[aria-label='Atlas Code Obra Command Center']::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(212, 168, 90, 0.30) 40%,
+      rgba(212, 168, 90, 0.30) 60%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* — Premium loading dot pulse alternative (calmo, não cafona). */
+  @keyframes cc-loading-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+  .atlas-shell.surface-code .cc-loading-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--cc-info);
+    border-radius: 999px;
+    animation: cc-loading-pulse 1.8s var(--cc-ease-in-out) infinite;
+  }
+
+  /* — Subtle hover refinement em sections com ::after gradient. */
+  .atlas-shell.surface-code section[aria-label='Próximo passo seguro']::after,
+  .atlas-shell.surface-code section[aria-label='Lifecycle da Obra']::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.04), transparent 50%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 280ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code section[aria-label='Próximo passo seguro'],
+  .atlas-shell.surface-code section[aria-label='Lifecycle da Obra'] {
+    position: relative;
+  }
+
+  /* — Decision Inbox card hover · subtle accent overlay. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li:hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.04), transparent 60%);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* — Progressbar com glow externo subtle quando focado/hovered. */
+  .atlas-shell.surface-code [role='progressbar']:hover {
+    box-shadow: 0 0 12px rgba(212, 168, 90, 0.06);
+  }
+
+  /* — Premium spacing em conv-thread quando há mensagens. */
+  .atlas-shell.surface-code .conv-thread {
+    padding-top: 28px;
+  }
+
+  /* — Subtle inner highlight em obra-id quando focused. */
+  .atlas-shell.surface-code .obra-id:focus-visible {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 0 2px var(--cc-bg),
+      0 0 0 4px var(--cc-accent-strong);
+  }
+
+  /* — Final premium: bottom highlight nas top-bars (sticky). */
+  .atlas-shell.surface-code .topbar::after,
+  .atlas-shell.surface-code .obra-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(212, 168, 90, 0.12) 50%,
+      transparent 100%);
+    pointer-events: none;
+  }
+
+  /* — Premium · subtle pulse nos status dots blocked (alert sem ser cafona). */
+  .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] {
+    animation: cc-blocked-soft-pulse 3s var(--cc-ease-in-out) infinite;
+  }
+  @keyframes cc-blocked-soft-pulse {
+    0%, 100% {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 0 4px rgba(208, 90, 82, 0.35);
+    }
+    50% {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 0 10px rgba(208, 90, 82, 0.55);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] { animation: none; }
+  }
+
+  /* — Premium typography hierarchy nos progress percent. */
+  .atlas-shell.surface-code [aria-valuenow] ~ * strong:first-child,
+  .atlas-shell.surface-code section[aria-label*='Próximo'] > div:first-of-type span:first-child {
+    font-variation-settings: 'wght' 680;
+    font-feature-settings: 'tnum' 1, 'cv11' 1;
+    letter-spacing: -0.014em;
+  }
+
+  /* — Subtle horizontal divider between SectionCards. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] > section + section {
+    margin-top: 14px;
+  }
+
+  /* — Cards content readability max-width. */
+  .atlas-shell.surface-code .conv-msg .body {
+    max-width: 68ch;
+  }
+
+  /* — Composer textarea Apple Pro smoothing. */
+  .atlas-shell.surface-code .composer textarea {
+    transition:
+      border-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out),
+      background 200ms var(--cc-ease-out),
+      min-height 200ms var(--cc-ease-out);
+  }
+
+  /* — Premium: refinement em surface-tab shortcut keys. */
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    font-variation-settings: 'wght' 520;
+    opacity: 0.7;
+  }
+  .atlas-shell.surface-code .surface-tab.on .surface-tab-shortcut {
+    opacity: 1;
+  }
+
+  /* — Premium · subtle border-radius em right-rail bottom for visual coherence. */
+  .atlas-shell.surface-code .right-rail .ops-panel {
+    border-radius: 0 0 var(--cc-radius-md) 0;
+  }
+
+  /* — Premium · fade-in animation refinement (mais suave). */
+  @keyframes cc-soft-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.998);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .atlas-shell.surface-code .cc-obra-row {
+    animation: cc-soft-enter 280ms var(--cc-ease-out) backwards;
+  }
+
+  /* — Premium: subtle hover scale em status dots interactive. */
+  .atlas-shell.surface-code .cc-obra-row:hover .cc-status-dot {
+    transform: scale(1.15);
+  }
+  .atlas-shell.surface-code .cc-status-dot {
+    transform: scale(1);
+    transition:
+      transform 240ms var(--cc-ease-spring),
+      background-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out);
+  }
+
+  /* — Final Apple Pro: subtle font-feature settings em data table values. */
+  .atlas-shell.surface-code .row .v,
+  .atlas-shell.surface-code .row-card .v,
+  .atlas-shell.surface-code .check-tag {
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'kern' 1;
+  }
+
+  /* — Premium: subtle hover em links também aplicado a strong. */
+  .atlas-shell.surface-code strong {
+    font-variation-settings: 'wght' 600;
+  }
+
+  /* — Subtle outline focus-within em panels (rare). */
+  .atlas-shell.surface-code button:focus-visible {
+    z-index: 2;
+  }
+
+  /* — Premium details opening animation. */
+  .atlas-shell.surface-code details {
+    transition: padding 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code details[open] > *:not(summary) {
+    animation: cc-soft-enter 280ms var(--cc-ease-out) backwards;
+  }
+
+  /* — Premium subtle accent marker no inicio de h1 (Apple Pro typography). */
+  .atlas-shell.surface-code h1[style*='font-size: 22'],
+  .atlas-shell.surface-code h1[style*='font-size: 24'] {
+    position: relative;
+  }
+
+  /* — Mini chips compact (status_summary). */
+  .atlas-shell.surface-code [aria-label='Safety strip'] span,
+  .atlas-shell.surface-code [aria-label*='afety'] span {
+    transition: color 200ms var(--cc-ease-out);
+  }
+
+  /* — Premium · subtle font feature em accent areas. */
+  .atlas-shell.surface-code .cc-accent,
+  .atlas-shell.surface-code [style*='color: var(--cc-accent)'] {
+    font-variation-settings: 'wght' 560;
+    font-feature-settings: 'cv11' 1;
+  }
+
+  /* — Hover refinement em surface-tab. */
+  .atlas-shell.surface-code .surface-tab:hover:not(.on) {
+    background: rgba(212, 168, 90, 0.05);
+    color: var(--cc-text);
+  }
+
+  /* — Cmd+Enter kbds com refinement Apple class. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    font-variation-settings: 'wght' 540;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Subtle decorative line em rail section heads (premium pattern). */
+  .atlas-shell.surface-code .cc-rail-section-head {
+    background: linear-gradient(180deg, transparent 0%, rgba(212, 168, 90, 0.04) 100%);
+  }
+
+  /* — Brand sub badge com inner glow. */
+  .atlas-shell.surface-code .brand .v {
+    background: linear-gradient(180deg,
+      rgba(212, 168, 90, 0.16) 0%,
+      rgba(212, 168, 90, 0.10) 100%);
+    backdrop-filter: blur(2px);
+  }
+
+  /* — Premium · refinement em pty-badge real. */
+  .atlas-shell.surface-code .pty-badge {
+    background: linear-gradient(180deg,
+      rgba(130, 181, 119, 0.18) 0%,
+      rgba(130, 181, 119, 0.10) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 0 4px rgba(130, 181, 119, 0.20);
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Composer textarea sutil glow no hover (não focus). */
+  .atlas-shell.surface-code .composer textarea:hover:not(:focus):not(:disabled) {
+    border-color: var(--cc-border-strong);
+  }
+
+  /* — Final premium: subtle backdrop em status badges. */
+  .atlas-shell.surface-code .cc-badge {
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* — Subtle outer glow em forge tab quando active. */
+  .atlas-shell.surface-code .ops-tab.on {
+    color: var(--cc-accent-strong);
+    text-shadow: 0 0 12px rgba(212, 168, 90, 0.25);
+  }
+
+  /* — Loading spinner premium gold. */
+  .atlas-shell.surface-code .cc-loading-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .atlas-shell.surface-code .cc-loading-title::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--cc-info-veil);
+    border-top-color: var(--cc-info);
+    border-radius: 999px;
+    animation: cc-spin 800ms linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-loading-title::before { animation: none; }
+  }
+
+  /* — Right rail · refinement final. */
+  .atlas-shell.surface-code .right-rail > .ops-tabs + .ops-panel {
+    padding-top: 16px;
+  }
+
+  /* — Subtle decoration nos ::after dos rail sections. */
+  .atlas-shell.surface-code .cc-rail-section-head::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 32px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cc-accent-border), transparent);
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 280ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-rail-section:hover .cc-rail-section-head::after {
+    opacity: 1;
+  }
+  .atlas-shell.surface-code .cc-rail-section-head {
+    position: relative;
+  }
+
+  /* ━━━ ROUND 15 · FINAL POLISH SWEEP · 9.8 absoluto ━━━ */
+
+  /* — Right rail panels: respiro vertical consistente. */
+  .atlas-shell.surface-code .rail-panel {
+    padding: 0;
+    margin-bottom: 20px;
+  }
+  .atlas-shell.surface-code .rail-panel section[role='status'],
+  .atlas-shell.surface-code .rail-panel section[role='alert'] {
+    margin-bottom: 14px;
+  }
+  .atlas-shell.surface-code .rail-panel h3 {
+    margin: 14px 0 10px;
+  }
+
+  /* — Right rail header forge title premium. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] > h3:first-child,
+  .atlas-shell.surface-code .rail-panel > h3:first-child {
+    padding-bottom: 6px;
+    margin-top: 0;
+    border-bottom: 1px solid var(--cc-border-soft);
+    font-size: 13px;
+    font-variation-settings: 'wght' 620;
+    color: var(--cc-text);
+    letter-spacing: -0.005em;
+  }
+
+  /* — Centro Command Center: hero card refinement. */
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] {
+    padding: 22px 26px;
+    gap: 14px;
+    border-radius: var(--cc-radius-lg);
+  }
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] h1 {
+    font-size: 26px;
+    line-height: 1.16;
+    font-variation-settings: 'wght' 720;
+    letter-spacing: -0.020em;
+  }
+
+  /* — Decision Inbox cards · hover lift premium. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    padding: 14px 16px;
+    border-radius: var(--cc-radius-md);
+    gap: 6px;
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li strong {
+    font-size: 14px;
+    font-variation-settings: 'wght' 620;
+    line-height: 1.3;
+  }
+
+  /* — Left rail · respiro extra. */
+  .atlas-shell.surface-code .left-rail {
+    padding: 16px 14px 24px;
+  }
+  .atlas-shell.surface-code .cc-rail-section {
+    margin-bottom: 20px;
+    gap: 1px;
+  }
+  .atlas-shell.surface-code .cc-rail-section-head {
+    padding: 6px 14px 8px;
+    margin-bottom: 6px;
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 600;
+    letter-spacing: -0.001em;
+  }
+  .atlas-shell.surface-code .cc-obra-row {
+    padding: 10px 14px;
+  }
+  .atlas-shell.surface-code .cc-obra-row-head {
+    gap: 11px;
+  }
+  .atlas-shell.surface-code .cc-obra-row-title {
+    font-size: 13px;
+    line-height: 1.35;
+    font-variation-settings: 'wght' 560;
+  }
+  .atlas-shell.surface-code .cc-obra-row-meta {
+    padding-left: 19px;
+    gap: 7px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--cc-text-faint);
+    font-variation-settings: 'wght' 460;
+  }
+
+  /* — Search input premium refinement. */
+  .atlas-shell.surface-code .cc-input[type='search'] {
+    height: 32px !important;
+    font-size: 12.5px !important;
+    padding: 0 12px !important;
+    margin-bottom: 10px !important;
+    background: var(--cc-surface-sunken);
+    border: 1px solid var(--cc-border);
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Top bar refinement. */
+  .atlas-shell.surface-code .topbar {
+    padding: 0 24px;
+  }
+  .atlas-shell.surface-code .brand strong {
+    font-size: 14.5px;
+    font-variation-settings: 'wght' 640;
+    letter-spacing: -0.008em;
+  }
+
+  /* — Surface switcher · pill premium. */
+  .atlas-shell.surface-code .surface-switcher {
+    padding: 4px;
+    gap: 2px;
+    border-radius: 9px;
+  }
+  .atlas-shell.surface-code .surface-tab {
+    padding: 7px 16px;
+    border-radius: 6px;
+    gap: 8px;
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-label {
+    font-size: 13px;
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    font-size: 10px;
+    margin-left: 0;
+  }
+
+  /* — Obra bar refinement. */
+  .atlas-shell.surface-code .obra-bar {
+    padding: 0 24px;
+    gap: 14px;
+  }
+  .atlas-shell.surface-code .obra-id {
+    padding: 3px 9px;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+  }
+  .atlas-shell.surface-code .obra-objective {
+    font-size: 14px;
+    font-variation-settings: 'wght' 540;
+  }
+
+  /* — Terminal dock refinement. */
+  .atlas-shell.surface-code .term-tabs {
+    padding: 0 12px;
+    gap: 0;
+  }
+  .atlas-shell.surface-code .term-tab {
+    padding: 9px 14px 8px;
+    font-size: 12px;
+    font-variation-settings: 'wght' 540;
+  }
+  .atlas-shell.surface-code .term-action {
+    padding: 0 9px;
+    font-size: 11px;
+    font-variation-settings: 'wght' 540;
+    height: 24px;
+    border-radius: var(--cc-radius-xs);
+  }
+  .atlas-shell.surface-code .term-actions {
+    gap: 4px;
+  }
+  .atlas-shell.surface-code .term-status {
+    padding: 8px 18px;
+    gap: 18px;
+    font-size: 12px;
+  }
+  .atlas-shell.surface-code .term-status-cwd {
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 500;
+  }
+  .atlas-shell.surface-code .pty-badge {
+    padding: 3px 10px;
+    font-size: 10px;
+    font-variation-settings: 'wght' 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* — Composer refinement final. */
+  .atlas-shell.surface-code .composer {
+    padding: 16px 32px 18px;
+    gap: 10px;
+  }
+  .atlas-shell.surface-code .composer textarea {
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    min-height: 52px;
+  }
+  .atlas-shell.surface-code .composer-row {
+    gap: 12px;
+  }
+  .atlas-shell.surface-code .composer-meta {
+    font-size: 12px;
+    color: var(--cc-text-faint);
+    margin-top: 2px;
+  }
+  .atlas-shell.surface-code .composer-meta kbd {
+    padding: 3px 7px;
+    font-size: 10.5px;
+    margin: 0 1px;
+  }
+
+  /* — SDD mini refinement. */
+  .atlas-shell.surface-code .sdd-mini {
+    padding: 14px 18px;
+    gap: 18px;
+  }
+  .atlas-shell.surface-code .sdd-mini .label {
+    font-size: 11px;
+    font-variation-settings: 'wght' 620;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-variation-settings: 'wght' 540;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    font-variation-settings: 'wght' 620;
+  }
+  .atlas-shell.surface-code .sdd-mini .stages {
+    gap: 6px;
+  }
+
+  /* — Conv msg refinement. */
+  .atlas-shell.surface-code .conv-msg .who {
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 600;
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+  .atlas-shell.surface-code .conv-msg.you .body,
+  .atlas-shell.surface-code .conv-msg.atlas .body {
+    font-size: 14px;
+    line-height: 1.65;
+    font-variation-settings: 'wght' 440;
+  }
+
+  /* — Section heads em ops-panel premium. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] section[role='status'] > div:nth-child(2) {
+    font-size: 15px;
+    line-height: 1.3;
+    font-variation-settings: 'wght' 620;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Buttons hover micro-spring (mais sutil). */
+  .atlas-shell.surface-code .cc-btn-primary:hover:not(:disabled) {
+    transform: translateY(-0.5px);
+  }
+  .atlas-shell.surface-code .send-btn:hover:not(:disabled) {
+    transform: scale(1.04);
+  }
+
+  /* — Right rail tabs micro spacing. */
+  .atlas-shell.surface-code .ops-tab {
+    padding: 11px 6px;
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 540;
+  }
+  .atlas-shell.surface-code .ops-tab.on {
+    font-variation-settings: 'wght' 640;
+  }
+
+  /* — Section card heading premium. */
+  .atlas-shell.surface-code .panel-title {
+    margin: 0 0 14px;
+    padding-bottom: 6px;
+    font-size: 13px;
+    font-variation-settings: 'wght' 620;
+    color: var(--cc-text);
+    letter-spacing: -0.005em;
+  }
+
+  /* — Status badges em corpo · refinement consistente. */
+  .atlas-shell.surface-code .cc-badge {
+    padding: 3px 10px;
+    font-size: 10.5px;
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+
+  /* — Row premium values com text-align right. */
+  .atlas-shell.surface-code [role='listitem'][class*='row'] .v,
+  .atlas-shell.surface-code .row .v {
+    font-variation-settings: 'wght' 600;
+  }
+
+  /* — Final premium · backdrop em status-card right rail. */
+  .atlas-shell.surface-code .rail-panel section[role='status'] {
+    backdrop-filter: blur(2px);
+  }
+
+  /* — Inputs/textareas radius padrão. */
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea,
+  .atlas-shell.surface-code .left-create-obra-input,
+  .atlas-shell.surface-code .composer textarea {
+    border-radius: var(--cc-radius-md);
+  }
+
+  /* — Buttons premium · radius padrão. */
+  .atlas-shell.surface-code .cc-btn,
+  .atlas-shell.surface-code .cc-btn-primary,
+  .atlas-shell.surface-code .left-create-obra-btn,
+  .atlas-shell.surface-code .left-create-obra-actions button {
+    border-radius: var(--cc-radius-md);
+  }
+
+  /* ━━━ ROUND 16 · MICRO REFINEMENT ABSOLUTO ━━━ */
+
+  /* — Premium · scroll snap em conv-thread (ótima leitura). */
+  .atlas-shell.surface-code .conv-thread {
+    overscroll-behavior: contain;
+  }
+
+  /* — Premium · text-rendering em headings importantes. */
+  .atlas-shell.surface-code h1,
+  .atlas-shell.surface-code h2 {
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* — Refinement micro em check-circle (radius perfeitamente arredondado). */
+  .atlas-shell.surface-code [aria-label*='Checklist'] span[style*='border-radius: 999'],
+  .atlas-shell.surface-code .check-circle {
+    aspect-ratio: 1;
+  }
+
+  /* — Premium subtle decoration · Forge title icon prefix optional. */
+  .atlas-shell.surface-code .rail-panel > h3:first-child::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 11px;
+    background: var(--cc-accent);
+    border-radius: 999px;
+    margin-right: 8px;
+    vertical-align: middle;
+    box-shadow: 0 0 6px rgba(212, 168, 90, 0.45);
+  }
+
+  /* — Section card heading com bullet point premium. */
+  .atlas-shell.surface-code .section-card-header,
+  .atlas-shell.surface-code [aria-label*='Checklist'] > header,
+  .atlas-shell.surface-code [aria-label*='Segurança'] > header,
+  .atlas-shell.surface-code [aria-label*='Provider'] > header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* — Premium · subtle padding em rows. */
+  .atlas-shell.surface-code .row,
+  .atlas-shell.surface-code .check-row,
+  .atlas-shell.surface-code .row-card {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  /* — Premium · workbench panels · respiro lateral. */
+  .atlas-shell.surface-code .cc-panel {
+    padding: 0 12px;
+  }
+
+  /* — Premium · sticky shadow underline em obra-bar sticky. */
+  .atlas-shell.surface-code .obra-bar {
+    box-shadow:
+      inset 0 1px 0 rgba(0, 0, 0, 0.06),
+      0 1px 0 var(--cc-border-soft);
+  }
+
+  /* — Premium · empty rail-section minimal text. */
+  .atlas-shell.surface-code .cc-rail-section:empty {
+    display: none;
+  }
+
+  /* — Premium · animation refinement em cards · ease-out slower. */
+  .atlas-shell.surface-code .cc-card,
+  .atlas-shell.surface-code .rail-panel section,
+  .atlas-shell.surface-code .cc-panel > section {
+    transition: box-shadow 320ms var(--cc-ease-out), border-color 320ms var(--cc-ease-out);
+  }
+
+  /* — Premium · gentle hover em cards de Lifecycle. */
+  .atlas-shell.surface-code [aria-label='Lifecycle da Obra']:hover {
+    border-color: rgba(212, 168, 90, 0.12);
+  }
+
+  /* — Premium · cmd+enter kbds in line-height padronizado. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    line-height: 1.4;
+  }
+
+  /* — Premium · h3 em section card headers. */
+  .atlas-shell.surface-code .cc-card h3,
+  .atlas-shell.surface-code .cc-card-raised h3,
+  .atlas-shell.surface-code .cc-panel section h3 {
+    font-size: 14.5px;
+    font-variation-settings: 'wght' 620;
+    color: var(--cc-text-strong);
+    letter-spacing: -0.005em;
+    line-height: 1.3;
+  }
+
+  /* — Premium · subtle indication em "ok" tags. */
+  .atlas-shell.surface-code .row .v.ok,
+  .atlas-shell.surface-code .row-card .v.ok,
+  .atlas-shell.surface-code .check-tag.done {
+    text-shadow: 0 0 8px rgba(130, 181, 119, 0.25);
+  }
+
+  /* — Premium · subtle border-radius nos action chips. */
+  .atlas-shell.surface-code [aria-label*='Decision'] li {
+    border-radius: 6px;
+  }
+
+  /* — Premium · refinement em scrollbar pra direção horizontal. */
+  .atlas-shell.surface-code *::-webkit-scrollbar:horizontal {
+    height: 6px;
+  }
+
+  /* — Premium · cursor mais discreto · pointer só onde interativo. */
+  .atlas-shell.surface-code .cc-empty,
+  .atlas-shell.surface-code .cc-loading,
+  .atlas-shell.surface-code .cc-error {
+    cursor: default;
+  }
+
+  /* — Premium · refinement em status badges com text-shadow. */
+  .atlas-shell.surface-code .cc-badge[data-tone='success'] strong,
+  .atlas-shell.surface-code .cc-badge[data-tone='success'] {
+    text-shadow: 0 0 8px rgba(130, 181, 119, 0.15);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='danger'],
+  .atlas-shell.surface-code .cc-badge[data-tone='warning'] {
+    text-shadow: 0 0 6px currentColor;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Premium · refined linewidth em borders externas. */
+  .atlas-shell.surface-code .rail-panel section[role='status'] {
+    border-width: 1px;
+    border-style: solid;
+  }
+
+  /* — Premium · refinement em conv-thread → ar superior. */
+  .atlas-shell.surface-code .conv-thread > * + * {
+    margin-top: 6px;
+  }
+
+  /* — Premium · subtle motion entre Obra changes (smooth). */
+  .atlas-shell.surface-code .main-stage > * {
+    animation: cc-fade-in 320ms var(--cc-ease-out);
+  }
+
+  /* — Premium · padronização visual de all transitions. */
+  .atlas-shell.surface-code * {
+    transition-timing-function: var(--cc-ease-out);
+  }
+
+  /* — Premium · subtle highlight em decision inbox cards. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    border-width: 1px;
+  }
+
+  /* — Premium · ::placeholder optical refinement. */
+  .atlas-shell.surface-code .cc-input::placeholder,
+  .atlas-shell.surface-code .cc-textarea::placeholder,
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    font-variation-settings: 'wght' 420;
+    opacity: 0.9;
+  }
+
+  /* — Premium · scrollbar com fade-in subtle. */
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb {
+    opacity: 0.5;
+    transition: opacity 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code *:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+  }
+
+  /* ━━━ ROUND 17 · PIXEL PERFECT ABSOLUTO ━━━ */
+
+  /* — Forge tab title bullet · vertical micro. */
+  .atlas-shell.surface-code .rail-panel > h3:first-child {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 2px;
+  }
+
+  /* — Premium · scroll-margin para deep links. */
+  .atlas-shell.surface-code .cc-panel section[aria-label] {
+    scroll-margin-top: 100px;
+  }
+
+  /* — Premium · subtle texture em backgrounds das cards. */
+  .atlas-shell.surface-code .cc-panel > section[aria-label='Próximo passo seguro'] {
+    background:
+      radial-gradient(ellipse at top right, rgba(212, 168, 90, 0.04) 0%, transparent 60%),
+      var(--cc-surface-raised);
+  }
+
+  /* — Premium · subtle accent border-image em buttons primary. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    border: 1px solid;
+    border-image: linear-gradient(180deg, rgba(255,255,255,0.20), rgba(0,0,0,0.10)) 1;
+  }
+
+  /* — Premium · ::after subtle line decoration em headings. */
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] h1::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cc-accent), transparent);
+    border-radius: 999px;
+    margin-top: 8px;
+  }
+
+  /* — Premium · workbench panels heading com clean separator. */
+  .atlas-shell.surface-code .cc-panel h3 {
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--cc-border-soft);
+    margin-bottom: 12px;
+  }
+
+  /* — Premium · refinement em conv-thread message you. */
+  .atlas-shell.surface-code .conv-msg.you .body {
+    padding: 4px 0 4px 18px;
+  }
+
+  /* — Premium · subtle background nos atlas-msg quando hover. */
+  .atlas-shell.surface-code .conv-msg.atlas {
+    padding: 8px 10px;
+    margin-left: -10px;
+    border-radius: var(--cc-radius-md);
+    transition: background 240ms var(--cc-ease-out);
+  }
+
+  /* — Premium · cmd+enter kbds com dimensões consistentes. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    min-width: 24px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  /* — Premium · empty divider line nos rail-section-head ::after. */
+  .atlas-shell.surface-code .cc-rail-section-head::after {
+    height: 1.5px;
+  }
+
+  /* — Premium · scrollbar corner remove. */
+  .atlas-shell.surface-code *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* — Premium · placeholder otimizado · letter-spacing 0. */
+  .atlas-shell.surface-code .cc-input::placeholder,
+  .atlas-shell.surface-code .cc-textarea::placeholder,
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    letter-spacing: 0;
+    font-variation-settings: 'wght' 420;
+  }
+
+  /* — Premium · :focus-visible em rails é tratado pelo focus-ring. */
+  .atlas-shell.surface-code .cc-obra-row:focus-visible {
+    outline: none;
+    background: var(--cc-accent-veil);
+    border-color: var(--cc-accent-border);
+  }
+
+  /* — Premium · subtle vertical spacing entre sections em ops-panel. */
+  .atlas-shell.surface-code .ops-panel > * {
+    margin-bottom: 14px;
+  }
+  .atlas-shell.surface-code .ops-panel > *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* — Premium · subtle micro-typography refinement em strong. */
+  .atlas-shell.surface-code strong {
+    font-feature-settings: 'cv11' 1, 'kern' 1;
+  }
+
+  /* — Premium · global font-rendering em cards principais. */
+  .atlas-shell.surface-code .cc-panel,
+  .atlas-shell.surface-code .rail-panel {
+    -webkit-text-stroke: 0.01em transparent;
+  }
+
+  /* — Premium · subtle font-feature em descriptions. */
+  .atlas-shell.surface-code p,
+  .atlas-shell.surface-code [class*='description'] {
+    font-feature-settings: 'kern' 1, 'liga' 1, 'cv11' 1;
+  }
+
+  /* — Premium · obra-id em hover com glow gold. */
+  .atlas-shell.surface-code .obra-bar:hover .obra-id {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 0 1px rgba(212, 168, 90, 0.30),
+      0 0 12px rgba(212, 168, 90, 0.15);
+  }
+
+  /* — Premium · subtle inner gloss em send-btn. */
+  .atlas-shell.surface-code .send-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code .send-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent);
+    pointer-events: none;
+    border-radius: var(--cc-radius-md) var(--cc-radius-md) 0 0;
+  }
+
+  /* — Premium · refinement em ops-tab disabled. */
+  .atlas-shell.surface-code .ops-tab:disabled {
+    color: var(--cc-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  /* — Premium · subtle accent halo nos buttons primary glow. */
+  .atlas-shell.surface-code .cc-btn-primary:not(:disabled) {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  /* — Premium · subtle backdrop em status cards. */
+  .atlas-shell.surface-code [role='status'][style*='background: var(--cc-danger-veil'],
+  .atlas-shell.surface-code [role='alert'][style*='background: var(--cc-danger-veil'] {
+    background:
+      radial-gradient(ellipse at top, rgba(208, 90, 82, 0.04) 0%, transparent 60%),
+      var(--cc-danger-veil) !important;
+  }
+
+  /* — Final premium · refinement absoluto em check-circle done. */
+  .atlas-shell.surface-code .check-circle.done,
+  .atlas-shell.surface-code [aria-label*='Checklist'] span[style*='var(--cc-success'][style*='border-radius'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 6px rgba(130, 181, 119, 0.15);
+  }
 }
 
 @layer base {

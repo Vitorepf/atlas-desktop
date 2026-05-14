@@ -1,12 +1,11 @@
 import type { CartographyAtom } from '@atlas/domain'
-import { toRoman } from './layout'
 import { pipelineSymbol } from './atomModel'
 import { AtomSourceLine } from './AtomSourceLine'
 
 export function PipelineAtomContent({ atom }: { atom: CartographyAtom }) {
   return (
     <>
-      <span className="a-num">{toRoman(atom.graphOrder ?? 0)}.</span>
+      <span className="a-num">{atom.graphOrder ?? 0}.</span>
       <span className="a-symbol" aria-hidden="true">{pipelineSymbol(atom.graphOrder ?? 0)}</span>
       <div className="a-body">
         <span className="a-name">{atom.name}</span>

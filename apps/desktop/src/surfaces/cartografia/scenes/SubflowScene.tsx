@@ -5,7 +5,6 @@
  * num grid editorial. Botão volta pra GearScene.
  */
 import type { CartographyAtom } from '@atlas/domain'
-import { toRoman } from '../map/layout'
 
 interface SubflowSceneProps {
   atom: CartographyAtom
@@ -18,7 +17,7 @@ export function SubflowScene({ atom, onBackToGear }: SubflowSceneProps) {
     <div className="subflow-stage" id="subflow-stage">
       <header className="subflow-head">
         <span className="sh-roman">
-          {toRoman(atom.graphOrder ?? 0)} · subfluxo
+          {atom.graphOrder ?? 0} · subfluxo
         </span>
         <div className="sh-title">{atom.name} · Subcomponentes</div>
         <div className="sh-sub">

@@ -1,12 +1,11 @@
 import type { CartographyAtom } from '@atlas/domain'
-import { toRoman } from '../map/layout'
 import type { GearModel } from './gearTypes'
 
 export function buildGearModel(atom: CartographyAtom, atomIndex: Record<string, CartographyAtom>): GearModel {
   const isPipeline = atom.kind === 'pipeline'
   return {
     eyebrow: isPipeline
-      ? `Atlas · AI Kernel · ${toRoman(atom.graphOrder ?? 0)}`
+      ? `Atlas · AI Kernel · ${atom.graphOrder ?? 0}`
       : `Atlas · ${atom.regionHead ?? 'Lateral'}`,
     fields: [
       { label: 'Entrada', glyph: '↑', val: atom.input },
