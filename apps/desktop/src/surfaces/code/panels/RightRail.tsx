@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
-import type { BootSnapshot, CoreStatus, DecisionReceipt, QualityGate, WorkStateSnapshot } from '@atlas/domain'
+import type {
+  BootSnapshot,
+  CoreStatus,
+  DecisionReceipt,
+  ProgrammingGovernanceSnapshot,
+  QualityGate,
+  WorkStateSnapshot,
+} from '@atlas/domain'
 import { RIGHT_RAIL_PANELS } from './rightRailRegistry'
 import type { OpsTab, RightRailContext } from './rightRailTypes'
 
@@ -10,6 +17,7 @@ interface RightRailProps {
   evidence: WorkStateSnapshot['evidence']
   boot: BootSnapshot | null
   busy: boolean
+  programmingGovernance: ProgrammingGovernanceSnapshot | null
   onSignReceipt: () => Promise<void>
   onRunGate: (gateId: string) => Promise<void>
 }

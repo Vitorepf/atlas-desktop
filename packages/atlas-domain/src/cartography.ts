@@ -131,15 +131,57 @@ export interface SemanticGraph {
 }
 
 /**
- * Audit do graph: quantas peças canon foram encontradas vs missing,
- * quantos arquivos repo/vault foram indexados.
+ * Path canônico ausente · usado pelo Audit Panel pra mostrar exatamente onde
+ * o canon esperava um .md e o backend não encontrou.
+ */
+export interface BrokenPath {
+  graphId: string
+  name: string
+  expectedPath: string
+  graphKind: string
+}
+
+/**
+ * Node do semantic graph que declara um parent inexistente. Informativo —
+ * surfaces drift entre canon e filesystem real.
+ */
+export interface OrphanNode {
+  graphId: string
+  missingParent: string
+}
+
+/**
+ * Audit completo do graph. Cobre saúde do canon (found vs missing), das fontes
+ * (repo readable, vault readable), das relações (orphan_count) e do volume
+ * (semantic_node_count, semantic_relation_count).
  */
 export interface GraphAudit {
   found: number
   missing: number
+  brokenPaths: BrokenPath[]
+  orphanNodes: OrphanNode[]
+  orphanCount: number
+  semanticNodeCount: number
+  semanticRelationCount: number
   generatedAt: string | null
   repoIndexed: number
   vaultIndexed: number
+}
+
+/**
+ * Saúde por fonte canônica. Repo = engineering-knowledge-base; Vault =
+ * AtlasVault Obsidian. Ambas precisam ser readable para a cartografia honrar
+ * o canon "ler direto, sem intermediário".
+ */
+export interface SourceRootHealth {
+  root: string
+  readable: boolean
+  indexedCount: number
+  errors: string[]
+}
+export interface SourceHealth {
+  repo: SourceRootHealth
+  vault: SourceRootHealth
 }
 
 export interface CartographySources {
@@ -149,10 +191,14 @@ export interface CartographySources {
 
 /**
  * Resposta canônica de `/atlas-cartography/graph`.
+ * `checksum` é sha256 estável das superfícies canônicas (exclui generated_at)
+ * pra permitir detecção de mudança sem diff do payload inteiro.
  */
 export interface CartographyGraph {
   audit: GraphAudit
   sources: CartographySources
+  sourceHealth: SourceHealth | null
+  checksum: string | null
   universe: Continent[]
   pipeline: PipelineStep[]
   lanes: Record<string, Lane>

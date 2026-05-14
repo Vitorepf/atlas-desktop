@@ -1,13 +1,21 @@
 /* ─── TRAILS (SVG paths) ─────────────────── */
+/* CANON · Don Corleone DNA: peso silencioso, nunca sussurro.
+   Baseline (Mapa mode): trilhas são linhas bronze sutis. SEM animação,
+   SEM beacons/vessels/gates, SEM ripples. Só halo + line com peso editorial.
+   Quando uma peça entra em foco (`.trail-group.path-active`), aí sim a
+   narrativa ganha vida: vessel anima, beacon aparece, gate revela, ripple respira. */
 .cartografia-surface .trail-group {
   color: var(--bronze);
-  opacity: 0;
+  opacity: 0.4;
   transition:
     opacity 240ms cubic-bezier(0.4, 1, 0.2, 1),
     filter 240ms cubic-bezier(0.4, 1, 0.2, 1);
 }
-.cartografia-surface .trail-group.path-visible { opacity: 1; }
+.cartografia-surface .trail-group.trail-sequence { opacity: 0.62; }
+.cartografia-surface .trail-group.path-visible { opacity: 0.66; }
+.cartografia-surface .trail-group.trail-sequence.path-visible { opacity: 0.78; }
 .cartografia-surface .trail-group.path-hidden { opacity: 0; }
+.cartografia-surface .trail-group.path-active { opacity: 1; }
 .cartografia-surface .trail-motion-path {
   fill: none;
   stroke: transparent;
@@ -25,40 +33,64 @@
 .cartografia-surface .trail-halo {
   stroke: currentColor;
   stroke-width: 8;
-  opacity: 0.05;
+  opacity: 0.06;
+}
+.cartografia-surface .trail-group.path-active .trail-halo {
+  opacity: 0.14;
+  stroke-width: 10;
 }
 .cartografia-surface .trail {
   stroke: currentColor;
-  stroke-width: 1;
+  stroke-width: 1.3;
   opacity: 1;
   transition:
     stroke 220ms cubic-bezier(0.4, 1, 0.2, 1),
     stroke-width 220ms cubic-bezier(0.4, 1, 0.2, 1);
 }
+.cartografia-surface .trail-group.path-active .trail {
+  stroke-width: 2;
+}
+.cartografia-surface .trail-group.trail-sequence .trail { stroke-width: 1.5; }
+.cartografia-surface .trail-group.trail-feedback .trail { stroke-dasharray: 5 4; opacity: 0.92; }
+
+/* CANON SILENCE · trail-current sweep desligada em baseline.
+   Só revela quando path-active. */
 .cartografia-surface .trail-current {
   stroke: currentColor;
   stroke-width: 4;
   stroke-dasharray: 12 88;
   stroke-dashoffset: 100;
-  opacity: 0.08;
-  animation: trail-current-sweep 4.8s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+  opacity: 0;
+  animation: none;
   pointer-events: none;
 }
+.cartografia-surface .trail-group.path-active .trail-current {
+  opacity: 0.22;
+  animation: trail-current-sweep 4.8s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+}
+
+/* CANON SILENCE · trail-pulse forward desligada em baseline.
+   Só revela quando path-active. */
 .cartografia-surface .trail-pulse {
   stroke: currentColor;
   stroke-width: 2.4;
   stroke-dasharray: 1 26;
   stroke-dashoffset: 0;
-  opacity: 0.34;
-  animation: trail-pulse-forward 2.9s linear infinite;
+  opacity: 0;
+  animation: none;
   pointer-events: none;
 }
+.cartografia-surface .trail-group.path-active .trail-pulse {
+  opacity: 0.72;
+  animation: trail-pulse-forward 2.9s linear infinite;
+}
+
 .cartografia-surface .trail-node {
   fill: var(--cream);
   stroke: currentColor;
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
-  opacity: 0.38;
+  opacity: 0.32;
 }
 .cartografia-surface .trail-node-target {
   fill: currentColor;
@@ -66,22 +98,35 @@
   stroke-width: 2.2;
   filter: drop-shadow(0 1px 2px rgba(77, 61, 34, 0.18));
 }
+
+/* CANON SILENCE · ripple breathe desligado em baseline. */
 .cartografia-surface .trail-node-ripple {
   fill: none;
   stroke: currentColor;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-  opacity: 0.08;
+  opacity: 0;
+  animation: none;
+}
+.cartografia-surface .trail-group.path-active .trail-node-ripple {
+  opacity: 0.28;
   animation: trail-node-breathe 2.8s ease-in-out infinite;
 }
-.cartografia-surface .trail-node-ripple-target {
-  opacity: 0.12;
+.cartografia-surface .trail-group.path-active .trail-node-ripple-target {
+  opacity: 0.36;
   animation-duration: 2.2s;
 }
+
+/* CANON SILENCE · gate escondido em baseline.
+   Só revela quando path-active. pointer-events: none sempre. */
 .cartografia-surface .trail-gate {
   color: inherit;
-  opacity: 0.68;
+  opacity: 0;
+  pointer-events: none;
   filter: drop-shadow(0 1px 4px rgba(77, 61, 34, 0.14));
+}
+.cartografia-surface .trail-group.path-active .trail-gate {
+  opacity: 1;
 }
 .cartografia-surface .trail-gate-shape {
   fill: rgba(247, 241, 227, 0.86);
@@ -95,13 +140,19 @@
   stroke-width: 1.4;
   vector-effect: non-scaling-stroke;
 }
+
+/* CANON SILENCE · beacon completamente fora em baseline. */
 .cartografia-surface .trail-beacon {
   color: inherit;
-  opacity: 0.46;
+  display: none;
   filter: drop-shadow(0 1px 2px rgba(77, 61, 34, 0.18));
 }
-.cartografia-surface .trail-beacon.secondary {
-  opacity: 0.28;
+.cartografia-surface .trail-group.path-active .trail-beacon {
+  display: block;
+  opacity: 0.78;
+}
+.cartografia-surface .trail-group.path-active .trail-beacon.secondary {
+  opacity: 0.42;
 }
 .cartografia-surface .trail-beacon-shape {
   fill: currentColor;
@@ -109,13 +160,19 @@
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
+
+/* CANON SILENCE · vessel + wake fora de cena em baseline. */
 .cartografia-surface .trail-vessel {
   color: inherit;
-  opacity: 0.58;
+  display: none;
   filter: drop-shadow(0 1px 3px rgba(77, 61, 34, 0.24));
 }
-.cartografia-surface .trail-vessel.secondary {
-  opacity: 0.32;
+.cartografia-surface .trail-group.path-active .trail-vessel {
+  display: block;
+  opacity: 0.88;
+}
+.cartografia-surface .trail-group.path-active .trail-vessel.secondary {
+  opacity: 0.46;
 }
 .cartografia-surface .trail-vessel-shape {
   fill: currentColor;
@@ -128,9 +185,14 @@
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
-  opacity: 0.34;
+  display: none;
   vector-effect: non-scaling-stroke;
 }
+.cartografia-surface .trail-group.path-active .trail-vessel-wake {
+  display: block;
+  opacity: 0.34;
+}
+
 .cartografia-surface .world.lens-relations .atom:not(.has-relations),
 .cartografia-surface .world.lens-relations .region:not(.has-relations) {
   opacity: 0.36;
@@ -176,19 +238,21 @@
 .cartografia-surface .trail-sequence .trail-core {
   stroke-width: 1.35;
 }
-.cartografia-surface .trail-sequence .trail-pulse {
+
+/* trail-sequence pulse/current só herda animação se path-active; baseline mute. */
+.cartografia-surface .trail-group.path-active.trail-sequence .trail-pulse {
   stroke-width: 2.1;
-  opacity: 0.28;
+  opacity: 0.62;
   stroke-dasharray: 2 24;
   animation-duration: 2.2s;
 }
-.cartografia-surface .trail-sequence .trail-current {
+.cartografia-surface .trail-group.path-active.trail-sequence .trail-current {
   stroke-width: 3;
-  opacity: 0.06;
+  opacity: 0.18;
   animation-duration: 3.6s;
 }
-.cartografia-surface .trail-sequence .trail-vessel {
-  opacity: 0.30;
+.cartografia-surface .trail-group.path-active.trail-sequence .trail-vessel {
+  opacity: 0.42;
 }
 .cartografia-surface .trail-sequence .trail-vessel-shape {
   stroke-width: 0.8;
@@ -209,27 +273,29 @@
 .cartografia-surface .trail-feedback .trail-core {
   stroke-width: 1.45;
 }
-.cartografia-surface .trail-feedback .trail-pulse {
+
+/* trail-feedback pulse/current só animam em path-active. */
+.cartografia-surface .trail-group.path-active.trail-feedback .trail-pulse {
   stroke-width: 2.8;
-  opacity: 0.46;
+  opacity: 0.76;
   animation-duration: 3.4s;
 }
-.cartografia-surface .trail-feedback .trail-current {
+.cartografia-surface .trail-group.path-active.trail-feedback .trail-current {
   stroke-width: 5.5;
-  opacity: 0.16;
+  opacity: 0.28;
   animation-duration: 5.6s;
 }
 .cartografia-surface .trail-feedback .trail-vessel-shape {
   fill: var(--moss);
 }
-.cartografia-surface .trail-feedback .trail-vessel {
-  opacity: 0.72;
+.cartografia-surface .trail-group.path-active.trail-feedback .trail-vessel {
+  opacity: 0.92;
 }
-.cartografia-surface .trail-feedback .trail-gate {
-  opacity: 0.86;
+.cartografia-surface .trail-group.path-active.trail-feedback .trail-gate {
+  opacity: 1;
 }
-.cartografia-surface .trail-feedback .trail-beacon {
-  opacity: 0.48;
+.cartografia-surface .trail-group.path-active.trail-feedback .trail-beacon {
+  opacity: 0.68;
 }
 .cartografia-surface .trail-span-inbound {
   color: rgba(151, 112, 57, 0.52);
@@ -257,31 +323,11 @@
 .cartografia-surface .trail-group.path-active .trail-core {
   stroke-width: 2.15;
 }
-.cartografia-surface .trail-group.path-active .trail-pulse {
-  stroke-width: 3.4;
-  opacity: 0.72;
-  stroke-dasharray: 2 18;
-  animation-duration: 1.45s;
-}
-.cartografia-surface .trail-group.path-active .trail-current {
-  stroke-width: 6;
-  opacity: 0.22;
-  animation-duration: 2.8s;
-}
 .cartografia-surface .trail-group.path-active .trail-node {
-  opacity: 1;
-}
-.cartografia-surface .trail-group.path-active .trail-node-ripple {
-  opacity: 0.28;
-}
-.cartografia-surface .trail-group.path-active .trail-gate {
   opacity: 1;
 }
 .cartografia-surface .trail-group.path-active .trail-gate-shape {
   stroke-width: 1.8;
-}
-.cartografia-surface .trail-group.path-active .trail-beacon {
-  opacity: 0.78;
 }
 .cartografia-surface .trail-group.path-active .trail-node-source {
   fill: var(--cream);
@@ -290,24 +336,12 @@
 .cartografia-surface .trail-group.path-active .trail-node-target {
   stroke-width: 2.8;
 }
-.cartografia-surface .trail-group.path-active .trail-vessel {
-  opacity: 0.88;
-}
 .cartografia-surface .world.dim-others .trail-group:not(.path-active):not(.trail-sequence) { opacity: 0.18; }
 .cartografia-surface .world.lens-evidence .trail-group.trail-feedback.path-visible {
   opacity: 0.92;
 }
 .cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-halo {
   opacity: 0.18;
-}
-.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-current {
-  opacity: 0.22;
-}
-.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-vessel {
-  opacity: 0.90;
-}
-.cartografia-surface .world.lens-evidence .trail-group.trail-feedback .trail-gate {
-  opacity: 1;
 }
 .cartografia-surface .world.lens-evidence .trail-group.trail-feed.path-visible {
   opacity: 0.24;
@@ -432,4 +466,36 @@
   .cartografia-surface .trail-vessel {
     display: none;
   }
+}
+
+/* ─── TRAIL LABELS · Mono caps midpoint (canon) ──────────────
+   Hidden by default; surface when the trail is active so a focused
+   atom acquires a vocabulary of relationships without polluting the
+   default Mapa view. Background is cream with a 0.8px bronze border
+   per the editorial DNA. */
+.cartografia-surface .trail-label-group {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+.cartografia-surface .trail-group.path-active .trail-label-group {
+  opacity: 1;
+}
+.cartografia-surface .trail-label-bg {
+  fill: var(--cream);
+  stroke: var(--bronze);
+  stroke-width: 0.8;
+}
+.cartografia-surface .trail-label-text {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 1.3px;
+  fill: var(--bronze-deep);
+  text-transform: uppercase;
+}
+.cartografia-surface .trail-feedback .trail-label-bg {
+  stroke-dasharray: 3, 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .trail-label-group { transition: none; }
 }

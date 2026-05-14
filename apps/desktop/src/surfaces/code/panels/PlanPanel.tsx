@@ -2,16 +2,22 @@ import { PanelTitle } from '@atlas/ui'
 import type { DecisionReceipt } from '@atlas/domain'
 import { btnPrimary, Row } from './RightRailPrimitives'
 import type { RightRailContext } from './rightRailTypes'
+import { ForgeWorkspaceBanner } from './ForgeWorkspaceBanner'
+import { WorkItemInspector } from './WorkItemInspector'
 
 export function PlanPanel({
   receipt,
   core,
   boot,
   busy,
+  programmingGovernance,
   onSignReceipt,
 }: RightRailContext) {
   return (
     <section className="ops-panel">
+      <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+      <WorkItemInspector governance={programmingGovernance} />
+
       <div className="ops-section">
         <PanelTitle
           label="Decision Receipt"

@@ -4,24 +4,47 @@
  * world canvas keeps the canonical visual.
  */
 
-export const WORLD_WIDTH = 2200
-export const WORLD_HEIGHT = 1380
+/*
+ * Canonical layout · 4-column cockpit (iter 2 — calibrado por medição real).
+ *
+ *   col 1: Domain Plane, Capabilities       (left)
+ *   col 2: Business / Product               (mid lateral)
+ *   col 3: Atlas Kernel Pipeline            (hero center)
+ *   col 4: HKS, Evidence Loop, Doc OS       (right)
+ *
+ * Alturas reais medidas via Playwright (clientRect, scale 1) sobre o
+ * graph canônico do atlas-server:
+ *
+ *   domain-plane     8 atoms · 774px   →  y  80  fim  854
+ *   capabilities     7 atoms · 707px   →  y 994  fim 1701   (gap 140)
+ *   hks              4 atoms · 455px   →  y  80  fim  535
+ *   evidence-loop    5 atoms · 553px   →  y 675  fim 1228   (gap 140)
+ *   doc-os           1 atom  · 186px   →  y 1368 fim 1554   (gap 140)
+ *   business-side    1 atom  · 186px   →  y 330  centrado no step iv
+ *   pipeline        17 steps · 16×90 + 220 = 1660 →  y 80 fim 1740
+ *
+ * Gaps verticais entre regions na mesma coluna = 140px (DNA Corleone:
+ * ar generoso, nunca raspar). World absorve tudo + 80px de borda inferior.
+ */
+
+export const WORLD_WIDTH = 1880
+export const WORLD_HEIGHT = 1820
 
 export const PIPELINE_LAYOUT = {
-  x: 780,
+  x: 900,
   y: 80,
-  w: 480,
-  stepHeight: 84,
-  runtimeHeight: 260,
+  w: 440,
+  stepHeight: 90,    // 58px min-height + 20 padding + 12 gap entre cards
+  runtimeHeight: 220, // Runtime/Executor é o atom mais alto (subcomponents inline)
 }
 
 export const LANE_LAYOUT: Record<string, { x: number; y: number; w: number }> = {
-  'domain-plane': { x: 80, y: 100, w: 260 },
-  capabilities: { x: 80, y: 760, w: 260 },
-  'business-context-side': { x: 420, y: 380, w: 280 },
-  hks: { x: 1540, y: 100, w: 310 },
-  'evidence-loop': { x: 1540, y: 480, w: 310 },
-  'doc-os': { x: 1540, y: 1100, w: 310 },
+  'domain-plane': { x: 80, y: 80, w: 340 },
+  capabilities: { x: 80, y: 994, w: 340 },
+  'business-context-side': { x: 540, y: 330, w: 280 },
+  hks: { x: 1500, y: 80, w: 320 },
+  'evidence-loop': { x: 1500, y: 675, w: 320 },
+  'doc-os': { x: 1500, y: 1368, w: 320 },
 }
 
 /**

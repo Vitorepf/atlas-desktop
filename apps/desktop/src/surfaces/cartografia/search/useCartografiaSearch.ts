@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- Cartografia search hook refactor em curso; divida lateral isolada do Atlas Forge core (project_atlas_vault_cartografia). */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { CartographyAtom } from '@atlas/domain'

@@ -2,22 +2,47 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CartographyGraph, RecentChange } from '@atlas/domain'
 import { bridge } from '../../../lib/bridge'
 
-const POLL_INTERVAL_MS = 5000
+const POLL_INTERVAL_MS = 30_000 // slow fallback when SSE is alive
+const POLL_INTERVAL_OFFLINE_MS = 5_000 // tight loop when SSE not available
 const TICK_INTERVAL_MS = 1000
 
-export function useCartografiaData() {
+export interface UseCartografiaDataOptions {
+  /** Called when SSE emits `graph_changed` so callers can drop dependent caches. */
+  onGraphMutation?: () => void
+}
+
+export function useCartografiaData(options: UseCartografiaDataOptions = {}) {
+  const { onGraphMutation } = options
   const [graph, setGraph] = useState<CartographyGraph | null>(null)
   const [recentChanges, setRecentChanges] = useState<RecentChange[]>([])
   const [loading, setLoading] = useState(true)
   const [errors, setErrors] = useState<string[]>([])
+  const [streamAlive, setStreamAlive] = useState(false)
   const cancelledRef = useRef(false)
+  const lastChecksumRef = useRef<string | null>(null)
+  const onGraphMutationRef = useRef(onGraphMutation)
+  onGraphMutationRef.current = onGraphMutation
 
-  const refreshGraph = useCallback(async () => {
+  const refreshGraph = useCallback(async (force = false) => {
     try {
       const nextGraph = await bridge.loadCartographyGraph()
       if (cancelledRef.current) return
-      if (nextGraph) setGraph(nextGraph)
-      else setErrors((current) => ['cartography graph unavailable', ...current].slice(0, 8))
+      if (!nextGraph) {
+        setErrors((current) => ['cartography graph unavailable', ...current].slice(0, 8))
+        return
+      }
+      // Cheap diff: skip state update + cache invalidation when nothing moved.
+      const incomingChecksum = nextGraph.checksum
+      if (!force && incomingChecksum && incomingChecksum === lastChecksumRef.current) {
+        return
+      }
+      lastChecksumRef.current = incomingChecksum ?? lastChecksumRef.current
+      setGraph(nextGraph)
+      if (incomingChecksum && force) {
+        // Mutation acknowledged via SSE — let consumers drop dependent caches
+        // (notes, search index, derived view models).
+        onGraphMutationRef.current?.()
+      }
     } catch (error) {
       if (!cancelledRef.current) {
         setErrors((current) => [`graph · ${String(error)}`, ...current].slice(0, 8))
@@ -36,14 +61,35 @@ export function useCartografiaData() {
 
   useEffect(() => {
     cancelledRef.current = false
-    void Promise.all([refreshGraph(), refreshRecent()]).finally(() => {
+    void Promise.all([refreshGraph(true), refreshRecent()]).finally(() => {
       if (!cancelledRef.current) setLoading(false)
     })
 
+    // SSE drives the live path; polling is a slow safety net (30s vs 5s offline).
+    const unsubscribe = bridge.streamCartography((kind, payload) => {
+      if (cancelledRef.current) return
+      if (kind === 'graph_changed') {
+        setStreamAlive(true)
+        const incoming = typeof payload.checksum === 'string' ? payload.checksum : null
+        // Force only when checksum is new — connect event re-broadcasts the
+        // current checksum and we don't want to thrash caches on reconnect.
+        const force = incoming != null && incoming !== lastChecksumRef.current
+        if (force) {
+          void refreshGraph(true)
+          void refreshRecent()
+        }
+      } else if (kind === 'heartbeat') {
+        setStreamAlive(true)
+      } else if (kind === 'reconnect') {
+        // Server cycled the worker; client EventSource auto-reconnects.
+      }
+    })
+
+    const pollMs = streamAlive ? POLL_INTERVAL_MS : POLL_INTERVAL_OFFLINE_MS
     const pollId = setInterval(() => {
       void refreshGraph()
       void refreshRecent()
-    }, POLL_INTERVAL_MS)
+    }, pollMs)
 
     const tickId = setInterval(() => {
       setRecentChanges((changes) =>
@@ -56,10 +102,11 @@ export function useCartografiaData() {
 
     return () => {
       cancelledRef.current = true
+      unsubscribe()
       clearInterval(pollId)
       clearInterval(tickId)
     }
-  }, [refreshGraph, refreshRecent])
+  }, [refreshGraph, refreshRecent, streamAlive])
 
   return {
     loading,
@@ -67,5 +114,6 @@ export function useCartografiaData() {
     graph,
     recentChanges,
     refreshRecent,
+    streamAlive,
   }
 }

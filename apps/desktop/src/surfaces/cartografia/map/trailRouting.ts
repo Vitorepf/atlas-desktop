@@ -21,7 +21,7 @@ export function resolveSmartRoutes(drafts: RouteDraft[]): ResolvedPath[] {
     const d =
       draft.connection.kind === 'feedback'
         ? returnLoopPath(draft.from, draft.to, draft.side, order)
-        : smartFlowPath(draft.from, draft.to, draft.side, order)
+        : smartFlowPath(draft.from, draft.to, draft.side, order, endpoints)
     const profile = movementProfile(draft, order)
     const key = `${draft.connection.from}->${draft.connection.to}-${draft.connection.kind}-${index}`
     return {
@@ -58,7 +58,7 @@ export function resolveRailSide(from: TrailRect, to: TrailRect): 'left' | 'right
 export { hashDelay, pathDomId } from './trailMotion'
 
 export function isDrawableTrailKind(kind: Connection['kind']): boolean {
-  return kind === 'sequence' || kind === 'feed' || kind === 'feedback'
+  return kind === 'sequence' || kind === 'feed' || kind === 'feedback' || kind === 'governance'
 }
 
 export function sortTrailsForPaintOrder(a: ResolvedPath, b: ResolvedPath): number {

@@ -169,7 +169,111 @@ export interface WorkStateSnapshot {
     summary: string
     createdAt: string | null
   }>
+  programmingGovernance: ProgrammingGovernanceSnapshot | null
   generatedAt: string
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Programming Governance (SCOR-1 thin slice)
+//
+// Atlas Code SCOR-1 consumes /atlas-code/works/{id}/state expanded with a
+// `programming_governance` block. The Desktop only renders what the runtime
+// actually persisted (WorkItem, Spec, Plan, TaskContracts, GateRuns, Reviews,
+// EvidenceReceipts, Artifacts). Empty arrays + null spec/plan mean
+// "aguardando" — never fabricated values.
+
+export type ProgrammingScopeMode = 'compact' | 'structural'
+
+export type ProgrammingWorkStatus =
+  | 'open'
+  | 'spec_required'
+  | 'plan_required'
+  | 'executing'
+  | 'verifying'
+  | 'review'
+  | 'closed'
+  | 'blocked'
+
+export interface ProgrammingWorkItemGap {
+  name: string
+  reason?: string | null
+  recordedAt?: string | null
+}
+
+export interface ProgrammingWorkItemSnapshot {
+  id: string
+  code: string
+  intentText: string
+  intentType: string
+  scopeMode: ProgrammingScopeMode
+  riskLevel: string
+  status: ProgrammingWorkStatus | string
+  currentStage: string
+  specHash: string | null
+  planHash: string | null
+  requiredGates: string[]
+  gaps: ProgrammingWorkItemGap[]
+}
+
+export interface ProgrammingTaskContract {
+  owner?: string | null
+  allowedFiles: string[]
+  forbiddenFiles: string[]
+  expectedFiles: string[]
+  dependencies: string[]
+  riskLevel?: string | null
+  validationCommands: string[]
+  acceptanceCriteria: string[]
+  rollback?: string | null
+  evidenceRequired: string[]
+  docsRequired: string[]
+  cartographyRequired: boolean
+}
+
+export interface ProgrammingGateRunSnapshot {
+  id?: string
+  gateName: string
+  status: 'passed' | 'failed' | 'skipped' | 'waived' | string
+  blocking: boolean
+  reason?: string | null
+  waiverReason?: string | null
+  payload?: unknown
+  createdAt?: string | null
+}
+
+export interface ProgrammingEvidenceStorage {
+  persisted: boolean
+  table?: string
+  reason?: string
+  id?: string
+}
+
+export interface ProgrammingEvidenceReceiptSnapshot {
+  receiptId?: string
+  evidenceType: string
+  status: string
+  command?: string | null
+  output?: string | null
+  files: string[]
+  tests: string[]
+  diffPath?: string | null
+  artifactUrl?: string | null
+  summary?: string | null
+  storage?: ProgrammingEvidenceStorage
+  recordedAt?: string | null
+}
+
+export interface ProgrammingGovernanceSnapshot {
+  workItem: ProgrammingWorkItemSnapshot | null
+  spec: Record<string, unknown> | null
+  plan: Record<string, unknown> | null
+  tasks: ProgrammingTaskContract[]
+  gateRuns: ProgrammingGateRunSnapshot[]
+  reviews: Array<Record<string, unknown>>
+  evidenceRefs: ProgrammingEvidenceReceiptSnapshot[]
+  artifacts: Array<Record<string, unknown>>
+  degraded: boolean
+  degradedReason: string | null
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -266,6 +370,7 @@ export interface DiffPatch {
 // Cartography surface (read-only graph of the canonical truth)
 
 export type {
+  BrokenPath,
   CartographyAtom,
   CartographyGraph,
   CartographyNote,
@@ -277,8 +382,11 @@ export type {
   GraphSource,
   Lane,
   LateralNode,
+  OrphanNode,
   PipelineStep,
   RecentChange,
   SemanticGraph,
   SemanticNode,
+  SourceHealth,
+  SourceRootHealth,
 } from './cartography'

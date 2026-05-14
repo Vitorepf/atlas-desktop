@@ -1,4 +1,4 @@
-import type { CartographyAtom, RecentChange } from '@atlas/domain'
+import type { CartographyAtom, CartographyGraph, RecentChange } from '@atlas/domain'
 import {
   CollapsedInspectorRail,
   InspectorResizeToolbar,
@@ -7,6 +7,7 @@ import { RecentChangesDock } from './RecentChangesDock'
 import { DefaultInspectorContent } from './DefaultInspectorContent'
 
 interface DefaultInspectorProps {
+  graph: CartographyGraph | null
   recentChanges: RecentChange[]
   atomIndex: Record<string, CartographyAtom>
   onPickRecent: (graphId: string) => void
@@ -20,6 +21,7 @@ interface DefaultInspectorProps {
 }
 
 export function DefaultInspector({
+  graph,
   recentChanges,
   atomIndex,
   onPickRecent,
@@ -42,16 +44,19 @@ export function DefaultInspector({
         onNudgeWidth={onNudgeWidth}
         onResetWidth={onResetWidth}
       />
-      {collapsed ? <CollapsedInspectorRail onToggleCollapsed={onToggleCollapsed} /> : null}
-      <div aria-hidden={collapsed}>
-        <DefaultInspectorContent />
-      </div>
-      <RecentChangesDock
-        collapsed={collapsed}
-        changes={recentChanges}
-        atomIndex={atomIndex}
-        onPickRecent={onPickRecent}
-      />
+      {collapsed ? (
+        <CollapsedInspectorRail onToggleCollapsed={onToggleCollapsed} />
+      ) : (
+        <div className="ins-content" aria-hidden={collapsed}>
+          <DefaultInspectorContent graph={graph} />
+          <RecentChangesDock
+            collapsed={collapsed}
+            changes={recentChanges}
+            atomIndex={atomIndex}
+            onPickRecent={onPickRecent}
+          />
+        </div>
+      )}
     </aside>
   )
 }

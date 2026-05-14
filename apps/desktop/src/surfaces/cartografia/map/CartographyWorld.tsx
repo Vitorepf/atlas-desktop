@@ -25,6 +25,8 @@ interface CartographyWorldProps {
   hoveredAtom: CartographyAtom | null
   isolatedId: string | null
   hoverId: string | null
+  readingMode?: boolean
+  density?: 'comfortable' | 'compact'
   onSetView: (view: CartographyView) => void
   onSelectContinent: (graphId: string) => void
   onEnterNode: (graphId: string) => void
@@ -51,6 +53,8 @@ export function CartographyWorld({
   hoveredAtom,
   isolatedId,
   hoverId,
+  readingMode,
+  density,
   onSetView,
   onSelectContinent,
   onEnterNode,
@@ -64,7 +68,7 @@ export function CartographyWorld({
   return (
     <div
       ref={worldRef}
-      className={worldClassName({ visualLens, animating, isolatedId, hoveredAtom })}
+      className={worldClassName({ visualLens, animating, isolatedId, hoveredAtom, scale: transform.scale, readingMode, density })}
       style={worldStyle({ transform })}
     >
       <WorldSceneSwitch

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- Cartografia search refactor em curso; divida lateral isolada do Atlas Forge core (project_atlas_vault_cartografia). */
 import type { ReturnTypeOfUseCartografiaSearch } from './types'
 
 interface CartografiaSearchProps {

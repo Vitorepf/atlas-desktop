@@ -14,3 +14,11 @@
 @import './06-floaters.css';
 @import './08-inspector.css';
 @import './09-overlay-responsive.css';
+/* Visibility passes · ordem importa: typography (cobertura geral) →
+   semantic zoom (LOD por scale) → fisheye (hover) → color encoding (saliência)
+   → reading mode (narrativa). Cada um override o anterior conforme escopo. */
+@import './10-typography-scale.css';
+@import './11-semantic-zoom.css';
+@import './12-fisheye-lens.css';
+@import './13-color-encoding.css';
+@import './14-reading-mode.css';

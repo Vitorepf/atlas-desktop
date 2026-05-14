@@ -11,10 +11,33 @@ export function routeEndpoints(draft: RouteDraft): { start: Point; end: Point } 
     }
   }
 
+  // For tall lane containers (>200px) connecting to a step well above or
+  // below the lane center, exit from the closest edge instead of the middle.
+  // Visual result: the trail leaves the lane right beside the target's y
+  // instead of slicing diagonally through neighbouring atoms.
+  const sourceY = pickLaneAnchorY(from, to)
   return {
-    start: { x: side === 'left' ? from.r : from.l, y: from.cy },
+    start: { x: side === 'left' ? from.r : from.l, y: sourceY },
     end: { x: side === 'left' ? to.l : to.r, y: to.cy },
   }
+}
+
+function pickLaneAnchorY(from: TrailRect, to: TrailRect): number {
+  // Center anchor for short atoms or when target is roughly aligned vertically.
+  if (from.h < 200) {
+    // Short source rect (regular atom). If the target sits clearly OUTSIDE
+    // the source's vertical band, exit from the edge facing the target so
+    // the smartFlowPath bend doesn't have to slice across siblings stacked
+    // beside the source.
+    if (to.cy < from.t) return from.t + Math.min(8, from.h / 2)
+    if (to.cy > from.b) return from.b - Math.min(8, from.h / 2)
+    return from.cy
+  }
+  const delta = Math.abs(from.cy - to.cy)
+  if (delta < from.h * 0.35) return from.cy
+  // Tall lane + large vertical offset → exit from the edge closest to target.
+  // We bias 24px into the lane so the rail doesn't clip the lane border line.
+  return to.cy < from.cy ? from.t + 24 : from.b - 24
 }
 
 export function routeGatePoint(

@@ -4,11 +4,13 @@
  * Regra: este arquivo compoe regioes e hooks. Logica nova deve nascer nas
  * subareas `layout/`, `state/`, `viewport/`, `map/`, `search/` ou `inspector/`.
  */
+import { useCallback, useState } from 'react'
 import { useCartografia } from './state/useCartografia'
 import { useCartografiaShortcuts } from './state/useCartografiaShortcuts'
 import { useCartografiaViewModel } from './state/useCartografiaViewModel'
 import { useCartografiaViewport } from './viewport/useCartografiaViewport'
 import { useSceneAutoFit } from './viewport/useSceneAutoFit'
+import { AuditPanel } from './layout/AuditPanel'
 import { CartografiaInspectorSlot } from './inspector/CartografiaInspectorSlot'
 import { CartografiaLayout } from './layout/CartografiaLayout'
 import { WORLD_HEIGHT, WORLD_WIDTH } from './map/layout'
@@ -28,6 +30,9 @@ export function CartografiaSurface() {
   const { visualLens, setVisualLens } = useVisualLens()
   const search = useCartografiaSearch(c.atomIndex, c.enterNode)
   const vm = useCartografiaViewModel(c)
+  const [auditOpen, setAuditOpen] = useState(false)
+  const toggleAudit = useCallback(() => setAuditOpen((v) => !v), [])
+  const closeAudit = useCallback(() => setAuditOpen(false), [])
 
   useSceneAutoFit({
     viewport,
@@ -45,6 +50,7 @@ export function CartografiaSurface() {
     onSetVisualLens: setVisualLens,
     onExitGear: c.exitGear,
     onExitIsolate: c.exitIsolate,
+    onToggleAuditPanel: toggleAudit,
   })
 
   const inspectorPanel = (
@@ -65,6 +71,13 @@ export function CartografiaSurface() {
         setVisualLens={setVisualLens}
         search={search}
       />
+      {auditOpen ? (
+        <AuditPanel
+          graph={c.graph}
+          onClose={closeAudit}
+          onPickBrokenPath={c.enterGear}
+        />
+      ) : null}
     </CartografiaLayout>
   )
 }

@@ -14,7 +14,10 @@
   grid-area: inspector;
   background: var(--cream-paper);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* Single scroll surface · toolbar fixed on top, the rest scrolls as one.
+     This avoids the "two stacked scrollbars" trap that was hiding the tail
+     of MUDANÇAS RECENTES below an inner scroll viewport. */
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   padding: 0;
   min-height: 0;
@@ -65,20 +68,51 @@ body.cart-resizing * {
   min-height: 0;
   min-width: 0;
   overflow-y: auto;
-}
-.cart-inspector.is-collapsed {
-  grid-template-rows: auto minmax(0, 1fr);
+  overflow-x: hidden;
 }
 .cart-inspector.is-collapsed .ins-content {
   display: none;
 }
+/* The "Mudanças recentes" dock now lives inside the inspector's natural
+   scroll flow — no nested scrollbar, no clipping of the tail. The bronze
+   hairline + cream-paper background still give it the editorial "footer"
+   feel without trapping content. */
 .cart-inspector .ins-recent-dock {
   min-height: 0;
-  max-height: min(36vh, 340px);
-  overflow-y: auto;
   border-top: 1px solid var(--bronze-soft);
   background: var(--cream-paper);
-  padding: 12px 14px 14px;
-  box-shadow: 0 -16px 36px rgba(77, 61, 34, 0.06);
+  padding: 16px 18px 22px;
+  margin-top: 4px;
+}
+
+/* Custom scrollbar · cream rail + bronze thumb. Replaces the dark native
+   macOS overlay scrollbar that looked aggressive in the Tauri WebView. */
+.cart-inspector .ins-content,
+.cart-inspector .ins-md-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bronze-soft) transparent;
+}
+.cart-inspector .ins-content::-webkit-scrollbar,
+.cart-inspector .ins-md-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.cart-inspector .ins-content::-webkit-scrollbar-track,
+.cart-inspector .ins-md-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cart-inspector .ins-content::-webkit-scrollbar-thumb,
+.cart-inspector .ins-md-body::-webkit-scrollbar-thumb {
+  background: rgba(138, 106, 53, 0.28);
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.cart-inspector .ins-content::-webkit-scrollbar-thumb:hover,
+.cart-inspector .ins-md-body::-webkit-scrollbar-thumb:hover {
+  background: var(--bronze);
+}
+.cart-inspector .ins-content::-webkit-scrollbar-corner,
+.cart-inspector .ins-md-body::-webkit-scrollbar-corner {
+  background: transparent;
 }
 

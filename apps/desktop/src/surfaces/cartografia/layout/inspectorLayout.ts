@@ -2,9 +2,11 @@ import { readCartografiaStorage } from '../state/browserStorage'
 
 export const INSPECTOR_WIDTH_KEY = 'atlas.cartografia.inspectorWidth'
 export const INSPECTOR_COLLAPSED_KEY = 'atlas.cartografia.inspectorCollapsed'
-export const INSPECTOR_MIN_WIDTH = 300
+export const INSPECTOR_MIN_WIDTH = 320
 export const INSPECTOR_MAX_WIDTH = 680
-export const INSPECTOR_DEFAULT_WIDTH = 360
+// Wider default so the Cormorant 26px title + 14.5px italic lede breathe.
+// Agente F · typography scale canon.
+export const INSPECTOR_DEFAULT_WIDTH = 400
 export const INSPECTOR_COLLAPSED_WIDTH = 56
 
 export function readStoredInspectorWidth(): number {

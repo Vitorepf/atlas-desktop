@@ -316,6 +316,28 @@ impl AtlasBridge {
             "input_text": body,
             "source_type": "app",
             "kind": "interaction",
+            "payload": {
+                "app_surface": "atlas_code",
+                "surface_id": "atlas_code",
+                "requires_obra": true,
+                "atlas_mode": "forge",
+                "current_mode": "forge",
+                "atlas_workflow_mode": "forge",
+                "domain_id": "programming",
+                "flow_id": "programming.forge",
+                "routing_domain": "programming",
+                "routing_task": "forge",
+                "programming_profile": "forge",
+                "programming_flow": "programming.forge",
+                "dev_execution_plan": {
+                    "programming_profile": "forge",
+                    "programming_flow": "programming.forge",
+                    "operator_options": {
+                        "complete": true,
+                        "auto_test": true
+                    }
+                }
+            }
         });
 
         match thread_id.map(str::trim).filter(|id| !id.is_empty()) {
@@ -325,6 +347,16 @@ impl AtlasBridge {
 
         if let Some(id) = obra_id.map(str::trim).filter(|id| !id.is_empty()) {
             payload["source_id"] = serde_json::Value::String(id.to_string());
+            payload["payload"]["obra_id"] = serde_json::Value::String(id.to_string());
+            payload["payload"]["work_id"] = serde_json::Value::String(id.to_string());
+            payload["payload"]["project_id"] = serde_json::Value::String(id.to_string());
+            payload["payload"]["forge_workspace"] = serde_json::json!({
+                "schema_version": "atlas.forge_workspace_binding.v1",
+                "workspace_kind": "obras_shared_workspace",
+                "specialization": "forge_workspace",
+                "obra_id": id,
+                "source": "atlas_code"
+            });
         }
 
         self.execute(

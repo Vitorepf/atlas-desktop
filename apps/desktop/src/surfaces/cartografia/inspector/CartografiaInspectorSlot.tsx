@@ -19,6 +19,7 @@ export function CartografiaInspectorSlot({
       noteCache={cartografia.noteCache}
       loadNoteFor={cartografia.loadNoteFor}
       sourceRoots={cartografia.graph?.sources ?? null}
+      graph={cartografia.graph}
       recentChanges={cartografia.recentChanges}
       atomIndex={cartografia.atomIndex}
       onPickRecent={cartografia.enterGear}

@@ -34,7 +34,9 @@ export function useMcpStatus(enabled = true): UseMcpStatusResult {
   useEffect(() => {
     if (!enabled) return
     cancelRef.current = false
-    void refresh()
+    queueMicrotask(() => {
+      if (!cancelRef.current) void refresh()
+    })
     const id = setInterval(() => void refresh(), POLL_MS)
     return () => {
       cancelRef.current = true

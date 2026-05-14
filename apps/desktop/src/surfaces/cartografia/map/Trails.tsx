@@ -10,6 +10,7 @@ import type { Connection } from '@atlas/domain'
 import type { VisualLens } from '../state/visualLens'
 import { WORLD_HEIGHT, WORLD_WIDTH } from './layout'
 import { TrailBeacon, TrailMarker, TrailNodes, TrailVessel } from './TrailPrimitives'
+import { trailLabelFor } from './trailLabels'
 import { useTrailPaths } from './useTrailPaths'
 
 interface TrailsProps {
@@ -79,8 +80,52 @@ export function Trails({
           {Array.from({ length: path.packets }).map((_, index) => (
             <TrailVessel key={`${path.key}-packet-${index}`} path={path} index={index} />
           ))}
+          <TrailLabel path={path} />
         </g>
       ))}
     </svg>
+  )
+}
+
+/**
+ * Mono caps tag rendered at the midpoint of an active trail. Hidden by
+ * default (visible only when `.path-active` flips on via CSS). Background
+ * is cream with a 0.8px bronze border — canon stack of the cartography.
+ */
+function TrailLabel({ path }: { path: { kind: string; fromId: string; toId: string; start: { x: number; y: number }; end: { x: number; y: number }; gate: { x: number; y: number } } }) {
+  const label = trailLabelFor(path.fromId, path.toId, path.kind)
+  if (!label) return null
+
+  // For curved paths use the gate point (which already approximates the
+  // visual midpoint); for straight sequence paths use the geometric mean.
+  const mid = path.kind === 'sequence'
+    ? { x: (path.start.x + path.end.x) / 2, y: (path.start.y + path.end.y) / 2 }
+    : path.gate
+
+  // Width grows with character count · 6px per char + 16px padding.
+  const labelWidth = Math.max(54, label.length * 6.4 + 18)
+  const labelHeight = 16
+
+  return (
+    <g className="trail-label-group" transform={`translate(${mid.x} ${mid.y})`}>
+      <rect
+        className="trail-label-bg"
+        x={-labelWidth / 2}
+        y={-labelHeight / 2}
+        width={labelWidth}
+        height={labelHeight}
+        rx={2}
+        ry={2}
+      />
+      <text
+        className="trail-label-text"
+        x={0}
+        y={0}
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {label}
+      </text>
+    </g>
   )
 }

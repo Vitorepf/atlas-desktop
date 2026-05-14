@@ -20,8 +20,25 @@ export function useCartografiaNotes() {
     [noteCache]
   )
 
+  /** Drops a single entry so the next read re-fetches from the backend. */
+  const invalidateNote = useCallback((graphId: string) => {
+    setNoteCache((cache) => {
+      if (!(graphId in cache)) return cache
+      const next = { ...cache }
+      delete next[graphId]
+      return next
+    })
+  }, [])
+
+  /** Drops every cached note. Used when the graph checksum moves (SSE). */
+  const invalidateAll = useCallback(() => {
+    setNoteCache({})
+  }, [])
+
   return {
     noteCache,
     loadNoteFor,
+    invalidateNote,
+    invalidateAll,
   }
 }

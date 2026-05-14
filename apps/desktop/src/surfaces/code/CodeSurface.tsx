@@ -43,6 +43,7 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
           loading={b.loading}
           busy={b.busy}
           hasObra={!!b.obra}
+          programmingGovernance={b.programmingGovernance}
           onSend={b.sendIntent}
         />
       }
@@ -53,6 +54,7 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             gates={b.gates}
             core={b.core}
             evidence={b.evidence}
+            programmingGovernance={b.programmingGovernance}
             boot={boot}
             busy={b.busy}
             onSignReceipt={b.signReceipt}

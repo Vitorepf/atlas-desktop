@@ -1,0 +1,141 @@
+/*
+ * Cartografia · 13-color-encoding.css · Agente I.
+ *
+ * Pre-attentive processing canon (Tufte / Healey). Cor e signature, nao
+ * codigo semantico SaaS. O olho deve achar instantaneamente: risco,
+ * proxima acao, hero, fonte ausente, just-edited — em zoom-out e em
+ * leitura normal, sem ler texto. Usamos apenas: cor, posicao, peso
+ * tipografico, hatching sutil, e UM movimento lento (risk pulse).
+ *
+ * Regra: saliency only where it matters. Nunca berro.
+ */
+
+/* ─── I.1 · RISK · cor saturada (rec-red) + movimento lento ─────
+   has-risk ja tem inset 4px rec-red-soft (04-atoms.css:29). Aqui
+   somamos um traco vertical de 3px em rec-red puro (saturado, nao
+   soft) — pre-attentive: cor saturada vs cream + posicao esquerda
+   constante = canal dedicado pra risco. Pulse 4s opacity 0.85→1.0
+   no proprio border-left: movimento minimo, peso silencioso. */
+.cartografia-surface .atom.has-risk {
+  border-left: 3px solid var(--rec-red);
+  animation: cart-risk-pulse 4s ease-in-out infinite;
+}
+@keyframes cart-risk-pulse {
+  0%, 100% { border-left-color: rgba(138, 48, 37, 0.85); }
+  50%      { border-left-color: rgba(138, 48, 37, 1.00); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .atom.has-risk { animation: none; }
+}
+
+/* ─── I.2 · NEXT ACTION · underline moss sutil ───────────────────
+   has-next ja tem badge 'proxima' (04-atoms.css:46). Soma-se aqui
+   um inset bottom 3px moss-soft — pre-attentive: cor moss (rara na
+   tela, so positivo) + posicao base = canal dedicado de acao. Nao
+   compete com risco (border-left). Saliency low, leitura rapida. */
+.cartografia-surface .atom.has-next {
+  box-shadow: inset 0 -3px 0 var(--moss-soft);
+}
+/* Quando has-risk + has-next coexistem, o pipe e o atom-pipe heroes
+   ja tem outras shadows — preserve o inset moss combinando com a
+   shadow original do inset risk (4px left). */
+.cartografia-surface .atom.has-risk.has-next {
+  box-shadow:
+    inset 4px 0 0 var(--rec-red-soft),
+    inset 0 -3px 0 var(--moss-soft);
+}
+
+/* ─── I.3 · JUST-EDITED · pulse calibrado para zoom-out ──────────
+   Hoje (04-atoms.css:163) o ring oscila bronze-soft → bronze numa
+   diferenca de ~1px. Em zoom-out a oscilacao some. Aumentamos o
+   spread no peak pra que o ring permaneca pre-attentive em escala
+   reduzida. Pre-attentive: movimento (motion). Override do keyframe
+   existente — mesma animation-name. */
+@keyframes just-edited-ring {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px var(--bronze-soft),
+      0 14px 28px rgba(138, 106, 53, 0.10);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px var(--bronze),
+      0 0 0 9px rgba(138, 106, 53, 0.16),
+      0 18px 36px rgba(138, 106, 53, 0.26);
+  }
+}
+
+/* ─── I.4 · MISSING SOURCE · hatching diagonal rec-red ───────────
+   Ja tem border-left rec-red + badge 'FONTE AUSENTE'. Em zoom-out
+   ambos somem. Hatching diagonal 45deg em rec-red 3% e pre-attentive
+   por orientation (Healey) — nenhuma outra peca tem padrao listrado.
+   Mantemos o background base rgba(138,48,37,0.03) original somando
+   o gradiente repetido por cima. */
+.cartografia-surface .atom.missing-source {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgba(138, 48, 37, 0.06) 4px,
+      rgba(138, 48, 37, 0.06) 5px
+    );
+  background-color: rgba(138, 48, 37, 0.03);
+}
+
+/* ─── I.5 · ATLAS DECIDE · halo bronze permanente sutil ──────────
+   Atom-pipe#atom-atlas-decide ja tem signature em 04-atoms.css:350
+   (border firme + gradient denso + symbol ring duplo). Adicionamos
+   um halo bronze de 4px ao redor — pre-attentive por size (peca
+   maior visualmente) + cor bronze saturada. Token --bronze-glow nao
+   existe no canon, usamos rgba bronze 12% (calibrado pra somar com
+   o box-shadow existente sem agressao). */
+.cartografia-surface .atom-pipe#atom-atlas-decide {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 0 4px rgba(138, 106, 53, 0.12),
+    0 20px 38px rgba(77, 61, 34, 0.10),
+    0 6px 14px rgba(77, 61, 34, 0.06);
+}
+
+/* ─── I.6 · PHASE MARKERS · peso editorial maior ─────────────────
+   .flow-phase sao marcadores de capitulo do pipeline (Capturar /
+   Decidir / Executar / Verificar). Hoje 8px mono. Pre-attentive
+   por size insuficiente. Subimos label pra 11px caps weight 600
+   letter-spacing 2px; icon pill 26→32px; pesos de borda/ring um
+   degrau acima — sao tituletes do flow, devem ler-se em zoom-out. */
+.cartografia-surface .flow-phase .phase-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--bronze-deep);
+}
+.cartografia-surface .flow-phase .phase-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 9.5px;
+  border-color: rgba(138, 106, 53, 0.42);
+  color: var(--bronze-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 0 7px rgba(138, 106, 53, 0.06);
+}
+
+/* ─── I.7 · NUMERAIS ROMANOS · protagonistas do pipeline ─────────
+   .atom-pipe .a-num em Cormorant italic 17px bronze-deep (canon
+   ja estabelecido em 04-atoms.css:282). Pre-attentive features
+   ativas: posicao (sempre coluna esquerda), cor (bronze-deep unico
+   nesse rosto), tipo (serif italic vs sans/mono no resto). Aqui
+   sobe-se font-weight 600 e adiciona drop-shadow textual minima
+   pra peso silencioso — o numeral fica como inicial iluminada de
+   manuscrito, nao como UI metadata. */
+.cartografia-surface .atom-pipe .a-num {
+  font-weight: 600;
+  text-shadow: 0 1px 0 rgba(247, 241, 227, 0.9);
+}
+/* Atlas Decide ja sobrescreve .a-num em 04-atoms.css:368 — garantir
+   que esse override de weight nao mate aquele canon. Reforco aqui
+   pra deixar explicito que o hero mantem proeminencia. */
+.cartografia-surface .atom-pipe#atom-atlas-decide .a-num {
+  font-weight: 600;
+}

@@ -111,7 +111,6 @@ export function usePty(opts: PtyOptions): UsePtyResult {
       setLastError(e instanceof Error ? e.message : String(e))
       return null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [available, opts.id, opts.cwd, opts.shell, opts.cols, opts.rows])
 
   const write = useCallback(async (data: string) => {
@@ -162,7 +161,6 @@ export function usePty(opts: PtyOptions): UsePtyResult {
       spawnedRef.current = null
       pendingWritesRef.current = []
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return {

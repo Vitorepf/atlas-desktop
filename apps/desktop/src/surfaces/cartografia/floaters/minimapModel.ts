@@ -4,7 +4,11 @@ import { readCartografiaStorage, writeCartografiaStorage } from '../state/browse
 const MINIMAP_COLLAPSED_KEY = 'atlas.cartografia.minimapCollapsed'
 
 export function readStoredMinimapCollapsed(): boolean {
-  return readCartografiaStorage(MINIMAP_COLLAPSED_KEY) === '1'
+  // Default to collapsed: the minimap covers the Domain Plane atoms when
+  // expanded over the world canvas. The user toggles it open when needed.
+  const raw = readCartografiaStorage(MINIMAP_COLLAPSED_KEY)
+  if (raw == null) return true
+  return raw === '1'
 }
 
 export function persistMinimapCollapsed(collapsed: boolean): void {

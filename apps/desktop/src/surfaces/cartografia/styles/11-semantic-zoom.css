@@ -1,0 +1,62 @@
+/* ─── SEMANTIC ZOOM · LOD (Level of Detail) ────────────────
+ * Cada nível de zoom é uma pergunta diferente do usuário.
+ * Tufte's small multiples + focus+context: o transform muda
+ * a escala visual; estas regras mudam a densidade semântica.
+ *
+ * Tiers (driven by `worldClassName` → semanticZoomLevel(scale)):
+ *   .zoom-far    scale < 0.65   só o nome (mapa, paisagem)
+ *   .zoom-mid    0.65 ≤ < 1.15  nome + deck (leitura)
+ *   .zoom-close  scale ≥ 1.15   tudo (foco, edição)
+ * ────────────────────────────────────────────────────────── */
+
+/* ─── ZOOM-FAR · paisagem / mapa ──────────────────────────── */
+.cartografia-surface .world.zoom-far .atom .a-deck {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .atom .a-source {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .atom .a-subs {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .atom {
+  min-height: 56px;
+  max-height: 56px;
+  padding: 8px 10px;
+}
+.cartografia-surface .world.zoom-far .atom .a-name {
+  font-size: 15px;
+}
+
+.cartografia-surface .world.zoom-far .region-head .deck {
+  display: none;
+}
+
+.cartografia-surface .world.zoom-far .atom-pipe .a-deck {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .atom-pipe .a-source {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .atom-pipe {
+  min-height: 54px;
+  max-height: 54px;
+  padding: 8px 14px 8px 10px;
+}
+
+/* ─── ZOOM-MID · leitura (default) ────────────────────────── */
+.cartografia-surface .world.zoom-mid .atom .a-source {
+  display: none;
+}
+.cartografia-surface .world.zoom-mid .atom .a-subs {
+  display: none;
+}
+
+/* ─── ZOOM-CLOSE · foco / edição ──────────────────────────── */
+.cartografia-surface .world.zoom-close .atom {
+  max-height: none;
+  min-height: 84px;
+}
+.cartografia-surface .world.zoom-close .atom .a-subs {
+  display: grid;
+}

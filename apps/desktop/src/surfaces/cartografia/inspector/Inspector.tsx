@@ -12,7 +12,7 @@
  * Quando nada está hover/foco, mostra default "Atlas AI Kernel Pipeline".
  * Quando uma peça está sob hover/isolate/focus, mostra a ficha dela.
  */
-import type { CartographyAtom, CartographyNote, CartographySources, RecentChange } from '@atlas/domain'
+import type { CartographyAtom, CartographyGraph, CartographyNote, CartographySources, RecentChange } from '@atlas/domain'
 import { DefaultInspector } from './DefaultInspector'
 import { InspectorFileContent } from './InspectorFileContent'
 import {
@@ -34,6 +34,7 @@ interface InspectorProps {
   noteCache: Record<string, CartographyNote | null>
   loadNoteFor: (graphId: string) => Promise<CartographyNote | null>
   sourceRoots: CartographySources | null
+  graph: CartographyGraph | null
   recentChanges: RecentChange[]
   atomIndex: Record<string, CartographyAtom>
   onPickRecent: (graphId: string) => void
@@ -52,6 +53,7 @@ export function Inspector({
   noteCache,
   loadNoteFor,
   sourceRoots,
+  graph,
   recentChanges,
   atomIndex,
   onPickRecent,
@@ -68,6 +70,7 @@ export function Inspector({
   if (!atom) {
     return (
       <DefaultInspector
+        graph={graph}
         recentChanges={recentChanges}
         atomIndex={atomIndex}
         onPickRecent={onPickRecent}
@@ -96,24 +99,28 @@ export function Inspector({
         onNudgeWidth={onNudgeWidth}
         onResetWidth={onResetWidth}
       />
-      {collapsed ? <CollapsedInspectorRail onToggleCollapsed={onToggleCollapsed} /> : null}
-      <div className="ins-content" aria-hidden={collapsed}>
-        <InspectorHeader atom={atom} recent={recent} />
+      {collapsed ? (
+        <CollapsedInspectorRail onToggleCollapsed={onToggleCollapsed} />
+      ) : (
+        <div className="ins-content" aria-hidden={collapsed}>
+          <InspectorHeader atom={atom} recent={recent} />
 
-        <div className="ins-body">
-          <Ficha fields={fields} />
-          <InspectorFitSection atom={atom} />
-          <InspectorFileContent atom={atom} note={note} recent={recent} />
-          <InspectorActions atom={atom} note={note} sourceRoots={sourceRoots} />
-          <InspectorTags tags={tags} />
+          <div className="ins-body">
+            <Ficha fields={fields} />
+            <InspectorFitSection atom={atom} />
+            <InspectorFileContent atom={atom} note={note} recent={recent} />
+            <InspectorActions atom={atom} note={note} sourceRoots={sourceRoots} />
+            <InspectorTags tags={tags} />
+          </div>
+
+          <RecentChangesDock
+            collapsed={collapsed}
+            changes={recentChanges}
+            atomIndex={atomIndex}
+            onPickRecent={onPickRecent}
+          />
         </div>
-      </div>
-      <RecentChangesDock
-        collapsed={collapsed}
-        changes={recentChanges}
-        atomIndex={atomIndex}
-        onPickRecent={onPickRecent}
-      />
+      )}
     </aside>
   )
 }

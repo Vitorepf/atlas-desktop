@@ -2,25 +2,32 @@ import type { TerminalSessionProps } from './session/sessionTypes'
 import { useAtlasTerminalSession } from './session/useAtlasTerminalSession'
 
 export function TerminalSession({ sessionId, cwd, isActive, onSpawn }: TerminalSessionProps) {
-  const terminal = useAtlasTerminalSession({ sessionId, cwd, isActive, onSpawn })
+  const { available, containerRef, error, focus, lastError } = useAtlasTerminalSession({
+    sessionId,
+    cwd,
+    isActive,
+    onSpawn,
+  })
 
-  if (!terminal.available) {
+  if (!available) {
     return (
       <div className="term-empty" data-session={sessionId} hidden={!isActive}>
         PTY disponível somente dentro do Atlas Code .app (modo Tauri).
-        {terminal.lastError ? <div className="term-empty-error">· {terminal.lastError}</div> : null}
+        {lastError ? <div className="term-empty-error">· {lastError}</div> : null}
       </div>
     )
   }
 
+  const className = `term-body atlas-xterm-terminal${error ? ' has-error' : ''}`
+
   return (
     <div
-      ref={terminal.containerRef}
-      className={`term-body atlas-xterm-terminal ${terminal.error ? ' has-error' : ''}`}
+      ref={containerRef}
+      className={className}
       data-session={sessionId}
-      data-error={terminal.error ?? undefined}
-      onMouseDown={terminal.focus}
-      onClick={terminal.focus}
+      data-error={error ?? undefined}
+      onMouseDown={focus}
+      onClick={focus}
       style={{ display: isActive ? 'block' : 'none' }}
     />
   )

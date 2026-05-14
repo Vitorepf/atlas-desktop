@@ -15,11 +15,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { bridge, type BridgeMode } from '../lib/bridge'
+import { useExecutionStore } from '../state/executionStore'
 import type {
   CoreStatus,
   DecisionReceipt,
   Message,
   Obra,
+  ProgrammingGovernanceSnapshot,
   QualityGate,
   SddStage,
   Session,
@@ -41,6 +43,13 @@ export interface BridgeSnapshot {
   gates: QualityGate[]
   sdd: SddStage[]
   evidence: WorkStateSnapshot['evidence']
+  /**
+   * SCOR-1 Programming Governance snapshot (WorkItem, Spec, Plan, Tasks,
+   * GateRuns, Reviews, EvidenceReceipts). `null` when the backend has not
+   * persisted governance for the selected Obra — UI must render honest empty
+   * states, never fabricated values.
+   */
+  programmingGovernance: ProgrammingGovernanceSnapshot | null
   core: CoreStatus
   /** True while a write action (createObra, sendIntent, etc.) is in flight. */
   busy: boolean
@@ -71,6 +80,7 @@ const INITIAL: BridgeSnapshot = {
   gates: noGates,
   sdd: idlePipeline,
   evidence: [],
+  programmingGovernance: null,
   core: browserCoreStatus,
   busy: false,
   activeThreadId: null,
@@ -113,6 +123,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
           messages: noMessages,
           sdd: idlePipeline,
           evidence: [],
+          programmingGovernance: null,
           receipt: null,
           activeThreadId: null,
         }
@@ -133,6 +144,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         sdd: state.sdd.steps.length > 0 ? state.sdd.steps : idlePipeline,
         gates: state.gates.length > 0 ? state.gates : snap.gates,
         evidence: state.evidence,
+        programmingGovernance: state.programmingGovernance,
         receipt: state.receipt,
         activeThreadId: state.activeThreadId,
       }
@@ -164,6 +176,9 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
 
   const selectObra = useCallback(
     async (obraId: string) => {
+      // Switching Obra during a live trace: drop the cockpit, the stream
+      // belongs to the previous Obra and should not bleed into this one.
+      useExecutionStore.getState().clearTrace()
       const fromState = snap.obras.find((o) => o.id === obraId)
       let resolved: Obra | null = fromState ?? null
       if (!resolved) {
@@ -225,6 +240,12 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       const obraId = snap.obra?.id
       setSnap((s) => ({ ...s, busy: true }))
 
+      // Baseline so polling can detect a NEW assistant message instead of
+      // mistaking an older atlas reply for the response we are waiting on.
+      const baselineLength = snap.messages.length
+      const baselineLastAssistantId =
+        [...snap.messages].reverse().find((m) => m.role === 'atlas')?.id ?? null
+
       const optimisticId = `local-${Date.now()}`
       const optimistic: Message = {
         id: optimisticId,
@@ -242,26 +263,41 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
           return
         }
 
-        // Try SSE first; if no events arrive in 2s, fall back to polling /atlas-code/threads/{id}.
+        const hasNewAssistant = (fresh: Message[]) => {
+          if (fresh.length <= baselineLength) return false
+          const lastAtlas = [...fresh].reverse().find((m) => m.role === 'atlas')
+          if (!lastAtlas) return false
+          return lastAtlas.id !== baselineLastAssistantId
+        }
+
+        // Hand the trace off to the Live Cockpit store. The same SSE stream
+        // feeds both: messages refresh (sendIntent) AND checkpoint banner
+        // (executionStore.ingest). Single connection per trace.
+        useExecutionStore.getState().setActiveTrace(res.traceId)
+
+        // Try SSE first; if no events arrive in time, fall back to polling.
         let sseClosed = false
         let assistantSeen = false
         const unsubscribe = bridge.streamSession(res.traceId, (event) => {
           if (sseClosed) return
+          useExecutionStore.getState().ingest(event)
           if (event.eventType === 'message' || event.eventType === 'assistant_message') {
-            assistantSeen = true
             void (async () => {
               try {
                 const fresh = await bridge.getSession(newThreadId)
                 if (!cancelRef.current && fresh.length > 0) {
                   setSnap((s) => ({ ...s, messages: fresh }))
+                  if (hasNewAssistant(fresh)) assistantSeen = true
                 }
               } catch { /* ignore */ }
             })()
           }
         })
 
-        // Polling fallback
-        for (let attempt = 0; attempt < 20; attempt++) {
+        // Polling fallback: persist until trace terminal OR new assistant
+        // observed OR 60s cap. Trace status is cheap (single row read).
+        const deadline = Date.now() + 60_000
+        while (!cancelRef.current && !assistantSeen && Date.now() < deadline) {
           await new Promise((r) => setTimeout(r, 1500))
           if (cancelRef.current) {
             unsubscribe()
@@ -271,7 +307,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
             const fresh = await bridge.getSession(newThreadId)
             if (fresh.length > 0) {
               setSnap((s) => ({ ...s, messages: fresh }))
-              if (fresh.some((m) => m.role === 'atlas' || m.role === 'system')) {
+              if (hasNewAssistant(fresh)) {
                 assistantSeen = true
                 break
               }
@@ -279,7 +315,6 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
           } catch {
             /* keep polling */
           }
-          if (assistantSeen) break
         }
         sseClosed = true
         unsubscribe()
@@ -295,6 +330,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         }
       } catch (e) {
         pushError('sendIntent', e)
+        useExecutionStore.getState().clearTrace()
         setSnap((s) => ({
           ...s,
           busy: false,
@@ -351,9 +387,39 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     [refresh, pushError]
   )
 
+  // Defesa em profundidade: se o último turno é do usuário, ainda há trace
+  // em andamento. Após 3s sem resposta visível, força UM refetch da thread.
+  // Cobre o caso em que SSE+polling falham simultaneamente (HMR, drop de
+  // rede, app perde foreground durante a janela do polling).
+  useEffect(() => {
+    const threadId = snap.activeThreadId
+    if (!threadId || snap.messages.length === 0) return
+    const last = snap.messages[snap.messages.length - 1]
+    if (!last || last.role !== 'user') return
+    const handle = setTimeout(() => {
+      if (cancelRef.current) return
+      void (async () => {
+        try {
+          const fresh = await bridge.getSession(threadId)
+          if (cancelRef.current || fresh.length === 0) return
+          setSnap((s) => {
+            if (s.activeThreadId !== threadId) return s
+            if (fresh.length <= s.messages.length) return s
+            return { ...s, messages: fresh }
+          })
+        } catch {
+          /* silent · primary paths handle errors */
+        }
+      })()
+    }, 3000)
+    return () => clearTimeout(handle)
+  }, [snap.activeThreadId, snap.messages])
+
   useEffect(() => {
     cancelRef.current = false
-    void refresh()
+    queueMicrotask(() => {
+      if (!cancelRef.current) void refresh()
+    })
     return () => {
       cancelRef.current = true
     }

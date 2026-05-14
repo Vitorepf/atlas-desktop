@@ -6,7 +6,7 @@ interface CartographyOverlayProps {
 
 export function CartographyOverlay({ loading, offline, errors }: CartographyOverlayProps) {
   return (
-    <div className="cart-overlay">
+    <div className="cart-overlay" role="status" aria-live="polite" aria-atomic="true">
       <div className="cart-overlay-card">
         {loading ? (
           <p style={{ fontSize: 16, fontStyle: 'italic', color: 'var(--ink2)' }}>

@@ -22,6 +22,19 @@ export interface CartografiaState {
   hoverId: string | null
   searchQuery: string
 
+  /** Reading mode (modo leitura sequencial pelo pipeline). */
+  readingMode: boolean
+  /** Indice (0-based) do passo do pipeline em foco durante reading mode. */
+  readingFocusOrder?: number | null
+  /** Densidade visual: comfortable cresce o ar; compact mantém canon atual. */
+  density: 'comfortable' | 'compact'
+
+  toggleReadingMode: () => void
+  setReadingMode: (next: boolean) => void
+  readingNext: () => void
+  readingPrev: () => void
+  setDensity: (next: 'comfortable' | 'compact') => void
+
   setView: (v: CartographyView) => void
   selectContinent: (id: string) => void
   enterNode: (graphId: string) => void

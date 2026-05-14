@@ -65,6 +65,7 @@ export function Row({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- style token colocado com seus primitives para coesao visual; reuse direto sem barrel
 export const btnPrimary: CSSProperties = {
   padding: '7px 12px',
   fontFamily: 'var(--mono)',

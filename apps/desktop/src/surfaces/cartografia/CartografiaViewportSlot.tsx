@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- Cartografia ref/viewport refactor em curso; divida lateral isolada do Atlas Forge core (project_atlas_vault_cartografia). */
 import { useRef } from 'react'
 import type { CartografiaState } from './state/cartografiaTypes'
 import type { CartografiaViewModel } from './state/useCartografiaViewModel'
@@ -26,7 +27,17 @@ export function CartografiaViewportSlot({
   const worldRef = useRef<HTMLDivElement | null>(null)
 
   return (
-    <div ref={viewport.viewportRef} className={`viewport viewport-${visualLens}`}>
+    <div
+      ref={viewport.viewportRef}
+      className={[
+        'viewport',
+        `viewport-${visualLens}`,
+        cartografia.isolatedId ? 'is-isolated' : '',
+        cartografia.view === 'gear' ? 'mode-focus' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {cartografia.graph ? (
         <CartographyFloaters
           continents={cartografia.graph.universe}
@@ -71,6 +82,8 @@ export function CartografiaViewportSlot({
         hoveredAtom={viewModel.hoveredAtom}
         isolatedId={cartografia.isolatedId}
         hoverId={cartografia.hoverId}
+        readingMode={cartografia.readingMode}
+        density={cartografia.density}
         onSetView={cartografia.setView}
         onSelectContinent={cartografia.selectContinent}
         onEnterNode={cartografia.enterNode}

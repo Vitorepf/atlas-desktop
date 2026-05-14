@@ -1,0 +1,145 @@
+/* ─────────────────────────────────────────────
+   10 · TYPOGRAPHY SCALE
+   Agente F · Tipografia & Hierarquia Visual
+   ─────────────────────────────────────────────
+   Don Corleone DNA · peso editorial Patek Philippe.
+   Cormorant Garamond italic = protagonista hierárquico.
+   JetBrains Mono = signature metadata, nunca corpo.
+   Carregue DEPOIS de 04-atoms / 03-regions / 08-inspector.
+   ───────────────────────────────────────────── */
+
+/* ─── Surface root · ligaduras + kerning ─── */
+.cartografia-surface {
+  font-feature-settings: 'liga' 1, 'kern' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── ATOM DEFAULT (não pipe) ──────────────── */
+.cartografia-surface .atom .a-name {
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.cartografia-surface .atom .a-deck {
+  font-family: var(--serif);
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--ink2);
+}
+
+.cartografia-surface .atom .a-source {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  line-height: 1.3;
+  color: var(--ink3);
+}
+
+.cartografia-surface .atom .a-source-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* ─── ATOM-PIPE (hero do pipeline) ─────────── */
+.cartografia-surface .atom-pipe .a-name,
+.cartografia-surface .atom-pipe .a-body .a-name {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.cartografia-surface .atom-pipe .a-deck,
+.cartografia-surface .atom-pipe .a-body .a-deck {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+
+.cartografia-surface .atom-pipe .a-num {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--bronze-deep);
+}
+
+.cartografia-surface .atom-pipe .a-symbol,
+.cartografia-surface .atom-pipe .a-symbol > * {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+/* ─── REGION-HEAD · cabeçalho editorial ────── */
+.cartografia-surface .region-head {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 2.8px;
+  text-transform: uppercase;
+  line-height: 1.3;
+  /* Rhythm hierárquico: ratio 1.5 vs body (era 1.2) */
+  margin-bottom: calc(1em * 1.5);
+}
+
+.cartografia-surface .region-head .deck {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.5;
+  color: var(--ink2);
+  margin-top: 0.5em;
+}
+
+/* ─── INSPECTOR · leitura demorada ─────────── */
+.cartografia-surface .cart-inspector .ins-title,
+.cart-inspector .ins-title {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  color: var(--ink);
+}
+
+.cartografia-surface .cart-inspector .ins-lede,
+.cart-inspector .ins-lede {
+  font-family: var(--serif);
+  font-size: 14.5px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+
+/* ─── RIBBON · "ATLAS KERNEL PIPELINE" ─────── */
+.cartografia-surface .ribbon {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  line-height: 1.2;
+  padding: 12px 28px;
+}

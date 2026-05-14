@@ -157,7 +157,6 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): UseKernelStatus
       stopPolling()
       if (listenUnsub) listenUnsub()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const retry = useCallback(async () => {

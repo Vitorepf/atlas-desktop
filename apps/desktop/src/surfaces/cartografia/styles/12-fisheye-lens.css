@@ -1,0 +1,135 @@
+/* ─── FISHEYE LENS · FOCUS+CONTEXT (Bederson / Card) ──────────
+   Hover = lente de aumento editorial. O atom sob o cursor cresce
+   1.12× (peso silencioso, não bounce SaaS), siblings respiram
+   levemente (1.03), e a region inteira reage como um corpo único.
+   Transition ease-instinct (0.32, 0.72, 0.24, 1) — chega como
+   ponteiro de Patek: firme, sem overshoot.
+
+   Canon scale = 1.12: golden ratio do hover. 1.10 é tímido (não
+   lê como protagonista), 1.15+ esmaga siblings e gera overlap
+   visual com gap 12px atual. 1.12 é o ponto onde o atom assume
+   foreground sem violar o ritmo da grade — mesma proporção que
+   Bederson valida em "Fisheye Menus" pra ampliação local sem
+   romper contexto periférico. */
+
+/* ─── FOCUS · atom sob o cursor ─────────────────────────────── */
+.cartografia-surface .atom:hover {
+  transform: scale(1.12) translateY(-2px);
+  box-shadow:
+    0 14px 32px rgba(77, 61, 34, 0.18),
+    0 4px 10px rgba(77, 61, 34, 0.10);
+  z-index: 8;
+  transition:
+    transform 220ms cubic-bezier(0.32, 0.72, 0.24, 1),
+    box-shadow 220ms cubic-bezier(0.32, 0.72, 0.24, 1),
+    background 180ms cubic-bezier(0.32, 0.72, 0.24, 1),
+    border-color 180ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+
+/* Halo bronze sutil ao redor — dica de "lente ativa".
+   Inset -6px = 6px de respiro além do border; opacity 0.6 pra
+   não competir com border-color do hover base. */
+.cartografia-surface .atom:hover::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 1px solid var(--bronze-soft);
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0.6;
+  z-index: -1;
+  transition: opacity 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+
+/* Override do halo quando atom já tem ::after de "risco" — risco
+   tem prioridade semântica. */
+.cartografia-surface .atom.has-risk:hover::after {
+  inset: auto;
+  border: none;
+  opacity: 1;
+}
+
+/* ─── CONTEXT · siblings magnéticos (efeito halo) ──────────────
+   `:has()` é WebKit/Chromium recente — Tauri WebView passa.
+   Siblings adjacentes recebem 1.03 (pull magnético leve), atoms
+   distantes ficam normais. Combinador `~` cobre depois, `:has(~)`
+   cobre antes — fisheye simétrico. */
+.cartografia-surface .atom:hover ~ .atom,
+.cartografia-surface .atom:has(~ .atom:hover) {
+  transform: scale(1.03);
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+
+/* Region como corpo único: quando o cursor entra na region, os
+   atoms não-hovered respiram 1.02 + opacity 0.92 (cedem foco ao
+   protagonista sem desaparecer). */
+.cartografia-surface .region:hover .atom:not(:hover) {
+  transform: scale(1.02);
+  opacity: 0.92;
+  transition:
+    transform 240ms cubic-bezier(0.32, 0.72, 0.24, 1),
+    opacity 240ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+
+/* ─── ATOM-PIPE · hover mais sutil ─────────────────────────────
+   Pipe é hero do pipeline, já tem peso visual maior (gradient
+   bronze + symbol pill). Scale 1.08 evita inflar demais e
+   respeita a hierarquia: pipe não precisa "saltar" como atom
+   regular pra ser protagonista — ele já é. */
+.cartografia-surface .atom-pipe:hover {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 18px 36px rgba(77, 61, 34, 0.14),
+    0 6px 14px rgba(77, 61, 34, 0.08);
+  z-index: 8;
+}
+
+/* Pipe sibling magnético — 1.02 (mais discreto que atom regular,
+   coerente com escala reduzida do pipe). */
+.cartografia-surface .atom-pipe:hover ~ .atom-pipe,
+.cartografia-surface .atom-pipe:has(~ .atom-pipe:hover) {
+  transform: scale(1.02);
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+
+/* Reforça reveal da .a-source no pipe (comportamento já existe
+   em 04-atoms.css linha 331; aqui amplificamos com leve realce
+   de cor pra fechar a coreografia da lente). */
+.cartografia-surface .atom-pipe:hover .a-source {
+  color: var(--ink2);
+}
+
+/* ─── ISOLATE-MODE · não compete com a lente ───────────────────
+   Quando o world está em isolate-mode, o atom ativo já tem seu
+   próprio spotlight (scale 1.06 em 04-atoms.css). Hover não deve
+   somar — mantém a hierarquia do modo. */
+.cartografia-surface .world.isolate-mode .atom:hover {
+  transform: scale(1.06) translateY(-1px);
+}
+.cartografia-surface .world.isolate-mode .atom.active:hover {
+  transform: translateY(-1px) scale(1.08);
+}
+
+/* ─── PREFERS-REDUCED-MOTION · só border + shadow ──────────────
+   Suprime todo scale/translate. Mantém box-shadow e halo bronze
+   como sinal de foco (acessibilidade não é remoção de feedback,
+   é tradução do feedback pra estático). */
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .atom:hover,
+  .cartografia-surface .atom-pipe:hover {
+    transform: none;
+  }
+  .cartografia-surface .atom:hover ~ .atom,
+  .cartografia-surface .atom:has(~ .atom:hover),
+  .cartografia-surface .atom-pipe:hover ~ .atom-pipe,
+  .cartografia-surface .atom-pipe:has(~ .atom-pipe:hover),
+  .cartografia-surface .region:hover .atom:not(:hover) {
+    transform: none;
+    opacity: 1;
+  }
+  .cartografia-surface .world.isolate-mode .atom:hover,
+  .cartografia-surface .world.isolate-mode .atom.active:hover {
+    transform: none;
+  }
+}

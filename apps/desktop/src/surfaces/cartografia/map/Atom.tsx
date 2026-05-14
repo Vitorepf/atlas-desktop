@@ -55,6 +55,12 @@ export function Atom({
       onMouseLeave={() => onHover?.(null)}
       onClick={handleClick}
     >
+      {isActive ? (
+        <span className="you-are-here" aria-label="Você está aqui">
+          Você está aqui
+        </span>
+      ) : null}
+
       {hasRelations(atom) ? <span className="a-relation-port" aria-hidden="true" /> : null}
 
       {recent && recent.secondsAgo < 60 ? (

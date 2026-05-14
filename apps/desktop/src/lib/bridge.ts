@@ -23,6 +23,15 @@ import type {
   Message,
   Obra,
   Packet,
+  ProgrammingEvidenceReceiptSnapshot,
+  ProgrammingEvidenceStorage,
+  ProgrammingGateRunSnapshot,
+  ProgrammingGovernanceSnapshot,
+  ProgrammingScopeMode,
+  ProgrammingTaskContract,
+  ProgrammingWorkItemGap,
+  ProgrammingWorkItemSnapshot,
+  ProgrammingWorkStatus,
   QualityGate,
   RecentChange,
   Session,
@@ -96,7 +105,10 @@ function parseJsonBody<T>(body: string): T {
   try {
     return JSON.parse(body) as T
   } catch (firstError) {
-    const start = body.search(/[\[{]/)
+    const objectStart = body.indexOf('{')
+    const arrayStart = body.indexOf('[')
+    const start =
+      objectStart < 0 ? arrayStart : arrayStart < 0 ? objectStart : Math.min(objectStart, arrayStart)
     if (start < 0) throw firstError
     return JSON.parse(body.slice(start)) as T
   }
@@ -105,6 +117,46 @@ function parseJsonBody<T>(body: string): T {
 /** Throws explicitly when offline so useBridge can report errors honestly. */
 function offline(method: string): never {
   throw new Error(`offline · ${method} · neither Tauri nor VITE_ATLAS_SERVER_URL configured`)
+}
+
+function atlasCodeForgePayload(obraId?: string): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    app_surface: 'atlas_code',
+    surface_id: 'atlas_code',
+    requires_obra: true,
+    atlas_mode: 'forge',
+    current_mode: 'forge',
+    atlas_workflow_mode: 'forge',
+    domain_id: 'programming',
+    flow_id: 'programming.forge',
+    routing_domain: 'programming',
+    routing_task: 'forge',
+    programming_profile: 'forge',
+    programming_flow: 'programming.forge',
+    dev_execution_plan: {
+      programming_profile: 'forge',
+      programming_flow: 'programming.forge',
+      operator_options: {
+        complete: true,
+        auto_test: true,
+      },
+    },
+  }
+
+  if (obraId) {
+    payload.obra_id = obraId
+    payload.work_id = obraId
+    payload.project_id = obraId
+    payload.forge_workspace = {
+      schema_version: 'atlas.forge_workspace_binding.v1',
+      workspace_kind: 'obras_shared_workspace',
+      specialization: 'forge_workspace',
+      obra_id: obraId,
+      source: 'atlas_code',
+    }
+  }
+
+  return payload
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -276,23 +328,54 @@ export const bridge = {
 
   // 6 · stream session events
   /**
-   * Tauri: kicks off backend stream + listens via Tauri events.
-   * HTTP : opens an EventSource.
-   * Offline: no-op (returns a no-op unsubscribe).
+   * Tauri: registers listener FIRST, then invokes backend stream command —
+   *        any events emitted before the listener resolves are buffered and
+   *        replayed in order. Cancellation via the returned closure is safe
+   *        before, during or after the invoke.
+   * HTTP : opens an EventSource directly.
+   * Offline: no-op.
    */
   streamSession(traceId: string, onEvent: (event: StreamEventDto) => void): () => void {
     if (MODE === 'tauri') {
       let unlisten: (() => void) | null = null
+      let cancelled = false
+      const buffer: StreamEventDto[] = []
+      let active = false
+      const flush = (ev: StreamEventDto) => {
+        if (cancelled) return
+        if (active) onEvent(ev)
+        else buffer.push(ev)
+      }
       void (async () => {
-        const tauri = await import('@tauri-apps/api/core')
-        const eventApi = await import('@tauri-apps/api/event')
-        unlisten = await eventApi.listen<StreamEventDto>(`bridge://stream/${traceId}`, (e) => {
-          onEvent(e.payload)
-        })
-        await tauri.invoke('bridge_stream_session', { traceId, afterSequence: null })
+        try {
+          const eventApi = await import('@tauri-apps/api/event')
+          const tauri = await import('@tauri-apps/api/core')
+          if (cancelled) return
+          unlisten = await eventApi.listen<StreamEventDto>(
+            `bridge://stream/${traceId}`,
+            (e) => flush(e.payload),
+          )
+          if (cancelled) {
+            unlisten()
+            unlisten = null
+            return
+          }
+          active = true
+          while (buffer.length > 0) {
+            const ev = buffer.shift()!
+            onEvent(ev)
+          }
+          await tauri.invoke('bridge_stream_session', { traceId, afterSequence: null })
+        } catch (e) {
+          console.warn('[bridge] streamSession tauri failed', e)
+        }
       })()
       return () => {
-        if (unlisten) unlisten()
+        cancelled = true
+        if (unlisten) {
+          unlisten()
+          unlisten = null
+        }
       }
     }
     if (MODE === 'http') {
@@ -334,6 +417,7 @@ export const bridge = {
         input_text: body,
         source_type: 'app',
         kind: 'interaction',
+        payload: atlasCodeForgePayload(obraId),
       }
       if (threadId) payload.thread_id = threadId
       else payload.new_thread = true
@@ -452,7 +536,7 @@ export const bridge = {
     return noSessions
   },
 
-  async listPackets(_obraId: string): Promise<Packet[]> {
+  async listPackets(): Promise<Packet[]> {
     return noPackets
   },
 
@@ -482,6 +566,64 @@ export const bridge = {
       return adaptRecentChanges(raw?.changes ?? [])
     } catch {
       return []
+    }
+  },
+
+  /**
+   * Live cartography stream. SSE events:
+   *   - `graph_changed { checksum, reason }`  → refresh graph + recent + invalidate cache
+   *   - `heartbeat { at }`                    → channel still alive
+   *   - `reconnect { reason }`                → server bound reached; client reopens
+   *
+   * Returns an unsubscribe fn. In Tauri/offline mode the connection short-circuits
+   * to a no-op so the caller doesn't need branchy code paths.
+   */
+  streamCartography(onEvent: (kind: string, payload: Record<string, unknown>) => void): () => void {
+    if (MODE !== 'http') {
+      // Tauri-mode SSE will pipe through a dedicated bridge command in a later
+      // iteration; for now we silently no-op so the polling path still drives.
+      return () => { /* noop */ }
+    }
+    let closed = false
+    let es: EventSource | null = null
+    let backoffMs = 1_000
+
+    const open = () => {
+      if (closed) return
+      try {
+        es = new EventSource(`${HTTP_BASE}/atlas-cartography/stream`)
+      } catch (e) {
+        console.warn('[bridge] cartography SSE open failed', e)
+        return
+      }
+      const handle = (kind: string) => (msg: MessageEvent) => {
+        try {
+          const data = JSON.parse(msg.data) as Record<string, unknown>
+          onEvent(kind, data)
+        } catch {
+          /* malformed frame · ignore */
+        }
+      }
+      es.addEventListener('graph_changed', handle('graph_changed'))
+      es.addEventListener('heartbeat', handle('heartbeat'))
+      es.addEventListener('reconnect', handle('reconnect'))
+      es.onerror = () => {
+        es?.close()
+        es = null
+        if (closed) return
+        // Reconnect with light backoff so a temporarily down server doesn't
+        // get hammered. Cap at 8s, halve on first success.
+        setTimeout(open, backoffMs)
+        backoffMs = Math.min(backoffMs * 2, 8_000)
+      }
+      es.onopen = () => { backoffMs = 1_000 }
+    }
+
+    open()
+    return () => {
+      closed = true
+      es?.close()
+      es = null
     }
   },
 
@@ -828,7 +970,156 @@ function adaptWorkState(raw: unknown): WorkStateSnapshot | null {
         createdAt: (ee.createdAt ?? ee.created_at ?? null) as string | null,
       }
     }),
+    programmingGovernance: adaptProgrammingGovernance(
+      r.programming_governance ?? r.programmingGovernance,
+    ),
     generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// SCOR-1 · Programming Governance adapter
+//
+// Mirrors the contract in atlas-code-scor-1-implementation-contract.md:
+// - reads snake_case OR camelCase, never invents arrays
+// - preserves null for spec/plan/workItem when backend omits them
+// - keeps degraded + degradedReason intact so UI shows honest alerts
+
+function adaptProgrammingGovernance(raw: unknown): ProgrammingGovernanceSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+
+  const workItemRaw = (r.work_item ?? r.workItem) as Record<string, unknown> | null | undefined
+  const tasksRaw = (r.tasks as unknown[]) ?? []
+  const gateRunsRaw = (r.gate_runs ?? r.gateRuns) as unknown[] | undefined
+  const reviewsRaw = (r.reviews as unknown[]) ?? []
+  const evidenceRefsRaw = (r.evidence_refs ?? r.evidenceRefs) as unknown[] | undefined
+  const artifactsRaw = (r.artifacts as unknown[]) ?? []
+
+  const spec = (r.spec ?? null) as Record<string, unknown> | null
+  const plan = (r.plan ?? null) as Record<string, unknown> | null
+
+  return {
+    workItem: adaptProgrammingWorkItem(workItemRaw ?? null),
+    spec: spec && typeof spec === 'object' && Object.keys(spec).length > 0 ? spec : null,
+    plan: plan && typeof plan === 'object' && Object.keys(plan).length > 0 ? plan : null,
+    tasks: tasksRaw.map(adaptProgrammingTaskContract),
+    gateRuns: (gateRunsRaw ?? []).map(adaptProgrammingGateRun),
+    reviews: reviewsRaw
+      .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+      .map((v) => v),
+    evidenceRefs: (evidenceRefsRaw ?? []).map(adaptProgrammingEvidenceReceipt),
+    artifacts: artifactsRaw
+      .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+      .map((v) => v),
+    degraded: Boolean(r.degraded ?? false),
+    degradedReason: (r.degraded_reason ?? r.degradedReason ?? null) as string | null,
+  }
+}
+
+function adaptProgrammingWorkItem(
+  raw: Record<string, unknown> | null,
+): ProgrammingWorkItemSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const id = raw.id as string | undefined
+  if (!id) return null
+
+  const scopeRaw = (raw.scope_mode ?? raw.scopeMode ?? 'compact') as string
+  const scopeMode: ProgrammingScopeMode = scopeRaw === 'structural' ? 'structural' : 'compact'
+
+  return {
+    id: String(id),
+    code: String(raw.code ?? ''),
+    intentText: String(raw.intent_text ?? raw.intentText ?? ''),
+    intentType: String(raw.intent_type ?? raw.intentType ?? ''),
+    scopeMode,
+    riskLevel: String(raw.risk_level ?? raw.riskLevel ?? ''),
+    status: ((raw.status as ProgrammingWorkStatus) ?? 'open'),
+    currentStage: String(raw.current_stage ?? raw.currentStage ?? ''),
+    specHash: (raw.spec_hash ?? raw.specHash ?? null) as string | null,
+    planHash: (raw.plan_hash ?? raw.planHash ?? null) as string | null,
+    requiredGates: normList(raw.required_gates ?? raw.requiredGates),
+    gaps: adaptProgrammingGaps(raw.gaps),
+  }
+}
+
+function adaptProgrammingGaps(raw: unknown): ProgrammingWorkItemGap[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item): ProgrammingWorkItemGap | null => {
+      if (!item || typeof item !== 'object') {
+        if (typeof item === 'string' && item) return { name: item }
+        return null
+      }
+      const r = item as Record<string, unknown>
+      const name = (r.name ?? r.gap ?? r.id) as string | undefined
+      if (!name) return null
+      return {
+        name: String(name),
+        reason: (r.reason ?? null) as string | null,
+        recordedAt: (r.recorded_at ?? r.recordedAt ?? null) as string | null,
+      }
+    })
+    .filter((g): g is ProgrammingWorkItemGap => !!g)
+}
+
+function adaptProgrammingTaskContract(raw: unknown): ProgrammingTaskContract {
+  const r = (raw as Record<string, unknown>) ?? {}
+  return {
+    owner: (r.owner ?? null) as string | null,
+    allowedFiles: normList(r.allowed_files ?? r.allowedFiles),
+    forbiddenFiles: normList(r.forbidden_files ?? r.forbiddenFiles),
+    expectedFiles: normList(r.expected_files ?? r.expectedFiles),
+    dependencies: normList(r.dependencies),
+    riskLevel: (r.risk_level ?? r.riskLevel ?? null) as string | null,
+    validationCommands: normList(r.validation_commands ?? r.validationCommands),
+    acceptanceCriteria: normList(r.acceptance_criteria ?? r.acceptanceCriteria),
+    rollback: (r.rollback ?? null) as string | null,
+    evidenceRequired: normList(r.evidence_required ?? r.evidenceRequired),
+    docsRequired: normList(r.docs_required ?? r.docsRequired),
+    cartographyRequired: Boolean(r.cartography_required ?? r.cartographyRequired ?? false),
+  }
+}
+
+function adaptProgrammingGateRun(raw: unknown): ProgrammingGateRunSnapshot {
+  const r = (raw as Record<string, unknown>) ?? {}
+  return {
+    id: (r.id as string | undefined) ?? undefined,
+    gateName: String(r.gate_name ?? r.gateName ?? r.gate ?? ''),
+    status: String(r.status ?? 'pending'),
+    blocking: Boolean(r.blocking ?? false),
+    reason: (r.reason ?? null) as string | null,
+    waiverReason: (r.waiver_reason ?? r.waiverReason ?? null) as string | null,
+    payload: r.payload,
+    createdAt: (r.created_at ?? r.createdAt ?? null) as string | null,
+  }
+}
+
+function adaptProgrammingEvidenceReceipt(raw: unknown): ProgrammingEvidenceReceiptSnapshot {
+  const r = (raw as Record<string, unknown>) ?? {}
+  const storageRaw = (r.storage as Record<string, unknown> | undefined) ?? undefined
+  let storage: ProgrammingEvidenceStorage | undefined
+  if (storageRaw && typeof storageRaw === 'object') {
+    storage = {
+      persisted: Boolean(storageRaw.persisted ?? false),
+      table: (storageRaw.table as string | undefined) ?? undefined,
+      reason: (storageRaw.reason as string | undefined) ?? undefined,
+      id: (storageRaw.id as string | undefined) ?? undefined,
+    }
+  }
+  return {
+    receiptId: (r.receipt_id ?? r.receiptId) as string | undefined,
+    evidenceType: String(r.evidence_type ?? r.evidenceType ?? r.kind ?? ''),
+    status: String(r.status ?? ''),
+    command: (r.command ?? null) as string | null,
+    output: (r.output ?? null) as string | null,
+    files: normList(r.files),
+    tests: normList(r.tests),
+    diffPath: (r.diff_path ?? r.diffPath ?? null) as string | null,
+    artifactUrl: (r.artifact_url ?? r.artifactUrl ?? null) as string | null,
+    summary: (r.summary ?? null) as string | null,
+    storage,
+    recordedAt: (r.recorded_at ?? r.recordedAt ?? r.created_at ?? null) as string | null,
   }
 }
 
@@ -867,6 +1158,7 @@ function adaptCartographyGraph(raw: unknown): CartographyGraph | null {
   const r = raw as Record<string, unknown>
   const audit = (r.audit as Record<string, unknown> | undefined) ?? {}
   const sources = (r.sources as Record<string, unknown> | undefined) ?? {}
+  const sourceHealth = (r.source_health as Record<string, unknown> | undefined) ?? null
   const universe = ((r.universe as unknown[]) ?? []).map(adaptContinent)
   const view = ((r.views as Record<string, unknown> | undefined)?.[
     'atlas-ai-kernel'
@@ -881,11 +1173,18 @@ function adaptCartographyGraph(raw: unknown): CartographyGraph | null {
     .map(adaptConnection)
     .filter((c): c is { from: string; to: string; kind: string } => !!c)
   const semanticGraph = adaptSemanticGraph(r.semantic_graph)
+  const brokenPaths = adaptBrokenPaths(audit.broken_paths)
+  const orphanNodes = adaptOrphanNodes(audit.orphan_nodes)
 
   return {
     audit: {
       found: Number(audit.pieces_found ?? 0),
       missing: Number(audit.pieces_missing ?? 0),
+      brokenPaths,
+      orphanNodes,
+      orphanCount: Number(audit.orphan_count ?? orphanNodes.length),
+      semanticNodeCount: Number(audit.semantic_node_count ?? semanticGraph?.nodes.length ?? 0),
+      semanticRelationCount: Number(audit.semantic_relation_count ?? semanticGraph?.relations.length ?? 0),
       generatedAt: (r.generated_at as string | null) ?? null,
       repoIndexed: Number(sources.repo_indexed_count ?? 0),
       vaultIndexed: Number(sources.vault_indexed_count ?? 0),
@@ -894,12 +1193,55 @@ function adaptCartographyGraph(raw: unknown): CartographyGraph | null {
       repoDocsPath: String(sources.repo_docs_path ?? ''),
       obsidianVaultPath: String(sources.obsidian_vault_path ?? ''),
     },
+    sourceHealth: adaptSourceHealth(sourceHealth),
+    checksum: typeof r.checksum === 'string' ? r.checksum : null,
     universe,
     pipeline,
     lanes,
     connections,
     semanticGraph,
   }
+}
+
+function adaptBrokenPaths(raw: unknown): import('@atlas/domain').BrokenPath[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item) => {
+      const r = (item ?? {}) as Record<string, unknown>
+      return {
+        graphId: String(r.graph_id ?? ''),
+        name: String(r.name ?? r.graph_id ?? ''),
+        expectedPath: String(r.expected_path ?? ''),
+        graphKind: String(r.graph_kind ?? ''),
+      }
+    })
+    .filter((p) => p.graphId !== '')
+}
+
+function adaptOrphanNodes(raw: unknown): import('@atlas/domain').OrphanNode[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item) => {
+      const r = (item ?? {}) as Record<string, unknown>
+      return {
+        graphId: String(r.graph_id ?? ''),
+        missingParent: String(r.missing_parent ?? ''),
+      }
+    })
+    .filter((p) => p.graphId !== '')
+}
+
+function adaptSourceHealth(raw: Record<string, unknown> | null): import('@atlas/domain').SourceHealth | null {
+  if (!raw) return null
+  const repo = (raw.repo as Record<string, unknown> | undefined) ?? {}
+  const vault = (raw.vault as Record<string, unknown> | undefined) ?? {}
+  const toRoot = (r: Record<string, unknown>): import('@atlas/domain').SourceRootHealth => ({
+    root: String(r.root ?? ''),
+    readable: Boolean(r.readable ?? false),
+    indexedCount: Number(r.indexed_count ?? 0),
+    errors: Array.isArray(r.errors) ? r.errors.map(String) : [],
+  })
+  return { repo: toRoot(repo), vault: toRoot(vault) }
 }
 
 function adaptSemanticGraph(raw: unknown): import('@atlas/domain').SemanticGraph | null {

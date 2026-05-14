@@ -25,7 +25,7 @@ Novas features entram em um slot existente ou em um registry interno.
 
 - `leftRail/leftRailRegistry.tsx`: secoes da navegacao esquerda.
 - `panels/rightRailRegistry.tsx`: tabs `Plan`, `Verify`, `Evidence`.
-- `stage/mainStageRegistry.tsx`: modos do palco principal.
+- `stage/mainStageRegistry.tsx`: modo unico `forge` do palco principal.
 
 ## Boundaries atuais
 
@@ -37,6 +37,14 @@ Novas features entram em um slot existente ou em um registry interno.
 - `panels/RightRail.tsx`: host da governanca operacional.
 - `terminal/TerminalDock.tsx`: boundary para todo trabalho futuro de terminal.
 - `terminal/`: tabs, sessao xterm, protocolo OSC, sizing e status operacional.
+
+## Contrato Forge
+
+Atlas Code SCOR-1 e a surface desktop de `programming.forge`. O composer e o
+bridge devem enviar toda intencao com `surface_id=atlas_code`,
+`flow_id=programming.forge`, `routing_task=forge` e
+`programming_profile=forge`. Spec, plan, verify, evidence, replay e repair sao
+etapas/artefatos do Forge, nao modos alternativos da surface.
 
 ## Anti-patterns
 

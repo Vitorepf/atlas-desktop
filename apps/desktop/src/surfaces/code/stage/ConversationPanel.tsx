@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Message } from '@atlas/domain'
+import { LiveCockpitBanner } from './LiveCockpit'
 import { SddMini } from './SddMini'
 import type { MainStageContext } from './mainStageTypes'
 
@@ -9,6 +10,7 @@ export function ConversationPanel({
   receiptHash,
   loading,
   hasObra,
+  programmingGovernance,
 }: MainStageContext) {
   const threadRef = useRef<HTMLDivElement>(null)
 
@@ -18,7 +20,13 @@ export function ConversationPanel({
 
   return (
     <div className="conv-thread" ref={threadRef}>
-      <SddMini stages={stages} receiptHash={receiptHash} />
+      <LiveCockpitBanner />
+      <SddMini
+        stages={stages}
+        receiptHash={receiptHash}
+        programmingGovernance={programmingGovernance}
+        hasObra={hasObra}
+      />
 
       {messages.length === 0 ? (
         <EmptyConversation loading={loading} hasObra={hasObra} />

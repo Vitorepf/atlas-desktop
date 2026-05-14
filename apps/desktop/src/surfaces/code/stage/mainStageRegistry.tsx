@@ -11,8 +11,8 @@ export interface MainStageModeDefinition {
 
 const MODES: MainStageModeDefinition[] = [
   {
-    id: 'conversation',
-    label: 'Conversa',
+    id: 'forge',
+    label: 'Forge',
     priority: 10,
     render: (ctx) => <ConversationPanel {...ctx} />,
   },

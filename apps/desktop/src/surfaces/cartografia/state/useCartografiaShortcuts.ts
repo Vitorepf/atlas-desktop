@@ -12,6 +12,7 @@ interface CartografiaShortcutsInput {
   onSetVisualLens: (lens: VisualLens) => void
   onExitGear: () => void
   onExitIsolate: () => void
+  onToggleAuditPanel?: () => void
 }
 
 export function useCartografiaShortcuts({
@@ -22,6 +23,7 @@ export function useCartografiaShortcuts({
   onSetVisualLens,
   onExitGear,
   onExitIsolate,
+  onToggleAuditPanel,
 }: CartografiaShortcutsInput) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -42,9 +44,10 @@ export function useCartografiaShortcuts({
       if (shortcut.kind === 'exit-isolate') {
         onExitIsolate()
       }
+      if (shortcut.kind === 'audit-panel') onToggleAuditPanel?.()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isolatedId, onExitGear, onExitIsolate, onFit, onSetVisualLens, search, view])
+  }, [isolatedId, onExitGear, onExitIsolate, onFit, onSetVisualLens, onToggleAuditPanel, search, view])
 }

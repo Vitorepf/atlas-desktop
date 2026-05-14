@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- Cartografia ref refactor em curso; divida lateral isolada do Atlas Forge core (project_atlas_vault_cartografia). */
 import { useMemo } from 'react'
 import { Trails } from '../map/Trails'
 import { computeStepYs } from '../map/layout'

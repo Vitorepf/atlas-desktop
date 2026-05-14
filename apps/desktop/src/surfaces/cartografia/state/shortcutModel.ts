@@ -9,6 +9,7 @@ export type CartografiaShortcut =
   | { kind: 'clear-search' }
   | { kind: 'exit-gear' }
   | { kind: 'exit-isolate' }
+  | { kind: 'audit-panel' }
   | { kind: 'none' }
 
 export function isEditableShortcutTarget(target: EventTarget | null): boolean {
@@ -37,6 +38,11 @@ export function resolveCartografiaShortcut({
 }): CartografiaShortcut {
   const isSearchTarget = isEditableShortcutTarget(event.target)
   const hasSystemModifier = hasSystemShortcutModifier(event)
+
+  // cmd+shift+A (or ctrl+shift+A) toggles the Audit Panel anywhere.
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && (event.key === 'a' || event.key === 'A')) {
+    return { kind: 'audit-panel' }
+  }
 
   if (!isSearchTarget && !hasSystemModifier) {
     const lens = lensFromShortcut(event.key)
