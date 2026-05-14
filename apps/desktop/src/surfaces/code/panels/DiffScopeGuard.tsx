@@ -36,10 +36,10 @@ export function DiffScopeGuard({ liveExecution }: DiffScopeGuardProps) {
       >
         <div
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 8.5,
-            letterSpacing: '1.2px',
-            textTransform: 'uppercase',
+            letterSpacing: 0,
+            textTransform: 'none',
             color: completionAllowed ? 'var(--moss)' : 'var(--rec-red, #8a3025)',
           }}
         >
@@ -64,16 +64,16 @@ export function DiffScopeGuard({ liveExecution }: DiffScopeGuardProps) {
                   borderRadius: 2,
                 }}
               >
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-all' }}>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-all' }}>
                   {file.path}
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8,
-                    letterSpacing: '1.1px',
+                    letterSpacing: 0,
                     color: scopeColor(file.status),
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                   }}
                 >
                   {file.status}
@@ -87,12 +87,12 @@ export function DiffScopeGuard({ liveExecution }: DiffScopeGuardProps) {
         )}
 
         {diffScope.blockingReasons.length > 0 ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
             blockers · {diffScope.blockingReasons.join(' · ')}
           </div>
         ) : null}
 
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
           verifier · {diffScope.patchVerifier?.status ?? 'unknown'} · rollback {diffScope.rollbackAvailable ? 'available' : 'missing'} · manifest {diffScope.manifestId ?? '—'}
         </div>
       </div>

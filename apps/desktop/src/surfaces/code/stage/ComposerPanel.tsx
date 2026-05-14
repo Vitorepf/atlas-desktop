@@ -122,10 +122,10 @@ export function ComposerPanel({ busy, hasObra, onSend }: ComposerPanelProps) {
                   display: 'inline-block',
                   padding: '1px 6px',
                   marginRight: 6,
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 8.5,
-                  letterSpacing: '1.1px',
-                  textTransform: 'uppercase',
+                  letterSpacing: 0,
+                  textTransform: 'none',
                   color: 'var(--bronze)',
                   border: '1px solid var(--bronze-soft)',
                   borderRadius: 2,
@@ -134,7 +134,7 @@ export function ComposerPanel({ busy, hasObra, onSend }: ComposerPanelProps) {
               >
                 {KIND_LABEL[kind]}
               </span>
-              <span style={{ color: 'var(--ink3)', fontStyle: 'italic' }}>{KIND_EFFECT[kind]}</span>
+              <span style={{ color: 'var(--ink3)', fontStyle: 'normal' }}>{KIND_EFFECT[kind]}</span>
             </span>
           ) : (
             <span>∴ {busy ? 'enviando…' : hasObra ? 'composer ativo · cmd+enter envia' : 'aguardando obra'}</span>

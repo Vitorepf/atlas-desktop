@@ -72,6 +72,20 @@ import type {
   AtlasSelfImprovementActivationStatus,
   AtlasSelfImprovementActivationTone,
   AtlasSelfImprovementActivationPowerGateOutcome,
+  AtlasSelfImprovementProposalBacklog,
+  AtlasSelfImprovementProposalBacklogItem,
+  AtlasSelfImprovementProposalBacklogFilters,
+  AtlasSelfImprovementProposalCreatePayload,
+  AtlasSelfImprovementProposalPrioritizePayload,
+  AtlasSelfImprovementClosedLoop,
+  AtlasSelfImprovementClosedLoopStage,
+  AtlasSelfImprovementClosedLoopStageId,
+  AtlasSelfImprovementResultLedger,
+  AtlasSelfImprovementResultEntry,
+  AtlasSelfImprovementLearningPacket,
+  AtlasSelfImprovementNextCycleRecommendation,
+  AtlasSelfImprovementMeasureResultPayload,
+  AtlasSelfImprovementDeltaGrade,
   BootSnapshot,
   CartographyGraph,
   CartographyNote,
@@ -1355,6 +1369,165 @@ export const bridge = {
     return adaptSelfImprovementActivationDetail(raw)
   },
 
+  // 10b.13.13 · Atlas Self-Improvement Closed Loop Level 7 v1 · Proposal Backlog
+  // Schema canônico: atlas.self_improvement.proposal_backlog.v1
+  // Doc: docs/engineering-knowledge-base/atlas-self-improvement-closed-loop-level7-v1.md
+  // HTTP-only fallback documented — no Tauri commands wired for Level 7.
+  async listSelfImprovementProposalBacklog(
+    filters?: AtlasSelfImprovementProposalBacklogFilters,
+  ): Promise<AtlasSelfImprovementProposalBacklog | null> {
+    const params: string[] = []
+    if (filters?.status) params.push(`status=${encodeURIComponent(filters.status)}`)
+    if (filters?.source) params.push(`source=${encodeURIComponent(filters.source)}`)
+    if (filters?.bucket) params.push(`bucket=${encodeURIComponent(filters.bucket)}`)
+    if (filters?.linkedObra === true) params.push('linked_obra=true')
+    if (filters?.linkedObra === false) params.push('linked_obra=false')
+    const path = `/atlas-code/self-improvement/proposals${params.length ? '?' + params.join('&') : ''}`
+    try {
+      const raw = await fetchHttp<unknown>(path)
+      return adaptSelfImprovementProposalBacklog(raw)
+    } catch (e) {
+      console.warn('[bridge] listSelfImprovementProposalBacklog', e)
+      return null
+    }
+  },
+
+  async getSelfImprovementProposal(
+    proposalId: string,
+  ): Promise<AtlasSelfImprovementProposalBacklogItem | null> {
+    try {
+      const raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/proposals/${encodeURIComponent(proposalId)}`,
+      )
+      return adaptSelfImprovementProposalBacklogItem(raw)
+    } catch (e) {
+      console.warn('[bridge] getSelfImprovementProposal', e)
+      return null
+    }
+  },
+
+  async createSelfImprovementProposal(
+    payload: AtlasSelfImprovementProposalCreatePayload,
+  ): Promise<AtlasSelfImprovementProposalBacklogItem | null> {
+    const body: Record<string, unknown> = {}
+    if (payload.proposal !== undefined) body.proposal = payload.proposal
+    if (payload.source !== undefined) body.source = payload.source
+    if (payload.affectedDomains !== undefined) body.affected_domains = payload.affectedDomains
+    if (payload.constraints !== undefined) body.constraints = payload.constraints
+    try {
+      const raw = await fetchHttp<unknown>('/atlas-code/self-improvement/proposals', {
+        method: 'POST',
+        body,
+      })
+      return adaptSelfImprovementProposalBacklogItem(raw)
+    } catch (e) {
+      console.warn('[bridge] createSelfImprovementProposal', e)
+      return null
+    }
+  },
+
+  async evaluateSelfImprovementProposal(
+    proposalId: string,
+  ): Promise<AtlasSelfImprovementProposalBacklogItem | null> {
+    try {
+      const raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/proposals/${encodeURIComponent(proposalId)}/evaluate`,
+        { method: 'POST', body: {} },
+      )
+      return adaptSelfImprovementProposalBacklogItem(raw)
+    } catch (e) {
+      console.warn('[bridge] evaluateSelfImprovementProposal', e)
+      return null
+    }
+  },
+
+  async prioritizeSelfImprovementProposal(
+    proposalId: string,
+    payload?: AtlasSelfImprovementProposalPrioritizePayload,
+  ): Promise<AtlasSelfImprovementProposalBacklogItem | null> {
+    const body: Record<string, unknown> = {}
+    if (payload?.strategyBucket !== undefined) body.strategy_bucket = payload.strategyBucket
+    try {
+      const raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/proposals/${encodeURIComponent(proposalId)}/prioritize`,
+        { method: 'POST', body },
+      )
+      return adaptSelfImprovementProposalBacklogItem(raw)
+    } catch (e) {
+      console.warn('[bridge] prioritizeSelfImprovementProposal', e)
+      return null
+    }
+  },
+
+  async getSelfImprovementClosedLoop(
+    proposalId: string,
+  ): Promise<AtlasSelfImprovementClosedLoop | null> {
+    try {
+      const raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/proposals/${encodeURIComponent(proposalId)}/closed-loop`,
+      )
+      return adaptSelfImprovementClosedLoop(raw)
+    } catch (e) {
+      console.warn('[bridge] getSelfImprovementClosedLoop', e)
+      return null
+    }
+  },
+
+  async measureSelfImprovementResult(
+    proposalId: string,
+    payload: AtlasSelfImprovementMeasureResultPayload,
+  ): Promise<AtlasSelfImprovementResultEntry | null> {
+    if (!payload.reviewer?.trim() || !payload.reason?.trim()) {
+      throw new Error('measureSelfImprovementResult requires reviewer and reason')
+    }
+    const body: Record<string, unknown> = {
+      obra_id: payload.obraId,
+      before_snapshot: payload.beforeSnapshot,
+      after_snapshot: payload.afterSnapshot,
+      reviewer: payload.reviewer,
+      reason: payload.reason,
+    }
+    if (payload.context !== undefined) body.context = payload.context
+    try {
+      const raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/proposals/${encodeURIComponent(proposalId)}/measure-result`,
+        { method: 'POST', body },
+      )
+      return adaptSelfImprovementResultEntry(raw)
+    } catch (e) {
+      console.warn('[bridge] measureSelfImprovementResult', e)
+      return null
+    }
+  },
+
+  async listSelfImprovementResultLedger(filters?: { grade?: string; proposalId?: string }): Promise<AtlasSelfImprovementResultLedger | null> {
+    const params: string[] = []
+    if (filters?.grade) params.push(`grade=${encodeURIComponent(filters.grade)}`)
+    if (filters?.proposalId) params.push(`proposal_id=${encodeURIComponent(filters.proposalId)}`)
+    const path = `/atlas-code/self-improvement/result-ledger${params.length ? '?' + params.join('&') : ''}`
+    try {
+      const raw = await fetchHttp<unknown>(path)
+      return adaptSelfImprovementResultLedger(raw)
+    } catch (e) {
+      console.warn('[bridge] listSelfImprovementResultLedger', e)
+      return null
+    }
+  },
+
+  async getSelfImprovementNextCycle(opts?: { proposalId?: string; latest?: boolean }): Promise<AtlasSelfImprovementNextCycleRecommendation | null> {
+    const params: string[] = []
+    if (opts?.proposalId) params.push(`proposal_id=${encodeURIComponent(opts.proposalId)}`)
+    if (opts?.latest === true) params.push('latest=true')
+    const path = `/atlas-code/self-improvement/next-cycle-recommendations${params.length ? '?' + params.join('&') : ''}`
+    try {
+      const raw = await fetchHttp<unknown>(path)
+      return adaptSelfImprovementNextCycleRecommendation(raw)
+    } catch (e) {
+      console.warn('[bridge] getSelfImprovementNextCycle', e)
+      return null
+    }
+  },
+
   // 10b.14 · Atlas Code Forge Work Intake · save
   async saveForgeWorkIntake(
     obraId: string,
@@ -2462,6 +2635,342 @@ function toneFromStatus(status: AtlasSelfImprovementActivationStatus): AtlasSelf
   }
 }
 
+function adaptSelfImprovementProposalPriorityDecision(raw: unknown): import('@atlas/domain').AtlasSelfImprovementProposalPriorityDecision | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.proposal_priority_decision.v1'),
+    decidedAt: String(r.decided_at ?? r.decidedAt ?? ''),
+    strategyBucket: String(r.strategy_bucket ?? r.strategyBucket ?? 'core_runtime'),
+    targetPercent: Number(r.target_percent ?? r.targetPercent ?? 10),
+    portfolioAligned: Boolean(r.portfolio_aligned ?? r.portfolioAligned ?? false),
+    portfolioRecommends: nullableString(r.portfolio_recommends ?? r.portfolioRecommends),
+    priorityScore: Number(r.priority_score ?? r.priorityScore ?? 0),
+    reason: String(r.reason ?? ''),
+    autoActivationAllowed: Boolean(r.auto_activation_allowed ?? r.autoActivationAllowed ?? false),
+    humanApprovalRequired: Boolean(r.human_approval_required ?? r.humanApprovalRequired ?? true),
+  }
+}
+
+function adaptSelfImprovementProposalBacklogItem(raw: unknown): AtlasSelfImprovementProposalBacklogItem | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (nullableString(r.proposal_id ?? r.proposalId) === null) return null
+  const lastDecisionRaw = (r.last_decision ?? r.lastDecision) as Record<string, unknown> | null | undefined
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.proposal_backlog_item.v1'),
+    proposalId: String(r.proposal_id ?? r.proposalId),
+    title: String(r.title ?? 'untitled proposal'),
+    summary: String(r.summary ?? ''),
+    source: String(r.source ?? 'manual'),
+    status: String(r.status ?? 'draft'),
+    riskLevel: String(r.risk_level ?? r.riskLevel ?? 'medium'),
+    expectedPowerGain: nullableString(r.expected_power_gain ?? r.expectedPowerGain),
+    targetCapability: nullableString(r.target_capability ?? r.targetCapability),
+    affectedDomains: normList(r.affected_domains ?? r.affectedDomains),
+    canonicalDocs: normList(r.canonical_docs ?? r.canonicalDocs),
+    businessRule: nullableString(r.business_rule ?? r.businessRule),
+    acceptanceCriteria: normList(r.acceptance_criteria ?? r.acceptanceCriteria),
+    constraints: normList(r.constraints),
+    strategyBucket: nullableString(r.strategy_bucket ?? r.strategyBucket),
+    priorityScore: numberOrNull(r.priority_score ?? r.priorityScore),
+    createdAt: String(r.created_at ?? r.createdAt ?? ''),
+    updatedAt: String(r.updated_at ?? r.updatedAt ?? ''),
+    lastDecision: lastDecisionRaw && typeof lastDecisionRaw === 'object'
+      ? {
+          kind: String(lastDecisionRaw.kind ?? ''),
+          outcome: String(lastDecisionRaw.outcome ?? ''),
+          decidedAt: String(lastDecisionRaw.decided_at ?? lastDecisionRaw.decidedAt ?? ''),
+          reviewer: nullableString(lastDecisionRaw.reviewer),
+          reason: nullableString(lastDecisionRaw.reason),
+        }
+      : null,
+    linkedActivationId: nullableString(r.linked_activation_id ?? r.linkedActivationId),
+    linkedObraId: nullableString(r.linked_obra_id ?? r.linkedObraId),
+    linkedFastPathRunId: nullableString(r.linked_fast_path_run_id ?? r.linkedFastPathRunId),
+    linkedCompletionClaimId: nullableString(r.linked_completion_claim_id ?? r.linkedCompletionClaimId),
+    linkedResultEntryId: nullableString(r.linked_result_entry_id ?? r.linkedResultEntryId),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    blockers: normList(r.blockers),
+    nextSafeAction: String(r.next_safe_action ?? r.nextSafeAction ?? ''),
+    powerGate: (r.power_gate ?? r.powerGate) && typeof (r.power_gate ?? r.powerGate) === 'object'
+      ? ((r.power_gate ?? r.powerGate) as Record<string, unknown>)
+      : null,
+    priorityDecision: adaptSelfImprovementProposalPriorityDecision(r.priority_decision ?? r.priorityDecision),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? false),
+  }
+}
+
+function adaptSelfImprovementProposalBacklog(raw: unknown): AtlasSelfImprovementProposalBacklog | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const filtersRaw = (r.filters ?? {}) as Record<string, unknown>
+  const countersRaw = (r.counters ?? {}) as Record<string, unknown>
+  const proposalsRaw = Array.isArray(r.proposals) ? (r.proposals as unknown[]) : []
+  const proposals = proposalsRaw
+    .map(adaptSelfImprovementProposalBacklogItem)
+    .filter((p): p is AtlasSelfImprovementProposalBacklogItem => p !== null)
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.proposal_backlog.v1'),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    filters: {
+      status: nullableString(filtersRaw.status),
+      source: nullableString(filtersRaw.source),
+      bucket: nullableString(filtersRaw.bucket),
+      linkedObra: typeof filtersRaw.linked_obra === 'boolean'
+        ? (filtersRaw.linked_obra as boolean)
+        : typeof filtersRaw.linkedObra === 'boolean'
+          ? (filtersRaw.linkedObra as boolean)
+          : null,
+    },
+    proposals,
+    counters: {
+      total: Number(countersRaw.total ?? 0),
+      draft: Number(countersRaw.draft ?? 0),
+      evaluating: Number(countersRaw.evaluating ?? 0),
+      needsRevision: Number(countersRaw.needs_revision ?? countersRaw.needsRevision ?? 0),
+      pendingHumanReview: Number(countersRaw.pending_human_review ?? countersRaw.pendingHumanReview ?? 0),
+      approvedForActivation: Number(countersRaw.approved_for_activation ?? countersRaw.approvedForActivation ?? 0),
+      activated: Number(countersRaw.activated ?? 0),
+      obraCreated: Number(countersRaw.obra_created ?? countersRaw.obraCreated ?? 0),
+      forgeRunning: Number(countersRaw.forge_running ?? countersRaw.forgeRunning ?? 0),
+      awaitingReview: Number(countersRaw.awaiting_review ?? countersRaw.awaitingReview ?? 0),
+      measuringDelta: Number(countersRaw.measuring_delta ?? countersRaw.measuringDelta ?? 0),
+      learned: Number(countersRaw.learned ?? 0),
+      rejected: Number(countersRaw.rejected ?? 0),
+      archived: Number(countersRaw.archived ?? 0),
+      withObra: Number(countersRaw.with_obra ?? countersRaw.withObra ?? 0),
+      withBlockers: Number(countersRaw.with_blockers ?? countersRaw.withBlockers ?? 0),
+    },
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+  }
+}
+
+function adaptSelfImprovementClosedLoopStage(raw: unknown): AtlasSelfImprovementClosedLoopStage | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    stage: String(r.stage ?? '') as AtlasSelfImprovementClosedLoopStageId,
+    status: String(r.status ?? 'todo'),
+    label: String(r.label ?? ''),
+    tone: String(r.tone ?? 'ink') as AtlasSelfImprovementActivationTone,
+    evidence: nullableString(r.evidence),
+    completedAt: nullableString(r.completed_at ?? r.completedAt),
+  }
+}
+
+function adaptSelfImprovementLearningPacket(raw: unknown): AtlasSelfImprovementLearningPacket | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.learning_packet.v1'),
+    whatChanged: String(r.what_changed ?? r.whatChanged ?? 'unspecified'),
+    whyItMattered: String(r.why_it_mattered ?? r.whyItMattered ?? 'unspecified'),
+    evidenceSupportingImprovement: normList(r.evidence_supporting_improvement ?? r.evidenceSupportingImprovement),
+    whatFailedOrWasMissing: normList(r.what_failed_or_was_missing ?? r.whatFailedOrWasMissing),
+    newRuleCandidate: nullableString(r.new_rule_candidate ?? r.newRuleCandidate),
+    futureTriggerConditions: normList(r.future_trigger_conditions ?? r.futureTriggerConditions),
+    rollbackRecommendation: nullableString(r.rollback_recommendation ?? r.rollbackRecommendation),
+    confidence: Number(r.confidence ?? 0),
+  }
+}
+
+function adaptSelfImprovementResultEntry(raw: unknown): AtlasSelfImprovementResultEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if ((r.status ?? null) === 'blocked') return null
+  const learning = adaptSelfImprovementLearningPacket(r.learning_packet ?? r.learningPacket)
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.result_entry.v1'),
+    resultEntryId: String(r.result_entry_id ?? r.resultEntryId ?? ''),
+    proposalId: String(r.proposal_id ?? r.proposalId ?? ''),
+    obraId: String(r.obra_id ?? r.obraId ?? ''),
+    beforeSnapshotHash: String(r.before_snapshot_hash ?? r.beforeSnapshotHash ?? ''),
+    afterSnapshotHash: String(r.after_snapshot_hash ?? r.afterSnapshotHash ?? ''),
+    deltaScorecard: (r.delta_scorecard ?? r.deltaScorecard ?? {}) as Record<string, unknown>,
+    deltaGrade: String(r.delta_grade ?? r.deltaGrade ?? 'neutral'),
+    evidenceStrength: String(r.evidence_strength ?? r.evidenceStrength ?? 'weak'),
+    humanReviewOutcome: nullableString(r.human_review_outcome ?? r.humanReviewOutcome),
+    reviewer: nullableString(r.reviewer),
+    reason: nullableString(r.reason),
+    acceptedRisks: normList(r.accepted_risks ?? r.acceptedRisks),
+    regressionsDetected: Array.isArray(r.regressions_detected ?? r.regressionsDetected)
+      ? ((r.regressions_detected ?? r.regressionsDetected) as unknown[])
+      : [],
+    invariantsPreserved: Boolean(r.invariants_preserved ?? r.invariantsPreserved ?? false),
+    invariantViolations: Array.isArray(r.invariant_violations ?? r.invariantViolations)
+      ? ((r.invariant_violations ?? r.invariantViolations) as unknown[])
+      : [],
+    trustDelta: Number(r.trust_delta ?? r.trustDelta ?? 0),
+    trustOutcomeRecorded: String(r.trust_outcome_recorded ?? r.trustOutcomeRecorded ?? ''),
+    recommendedNextAction: String(r.recommended_next_action ?? r.recommendedNextAction ?? ''),
+    shouldBecomeRule: Boolean(r.should_become_rule ?? r.shouldBecomeRule ?? false),
+    learningPacket: learning ?? {
+      schemaVersion: 'atlas.self_improvement.learning_packet.v1',
+      whatChanged: 'unspecified',
+      whyItMattered: 'unspecified',
+      evidenceSupportingImprovement: [],
+      whatFailedOrWasMissing: [],
+      newRuleCandidate: null,
+      futureTriggerConditions: [],
+      rollbackRecommendation: null,
+      confidence: 0,
+    },
+    recordedAt: String(r.recorded_at ?? r.recordedAt ?? ''),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+  }
+}
+
+function adaptSelfImprovementResultLedger(raw: unknown): AtlasSelfImprovementResultLedger | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const entriesRaw = Array.isArray(r.entries) ? (r.entries as unknown[]) : []
+  const entries = entriesRaw
+    .map(adaptSelfImprovementResultEntry)
+    .filter((e): e is AtlasSelfImprovementResultEntry => e !== null)
+  const countersRaw = (r.counters ?? {}) as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.result_ledger.v1'),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    entries,
+    counters: {
+      total: Number(countersRaw.total ?? 0),
+      regressed: Number(countersRaw.regressed ?? 0),
+      neutral: Number(countersRaw.neutral ?? 0),
+      improved: Number(countersRaw.improved ?? 0),
+      majorImprovement: Number(countersRaw.major_improvement ?? countersRaw.majorImprovement ?? 0),
+      invalid: Number(countersRaw.invalid ?? 0),
+      invariantsViolated: Number(countersRaw.invariants_violated ?? countersRaw.invariantsViolated ?? 0),
+    },
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+  }
+}
+
+function adaptSelfImprovementNextCycleRecommendation(raw: unknown): AtlasSelfImprovementNextCycleRecommendation | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.next_cycle_recommendation.v1'),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    recommendation: nullableString(r.recommendation),
+    rationale: String(r.rationale ?? ''),
+    confidence: Number(r.confidence ?? 0),
+    linkedResultEntryId: nullableString(r.linked_result_entry_id ?? r.linkedResultEntryId),
+    linkedProposalId: nullableString(r.linked_proposal_id ?? r.linkedProposalId),
+    linkedObraId: nullableString(r.linked_obra_id ?? r.linkedObraId),
+    portfolioBalanceHealth: nullableString(r.portfolio_balance_health ?? r.portfolioBalanceHealth),
+    portfolioRecommendedNextBucket: nullableString(r.portfolio_recommended_next_bucket ?? r.portfolioRecommendedNextBucket),
+    proposedNextProposalPayload: (r.proposed_next_proposal_payload ?? r.proposedNextProposalPayload) && typeof (r.proposed_next_proposal_payload ?? r.proposedNextProposalPayload) === 'object'
+      ? ((r.proposed_next_proposal_payload ?? r.proposedNextProposalPayload) as Record<string, unknown>)
+      : null,
+    humanApprovalRequired: Boolean(r.human_approval_required ?? r.humanApprovalRequired ?? true),
+    autoActivationAllowed: Boolean(r.auto_activation_allowed ?? r.autoActivationAllowed ?? false),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+  }
+}
+
+function adaptSelfImprovementClosedLoop(raw: unknown): AtlasSelfImprovementClosedLoop | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const stagesRaw = (r.stages ?? {}) as Record<string, unknown>
+  const stages: Record<string, AtlasSelfImprovementClosedLoopStage> = {}
+  for (const [key, value] of Object.entries(stagesRaw)) {
+    const s = adaptSelfImprovementClosedLoopStage(value)
+    if (s !== null) stages[key] = s
+  }
+  const afterRaw = (r.after_snapshot ?? r.afterSnapshot) as Record<string, unknown> | null | undefined
+  const trustRaw = (r.trust_update ?? r.trustUpdate) as Record<string, unknown> | null | undefined
+  const evidenceRaw = (r.evidence_summary ?? r.evidenceSummary) as Record<string, unknown> | null | undefined
+  const reviewRaw = (r.review_summary ?? r.reviewSummary) as Record<string, unknown> | null | undefined
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.closed_loop.v1'),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    status: String(r.status ?? 'projected'),
+    proposalId: String(r.proposal_id ?? r.proposalId ?? ''),
+    activationId: nullableString(r.activation_id ?? r.activationId),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    resultEntryId: nullableString(r.result_entry_id ?? r.resultEntryId),
+    currentLoopStage: nullableString(r.current_loop_stage ?? r.currentLoopStage) as AtlasSelfImprovementClosedLoopStageId | null,
+    loopHealth: String(r.loop_health ?? r.loopHealth ?? 'draft'),
+    stages,
+    humanDecisionRequired: Boolean(r.human_decision_required ?? r.humanDecisionRequired ?? false),
+    canActivate: Boolean(r.can_activate ?? r.canActivate ?? false),
+    canOpenObra: Boolean(r.can_open_obra ?? r.canOpenObra ?? false),
+    canMeasureDelta: Boolean(r.can_measure_delta ?? r.canMeasureDelta ?? false),
+    canRecordLearning: Boolean(r.can_record_learning ?? r.canRecordLearning ?? false),
+    beforeSnapshot: (r.before_snapshot ?? r.beforeSnapshot) && typeof (r.before_snapshot ?? r.beforeSnapshot) === 'object'
+      ? ((r.before_snapshot ?? r.beforeSnapshot) as Record<string, unknown>)
+      : null,
+    afterSnapshot: afterRaw && typeof afterRaw === 'object'
+      ? {
+          hash: nullableString(afterRaw.hash),
+          recordedAt: nullableString(afterRaw.recorded_at ?? afterRaw.recordedAt),
+        }
+      : null,
+    deltaScorecard: (r.delta_scorecard ?? r.deltaScorecard) && typeof (r.delta_scorecard ?? r.deltaScorecard) === 'object'
+      ? ((r.delta_scorecard ?? r.deltaScorecard) as Record<string, unknown>)
+      : null,
+    trustUpdate: trustRaw && typeof trustRaw === 'object'
+      ? {
+          outcomeRecorded: nullableString(trustRaw.outcome_recorded ?? trustRaw.outcomeRecorded),
+          trustDelta: Number(trustRaw.trust_delta ?? trustRaw.trustDelta ?? 0),
+          currentBand: String(trustRaw.current_band ?? trustRaw.currentBand ?? 'insufficient_data'),
+        }
+      : null,
+    learningPacket: adaptSelfImprovementLearningPacket(r.learning_packet ?? r.learningPacket),
+    evidenceSummary: evidenceRaw && typeof evidenceRaw === 'object'
+      ? {
+          evidenceRefCount: Number(evidenceRaw.evidence_ref_count ?? evidenceRaw.evidenceRefCount ?? 0),
+          evidenceRefs: normList(evidenceRaw.evidence_refs ?? evidenceRaw.evidenceRefs),
+        }
+      : null,
+    reviewSummary: reviewRaw && typeof reviewRaw === 'object'
+      ? {
+          activationApprovalPresent: Boolean(reviewRaw.activation_approval_present ?? reviewRaw.activationApprovalPresent ?? false),
+          activationReviewer: nullableString(reviewRaw.activation_reviewer ?? reviewRaw.activationReviewer),
+          resultEntryReviewer: nullableString(reviewRaw.result_entry_reviewer ?? reviewRaw.resultEntryReviewer),
+          resultEntryGrade: nullableString(reviewRaw.result_entry_grade ?? reviewRaw.resultEntryGrade),
+        }
+      : null,
+    nextCycleRecommendation: adaptSelfImprovementNextCycleRecommendation(r.next_cycle_recommendation ?? r.nextCycleRecommendation),
+    nextSafeAction: String(r.next_safe_action ?? r.nextSafeAction ?? ''),
+    blockers: normList(r.blockers),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    externalRivalsSeparated: Boolean(r.external_rivals_separated ?? r.externalRivalsSeparated ?? true),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+  }
+}
+
 function adaptSelfImprovementForgeActivationState(raw: unknown): AtlasSelfImprovementForgeActivationState | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
@@ -2584,6 +3093,36 @@ function adaptForgeUxOrchestrator(raw: unknown): AtlasCodeForgeUxOrchestrator | 
     completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
     separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
     note: nullableString(r.note),
+  }
+}
+
+function adaptObraSelfImprovementOrigin(raw: unknown): import('@atlas/domain').AtlasCodeObraSelfImprovementOrigin | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const actionRaw = (r.measure_result_action ?? r.measureResultAction ?? {}) as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.code.obra_command_center_self_improvement_origin.v1'),
+    proposalId: nullableString(r.proposal_id ?? r.proposalId),
+    activationId: nullableString(r.activation_id ?? r.activationId),
+    beforeSnapshotHash: nullableString(r.before_snapshot_hash ?? r.beforeSnapshotHash),
+    targetCapability: nullableString(r.target_capability ?? r.targetCapability),
+    expectedPowerGain: nullableString(r.expected_power_gain ?? r.expectedPowerGain),
+    strategyBucket: nullableString(r.strategy_bucket ?? r.strategyBucket),
+    reviewer: nullableString(r.reviewer),
+    approvedAt: nullableString(r.approved_at ?? r.approvedAt),
+    resultEntryId: nullableString(r.result_entry_id ?? r.resultEntryId),
+    deltaGrade: nullableString(r.delta_grade ?? r.deltaGrade),
+    humanMessage: String(r.human_message ?? r.humanMessage ?? ''),
+    measureResultAction: {
+      enabled: Boolean(actionRaw.enabled ?? false),
+      label: String(actionRaw.label ?? 'Medir resultado'),
+      commandHint: String(actionRaw.command_hint ?? actionRaw.commandHint ?? ''),
+    },
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
   }
 }
 
@@ -2747,6 +3286,7 @@ function adaptObraCommandCenter(raw: unknown): AtlasCodeObraCommandCenter | null
     operationalHealth,
     trustSummary,
     evidenceDigest,
+    selfImprovementOrigin: adaptObraSelfImprovementOrigin(r.self_improvement_origin ?? r.selfImprovementOrigin),
     providerSummary: {
       provider: nullableString(provider.provider),
       model: nullableString(provider.model),
@@ -4744,4 +5284,12 @@ function norm(v: unknown): string | null {
 function normList(v: unknown): string[] {
   if (!v) return []
   return Array.isArray(v) ? v.map(String) : [String(v)]
+}
+
+// Re-export type aliases mantidos para downstream consumers; evita TS6196.
+export type {
+  AtlasSelfImprovementClosedLoopStage,
+  AtlasSelfImprovementClosedLoopStageId,
+  AtlasSelfImprovementLearningPacket,
+  AtlasSelfImprovementDeltaGrade,
 }

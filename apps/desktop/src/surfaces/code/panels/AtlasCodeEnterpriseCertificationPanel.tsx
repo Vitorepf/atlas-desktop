@@ -46,7 +46,7 @@ export function AtlasCodeEnterpriseCertificationPanel({
           {certification.remainingBlockers.length > 0 ? (
             <div
               style={{
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 10,
                 color: 'var(--rec-red, #8a3025)',
                 wordBreak: 'break-word',
@@ -64,7 +64,7 @@ export function AtlasCodeEnterpriseCertificationPanel({
                   display: 'grid',
                   gridTemplateColumns: '1fr auto',
                   gap: 6,
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 9.5,
                   color: stage.status === 'passed' ? 'var(--ink3)' : 'var(--rec-red, #8a3025)',
                 }}
@@ -78,7 +78,7 @@ export function AtlasCodeEnterpriseCertificationPanel({
           {certification.commands.self ? (
             <div
               style={{
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 9.5,
                 color: 'var(--ink3)',
                 wordBreak: 'break-all',

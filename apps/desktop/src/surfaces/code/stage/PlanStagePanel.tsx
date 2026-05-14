@@ -34,7 +34,7 @@ export function PlanStagePanel({ programmingGovernance }: MainStageContext) {
             style={{
               margin: 0,
               paddingLeft: 18,
-              fontFamily: 'var(--serif)',
+              fontFamily: 'var(--cc-font-sans)',
               fontSize: 14,
               lineHeight: 1.5,
               color: 'var(--ink)',
@@ -42,7 +42,7 @@ export function PlanStagePanel({ programmingGovernance }: MainStageContext) {
           >
             {phases.map((phase, idx) => (
               <li key={idx} style={{ marginBottom: 6 }}>
-                <strong style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--bronze)' }}>
+                <strong style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 11, color: 'var(--bronze)' }}>
                   {phase.title}
                 </strong>
                 {phase.detail ? <> · {phase.detail}</> : null}
@@ -83,19 +83,19 @@ function PlanHeader({
     >
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9.5,
-          letterSpacing: '1.6px',
+          letterSpacing: 0,
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         plan · {wi?.code ?? wi?.id ?? '—'}
       </div>
-      <div style={{ fontFamily: 'var(--serif)', fontSize: 22, lineHeight: 1.25, color: 'var(--ink)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 22, lineHeight: 1.25, color: 'var(--ink)' }}>
         {taskCount} task contract{taskCount === 1 ? '' : 's'}
       </div>
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink3)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink3)' }}>
         plan hash · {wi?.planHash ? wi.planHash.slice(0, 16) : '—'}
       </div>
     </div>
@@ -115,17 +115,17 @@ function TaskContractCard({ task, index }: { task: ProgrammingTaskContract; inde
       }}
     >
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '1.2px', color: 'var(--bronze)' }}>
+        <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, letterSpacing: 0, color: 'var(--bronze)' }}>
           task {String(index).padStart(2, '0')}
         </span>
         {task.riskLevel ? (
           <span
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 9,
-              letterSpacing: '1.1px',
+              letterSpacing: 0,
               color: 'var(--ink3)',
-              textTransform: 'uppercase',
+              textTransform: 'none',
             }}
           >
             risk · {task.riskLevel}
@@ -147,10 +147,10 @@ function TaskContractCard({ task, index }: { task: ProgrammingTaskContract; inde
       {task.cartographyRequired ? (
         <div
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
             color: 'var(--bronze)',
-            letterSpacing: '0.5px',
+            letterSpacing: 0,
           }}
         >
           cartography · required
@@ -164,7 +164,7 @@ function TaskContractCard({ task, index }: { task: ProgrammingTaskContract; inde
 
 function KeyValue({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink2)' }}>
+    <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 11, color: 'var(--ink2)' }}>
       <span style={{ color: 'var(--bronze)' }}>{label} · </span>
       <span style={{ wordBreak: 'break-all' }}>{value}</span>
     </div>
@@ -195,11 +195,11 @@ function ContractList({
     >
       <span
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.3px',
+          letterSpacing: 0,
           color: labelColor,
-          textTransform: 'uppercase',
+          textTransform: 'none',
           marginRight: 6,
         }}
       >
@@ -214,11 +214,11 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        fontFamily: 'var(--mono)',
+        fontFamily: 'var(--cc-font-mono)',
         fontSize: 9,
-        letterSpacing: '1.6px',
+        letterSpacing: 0,
         color: 'var(--bronze)',
-        textTransform: 'uppercase',
+        textTransform: 'none',
         marginBottom: 8,
       }}
     >
@@ -232,19 +232,19 @@ function EmptyEditorial({ title, children }: { title: string; children: React.Re
     <div style={{ textAlign: 'center', color: 'var(--ink3)' }}>
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.6px',
+          letterSpacing: 0,
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {title}
       </div>
       <div
         style={{
-          fontFamily: 'var(--serif)',
-          fontStyle: 'italic',
+          fontFamily: 'var(--cc-font-sans)',
+          fontStyle: 'normal',
           fontSize: 18,
           marginTop: 8,
         }}

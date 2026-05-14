@@ -64,7 +64,7 @@ export function ForgeRunReplayInspectorPanel({ replay }: ForgeRunReplayInspector
                   display: 'grid',
                   gridTemplateColumns: '18px 1fr auto',
                   gap: 6,
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 9.5,
                   color: entry.blocking ? 'var(--rec-red, #8a3025)' : 'var(--ink3)',
                 }}
@@ -88,13 +88,13 @@ export function ForgeRunReplayInspectorPanel({ replay }: ForgeRunReplayInspector
         )}
 
         {review?.comment ? (
-          <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11.5, color: 'var(--ink3)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 11.5, color: 'var(--ink3)' }}>
             {review.comment}
           </div>
         ) : null}
 
         {replay.replay.command ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
             $ {replay.replay.command}
           </div>
         ) : null}

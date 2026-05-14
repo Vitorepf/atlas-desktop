@@ -41,16 +41,16 @@ export function ForgeExecutionHistoryPanel({ history, selectedHistoryId, busy = 
               >
                 <span
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8.5,
-                    letterSpacing: '1.2px',
+                    letterSpacing: 0,
                     color: 'var(--bronze)',
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                   }}
                 >
                   {entry.status} · {entry.diffScopeStatus ?? 'scope?'}
                 </span>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)' }}>
                   {entry.lastRunAt ? new Date(entry.lastRunAt).toLocaleString('pt-BR') : '--'}
                 </span>
               </div>
@@ -87,7 +87,7 @@ export function ForgeExecutionHistoryPanel({ history, selectedHistoryId, busy = 
                 <div
                   style={{
                     marginTop: 4,
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 9.5,
                     color: 'var(--ink3)',
                     wordBreak: 'break-all',
@@ -100,7 +100,7 @@ export function ForgeExecutionHistoryPanel({ history, selectedHistoryId, busy = 
                 <div
                   style={{
                     marginTop: 4,
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 9.5,
                     color: 'var(--ink3)',
                     wordBreak: 'break-all',

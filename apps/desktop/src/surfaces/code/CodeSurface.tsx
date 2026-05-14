@@ -74,6 +74,10 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             forgeProviderFailureMemory={b.forgeProviderFailureMemory}
             selfImprovementGovernance={b.selfImprovementGovernance}
             selfImprovementActivationCockpit={b.selfImprovementActivationCockpit}
+            selfImprovementProposalBacklog={b.selfImprovementProposalBacklog}
+            selfImprovementClosedLoop={b.selfImprovementClosedLoop}
+            selfImprovementResultLedger={b.selfImprovementResultLedger}
+            selfImprovementNextCycle={b.selfImprovementNextCycle}
             forgeRuntimeDispatch={b.forgeRuntimeDispatch}
             forgeProviderDriverStatus={b.forgeProviderDriverStatus}
             forgeProviderInvocation={b.forgeProviderInvocation}
@@ -111,6 +115,14 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             onCreateSelfImprovementForgeActivation={b.createSelfImprovementForgeActivation}
             onAcceptSelfImprovementForgeActivation={b.acceptSelfImprovementForgeActivation}
             onRejectSelfImprovementForgeActivation={b.rejectSelfImprovementForgeActivation}
+            onRefreshSelfImprovementProposalBacklog={b.refreshSelfImprovementProposalBacklog}
+            onCreateSelfImprovementProposal={b.createSelfImprovementProposal}
+            onEvaluateSelfImprovementProposal={b.evaluateSelfImprovementProposal}
+            onPrioritizeSelfImprovementProposal={b.prioritizeSelfImprovementProposal}
+            onRefreshSelfImprovementClosedLoop={b.refreshSelfImprovementClosedLoop}
+            onMeasureSelfImprovementResult={b.measureSelfImprovementResult}
+            onRefreshSelfImprovementResultLedger={b.refreshSelfImprovementResultLedger}
+            onRefreshSelfImprovementNextCycle={b.refreshSelfImprovementNextCycle}
             onRefreshForgeRuntimeDispatch={b.refreshForgeRuntimeDispatch}
             onRunForgeRuntimeDispatch={b.runForgeRuntimeDispatch}
             onRefreshForgeProviderDrivers={b.refreshForgeProviderDrivers}

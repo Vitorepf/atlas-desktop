@@ -108,7 +108,7 @@ export function ForgeFastPathPanel({
           gap: 8,
         }}
       >
-        <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.4 }}>
+        <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.4 }}>
           Orquestra Obra → WorkItem → Spec/Plan/Tasks → Forge Live Execution. Sem provider externo.
         </div>
 
@@ -183,22 +183,22 @@ export function ForgeFastPathPanel({
         ) : null}
 
         {!obraId ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', letterSpacing: '0.6px' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', letterSpacing: 0 }}>
             sem Obra · selecione uma para usar o Fast Path
           </div>
         ) : null}
         {error ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-all' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-all' }}>
             error · {error}
           </div>
         ) : null}
         {repairAvailable && statusForCurrentRun?.repair.suggestedRepairCommand ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--bronze)', wordBreak: 'break-all' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--bronze)', wordBreak: 'break-all' }}>
             repair · {statusForCurrentRun.repair.suggestedRepairCommand}
           </div>
         ) : null}
         {nextAction ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
             next · {nextAction}
           </div>
         ) : null}
@@ -226,7 +226,7 @@ function FastPathRunLifecycle({
         gap: 4,
       }}
     >
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
         {status.schemaVersion} · {status.status}
       </div>
       <div
@@ -246,30 +246,30 @@ function FastPathRunLifecycle({
           }}
         />
       </div>
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)' }}>
         stage · {status.currentStage} · {progress}%
       </div>
       {status.workItemCode ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)' }}>
           work item · {status.workItemCode} · {status.taskCount} tasks
         </div>
       ) : null}
       {status.specHash || status.planHash ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
           spec · {status.specHash?.slice(0, 12) ?? '—'} · plan · {status.planHash?.slice(0, 12) ?? '—'}
         </div>
       ) : null}
       {status.executionId ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
           execution · {status.executionId}
         </div>
       ) : null}
       {status.historyId ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
           history · {status.historyId}
         </div>
       ) : null}
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
         review · {status.reviewGate.reviewStatus}
         {' · '}
         repair · {status.repair.repairAvailable ? 'available' : 'not_needed'}
@@ -279,12 +279,12 @@ function FastPathRunLifecycle({
         ledger · {status.ledgerEventCount}
       </div>
       {status.blockers.length > 0 ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red)' }}>
           blockers · {status.blockers.join(' · ')}
         </div>
       ) : null}
       {report?.fastPathRunId ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)', wordBreak: 'break-all' }}>
           run · {report.fastPathRunId}
         </div>
       ) : null}
@@ -305,43 +305,43 @@ function FastPathReportCard({ report }: { report: AtlasCodeForgeFastPathSnapshot
         gap: 4,
       }}
     >
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
         {report.schemaVersion} · {report.status}
       </div>
       {report.fastPathRunId ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
           run · {report.fastPathRunId} · {report.progressPercent ?? 0}%
         </div>
       ) : null}
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)' }}>
         mode · {report.mode}
       </div>
       {report.workItemCode ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)' }}>
           work item · {report.workItemCode} · {report.taskCount} tasks
         </div>
       ) : null}
       {report.executionId ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
           execution · {report.executionId}
         </div>
       ) : null}
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
         next · {report.nextAction}
       </div>
       {report.blockers.length > 0 ? (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red)' }}>
           blockers · {report.blockers.join(' · ')}
         </div>
       ) : null}
       {cmds.length > 0 ? (
         <details>
-          <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: '1.1px', textTransform: 'uppercase' }}>
+          <summary style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: 0, textTransform: 'none' }}>
             commands · {cmds.length}
           </summary>
           <div style={{ marginTop: 4, display: 'grid', gap: 2 }}>
             {cmds.map(([key, value]) => (
-              <div key={key} style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+              <div key={key} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
                 <span style={{ color: 'var(--bronze)' }}>{key}</span> · {value}
               </div>
             ))}

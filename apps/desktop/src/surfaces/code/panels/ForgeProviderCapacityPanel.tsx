@@ -139,7 +139,7 @@ export function ForgeProviderCapacityPanel(ctx: RightRailContext) {
               padding: '2px 8px',
               borderRadius: 4,
               fontSize: 11,
-              textTransform: 'uppercase',
+              textTransform: 'none',
               marginBottom: 8,
             }}
           >
@@ -186,7 +186,7 @@ export function ForgeProviderCapacityPanel(ctx: RightRailContext) {
             </div>
           )}
 
-          <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'none', letterSpacing: 0.5 }}>
             Providers (5 canônicos)
           </h4>
           <ProviderTable providers={capacity.providers} />
@@ -195,14 +195,14 @@ export function ForgeProviderCapacityPanel(ctx: RightRailContext) {
 
       {memory && memory.events.length > 0 && (
         <>
-          <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'none', letterSpacing: 0.5 }}>
             Failure Memory (últimos 5)
           </h4>
           <FailureMemoryTable memory={memory} />
         </>
       )}
 
-      <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'none', letterSpacing: 0.5 }}>
         Ações operacionais
       </h4>
       {!hasObra ? (
@@ -321,7 +321,7 @@ function ProviderTable({ providers }: { providers: AtlasForgeProviderCapacityEnt
                 padding: '1px 6px',
                 borderRadius: 3,
                 fontSize: 10,
-                textTransform: 'uppercase',
+                textTransform: 'none',
                 textAlign: 'center',
               }}
             >

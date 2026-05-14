@@ -53,19 +53,19 @@ function SpecHeader({ governance }: { governance: ProgrammingGovernanceSnapshot 
     >
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9.5,
-          letterSpacing: '1.6px',
+          letterSpacing: 0,
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         spec · {wi.code || wi.id}
       </div>
-      <div style={{ fontFamily: 'var(--serif)', fontSize: 22, lineHeight: 1.25, color: 'var(--ink)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 22, lineHeight: 1.25, color: 'var(--ink)' }}>
         {wi.intentText || wi.intentType || '—'}
       </div>
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink3)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink3)' }}>
         spec hash · {wi.specHash ? wi.specHash.slice(0, 16) : '—'}
       </div>
     </div>
@@ -79,7 +79,7 @@ function SpecField({ label, value }: { label: string; value: unknown }) {
       <Eyebrow>{label}</Eyebrow>
       <div
         style={{
-          fontFamily: 'var(--serif)',
+          fontFamily: 'var(--cc-font-sans)',
           fontSize: 14,
           lineHeight: 1.55,
           color: 'var(--ink)',
@@ -100,7 +100,7 @@ function SpecFieldList({ label, items }: { label: string; items: string[] }) {
         style={{
           margin: 0,
           paddingLeft: 18,
-          fontFamily: 'var(--serif)',
+          fontFamily: 'var(--cc-font-sans)',
           fontSize: 13.5,
           lineHeight: 1.5,
           color: 'var(--ink)',
@@ -120,11 +120,11 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        fontFamily: 'var(--mono)',
+        fontFamily: 'var(--cc-font-mono)',
         fontSize: 9,
-        letterSpacing: '1.6px',
+        letterSpacing: 0,
         color: 'var(--bronze)',
-        textTransform: 'uppercase',
+        textTransform: 'none',
         marginBottom: 6,
       }}
     >
@@ -138,19 +138,19 @@ function EmptyEditorial({ title, children }: { title: string; children: React.Re
     <div style={{ textAlign: 'center', color: 'var(--ink3)' }}>
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.6px',
+          letterSpacing: 0,
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {title}
       </div>
       <div
         style={{
-          fontFamily: 'var(--serif)',
-          fontStyle: 'italic',
+          fontFamily: 'var(--cc-font-sans)',
+          fontStyle: 'normal',
           fontSize: 18,
           marginTop: 8,
         }}

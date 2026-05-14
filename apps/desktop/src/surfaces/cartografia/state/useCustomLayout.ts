@@ -149,7 +149,9 @@ export function useCustomLayout(view: string) {
   )
 
   const hasOverrides = useMemo(() => Object.keys(overlay).length > 0, [overlay])
+  // eslint-disable-next-line react-hooks/refs -- ref length read inside memo is intentional; overlay key forces recompute.
   const canUndo = useMemo(() => undoStack.current.length > 0, [overlay])
+  // eslint-disable-next-line react-hooks/refs -- ref length read inside memo is intentional; overlay key forces recompute.
   const canRedo = useMemo(() => redoStack.current.length > 0, [overlay])
 
   return {

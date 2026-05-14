@@ -45,16 +45,16 @@ export function ForgeReviewHistoryPanel({ history }: ForgeReviewHistoryPanelProp
                 >
                   <span
                     style={{
-                      fontFamily: 'var(--mono)',
+                      fontFamily: 'var(--cc-font-mono)',
                       fontSize: 8.5,
-                      letterSpacing: '1.2px',
+                      letterSpacing: 0,
                       color: finalAllowed ? 'var(--moss)' : rejected ? 'var(--rec-red, #8a3025)' : 'var(--bronze)',
-                      textTransform: 'uppercase',
+                      textTransform: 'none',
                     }}
                   >
                     {entry.status} · {entry.liveExecutionStatus ?? 'run?'}
                   </span>
-                  <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+                  <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)' }}>
                     {entry.reviewedAt ? new Date(entry.reviewedAt).toLocaleString('pt-BR') : '--'}
                   </span>
                 </div>
@@ -77,14 +77,14 @@ export function ForgeReviewHistoryPanel({ history }: ForgeReviewHistoryPanelProp
                   <Row k="pack" v={entry.evidencePackHash ?? 'missing'} mono ok={!!entry.evidencePackHash} />
                 </dl>
                 {entry.comment ? (
-                  <div style={{ marginTop: 4, fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11.5, color: 'var(--ink3)' }}>
+                  <div style={{ marginTop: 4, fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 11.5, color: 'var(--ink3)' }}>
                     {entry.comment}
                   </div>
                 ) : null}
                 {entry.blockers.length > 0 ? (
                   <div style={{ display: 'grid', gap: 2, marginTop: 4 }}>
                     {entry.blockers.slice(0, 4).map((blocker) => (
-                      <div key={blocker} style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--rec-red, #8a3025)' }}>
+                      <div key={blocker} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--rec-red, #8a3025)' }}>
                         {blocker}
                       </div>
                     ))}

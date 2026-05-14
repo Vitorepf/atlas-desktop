@@ -63,30 +63,30 @@ export function ForgeStageTimelinePanel({ liveExecution }: ForgeStageTimelinePan
                   borderRadius: 2,
                 }}
               >
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)' }}>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)' }}>
                   {entry.index.toString().padStart(2, '0')}
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8,
                     letterSpacing: '1px',
                     color: 'var(--ink3)',
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                   }}
                 >
                   {entry.phase}
                 </span>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-word' }}>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-word' }}>
                   {entry.name}
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8,
                     letterSpacing: '1px',
                     color: tone.color,
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                     textAlign: 'right',
                   }}
                 >
@@ -95,7 +95,7 @@ export function ForgeStageTimelinePanel({ liveExecution }: ForgeStageTimelinePan
                 <span style={{ gridColumn: '3 / -1', fontSize: 10, color: 'var(--ink3)', lineHeight: 1.35 }}>
                   {entry.summary}
                   {entry.blocker ? (
-                    <span style={{ color: 'var(--rec-red, #8a3025)', fontFamily: 'var(--mono)' }}>
+                    <span style={{ color: 'var(--rec-red, #8a3025)', fontFamily: 'var(--cc-font-mono)' }}>
                       {' '}
                       blocker={entry.blocker}
                     </span>
@@ -133,16 +133,16 @@ function Metric({
     >
       <span
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 7.5,
           letterSpacing: '1px',
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {label}
       </span>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color }}>{value}</span>
+      <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 12, color }}>{value}</span>
     </div>
   )
 }

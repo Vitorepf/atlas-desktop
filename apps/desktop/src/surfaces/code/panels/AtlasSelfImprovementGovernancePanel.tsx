@@ -80,7 +80,7 @@ export function AtlasSelfImprovementGovernancePanel(ctx: RightRailContext) {
               padding: '2px 8px',
               borderRadius: 4,
               fontSize: 11,
-              textTransform: 'uppercase',
+              textTransform: 'none',
               marginBottom: 8,
             }}
           >
@@ -107,7 +107,7 @@ export function AtlasSelfImprovementGovernancePanel(ctx: RightRailContext) {
 
       {portfolio && (
         <>
-          <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'none', letterSpacing: 0.5 }}>
             Strategy Portfolio (8 buckets)
           </h4>
           <div style={{ display: 'grid', gap: 4 }}>
@@ -142,7 +142,7 @@ export function AtlasSelfImprovementGovernancePanel(ctx: RightRailContext) {
         </>
       )}
 
-      <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'none', letterSpacing: 0.5 }}>
         Trust ledger · record outcome
       </h4>
       {!hasObra ? (
@@ -223,7 +223,7 @@ export function AtlasSelfImprovementGovernancePanel(ctx: RightRailContext) {
         </div>
       )}
 
-      <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <h4 style={{ marginTop: 16, marginBottom: 8, fontSize: 12, textTransform: 'none', letterSpacing: 0.5 }}>
         Canonical commands
       </h4>
       <ul style={{ fontSize: 10, color: 'var(--ink3)', paddingLeft: 16, margin: 0 }}>

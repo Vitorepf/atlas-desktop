@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
+import type { Obra } from '@atlas/domain'
 import type { LeftRailContext } from './leftRailTypes'
 import { shortId } from './leftRailUtils'
-import type { Obra } from '@atlas/domain'
+import { EmptyState, ObraListItem } from '../workbench'
+import type { StatusKind } from '../workbench/tokens'
 
 /**
- * Atlas Code Visual Ergonomics v1 · ObrasSection enterprise.
+ * Atlas Code Premium Workbench v1 · lista de Obras enterprise.
  *
- * Cada Obra renderiza como `cc-obra-row` (token canônico): short_id + título +
- * status humano + last activity. Active state óbvio por borda lateral.
- * Hover/focus claros. Empty state honesto. Busca local opcional só quando há
- * volume; sem dependência externa.
+ * Cada Obra renderiza via `ObraListItem` (workbench primitive): short_id
+ * em mono, título sans semibold, status dot semântico, meta humano + path
+ * compacto. Active state inequívoco. Search local quando há volume.
+ * Empty/loading states honestos.
  */
 export function ObrasSection({ obras, activeObraId, loading, busy, onSelectObra }: LeftRailContext) {
   const [query, setQuery] = useState('')
@@ -26,108 +28,66 @@ export function ObrasSection({ obras, activeObraId, loading, busy, onSelectObra 
 
   if (loading && obras.length === 0) {
     return (
-      <div className="cc-loading" role="status" aria-live="polite">
-        <div className="cc-loading-title">Consultando Kernel…</div>
-        <div className="cc-empty-hint">Aguardando lista de Obras do backend.</div>
-      </div>
+      <EmptyState
+        title="Consultando Kernel…"
+        hint="Aguardando lista de Obras do backend."
+        tone="info"
+      />
     )
   }
 
   if (obras.length === 0) {
     return (
-      <div className="cc-empty" role="region" aria-label="Nenhuma Obra ativa">
-        <div className="cc-empty-title">Nenhuma Obra ativa</div>
-        <div className="cc-empty-hint">Use o botão ✦ acima para criar a primeira.</div>
-      </div>
+      <EmptyState
+        title="Nenhuma Obra ativa"
+        hint="Use o botão ✦ acima para criar a primeira."
+      />
     )
   }
 
   return (
-    <div role="list" aria-label="Lista de Obras">
+    <div role="list" aria-label="Lista de Obras" style={{ display: 'grid', gap: 2 }}>
       {obras.length >= 4 ? (
         <input
           type="search"
-          className="cc-input cc-btn-sm"
+          className="cc-input"
           placeholder="Buscar obra…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Buscar Obra"
-          style={{ height: 28, fontSize: 12, marginBottom: 6 }}
+          style={{ height: 30, fontSize: 12, marginBottom: 6 }}
         />
       ) : null}
       {filtered.length === 0 ? (
-        <div className="cc-empty" role="status">
-          <div className="cc-empty-title">Nada encontrado</div>
-          <div className="cc-empty-hint">Ajuste a busca ou limpe o campo.</div>
-        </div>
+        <EmptyState title="Nada encontrado" hint="Ajuste a busca ou limpe o campo." />
       ) : (
-        filtered.map((o) => (
-          <ObraRow
-            key={o.id}
-            obra={o}
-            active={o.id === activeObraId}
-            disabled={busy}
-            onSelect={() => void onSelectObra(o.id)}
-          />
-        ))
+        filtered.map((o) => {
+          const status = mapObraStatus(o)
+          return (
+            <ObraListItem
+              key={o.id}
+              shortId={shortId(o.id)}
+              title={o.title || o.objective || `obra ${shortId(o.id)}`}
+              status={status.dot}
+              statusLabel={status.label}
+              hint={o.workspacePath ? compactWorkspacePath(o.workspacePath) : undefined}
+              active={o.id === activeObraId}
+              disabled={busy}
+              onClick={() => void onSelectObra(o.id)}
+            />
+          )
+        })
       )}
     </div>
   )
 }
 
-interface ObraRowProps {
-  obra: Obra
-  active: boolean
-  disabled: boolean
-  onSelect: () => void
-}
-
-function ObraRow({ obra, active, disabled, onSelect }: ObraRowProps) {
-  const title = obra.title || obra.objective || `obra ${shortId(obra.id)}`
-  const status = mapObraStatus(obra.status)
-
-  return (
-    <button
-      type="button"
-      role="listitem"
-      className="cc-obra-row"
-      data-active={active ? 'true' : 'false'}
-      onClick={onSelect}
-      disabled={disabled}
-      aria-current={active ? 'true' : undefined}
-      aria-label={`Obra ${shortId(obra.id)} · ${title} · ${status.label}`}
-      title={title}
-    >
-      <div className="cc-obra-row-head">
-        <span className="cc-status-dot" data-status={status.dot} aria-hidden="true" />
-        <span className="cc-obra-row-id">{shortId(obra.id)}</span>
-        <span className="cc-obra-row-title">{title}</span>
-      </div>
-      <div className="cc-obra-row-meta">
-        <span>{status.label}</span>
-        {obra.workspacePath ? (
-          <>
-            <span className="sep">·</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-              {compactWorkspacePath(obra.workspacePath)}
-            </span>
-          </>
-        ) : null}
-      </div>
-    </button>
-  )
-}
-
-/**
- * Map Obra.status canônico para chip humano + status dot.
- * Honesto: estados desconhecidos viram "unknown" em vez de verde fake.
- */
-function mapObraStatus(status: Obra['status']): { label: string; dot: string } {
-  switch (status) {
+function mapObraStatus(obra: Obra): { label: string; dot: StatusKind } {
+  switch (obra.status) {
     case 'active':
       return { label: 'ativa', dot: 'running' }
     case 'idle':
-      return { label: 'ociosa', dot: 'unknown' }
+      return { label: 'ociosa', dot: 'idle' }
     case 'archived':
       return { label: 'arquivada', dot: 'unknown' }
     default:
@@ -135,7 +95,6 @@ function mapObraStatus(status: Obra['status']): { label: string; dot: string } {
   }
 }
 
-/** Reduz `/Users/<long>/.../atlas-server` para `…/atlas-server`. */
 function compactWorkspacePath(path: string): string {
   if (path.length <= 28) return path
   const segments = path.split('/').filter(Boolean)

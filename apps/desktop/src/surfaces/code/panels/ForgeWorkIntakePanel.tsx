@@ -121,10 +121,10 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
               background: 'var(--rec-red-veil, rgba(138,48,37,0.08))',
               border: '1px solid var(--rec-red, #8a3025)',
               borderRadius: 2,
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 10,
               color: 'var(--rec-red, #8a3025)',
-              letterSpacing: '0.6px',
+              letterSpacing: 0,
             }}
           >
             sem Obra · intake fail-closed · selecione uma Obra para registrar o intake
@@ -138,7 +138,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
     width: '100%',
     minHeight: 48,
     padding: '6px 8px',
-    fontFamily: 'var(--mono)',
+    fontFamily: 'var(--cc-font-mono)',
     fontSize: 10.5,
     border: '1px solid var(--bronze-soft)',
     borderRadius: 2,
@@ -173,22 +173,22 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
           >
             <span
               style={{
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 8.5,
-                letterSpacing: '1.3px',
+                letterSpacing: 0,
                 color: 'var(--bronze)',
-                textTransform: 'uppercase',
+                textTransform: 'none',
               }}
             >
               origem
             </span>
-            <span style={{ fontFamily: 'var(--serif)', fontSize: 12.5, color: 'var(--ink)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 12.5, color: 'var(--ink)' }}>
               Criada por Self-Improvement Activation ·{' '}
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+              <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 11 }}>
                 {selfImprovementActivation.activationId.slice(0, 16)}…
               </span>
             </span>
-            <span style={{ fontFamily: 'var(--serif)', fontSize: 11, fontStyle: 'italic', color: 'var(--ink3)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 11, fontStyle: 'normal', color: 'var(--ink3)' }}>
               {selfImprovementActivation.reviewer
                 ? `reviewer: ${selfImprovementActivation.reviewer}`
                 : 'sem reviewer registrado'}
@@ -209,11 +209,11 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
         >
           <div
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 8.5,
-              letterSpacing: '1.3px',
+              letterSpacing: 0,
               color: tone.fg,
-              textTransform: 'uppercase',
+              textTransform: 'none',
             }}
           >
             readiness · {readiness}
@@ -224,12 +224,12 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
           {intake?.intakeId ? <Row k="intake id" v={intake.intakeId} mono /> : null}
           {intake?.updatedAt ? <Row k="updated at" v={intake.updatedAt} /> : null}
           {intake?.blockers && intake.blockers.length > 0 ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red)' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red)' }}>
               blockers · {intake.blockers.join(' · ')}
             </div>
           ) : null}
           {intake?.nextAction ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
               next · {intake.nextAction}
             </div>
           ) : null}
@@ -237,7 +237,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
 
         <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
           <label style={{ display: 'grid', gap: 2 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
               O que você quer?
             </span>
             <input
@@ -249,7 +249,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
             />
           </label>
           <label style={{ display: 'grid', gap: 2 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
               Regra que não pode quebrar
             </span>
             <textarea
@@ -260,7 +260,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
             />
           </label>
           <label style={{ display: 'grid', gap: 2 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
               Como saberemos que deu certo? · uma por linha
             </span>
             <textarea
@@ -271,7 +271,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
             />
           </label>
           <label style={{ display: 'grid', gap: 2 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
               Docs/arquivos de referência · uma por linha
             </span>
             <textarea
@@ -283,7 +283,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <label style={{ display: 'grid', gap: 2 }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
                 Pode mexer
               </span>
               <textarea
@@ -294,7 +294,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
               />
             </label>
             <label style={{ display: 'grid', gap: 2 }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
                 Não pode mexer
               </span>
               <textarea
@@ -306,7 +306,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
             </label>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
               Risco
             </span>
             <select
@@ -322,7 +322,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
             </select>
           </div>
           <label style={{ display: 'grid', gap: 2 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
               Notas do operador
             </span>
             <textarea
@@ -353,7 +353,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, 
           </div>
 
           {error ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-all' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-all' }}>
               error · {error}
             </div>
           ) : null}

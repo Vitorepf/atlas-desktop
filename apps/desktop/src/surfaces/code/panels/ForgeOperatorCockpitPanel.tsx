@@ -257,10 +257,10 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
               background: 'var(--rec-red-veil, rgba(138,48,37,0.08))',
               border: '1px solid var(--rec-red, #8a3025)',
               borderRadius: 2,
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 10,
               color: 'var(--rec-red, #8a3025)',
-              letterSpacing: '0.6px',
+              letterSpacing: 0,
             }}
           >
             sem Obra · cockpit fail-closed · selecione uma Obra para operar Forge
@@ -279,11 +279,11 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
             >
               <div
                 style={{
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 8.5,
-                  letterSpacing: '1.3px',
+                  letterSpacing: 0,
                   color: 'var(--bronze)',
-                  textTransform: 'uppercase',
+                  textTransform: 'none',
                 }}
               >
                 forge workspace · obras_shared_workspace · forge_workspace
@@ -309,11 +309,11 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
             >
               <div
                 style={{
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 8.5,
-                  letterSpacing: '1.3px',
+                  letterSpacing: 0,
                   color: lifecycleTone?.fg ?? 'var(--ink2)',
-                  textTransform: 'uppercase',
+                  textTransform: 'none',
                 }}
               >
                 lifecycle · {lifecycleStatus ?? 'idle'} · visual · {visualState}
@@ -333,11 +333,11 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                   />
                 </div>
               ) : null}
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)' }}>
+              <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)' }}>
                 stage · {currentStage ?? '—'}
                 {progressPercent !== null ? ` · ${progressPercent}%` : ''}
               </div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+              <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
                 review · {reviewStatus}
                 {' · '}
                 completion · {completionStatus}
@@ -345,7 +345,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                 {' · '}
                 runtime · {forgeReviewPacket?.runtimeStatus ?? forgeLiveExecution?.status ?? 'missing'}
               </div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+              <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
                 evidence · {evidenceRefCount}
                 {' · '}
                 ledger · {ledgerEventCount}
@@ -367,18 +367,18 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
             >
               <div
                 style={{
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 8.5,
-                  letterSpacing: '1.3px',
+                  letterSpacing: 0,
                   color: completionTone.fg,
-                  textTransform: 'uppercase',
+                  textTransform: 'none',
                 }}
               >
                 completion claim · {completionStatus}
                 {! finalAllowed && humanApproved ? ' · pending_gate' : ''}
                 {finalAllowed ? ' · final ✓' : ''}
               </div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)' }}>
+              <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)' }}>
                 final_allowed · {finalAllowed ? 'yes' : 'no'}
                 {' · '}
                 human_approved · {humanApproved ? 'yes' : 'no'}
@@ -388,7 +388,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                 evidence · {evidenceVerified ? 'verified' : 'missing'}
               </div>
               {runtimePassed && ! humanApproved ? (
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--bronze)' }}>
+                <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--bronze)' }}>
                   waiting_human_review
                 </div>
               ) : null}
@@ -408,23 +408,23 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
               >
                 <div
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8.5,
-                    letterSpacing: '1.3px',
+                    letterSpacing: 0,
                     color: 'var(--bronze)',
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                   }}
                 >
                   repair · {repair.loopStatus ?? 'pending'}{repair.failClosed ? ' · fail_closed_without_evidence' : ''}
                 </div>
                 {repair.suggested ? (
-                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+                  <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)', wordBreak: 'break-all' }}>
                     suggested · {repair.suggested}
                   </div>
                 ) : null}
                 {repair.failurePacket ? (
                   <details>
-                    <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: '1.1px', textTransform: 'uppercase' }}>
+                    <summary style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: 0, textTransform: 'none' }}>
                       failure_packet
                     </summary>
                     <pre
@@ -434,7 +434,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                         background: 'var(--cream-deep, rgba(0,0,0,0.04))',
                         border: '1px solid var(--hair-soft)',
                         borderRadius: 2,
-                        fontFamily: 'var(--mono)',
+                        fontFamily: 'var(--cc-font-mono)',
                         fontSize: 9.5,
                         color: 'var(--ink2)',
                         maxHeight: 140,
@@ -446,20 +446,20 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                     </pre>
                   </details>
                 ) : null}
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+                <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
                   ui · read_only · backend nao expoe repair action automatica nesta versao
                 </div>
               </div>
             ) : null}
 
             {blockers.length > 0 ? (
-              <div style={{ marginTop: 8, fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red)' }}>
+              <div style={{ marginTop: 8, fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red)' }}>
                 blockers · {blockers.join(' · ')}
               </div>
             ) : null}
 
             {programmingGovernance?.workItem ? (
-              <div style={{ marginTop: 8, fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+              <div style={{ marginTop: 8, fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
                 governance · {programmingGovernance.workItem.code} · {programmingGovernance.workItem.status}
               </div>
             ) : null}
@@ -475,7 +475,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
               </button>
 
               <details>
-                <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: '1.1px', textTransform: 'uppercase' }}>
+                <summary style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: 0, textTransform: 'none' }}>
                   ações avançadas
                 </summary>
                 <div style={{ marginTop: 6, display: 'grid', gap: 6 }}>
@@ -543,7 +543,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                   disabled={refreshDisabled}
                   style={{
                     padding: '4px 6px',
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 10,
                     border: '1px solid var(--bronze-soft)',
                     borderRadius: 2,
@@ -559,7 +559,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                   disabled={refreshDisabled}
                   style={{
                     padding: '4px 6px',
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 10,
                     border: '1px solid var(--bronze-soft)',
                     borderRadius: 2,
@@ -645,7 +645,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 9.5,
                   color: 'var(--ink3)',
                 }}
@@ -659,7 +659,7 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
               </label>
 
               {error ? (
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red)', wordBreak: 'break-all' }}>
+                <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red)', wordBreak: 'break-all' }}>
                   error · {error}
                 </div>
               ) : null}

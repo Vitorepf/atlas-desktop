@@ -176,8 +176,8 @@ export function AtlasSelfImprovementActivationCockpitPanel(ctx: RightRailContext
       <SafetyStrip cockpit={cockpit} />
 
       {/* 9 · Advanced disclosure · JSON raw para auditoria */}
-      <details style={{ marginTop: 12, fontFamily: 'var(--mono)', fontSize: 10 }}>
-        <summary style={{ cursor: 'pointer', color: 'var(--bronze)', letterSpacing: '1.3px', textTransform: 'uppercase', fontSize: 9 }}>
+      <details style={{ marginTop: 12, fontFamily: 'var(--cc-font-mono)', fontSize: 10 }}>
+        <summary style={{ cursor: 'pointer', color: 'var(--bronze)', letterSpacing: 0, textTransform: 'none', fontSize: 9 }}>
           Avançado · hashes + evidence
         </summary>
         <pre style={{ marginTop: 6, padding: 8, background: 'var(--cream)', border: '1px solid var(--hair-soft)', borderRadius: 2, overflow: 'auto', maxHeight: 220, fontSize: 9.5 }}>
@@ -217,11 +217,11 @@ function Subsection({ label, children }: { label: string; children: React.ReactN
         style={{
           margin: 0,
           padding: '0 0 4px',
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8.5,
-          letterSpacing: '1.5px',
+          letterSpacing: 0,
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
           borderBottom: '1px solid var(--hair-soft)',
         }}
       >
@@ -247,11 +247,11 @@ function StatusStrip({ cockpit }: { cockpit: AtlasSelfImprovementActivationCockp
       role="status"
       aria-live="polite"
     >
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+      <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
         Atlas Self-Improvement Activation Cockpit v1
       </span>
-      <span style={{ fontFamily: 'var(--serif)', fontSize: 14, fontWeight: 500 }}>{cockpit.humanSummary || '—'}</span>
-      <span style={{ fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic', color: 'var(--ink3)' }}>{cockpit.nextSafeAction || '—'}</span>
+      <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 14, fontWeight: 500 }}>{cockpit.humanSummary || '—'}</span>
+      <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 11.5, fontStyle: 'normal', color: 'var(--ink3)' }}>{cockpit.nextSafeAction || '—'}</span>
     </div>
   )
 }
@@ -282,10 +282,10 @@ function FilterBar({
             type="button"
             style={{
               padding: '4px 8px',
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 9,
-              letterSpacing: '1.2px',
-              textTransform: 'uppercase',
+              letterSpacing: 0,
+              textTransform: 'none',
               border: `1px solid ${active ? 'var(--ink)' : 'var(--hair-soft)'}`,
               background: active ? 'var(--ink)' : 'transparent',
               color: active ? 'var(--cream)' : 'var(--ink2)',
@@ -352,18 +352,18 @@ function ActivationRow({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontFamily: 'var(--serif)', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{row.title}</span>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.2px', color: tone.fg, textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{row.title}</span>
+          <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, color: tone.fg, textTransform: 'none' }}>
             {row.statusLabel}
           </span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)' }}>
           <span>{row.strategyBucket ?? 'bucket: —'}</span>
           <span>{row.riskLevel ? `risk: ${row.riskLevel}` : 'risk: —'}</span>
           <span>{row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'}</span>
         </div>
         {row.hasBlockers && (
-          <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11, color: 'var(--rec-red, #8a3025)' }}>
+          <span style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 11, color: 'var(--rec-red, #8a3025)' }}>
             {row.blockersCount} blocker(s) — {row.nextSafeAction}
           </span>
         )}
@@ -413,26 +413,26 @@ function PowerGateView({ selected }: { selected: AtlasSelfImprovementActivationD
         color: tone.fg,
       }}
     >
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, textTransform: 'none' }}>
         power gate · {gate.outcome}
       </div>
-      <div style={{ fontFamily: 'var(--serif)', fontSize: 13, marginTop: 2 }}>{gate.label}</div>
+      <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 13, marginTop: 2 }}>{gate.label}</div>
       {gate.hardFails.length > 0 && (
-        <ul style={{ marginTop: 6, paddingLeft: 18, fontFamily: 'var(--mono)', fontSize: 10 }}>
+        <ul style={{ marginTop: 6, paddingLeft: 18, fontFamily: 'var(--cc-font-mono)', fontSize: 10 }}>
           {gate.hardFails.map((h) => (
             <li key={`hard-${h}`}>hard fail · {h}</li>
           ))}
         </ul>
       )}
       {gate.softFindings.length > 0 && (
-        <ul style={{ marginTop: 4, paddingLeft: 18, fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)' }}>
+        <ul style={{ marginTop: 4, paddingLeft: 18, fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)' }}>
           {gate.softFindings.map((s) => (
             <li key={`soft-${s}`}>soft finding · {s}</li>
           ))}
         </ul>
       )}
       {gate.nextAction && (
-        <div style={{ marginTop: 6, fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11 }}>
+        <div style={{ marginTop: 6, fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 11 }}>
           próxima ação → {gate.nextAction}
         </div>
       )}
@@ -460,7 +460,7 @@ function BeforeSnapshotView({ selected }: { selected: AtlasSelfImprovementActiva
       {snap.docsStatus.missingRequired.length > 0 && (
         <EmptyText>Faltam docs: {snap.docsStatus.missingRequired.join(', ')}</EmptyText>
       )}
-      <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11.5, color: 'var(--ink3)', marginTop: 4 }}>
+      <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 11.5, color: 'var(--ink3)', marginTop: 4 }}>
         {snap.rationale}
       </div>
     </div>
@@ -538,7 +538,7 @@ function ApprovalForm({
     return (
       <div>
         <EmptyText>Activation bloqueada — não pode virar Obra.</EmptyText>
-        <ul style={{ marginTop: 4, paddingLeft: 16, fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)' }}>
+        <ul style={{ marginTop: 4, paddingLeft: 16, fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)' }}>
           {selected.blockers.map((b) => (
             <li key={b}>{b}</li>
           ))}
@@ -553,7 +553,7 @@ function ApprovalForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.2px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
           reviewer
         </span>
         <input
@@ -563,7 +563,7 @@ function ApprovalForm({
           placeholder="quem está aprovando?"
           style={{
             padding: '6px 8px',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 11,
             border: '1px solid var(--hair-soft)',
             background: 'var(--cream)',
@@ -572,7 +572,7 @@ function ApprovalForm({
         />
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.2px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, color: 'var(--bronze)', textTransform: 'none' }}>
           motivo
         </span>
         <textarea
@@ -582,7 +582,7 @@ function ApprovalForm({
           rows={3}
           style={{
             padding: '6px 8px',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 11,
             border: '1px solid var(--hair-soft)',
             background: 'var(--cream)',
@@ -591,7 +591,7 @@ function ApprovalForm({
           }}
         />
       </label>
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontFamily: 'var(--serif)', fontSize: 12 }}>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontFamily: 'var(--cc-font-sans)', fontSize: 12 }}>
         <input
           type="checkbox"
           checked={acknowledgesNoFastPath}
@@ -639,7 +639,7 @@ function ApprovalForm({
         </button>
       </div>
       {error && (
-        <div role="alert" style={{ padding: 6, border: '1px solid var(--rec-red, #8a3025)', background: 'var(--rec-red-veil, rgba(138,48,37,0.08))', color: 'var(--rec-red, #8a3025)', fontFamily: 'var(--mono)', fontSize: 10 }}>
+        <div role="alert" style={{ padding: 6, border: '1px solid var(--rec-red, #8a3025)', background: 'var(--rec-red-veil, rgba(138,48,37,0.08))', color: 'var(--rec-red, #8a3025)', fontFamily: 'var(--cc-font-mono)', fontSize: 10 }}>
           {error}
         </div>
       )}
@@ -678,7 +678,7 @@ function CreatedObraView({
           width: '100%',
           padding: '12px 18px',
           fontSize: 11.5,
-          letterSpacing: '1.5px',
+          letterSpacing: 0,
           background: 'var(--moss)',
           borderColor: 'var(--moss)',
           opacity: selected.openObraAction.enabled && !busy ? 1 : 0.45,

@@ -125,10 +125,10 @@ export function ForgeReviewCompletionPanel({
         {! obraId || ! effectiveRunId ? (
           <div
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 10,
               color: 'var(--rec-red, #8a3025)',
-              letterSpacing: '0.6px',
+              letterSpacing: 0,
             }}
           >
             {! obraId ? 'sem Obra · selecione uma Obra para revisar' : 'sem run · rode o Fast Path antes da revisao'}
@@ -161,16 +161,16 @@ export function ForgeReviewCompletionPanel({
         >
           <div
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 8.5,
-              letterSpacing: '1.3px',
+              letterSpacing: 0,
               color: completionTone.fg,
-              textTransform: 'uppercase',
+              textTransform: 'none',
             }}
           >
             completion claim · {completionStatus}
           </div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)' }}>
             final_allowed · {finalAllowed ? 'yes' : 'no'}
             {' · '}
             human_approved · {claim?.humanApproved ? 'yes' : 'no'}
@@ -180,7 +180,7 @@ export function ForgeReviewCompletionPanel({
             evidence · {evidenceVerified ? 'verified' : 'missing'}
           </div>
           {claim?.nextAction ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
               next · {claim.nextAction}
             </div>
           ) : null}
@@ -188,12 +188,12 @@ export function ForgeReviewCompletionPanel({
 
         {packet && packet.changedFiles.length > 0 ? (
           <details>
-            <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: '1.1px', textTransform: 'uppercase' }}>
+            <summary style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: 0, textTransform: 'none' }}>
               changed files · {packet.changedFiles.length}
             </summary>
             <div style={{ marginTop: 4, display: 'grid', gap: 2 }}>
               {packet.changedFiles.map((file) => (
-                <div key={file} style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+                <div key={file} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
                   {file}
                 </div>
               ))}
@@ -203,12 +203,12 @@ export function ForgeReviewCompletionPanel({
 
         {packet && packet.gates.length > 0 ? (
           <details>
-            <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: '1.1px', textTransform: 'uppercase' }}>
+            <summary style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: 0, textTransform: 'none' }}>
               gates · {packet.gates.length}
             </summary>
             <div style={{ marginTop: 4, display: 'grid', gap: 2 }}>
               {packet.gates.map((gate, idx) => (
-                <div key={idx} style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
+                <div key={idx} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink2)', wordBreak: 'break-all' }}>
                   {JSON.stringify(gate)}
                 </div>
               ))}
@@ -217,12 +217,12 @@ export function ForgeReviewCompletionPanel({
         ) : null}
 
         {packet && packet.blockers.length > 0 ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red)' }}>
             blockers · {packet.blockers.join(' · ')}
           </div>
         ) : null}
         {packet?.rollbackStatus ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--bronze)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--bronze)' }}>
             rollback · {packet.rollbackStatus}
           </div>
         ) : null}
@@ -237,7 +237,7 @@ export function ForgeReviewCompletionPanel({
               disabled={disabledBase}
               style={{
                 padding: '4px 6px',
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 10,
                 border: '1px solid var(--bronze-soft)',
                 borderRadius: 2,
@@ -253,7 +253,7 @@ export function ForgeReviewCompletionPanel({
               disabled={disabledBase}
               style={{
                 padding: '4px 6px',
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 10,
                 border: '1px solid var(--bronze-soft)',
                 borderRadius: 2,
@@ -322,7 +322,7 @@ export function ForgeReviewCompletionPanel({
         </div>
 
         {error ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-all' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-all' }}>
             error · {error}
           </div>
         ) : null}

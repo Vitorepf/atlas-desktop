@@ -653,6 +653,7 @@ export interface AtlasCodeObraCommandCenter {
   operationalHealth: AtlasCodeObraCommandCenterOperationalHealth
   trustSummary: AtlasCodeObraCommandCenterTrustSummary
   evidenceDigest: AtlasCodeObraCommandCenterEvidenceDigest
+  selfImprovementOrigin: AtlasCodeObraSelfImprovementOrigin | null
   providerSummary: {
     provider: string | null
     model: string | null
@@ -1293,6 +1294,384 @@ export interface AtlasSelfImprovementActivationCockpitFilters {
   status?: string | null
   bucket?: string | null
   hasObra?: boolean | null
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Self-Improvement Closed Loop Level 7 v1
+// Schemas:
+//   - atlas.self_improvement.proposal_backlog.v1
+//   - atlas.self_improvement.proposal_backlog_item.v1
+//   - atlas.self_improvement.closed_loop.v1
+//   - atlas.self_improvement.result_ledger.v1
+//   - atlas.self_improvement.result_entry.v1
+//   - atlas.self_improvement.learning_packet.v1
+//   - atlas.self_improvement.next_cycle_recommendation.v1
+//
+// Doc: docs/engineering-knowledge-base/atlas-self-improvement-closed-loop-level7-v1.md
+
+export type AtlasSelfImprovementProposalStatus =
+  | 'draft'
+  | 'evaluating'
+  | 'needs_revision'
+  | 'pending_human_review'
+  | 'approved_for_activation'
+  | 'activated'
+  | 'obra_created'
+  | 'forge_running'
+  | 'awaiting_review'
+  | 'measuring_delta'
+  | 'learned'
+  | 'rejected'
+  | 'archived'
+  | string
+
+export type AtlasSelfImprovementProposalSource =
+  | 'manual'
+  | 'chat'
+  | 'activation'
+  | 'postmortem'
+  | 'rivals'
+  | 'regression_sentinel'
+  | 'trust_ledger'
+  | 'operator'
+  | string
+
+export interface AtlasSelfImprovementProposalPriorityDecision {
+  schemaVersion: string
+  decidedAt: string
+  strategyBucket: string
+  targetPercent: number
+  portfolioAligned: boolean
+  portfolioRecommends: string | null
+  priorityScore: number
+  reason: string
+  autoActivationAllowed: boolean
+  humanApprovalRequired: boolean
+}
+
+export interface AtlasSelfImprovementProposalBacklogItem {
+  schemaVersion: string
+  proposalId: string
+  title: string
+  summary: string
+  source: AtlasSelfImprovementProposalSource
+  status: AtlasSelfImprovementProposalStatus
+  riskLevel: string
+  expectedPowerGain: string | null
+  targetCapability: string | null
+  affectedDomains: string[]
+  canonicalDocs: string[]
+  businessRule: string | null
+  acceptanceCriteria: string[]
+  constraints: string[]
+  strategyBucket: string | null
+  priorityScore: number | null
+  createdAt: string
+  updatedAt: string
+  lastDecision: {
+    kind: string
+    outcome: string
+    decidedAt: string
+    reviewer?: string | null
+    reason?: string | null
+  } | null
+  linkedActivationId: string | null
+  linkedObraId: string | null
+  linkedFastPathRunId: string | null
+  linkedCompletionClaimId: string | null
+  linkedResultEntryId: string | null
+  evidenceRefs: string[]
+  blockers: string[]
+  nextSafeAction: string
+  powerGate: Record<string, unknown> | null
+  priorityDecision: AtlasSelfImprovementProposalPriorityDecision | null
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export interface AtlasSelfImprovementProposalBacklogFilters {
+  status?: AtlasSelfImprovementProposalStatus | null
+  source?: AtlasSelfImprovementProposalSource | null
+  bucket?: string | null
+  linkedObra?: boolean | null
+}
+
+export interface AtlasSelfImprovementProposalBacklog {
+  schemaVersion: string
+  generatedAt: string
+  filters: {
+    status: string | null
+    source: string | null
+    bucket: string | null
+    linkedObra: boolean | null
+  }
+  proposals: AtlasSelfImprovementProposalBacklogItem[]
+  counters: {
+    total: number
+    draft: number
+    evaluating: number
+    needsRevision: number
+    pendingHumanReview: number
+    approvedForActivation: number
+    activated: number
+    obraCreated: number
+    forgeRunning: number
+    awaitingReview: number
+    measuringDelta: number
+    learned: number
+    rejected: number
+    archived: number
+    withObra: number
+    withBlockers: number
+  }
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export type AtlasSelfImprovementClosedLoopStageId =
+  | 'proposal_captured'
+  | 'power_gate_evaluated'
+  | 'human_approved'
+  | 'activation_created'
+  | 'obra_created'
+  | 'forge_executed'
+  | 'evidence_collected'
+  | 'human_reviewed'
+  | 'delta_measured'
+  | 'trust_updated'
+  | 'learning_recorded'
+  | 'next_cycle_recommended'
+  | string
+
+export type AtlasSelfImprovementClosedLoopStageStatus =
+  | 'todo'
+  | 'done'
+  | 'blocked'
+  | string
+
+export type AtlasSelfImprovementClosedLoopHealth =
+  | 'blocked'
+  | 'draft'
+  | 'evaluating'
+  | 'approved_pending_activation'
+  | 'in_flight'
+  | 'measured'
+  | 'regressed'
+  | 'closed_loop_complete'
+  | string
+
+export interface AtlasSelfImprovementClosedLoopStage {
+  stage: AtlasSelfImprovementClosedLoopStageId
+  status: AtlasSelfImprovementClosedLoopStageStatus
+  label: string
+  tone: AtlasSelfImprovementActivationTone
+  evidence: string | null
+  completedAt: string | null
+}
+
+export type AtlasSelfImprovementDeltaGrade =
+  | 'regressed'
+  | 'neutral'
+  | 'improved'
+  | 'major_improvement'
+  | 'invalid'
+  | string
+
+export interface AtlasSelfImprovementLearningPacket {
+  schemaVersion: string
+  whatChanged: string
+  whyItMattered: string
+  evidenceSupportingImprovement: string[]
+  whatFailedOrWasMissing: string[]
+  newRuleCandidate: string | null
+  futureTriggerConditions: string[]
+  rollbackRecommendation: string | null
+  confidence: number
+}
+
+export interface AtlasSelfImprovementResultEntry {
+  schemaVersion: string
+  resultEntryId: string
+  proposalId: string
+  obraId: string
+  beforeSnapshotHash: string
+  afterSnapshotHash: string
+  deltaScorecard: Record<string, unknown>
+  deltaGrade: AtlasSelfImprovementDeltaGrade
+  evidenceStrength: 'strong' | 'moderate' | 'weak' | 'invalid' | string
+  humanReviewOutcome: string | null
+  reviewer: string | null
+  reason: string | null
+  acceptedRisks: string[]
+  regressionsDetected: unknown[]
+  invariantsPreserved: boolean
+  invariantViolations: unknown[]
+  trustDelta: number
+  trustOutcomeRecorded: string
+  recommendedNextAction: string
+  shouldBecomeRule: boolean
+  learningPacket: AtlasSelfImprovementLearningPacket
+  recordedAt: string
+  evidenceRefs: string[]
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+}
+
+export interface AtlasSelfImprovementResultLedger {
+  schemaVersion: string
+  generatedAt: string
+  entries: AtlasSelfImprovementResultEntry[]
+  counters: {
+    total: number
+    regressed: number
+    neutral: number
+    improved: number
+    majorImprovement: number
+    invalid: number
+    invariantsViolated: number
+  }
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export type AtlasSelfImprovementNextCycleRecommendationKind =
+  | 'continue_same_capability'
+  | 'broaden_scope'
+  | 'repair_regression'
+  | 'gather_more_evidence'
+  | 'archive_low_value'
+  | 'promote_rule_candidate'
+  | 'create_followup_proposal'
+  | string
+
+export interface AtlasSelfImprovementNextCycleRecommendation {
+  schemaVersion: string
+  generatedAt: string
+  recommendation: AtlasSelfImprovementNextCycleRecommendationKind | null
+  rationale: string
+  confidence: number
+  linkedResultEntryId: string | null
+  linkedProposalId: string | null
+  linkedObraId: string | null
+  portfolioBalanceHealth: string | null
+  portfolioRecommendedNextBucket: string | null
+  proposedNextProposalPayload: Record<string, unknown> | null
+  humanApprovalRequired: boolean
+  autoActivationAllowed: boolean
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export interface AtlasSelfImprovementClosedLoop {
+  schemaVersion: string
+  generatedAt: string
+  status: 'projected' | 'blocked' | string
+  proposalId: string
+  activationId: string | null
+  obraId: string | null
+  resultEntryId: string | null
+  currentLoopStage: AtlasSelfImprovementClosedLoopStageId | null
+  loopHealth: AtlasSelfImprovementClosedLoopHealth
+  stages: Record<string, AtlasSelfImprovementClosedLoopStage>
+  humanDecisionRequired: boolean
+  canActivate: boolean
+  canOpenObra: boolean
+  canMeasureDelta: boolean
+  canRecordLearning: boolean
+  beforeSnapshot: Record<string, unknown> | null
+  afterSnapshot: { hash: string | null; recordedAt: string | null } | null
+  deltaScorecard: Record<string, unknown> | null
+  trustUpdate: {
+    outcomeRecorded: string | null
+    trustDelta: number
+    currentBand: string
+  } | null
+  learningPacket: AtlasSelfImprovementLearningPacket | null
+  evidenceSummary: { evidenceRefCount: number; evidenceRefs: string[] } | null
+  reviewSummary: {
+    activationApprovalPresent: boolean
+    activationReviewer: string | null
+    resultEntryReviewer: string | null
+    resultEntryGrade: string | null
+  } | null
+  nextCycleRecommendation: AtlasSelfImprovementNextCycleRecommendation | null
+  nextSafeAction: string
+  blockers: string[]
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  externalRivalsSeparated: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export interface AtlasSelfImprovementProposalCreatePayload {
+  source?: AtlasSelfImprovementProposalSource
+  proposal: Record<string, unknown>
+  affectedDomains?: string[]
+  constraints?: string[]
+}
+
+export interface AtlasSelfImprovementProposalPrioritizePayload {
+  strategyBucket?: string
+}
+
+export interface AtlasSelfImprovementMeasureResultPayload {
+  obraId: string
+  beforeSnapshot: Record<string, unknown>
+  afterSnapshot: Record<string, unknown>
+  reviewer: string
+  reason: string
+  context?: Record<string, unknown>
+}
+
+/**
+ * Atlas Code Obra Command Center · self_improvement_origin block.
+ * Schema: atlas.code.obra_command_center_self_improvement_origin.v1
+ */
+export interface AtlasCodeObraSelfImprovementOrigin {
+  schemaVersion: string
+  proposalId: string | null
+  activationId: string | null
+  beforeSnapshotHash: string | null
+  targetCapability: string | null
+  expectedPowerGain: string | null
+  strategyBucket: string | null
+  reviewer: string | null
+  approvedAt: string | null
+  resultEntryId: string | null
+  deltaGrade: AtlasSelfImprovementDeltaGrade | null
+  humanMessage: string
+  measureResultAction: {
+    enabled: boolean
+    label: string
+    commandHint: string
+  }
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
 }
 
 export interface AtlasSelfImprovementActivationAcceptPayload {

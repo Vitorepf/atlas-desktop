@@ -31,7 +31,7 @@ export function TaskContractPanel({ liveExecution }: TaskContractPanelProps) {
           borderRadius: 2,
         }}
       >
-        <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.4 }}>
+        <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.4 }}>
           {contract.objective}
         </div>
         <dl style={{ margin: 0 }}>
@@ -55,17 +55,17 @@ function CompactList({ label, items }: { label: string; items: string[] }) {
     <div style={{ display: 'grid', gap: 2 }}>
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8.5,
-          letterSpacing: '1.2px',
+          letterSpacing: 0,
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {label}
       </div>
       {items.slice(0, 5).map((item) => (
-        <div key={item} style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+        <div key={item} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink3)', wordBreak: 'break-all' }}>
           {item}
         </div>
       ))}

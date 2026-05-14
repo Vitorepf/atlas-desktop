@@ -65,7 +65,7 @@ export function ForgeReviewGate({ liveExecution, review, busy, onReview, onRollb
             ) : null}
           </dl>
           {review?.comment ? (
-            <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11.5, color: 'var(--ink3)' }}>
+            <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 11.5, color: 'var(--ink3)' }}>
               {review.comment}
             </div>
           ) : null}
@@ -73,7 +73,7 @@ export function ForgeReviewGate({ liveExecution, review, busy, onReview, onRollb
           {blockers.length > 0 && !approved ? (
             <div style={{ display: 'grid', gap: 2 }}>
               {blockers.slice(0, 4).map((blocker) => (
-                <div key={blocker} style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)' }}>
+                <div key={blocker} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)' }}>
                   {blocker}
                 </div>
               ))}
@@ -92,7 +92,7 @@ export function ForgeReviewGate({ liveExecution, review, busy, onReview, onRollb
                 resize: 'vertical',
                 minHeight: 58,
                 padding: '7px 8px',
-                fontFamily: 'var(--serif)',
+                fontFamily: 'var(--cc-font-sans)',
                 fontSize: 12,
                 color: 'var(--ink)',
                 background: 'var(--paper)',

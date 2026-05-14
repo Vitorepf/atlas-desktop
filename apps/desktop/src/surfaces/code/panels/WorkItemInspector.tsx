@@ -77,8 +77,8 @@ function WorkItemCard({ item }: { item: ProgrammingWorkItemSnapshot }) {
             marginTop: 8,
             paddingTop: 8,
             borderTop: '1px solid var(--hair-soft)',
-            fontFamily: 'var(--serif)',
-            fontStyle: 'italic',
+            fontFamily: 'var(--cc-font-sans)',
+            fontStyle: 'normal',
             fontSize: 12.5,
             color: 'var(--ink2)',
             lineHeight: 1.45,
@@ -91,11 +91,11 @@ function WorkItemCard({ item }: { item: ProgrammingWorkItemSnapshot }) {
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--hair-soft)' }}>
           <div
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 8.5,
-              letterSpacing: '1.3px',
+              letterSpacing: 0,
               color: 'var(--rec-red)',
-              textTransform: 'uppercase',
+              textTransform: 'none',
               marginBottom: 4,
             }}
           >
@@ -104,7 +104,7 @@ function WorkItemCard({ item }: { item: ProgrammingWorkItemSnapshot }) {
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: 'var(--ink2)' }}>
             {item.gaps.map((gap) => (
               <li key={gap.name} style={{ marginBottom: 2 }}>
-                <span style={{ fontFamily: 'var(--mono)', color: 'var(--bronze)' }}>{gap.name}</span>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', color: 'var(--bronze)' }}>{gap.name}</span>
                 {gap.reason ? <span> · {gap.reason}</span> : null}
               </li>
             ))}
@@ -124,7 +124,7 @@ function DegradedBanner({ reason }: { reason: string | null }) {
         background: 'var(--rec-red-veil, rgba(138,48,37,0.08))',
         border: '1px solid var(--rec-red-soft, rgba(138,48,37,0.3))',
         borderRadius: 2,
-        fontFamily: 'var(--mono)',
+        fontFamily: 'var(--cc-font-mono)',
         fontSize: 10.5,
         color: 'var(--rec-red, #8a3025)',
       }}

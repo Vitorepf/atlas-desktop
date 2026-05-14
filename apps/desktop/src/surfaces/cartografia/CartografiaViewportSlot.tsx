@@ -59,15 +59,18 @@ export function CartografiaViewportSlot({
   const [previewAnchor, setPreviewAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   useEffect(() => {
     if (!notePreview) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewAnchor(null)
       return
     }
     const el = document.getElementById(`atom-${notePreview.graphId}`)
     if (!el) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewAnchor(null)
       return
     }
     const r = el.getBoundingClientRect()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreviewAnchor({ x: r.x, y: r.y, w: r.width, h: r.height })
   }, [notePreview])
 

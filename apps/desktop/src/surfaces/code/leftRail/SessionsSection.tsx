@@ -1,5 +1,6 @@
 import type { Session } from '@atlas/domain'
-import { EmptyRow } from './LeftRailPrimitives'
+import { EmptyState, ObraListItem } from '../workbench'
+import type { StatusKind } from '../workbench/tokens'
 import { shortId } from './leftRailUtils'
 
 interface SessionsSectionProps {
@@ -9,48 +10,39 @@ interface SessionsSectionProps {
 }
 
 /**
- * Atlas Code Visual Ergonomics v1 · SessionsSection enterprise.
+ * Atlas Code Premium Workbench v1 · seção de sessões.
  *
- * Row compacta: short_id em mono, título em sans, status dot + turnos.
- * Sessions são lista menor (não Obras), por isso row mais densa.
+ * Reaproveita `ObraListItem` (workbench primitive) para manter densidade e
+ * hierarquia consistentes com a lista de Obras. Status dot semântico,
+ * origem + turnos em meta.
  */
 export function SessionsSection({ sessions, loading = false, emptyText }: SessionsSectionProps) {
   if (sessions.length === 0) {
-    return <EmptyRow text={loading ? 'Carregando sessões…' : emptyText} />
+    return <EmptyState title={loading ? 'Carregando sessões…' : emptyText} tone={loading ? 'info' : 'default'} />
   }
 
   return (
-    <div role="list" aria-label="Sessões">
-      {sessions.map((s) => (
-        <article
-          key={s.id}
-          role="listitem"
-          className="cc-obra-row"
-          aria-label={`Sessão ${shortId(s.threadId || s.id)} · ${s.title || 'sem título'} · ${s.status}`}
-        >
-          <div className="cc-obra-row-head">
-            <span className="cc-status-dot" data-status={mapSessionStatus(s.status)} aria-hidden="true" />
-            <span className="cc-obra-row-id">{shortId(s.threadId || s.id)}</span>
-            <span className="cc-obra-row-title">
-              {s.title || `thread ${shortId(s.threadId || s.id)}`}
-            </span>
-          </div>
-          <div className="cc-obra-row-meta">
-            <span>{s.origin}</span>
-            {s.turns > 0 ? (
-              <>
-                <span className="sep">·</span>
-                <span>{s.turns} {s.turns === 1 ? 'turno' : 'turnos'}</span>
-              </>
-            ) : null}
-          </div>
-        </article>
-      ))}
+    <div role="list" aria-label="Sessões" style={{ display: 'grid', gap: 2 }}>
+      {sessions.map((s) => {
+        const dot = mapSessionStatus(s.status)
+        const hint = s.turns > 0 ? `${s.turns} ${s.turns === 1 ? 'turno' : 'turnos'}` : undefined
+        return (
+          <ObraListItem
+            key={s.id}
+            shortId={shortId(s.threadId || s.id)}
+            title={s.title || `thread ${shortId(s.threadId || s.id)}`}
+            status={dot}
+            statusLabel={s.origin}
+            hint={hint}
+            onClick={() => undefined}
+          />
+        )
+      })}
     </div>
   )
 }
 
-function mapSessionStatus(status: Session['status']): string {
+function mapSessionStatus(status: Session['status']): StatusKind {
   switch (status) {
     case 'running':
       return 'running'

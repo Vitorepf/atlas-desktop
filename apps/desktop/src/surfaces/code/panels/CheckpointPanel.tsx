@@ -29,16 +29,16 @@ export function CheckpointPanel({ checkpoint, busy, onCreateCheckpoint }: Checkp
         >
           <div
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 8.5,
-              letterSpacing: '1.2px',
+              letterSpacing: 0,
               color: checkpoint.resume.resumeReady ? 'var(--moss)' : 'var(--rec-red, #8a3025)',
-              textTransform: 'uppercase',
+              textTransform: 'none',
             }}
           >
             resume · {checkpoint.resume.resumeReady ? 'ready' : 'blocked'}
           </div>
-          <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.4 }}>
+          <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.4 }}>
             {checkpoint.resume.summary}
           </div>
           <dl style={{ margin: 0 }}>
@@ -50,7 +50,7 @@ export function CheckpointPanel({ checkpoint, busy, onCreateCheckpoint }: Checkp
             <Row k="risk" v={checkpoint.risk.residualRisk} ok={checkpoint.risk.residualRisk === 'low'} />
           </dl>
           {checkpoint.risk.remainingBlockers.length > 0 ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
               blockers · {checkpoint.risk.remainingBlockers.join(' · ')}
             </div>
           ) : null}

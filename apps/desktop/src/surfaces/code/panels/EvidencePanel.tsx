@@ -32,10 +32,10 @@ function EvidenceSeparationHeader({ obraEvidenceCount }: { obraEvidenceCount: nu
       }}
       role="status"
     >
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginBottom: 2, color: 'var(--bronze)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, textTransform: 'none', marginBottom: 2, color: 'var(--bronze)' }}>
         Provas desta Obra · sistema · histórico
       </div>
-      <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic' }}>
+      <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 11.5, fontStyle: 'normal' }}>
         Provas desta Obra ({obraEvidenceCount}) são distintas das Certificações do sistema Atlas.
         Certificações verdes do sistema não significam que esta Obra passou.
       </div>
@@ -183,17 +183,17 @@ export function EvidencePanel({
               >
                 <div
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8.5,
-                    letterSpacing: '1.3px',
+                    letterSpacing: 0,
                     color: 'var(--bronze)',
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                   }}
                 >
                   {e.kind}
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>{e.summary}</div>
-                <div style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--mono)' }}>
+                <div style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--cc-font-mono)' }}>
                   {e.createdAt ? new Date(e.createdAt).toLocaleString('pt-BR') : '—'}
                 </div>
               </div>
@@ -237,17 +237,17 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
       >
         <span
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 8.5,
-            letterSpacing: '1.3px',
+            letterSpacing: 0,
             color: 'var(--bronze)',
-            textTransform: 'uppercase',
+            textTransform: 'none',
           }}
         >
           {receipt.evidenceType || 'evidence'} · {receipt.status || 'unknown'}
         </span>
         {receipt.recordedAt ? (
-          <span style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--mono)' }}>
+          <span style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--cc-font-mono)' }}>
             {new Date(receipt.recordedAt).toLocaleString('pt-BR')}
           </span>
         ) : null}
@@ -256,10 +256,10 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
       {!persisted ? (
         <div
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
             color: 'var(--rec-red, #8a3025)',
-            letterSpacing: '0.6px',
+            letterSpacing: 0,
           }}
         >
           evidence nao persistiu no ledger
@@ -270,7 +270,7 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
       {receipt.command ? (
         <div
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 11,
             color: 'var(--ink)',
             wordBreak: 'break-all',
@@ -283,8 +283,8 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
       {receipt.summary ? (
         <div
           style={{
-            fontFamily: 'var(--serif)',
-            fontStyle: 'italic',
+            fontFamily: 'var(--cc-font-sans)',
+            fontStyle: 'normal',
             fontSize: 12,
             color: 'var(--ink2)',
             lineHeight: 1.4,
@@ -302,7 +302,7 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
             background: 'var(--cream-deep, rgba(0,0,0,0.04))',
             border: '1px solid var(--hair-soft)',
             borderRadius: 2,
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10.5,
             color: 'var(--ink2)',
             whiteSpace: 'pre-wrap',
@@ -319,14 +319,14 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
       <MetaList label="tests" items={receipt.tests} />
 
       {receipt.diffPath ? (
-        <div style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--mono)' }}>
+        <div style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--cc-font-mono)' }}>
           <span style={{ color: 'var(--bronze)' }}>diff · </span>
           <span style={{ wordBreak: 'break-all' }}>{receipt.diffPath}</span>
         </div>
       ) : null}
 
       {receipt.artifactUrl ? (
-        <div style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--mono)' }}>
+        <div style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--cc-font-mono)' }}>
           <span style={{ color: 'var(--bronze)' }}>artifact · </span>
           <span style={{ wordBreak: 'break-all' }}>{receipt.artifactUrl}</span>
         </div>
@@ -335,10 +335,10 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
       {receipt.storage ? (
         <div
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 9.5,
             color: persisted ? 'var(--moss)' : 'var(--rec-red)',
-            letterSpacing: '0.4px',
+            letterSpacing: 0,
           }}
         >
           storage · {persisted ? 'persisted' : 'not persisted'}
@@ -353,7 +353,7 @@ function EvidenceReceiptCard({ receipt }: { receipt: ProgrammingEvidenceReceiptS
 function MetaList({ label, items }: { label: string; items: string[] }) {
   if (!items || items.length === 0) return null
   return (
-    <div style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--mono)' }}>
+    <div style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--cc-font-mono)' }}>
       <span style={{ color: 'var(--bronze)' }}>{label} · </span>
       <span style={{ wordBreak: 'break-all' }}>{items.join(' · ')}</span>
     </div>

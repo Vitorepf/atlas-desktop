@@ -44,6 +44,16 @@ import type {
   AtlasSelfImprovementActivationAcceptPayload,
   AtlasSelfImprovementActivationRejectPayload,
   AtlasSelfImprovementActivationCreatePayload,
+  AtlasSelfImprovementProposalBacklog,
+  AtlasSelfImprovementProposalBacklogItem,
+  AtlasSelfImprovementProposalBacklogFilters,
+  AtlasSelfImprovementProposalCreatePayload,
+  AtlasSelfImprovementProposalPrioritizePayload,
+  AtlasSelfImprovementClosedLoop,
+  AtlasSelfImprovementResultLedger,
+  AtlasSelfImprovementResultEntry,
+  AtlasSelfImprovementNextCycleRecommendation,
+  AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
   CoreStatus,
   DecisionReceipt,
@@ -87,6 +97,10 @@ export interface BridgeSnapshot {
   selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
   selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
   selfImprovementActivationCockpit: AtlasSelfImprovementActivationCockpit | null
+  selfImprovementProposalBacklog: AtlasSelfImprovementProposalBacklog | null
+  selfImprovementClosedLoop: AtlasSelfImprovementClosedLoop | null
+  selfImprovementResultLedger: AtlasSelfImprovementResultLedger | null
+  selfImprovementNextCycle: AtlasSelfImprovementNextCycleRecommendation | null
   forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
   forgeProviderDriverStatus: AtlasForgeProviderDriverStatus | null
   forgeProviderInvocation: AtlasForgeProviderInvocationSnapshot | null
@@ -141,6 +155,14 @@ export interface BridgeActions {
   createSelfImprovementForgeActivation: (payload: AtlasSelfImprovementActivationCreatePayload) => Promise<AtlasSelfImprovementActivationDetail | null>
   acceptSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationAcceptPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
   rejectSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationRejectPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
+  refreshSelfImprovementProposalBacklog: (filters?: AtlasSelfImprovementProposalBacklogFilters) => Promise<void>
+  createSelfImprovementProposal: (payload: AtlasSelfImprovementProposalCreatePayload) => Promise<AtlasSelfImprovementProposalBacklogItem | null>
+  evaluateSelfImprovementProposal: (proposalId: string) => Promise<AtlasSelfImprovementProposalBacklogItem | null>
+  prioritizeSelfImprovementProposal: (proposalId: string, payload?: AtlasSelfImprovementProposalPrioritizePayload) => Promise<AtlasSelfImprovementProposalBacklogItem | null>
+  refreshSelfImprovementClosedLoop: (proposalId: string) => Promise<void>
+  measureSelfImprovementResult: (proposalId: string, payload: AtlasSelfImprovementMeasureResultPayload) => Promise<AtlasSelfImprovementResultEntry | null>
+  refreshSelfImprovementResultLedger: (filters?: { grade?: string; proposalId?: string }) => Promise<void>
+  refreshSelfImprovementNextCycle: (opts?: { proposalId?: string; latest?: boolean }) => Promise<void>
   refreshForgeRuntimeDispatch: () => Promise<void>
   runForgeRuntimeDispatch: (options?: { role?: string; simulateProviderFailure?: string; createChildReceipt?: boolean; fastPathRunId?: string }) => Promise<void>
   refreshForgeProviderDrivers: () => Promise<void>
@@ -188,6 +210,10 @@ const INITIAL: BridgeSnapshot = {
   selfImprovementGovernance: null,
   selfImprovementActivation: null,
   selfImprovementActivationCockpit: null,
+  selfImprovementProposalBacklog: null,
+  selfImprovementClosedLoop: null,
+  selfImprovementResultLedger: null,
+  selfImprovementNextCycle: null,
   forgeRuntimeDispatch: null,
   forgeProviderDriverStatus: null,
   forgeProviderInvocation: null,
@@ -1112,6 +1138,191 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     [pushError],
   )
 
+  const refreshSelfImprovementProposalBacklog = useCallback(
+    async (filters?: AtlasSelfImprovementProposalBacklogFilters) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const backlog = await bridge.listSelfImprovementProposalBacklog(filters)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementProposalBacklog: backlog,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshSelfImprovementProposalBacklog', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [pushError],
+  )
+
+  const createSelfImprovementProposal = useCallback(
+    async (payload: AtlasSelfImprovementProposalCreatePayload) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const item = await bridge.createSelfImprovementProposal(payload)
+        const backlog = await bridge.listSelfImprovementProposalBacklog()
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementProposalBacklog: backlog,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return item
+      } catch (e) {
+        pushError('createSelfImprovementProposal', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const evaluateSelfImprovementProposal = useCallback(
+    async (proposalId: string) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const item = await bridge.evaluateSelfImprovementProposal(proposalId)
+        const backlog = await bridge.listSelfImprovementProposalBacklog()
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementProposalBacklog: backlog,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return item
+      } catch (e) {
+        pushError('evaluateSelfImprovementProposal', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const prioritizeSelfImprovementProposal = useCallback(
+    async (proposalId: string, payload?: AtlasSelfImprovementProposalPrioritizePayload) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const item = await bridge.prioritizeSelfImprovementProposal(proposalId, payload)
+        const backlog = await bridge.listSelfImprovementProposalBacklog()
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementProposalBacklog: backlog,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return item
+      } catch (e) {
+        pushError('prioritizeSelfImprovementProposal', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const refreshSelfImprovementClosedLoop = useCallback(
+    async (proposalId: string) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const loop = await bridge.getSelfImprovementClosedLoop(proposalId)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementClosedLoop: loop,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshSelfImprovementClosedLoop', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [pushError],
+  )
+
+  const measureSelfImprovementResult = useCallback(
+    async (proposalId: string, payload: AtlasSelfImprovementMeasureResultPayload) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const entry = await bridge.measureSelfImprovementResult(proposalId, payload)
+        // Refresh ledger + closed loop for the proposal.
+        const [ledger, loop] = await Promise.all([
+          bridge.listSelfImprovementResultLedger(),
+          bridge.getSelfImprovementClosedLoop(proposalId),
+        ])
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementResultLedger: ledger,
+            selfImprovementClosedLoop: loop,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return entry
+      } catch (e) {
+        pushError('measureSelfImprovementResult', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const refreshSelfImprovementResultLedger = useCallback(
+    async (filters?: { grade?: string; proposalId?: string }) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const ledger = await bridge.listSelfImprovementResultLedger(filters)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementResultLedger: ledger,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshSelfImprovementResultLedger', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [pushError],
+  )
+
+  const refreshSelfImprovementNextCycle = useCallback(
+    async (opts?: { proposalId?: string; latest?: boolean }) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const rec = await bridge.getSelfImprovementNextCycle(opts)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementNextCycle: rec,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshSelfImprovementNextCycle', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [pushError],
+  )
+
   const refreshForgeRuntimeDispatch = useCallback(async () => {
     if (!snap.obra?.id) {
       pushError('refreshForgeRuntimeDispatch', new Error('obra_required'))
@@ -1577,6 +1788,14 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     createSelfImprovementForgeActivation,
     acceptSelfImprovementForgeActivation,
     rejectSelfImprovementForgeActivation,
+    refreshSelfImprovementProposalBacklog,
+    createSelfImprovementProposal,
+    evaluateSelfImprovementProposal,
+    prioritizeSelfImprovementProposal,
+    refreshSelfImprovementClosedLoop,
+    measureSelfImprovementResult,
+    refreshSelfImprovementResultLedger,
+    refreshSelfImprovementNextCycle,
     refreshForgeRuntimeDispatch,
     runForgeRuntimeDispatch,
     refreshForgeProviderDrivers,

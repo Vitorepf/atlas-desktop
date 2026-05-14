@@ -91,8 +91,8 @@ function ObraSummaryCenter({
           padding: 24,
           textAlign: 'center',
           color: 'var(--ink3)',
-          fontFamily: 'var(--serif)',
-          fontStyle: 'italic',
+          fontFamily: 'var(--cc-font-sans)',
+          fontStyle: 'normal',
         }}
       >
         <p>consultando Kernel…</p>
@@ -108,8 +108,8 @@ function ObraSummaryCenter({
           padding: 24,
           textAlign: 'center',
           color: 'var(--ink3)',
-          fontFamily: 'var(--serif)',
-          fontStyle: 'italic',
+          fontFamily: 'var(--cc-font-sans)',
+          fontStyle: 'normal',
         }}
       >
         <p style={{ fontSize: 18, lineHeight: 1.4 }}>
@@ -134,14 +134,14 @@ function ObraSummaryCenter({
       aria-label="Resumo da Obra"
     >
       <header style={{ display: 'grid', gap: 4 }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: 'var(--bronze)' }}>
+        <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, textTransform: 'none', color: 'var(--bronze)' }}>
           Resumo da Obra
         </span>
-        <h1 style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500, margin: 0, color: 'var(--ink)' }}>
+        <h1 style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 22, fontWeight: 500, margin: 0, color: 'var(--ink)' }}>
           {obra?.title || obra?.objective || 'Obra sem título'}
         </h1>
         {obra?.objective ? (
-          <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 13, color: 'var(--ink3)', margin: 0 }}>
+          <p style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 13, color: 'var(--ink3)', margin: 0 }}>
             {obra.objective}
           </p>
         ) : null}
@@ -150,22 +150,22 @@ function ObraSummaryCenter({
       {orchestrator ? (
         <>
           <section style={{ display: 'grid', gap: 4 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', textTransform: 'uppercase', color: 'var(--bronze)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, textTransform: 'none', color: 'var(--bronze)' }}>
               Estado humano
             </span>
-            <span style={{ fontFamily: 'var(--serif)', fontSize: 15, color: 'var(--ink)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 15, color: 'var(--ink)' }}>
               {orchestrator.humanStatusLabel}
             </span>
-            <span style={{ fontFamily: 'var(--serif)', fontSize: 12, fontStyle: 'italic', color: 'var(--ink3)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 12, fontStyle: 'normal', color: 'var(--ink3)' }}>
               {orchestrator.humanStatusDetail}
             </span>
           </section>
 
           <section style={{ display: 'grid', gap: 4 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', textTransform: 'uppercase', color: 'var(--bronze)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, textTransform: 'none', color: 'var(--bronze)' }}>
               Próximo passo seguro
             </span>
-            <span style={{ fontFamily: 'var(--serif)', fontSize: 13, color: 'var(--ink2)' }}>
+            <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 13, color: 'var(--ink2)' }}>
               {orchestrator.nextSafeStep}
             </span>
           </section>
@@ -180,21 +180,21 @@ function ObraSummaryCenter({
                 gap: 4,
               }}
             >
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', textTransform: 'uppercase', color: orchestrator.blockerTranslation.isBlocking ? 'var(--rec-red, #8a3025)' : 'var(--bronze)' }}>
+              <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 8.5, letterSpacing: 0, textTransform: 'none', color: orchestrator.blockerTranslation.isBlocking ? 'var(--rec-red, #8a3025)' : 'var(--bronze)' }}>
                 Último blocker humano
               </span>
-              <span style={{ fontFamily: 'var(--serif)', fontSize: 13, color: 'var(--ink)' }}>
+              <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 13, color: 'var(--ink)' }}>
                 {orchestrator.blockerTranslation.humanTitle}
               </span>
               {orchestrator.blockerTranslation.humanDetail ? (
-                <span style={{ fontFamily: 'var(--serif)', fontSize: 12, fontStyle: 'italic', color: 'var(--ink3)' }}>
+                <span style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 12, fontStyle: 'normal', color: 'var(--ink3)' }}>
                   {orchestrator.blockerTranslation.humanDetail}
                 </span>
               ) : null}
             </section>
           ) : null}
 
-          <section style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+          <section style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)' }}>
             <span>
               provas: {orchestrator.evidenceSeparation?.obraEvidenceRefCount ?? 0}
             </span>
@@ -213,7 +213,7 @@ function ObraSummaryCenter({
           </section>
         </>
       ) : (
-        <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 13, color: 'var(--ink3)', margin: 0 }}>
+        <p style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 13, color: 'var(--ink3)', margin: 0 }}>
           Obra criada · sem snapshot do Forge ainda. Escreva embaixo para dar a primeira intent.
         </p>
       )}

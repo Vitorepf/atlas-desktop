@@ -41,12 +41,12 @@ export function ForgeAsyncExecutionPanel({ execution, busy, onStart, onRefresh }
             {execution.runId ? <Row k="run" v={execution.runId} mono /> : null}
           </dl>
           {execution.error ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)' }}>
               {execution.error}
             </div>
           ) : null}
           {execution.command ? (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+            <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
               $ {execution.command}
             </div>
           ) : null}

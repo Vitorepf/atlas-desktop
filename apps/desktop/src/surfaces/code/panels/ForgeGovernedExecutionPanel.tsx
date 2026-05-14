@@ -56,7 +56,7 @@ export function ForgeGovernedExecutionPanel({ liveExecution }: ForgeGovernedExec
                   background: 'var(--cream)',
                   border: '1px solid var(--hair-soft)',
                   borderRadius: 2,
-                  fontFamily: 'var(--mono)',
+                  fontFamily: 'var(--cc-font-mono)',
                   fontSize: 10,
                   color: 'var(--ink)',
                   wordBreak: 'break-all',
@@ -69,7 +69,7 @@ export function ForgeGovernedExecutionPanel({ liveExecution }: ForgeGovernedExec
         ) : null}
 
         {governed.remainingBlockers.length > 0 ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
             blockers · {governed.remainingBlockers.join(' · ')}
           </div>
         ) : null}

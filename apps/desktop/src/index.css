@@ -76,7 +76,7 @@
     /* Paleta enterprise estendida — warm ivory mais calmo, menos amarelado. */
     --cc-bg: #f4ede0;              /* canvas principal, warm ivory levemente mais cinza */
     --cc-surface: #faf5e8;         /* superfície de painel/card */
-    --cc-surface-raised: #ffffff;  /* superfície elevada (popovers/diálogos) */
+    --cc-surface-raised: #fcfaf4;  /* superfície elevada (popovers/diálogos), warm off-white */
     --cc-surface-sunken: #ece4d3;  /* superfície recuada (sidebars, footers) */
 
     /* Hierarquia de texto · graphite warm em vez de marrom puro. */
@@ -202,6 +202,453 @@
     --cc-row-h: var(--cc-row-h-compact);
     --cc-control-h: var(--cc-control-h-compact);
   }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     Atlas Code · Premium Workbench Visual Comfort v1
+     12h workstation theme · warm graphite/charcoal, low-glare, premium feel.
+     Aplicado APENAS dentro do shell Atlas Code para preservar Cartografia
+     (que continua warm cream legacy).
+     ──────────────────────────────────────────────────────────────────── */
+  .atlas-shell.surface-code {
+    /* Legacy token bridge · Atlas Code roda em slate teal (Codex-inspired).
+       Redefinir cream/ink/bronze/hair propaga o tema para painels legacy
+       que ainda nao migraram para cc-*. Cartografia intocada. */
+    --cream: #1d2b34;
+    --cream-deep: #15212a;
+    --cream-paper: #243743;
+    --cream-canvas: #1d2b34;
+
+    --ink: #e9eef2;
+    --ink2: #cdd6dc;
+    --ink3: #8d9aa3;
+    --ink4: #5d6c75;
+
+    --bronze: #d4a85a;
+    --bronze-deep: #e6b966;
+    --bronze-soft: rgba(212, 168, 90, 0.32);
+    --bronze-veil: rgba(212, 168, 90, 0.10);
+
+    --hair: rgba(233, 238, 242, 0.10);
+    --hair-soft: rgba(233, 238, 242, 0.05);
+
+    --prussian: #7fa7c4;
+    --moss: #82b577;
+    --moss-veil: rgba(130, 181, 119, 0.12);
+    --moss-soft: rgba(130, 181, 119, 0.34);
+
+    --rec-red: #d05a52;
+    --rec-red-veil: rgba(208, 90, 82, 0.12);
+    --rec-red-soft: rgba(208, 90, 82, 0.34);
+
+    /* Superfícies escalonadas · slate teal premium (Codex-inspired). */
+    --cc-bg: #1d2b34;
+    --cc-surface: #243743;
+    --cc-surface-raised: #2d4351;
+    --cc-surface-sunken: #15212a;
+
+    /* Texto · escala high-contrast cool cream sobre slate. */
+    --cc-text-strong: #f0f4f7;
+    --cc-text: #d6dde2;
+    --cc-text-muted: #95a3ac;
+    --cc-text-faint: #677482;
+    --cc-text-disabled: #3d4b54;
+
+    /* Bordas · alpha sobre cream, low-glare slate. */
+    --cc-border-soft: rgba(233, 238, 242, 0.05);
+    --cc-border: rgba(233, 238, 242, 0.10);
+    --cc-border-strong: rgba(233, 238, 242, 0.20);
+
+    /* Accent · atlas gold burnished (parcimônia sobre slate). */
+    --cc-accent: #d4a85a;
+    --cc-accent-strong: #e6b966;
+    --cc-accent-veil: rgba(212, 168, 90, 0.12);
+    --cc-accent-border: rgba(212, 168, 90, 0.34);
+
+    /* Status colors tuned para slate · saturados o suficiente sem agressão. */
+    --cc-success: #82b577;
+    --cc-success-fg: #b9e4ac;
+    --cc-success-veil: rgba(130, 181, 119, 0.12);
+    --cc-success-border: rgba(130, 181, 119, 0.34);
+
+    --cc-warning: #e0ad5e;
+    --cc-warning-fg: #f0cf94;
+    --cc-warning-veil: rgba(224, 173, 94, 0.12);
+    --cc-warning-border: rgba(224, 173, 94, 0.34);
+
+    --cc-danger: #d05a52;
+    --cc-danger-fg: #e89a93;
+    --cc-danger-veil: rgba(208, 90, 82, 0.12);
+    --cc-danger-border: rgba(208, 90, 82, 0.34);
+
+    --cc-info: #7fa7c4;
+    --cc-info-fg: #b9d0e0;
+    --cc-info-veil: rgba(127, 167, 196, 0.12);
+    --cc-info-border: rgba(127, 167, 196, 0.34);
+
+    --cc-neutral: #95a3ac;
+    --cc-neutral-fg: #c0c9d0;
+    --cc-neutral-veil: rgba(149, 163, 172, 0.10);
+    --cc-neutral-border: rgba(149, 163, 172, 0.28);
+
+    /* Shadows deep slate. */
+    --cc-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.20);
+    --cc-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.26);
+    --cc-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.32);
+    --cc-shadow-lg: 0 14px 32px rgba(0, 0, 0, 0.38);
+
+    /* Focus ring · burnished gold sobre slate bg. */
+    --cc-focus-ring: 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(230, 185, 102, 0.55);
+
+    /* Status dots já mapeiam pros cores acima. */
+    --cc-dot-running: var(--cc-info);
+    --cc-dot-blocked: var(--cc-danger);
+    --cc-dot-review: var(--cc-warning);
+    --cc-dot-passed: var(--cc-success);
+    --cc-dot-unknown: var(--cc-neutral);
+
+    /* Body do shell. */
+    background: var(--cc-bg);
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    line-height: var(--cc-leading-normal);
+  }
+
+  /* Atlas Code -- Premium polish overrides (legacy compatibility)
+     Painels que ainda nao migraram para cc-* herdam refinamento via tracking
+     reduzido em uppercase, padding compactado, fontes sans, rows confortaveis. */
+  .atlas-shell.surface-code .panel-title,
+  .atlas-shell.surface-code .sess-section h3,
+  .atlas-shell.surface-code .ops-tab,
+  .atlas-shell.surface-code .cc-eyebrow {
+    font-family: var(--cc-font-sans);
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .panel-title {
+    font-size: 12.5px;
+    color: var(--cc-text);
+    font-weight: var(--cc-weight-semibold);
+    border-bottom-color: var(--cc-border-soft);
+    padding-bottom: 4px;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .atlas-shell.surface-code .panel-title .muted {
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--cc-text-faint);
+    font-weight: 400;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .sess-section h3 {
+    font-size: 11.5px;
+    color: var(--cc-text-muted);
+  }
+  .atlas-shell.surface-code .sess-section h3 .meta {
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+  }
+  .atlas-shell.surface-code .ops-tabs {
+    background: var(--cc-surface-sunken);
+    border-bottom-color: var(--cc-border-soft);
+    min-height: 0;
+  }
+  .atlas-shell.surface-code .ops-tab {
+    padding: 10px 6px;
+    font-size: 11.5px;
+    font-weight: var(--cc-weight-medium);
+    color: var(--cc-text-muted);
+    border-right-color: var(--cc-border-soft);
+    border-bottom-width: 2px;
+    line-height: 1.2;
+  }
+  .atlas-shell.surface-code .ops-tab:hover {
+    color: var(--cc-text);
+    background: var(--cc-accent-veil);
+  }
+  .atlas-shell.surface-code .ops-tab.on {
+    color: var(--cc-accent-strong);
+    background: var(--cc-bg);
+    border-bottom-color: var(--cc-accent);
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .ops-panel {
+    padding: 14px 16px 0;
+  }
+  .atlas-shell.surface-code .ops-section {
+    margin-bottom: 16px;
+  }
+
+  /* — Buttons enterprise: ink black → atlas gold premium. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    background: var(--cc-accent);
+    color: #15212a;
+    border-color: var(--cc-accent-strong);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:hover:not(:disabled) {
+    background: var(--cc-accent-strong);
+    color: #11202a;
+  }
+
+  /* — Left create-obra legacy override. */
+  .atlas-shell.surface-code .left-create-obra-btn {
+    background: var(--cc-accent);
+    color: #15212a;
+    border-color: var(--cc-accent-strong);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--cc-font-sans);
+    font-size: 13px;
+    font-weight: var(--cc-weight-semibold);
+    border-radius: var(--cc-radius-sm);
+  }
+  .atlas-shell.surface-code .left-create-obra-title {
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    color: var(--cc-text-muted);
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .left-create-obra-input {
+    background: var(--cc-surface-raised);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    font-family: var(--cc-font-sans);
+    font-size: 12.5px;
+    letter-spacing: 0;
+  }
+  .atlas-shell.surface-code .left-create-obra-actions button {
+    background: var(--cc-surface);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--cc-font-sans);
+    font-size: 11.5px;
+    font-weight: var(--cc-weight-medium);
+    border-radius: var(--cc-radius-sm);
+  }
+  .atlas-shell.surface-code .left-create-obra-actions button:first-child {
+    background: var(--cc-accent);
+    color: #15212a;
+    border-color: var(--cc-accent-strong);
+    font-weight: var(--cc-weight-semibold);
+  }
+
+  /* — Legacy `.pill` mapping. */
+  .atlas-shell.surface-code .pill {
+    background: var(--cc-neutral-veil);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+  }
+  .atlas-shell.surface-code .pill-primary {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+  }
+  .atlas-shell.surface-code .pill-ok {
+    background: var(--cc-success-veil);
+    color: var(--cc-success-fg);
+    border-color: var(--cc-success-border);
+  }
+  .atlas-shell.surface-code .pill-danger {
+    background: var(--cc-danger-veil);
+    color: var(--cc-danger-fg);
+    border-color: var(--cc-danger-border);
+  }
+
+  /* — Legacy `.obra-id` é claro demais sobre dark; recalibrar. */
+  .atlas-shell.surface-code .obra-id {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    font-family: var(--cc-font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .obra-objective {
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-weight: var(--cc-weight-medium);
+    font-size: 13.5px;
+    letter-spacing: 0;
+  }
+
+  /* — Status board legacy. */
+  .atlas-shell.surface-code .status-board {
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--cc-text-muted);
+    font-size: 12px;
+  }
+  .atlas-shell.surface-code .status-item .l {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .status-item .v { color: var(--cc-text); font-weight: var(--cc-weight-medium); }
+  .atlas-shell.surface-code .status-item .v.ok { color: var(--cc-success-fg); }
+  .atlas-shell.surface-code .status-item .v.warn { color: var(--cc-danger-fg); }
+
+  /* — Brand block premium. */
+  .atlas-shell.surface-code .brand strong {
+    letter-spacing: 0.02em;
+    color: var(--cc-text-strong);
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .brand .v {
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    background: var(--cc-accent-veil);
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .brand .sub {
+    color: var(--cc-text-muted);
+    font-style: normal;
+  }
+
+  /* — Surface switcher. */
+  .atlas-shell.surface-code .surface-switcher {
+    background: var(--cc-surface-sunken);
+    border-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-label {
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    letter-spacing: 0;
+    font-weight: var(--cc-weight-medium);
+  }
+  .atlas-shell.surface-code .surface-tab.on {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border);
+  }
+  .atlas-shell.surface-code .surface-tab.on .surface-tab-label {
+    color: var(--cc-text-strong);
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+  }
+  .atlas-shell.surface-code .surface-tab.on .surface-tab-shortcut {
+    color: var(--cc-accent);
+  }
+
+  /* — folio (live indicator). */
+  .atlas-shell.surface-code .folio {
+    color: var(--cc-text-muted);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+    font-size: 10.5px;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .folio .live { background: var(--cc-success); }
+
+  /* — Right rail body. */
+  .atlas-shell.surface-code .right-rail {
+    background: var(--cc-bg);
+    border-left-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .left-rail {
+    background: var(--cc-surface-sunken);
+    border-right-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .main-stage {
+    background: var(--cc-bg);
+  }
+  .atlas-shell.surface-code .conv-thread { background: transparent; }
+
+  /* — sdd-mini premium. */
+  .atlas-shell.surface-code .sdd-mini {
+    background: var(--cc-surface);
+    border-color: var(--cc-border-soft);
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11.5px;
+  }
+  .atlas-shell.surface-code .sdd-mini .label {
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage { color: var(--cc-text-muted); }
+  .atlas-shell.surface-code .sdd-mini .stage.done { color: var(--cc-success-fg); }
+  .atlas-shell.surface-code .sdd-mini .stage.now { color: var(--cc-accent-strong); }
+  .atlas-shell.surface-code .sdd-mini .stage.todo { color: var(--cc-text-faint); }
+  .atlas-shell.surface-code .sdd-mini .meta { color: var(--cc-text-faint); }
+  .atlas-shell.surface-code .sdd-mini .meta .v { color: var(--cc-text); }
+
+  /* — Composer premium dark. */
+  .atlas-shell.surface-code .composer {
+    background: var(--cc-surface-sunken);
+    border-top-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .composer textarea {
+    background: var(--cc-surface-raised);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    font-style: normal;
+    font-family: var(--cc-font-sans);
+  }
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    color: var(--cc-text-faint);
+  }
+  .atlas-shell.surface-code .send-btn {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    font-style: normal;
+    font-family: var(--cc-font-sans);
+  }
+  .atlas-shell.surface-code .send-btn:hover {
+    background: var(--cc-accent);
+    color: #15212a;
+  }
+  .atlas-shell.surface-code .composer-meta {
+    color: var(--cc-text-faint);
+    letter-spacing: 0;
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .composer-meta kbd {
+    background: var(--cc-surface);
+    color: var(--cc-text-muted);
+    border-color: var(--cc-border-soft);
+    font-family: var(--cc-font-mono);
+    letter-spacing: 0;
+  }
+
+  /* — Generic legacy "section title" / "label" forms. */
+  .atlas-shell.surface-code [style*="text-transform: uppercase"] {
+    letter-spacing: 0.04em !important;
+  }
+
+  /* — Conversation messages premium dark. */
+  .atlas-shell.surface-code .conv-msg .who { color: var(--cc-text-muted); font-family: var(--cc-font-sans); letter-spacing: 0; text-transform: none; font-weight: var(--cc-weight-semibold); font-size: 11px; }
+  .atlas-shell.surface-code .conv-msg .who .time { color: var(--cc-text-faint); font-family: var(--cc-font-mono); }
+  .atlas-shell.surface-code .conv-msg.you .who { color: var(--cc-info-fg); }
+  .atlas-shell.surface-code .conv-msg.you .body { font-family: var(--cc-font-sans); font-style: normal; color: var(--cc-text); border-left-color: var(--cc-info); font-size: 14px; }
+  .atlas-shell.surface-code .conv-msg.atlas .body { font-family: var(--cc-font-sans); color: var(--cc-text); font-size: 13.5px; }
 }
 
 @layer base {
@@ -296,8 +743,14 @@
     align-items: center;
     padding: 0 var(--cc-space-6);
     border-bottom: 1px solid var(--cc-border-soft);
-    background: var(--cc-surface-raised);
+    background: var(--cc-surface-sunken);
+    color: var(--cc-text);
     box-shadow: var(--cc-shadow-xs);
+  }
+  /* Cartografia mantem a topbar warm cream legacy. */
+  .atlas-shell.surface-cartografia .topbar {
+    background: var(--cream-paper);
+    color: var(--ink);
   }
   .topbar-spacer {
     min-width: 0;
@@ -433,8 +886,8 @@
 
   .terminal-dock {
     grid-area: terminal;
-    background: var(--cream-paper);
-    border-top: 1px solid var(--hair);
+    background: #11202a;
+    border-top: 1px solid var(--cc-border-soft);
     display: grid;
     grid-template-rows: 10px auto auto minmax(0, 1fr) auto;
     grid-template-areas:
@@ -454,9 +907,9 @@
     min-height: 120px;
     max-height: calc(100vh - 214px);
     z-index: 3;
-    border-top: 1px solid var(--bronze-soft);
-    border-left: 1px solid var(--bronze-soft);
-    box-shadow: 0 -10px 24px rgba(68, 49, 22, 0.08);
+    border-top: 1px solid var(--cc-border-soft);
+    border-left: 1px solid var(--cc-border-soft);
+    box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.36);
   }
 
   .code-column-resizer {
@@ -528,39 +981,39 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 @layer components {
-  /* — TopBar */
+  /* — TopBar (premium workbench) */
   .brand { display: flex; align-items: baseline; gap: 10px; }
   .brand strong {
     font-family: var(--cc-font-sans);
     font-weight: var(--cc-weight-semibold);
     font-size: 14px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     color: var(--cc-text-strong);
     text-transform: none;
   }
   .brand .v {
-    font-family: var(--mono);
-    font-size: 8.5px;
-    letter-spacing: 1.4px;
-    color: var(--bronze);
-    padding: 1px 5px;
-    border: 1px solid var(--bronze-soft);
-    border-radius: 2px;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: var(--cc-tracking-data);
+    color: var(--cc-accent);
+    padding: 1px 6px;
+    border: 1px solid var(--cc-accent-border);
+    border-radius: var(--cc-radius-xs);
     text-transform: uppercase;
   }
   .brand .sub {
-    font-style: italic;
+    font-style: normal;
     font-size: 12px;
-    color: var(--ink2);
+    color: var(--cc-text-muted);
   }
   .brand .bridge-mode {
     margin-left: 6px;
     text-transform: lowercase;
-    letter-spacing: 1px;
+    letter-spacing: var(--cc-tracking-data);
   }
-  .brand .bridge-mode-tauri { color: var(--moss); border-color: var(--moss-soft); background: var(--moss-veil); }
-  .brand .bridge-mode-http  { color: var(--prussian); border-color: rgba(43,62,84,.25); background: rgba(43,62,84,.06); }
-  .brand .bridge-mode-offline  { color: var(--ink3); border-color: var(--hair); background: transparent; }
+  .brand .bridge-mode-tauri    { color: var(--cc-success-fg); border-color: var(--cc-success-border); background: var(--cc-success-veil); }
+  .brand .bridge-mode-http     { color: var(--cc-info-fg);    border-color: var(--cc-info-border);    background: var(--cc-info-veil); }
+  .brand .bridge-mode-offline  { color: var(--cc-text-faint); border-color: var(--cc-border-soft);    background: transparent; }
 
   /* — Surface switcher · Code | Cartografia (Visual Ergonomics v1) */
   .surface-switcher {
@@ -802,7 +1255,7 @@
     color: var(--ink2);
   }
 
-  /* — ObraBar (Visual Ergonomics v1) */
+  /* — ObraBar (premium workbench) */
   .obra-id {
     padding: 2px 8px;
     background: var(--cc-accent-veil);
@@ -831,6 +1284,21 @@
     display: flex;
     gap: 14px;
     align-items: baseline;
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text-muted);
+    text-transform: none;
+  }
+  .status-item { display: flex; gap: 5px; align-items: baseline; }
+  .status-item .l { color: var(--cc-text-faint); font-size: 10px; font-family: var(--cc-font-mono); letter-spacing: var(--cc-tracking-data); text-transform: uppercase; }
+  .status-item .v { color: var(--cc-text); font-weight: var(--cc-weight-medium); }
+  .status-item .v.ok { color: var(--cc-success-fg); }
+  .status-item .v.warn { color: var(--cc-danger-fg); }
+  .status-board {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 1.3px;
@@ -843,54 +1311,55 @@
   .status-item .v.ok { color: var(--moss); }
   .status-item .v.warn { color: var(--rec-red); }
 
-  /* — LeftRail · sessions */
+  /* — LeftRail · legacy sessions (premium workbench) */
   .sess-section { margin-bottom: 14px; }
   .sess-section h3 {
     margin: 0 0 6px;
     padding-bottom: 4px;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 1.6px;
-    color: var(--bronze);
-    text-transform: uppercase;
-    font-weight: 400;
-    border-bottom: 1px solid var(--hair);
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    font-weight: var(--cc-weight-semibold);
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text-muted);
+    text-transform: none;
+    border-bottom: 1px solid var(--cc-border-soft);
     display: flex;
     justify-content: space-between;
   }
   .sess-section h3 .meta {
-    font-size: 8px;
-    color: var(--ink3);
-    letter-spacing: 1px;
+    font-size: 10px;
+    color: var(--cc-text-faint);
+    letter-spacing: var(--cc-tracking-data);
+    font-family: var(--cc-font-mono);
   }
   .sess-entry {
     display: grid;
     gap: 3px;
     padding: 8px 0 9px;
-    border-bottom: 1px solid var(--hair-soft);
+    border-bottom: 1px solid var(--cc-border-soft);
     transition: padding-left 180ms var(--ease-i);
   }
   .sess-entry:last-child { border-bottom: 0; }
   .sess-entry.active {
-    border-left: 1.5px solid var(--bronze);
-    padding-left: 7px;
-    margin-left: -7px;
-    background: var(--bronze-veil);
-    padding-right: 7px;
+    border-left: 2px solid var(--cc-accent);
+    padding-left: 8px;
+    margin-left: -8px;
+    background: var(--cc-accent-veil);
+    padding-right: 8px;
   }
   .sess-entry .meta {
-    font-family: var(--mono);
-    font-size: 8px;
-    letter-spacing: 1px;
-    color: var(--ink3);
-    text-transform: uppercase;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: var(--cc-tracking-data);
+    color: var(--cc-text-faint);
+    text-transform: none;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
   }
-  .sess-entry .meta .origin { color: var(--bronze); font-weight: 500; }
-  .sess-entry .title { font-size: 12.5px; color: var(--ink); line-height: 1.3; }
-  .sess-entry .workspace { font-style: italic; font-size: 11px; color: var(--ink2); }
+  .sess-entry .meta .origin { color: var(--cc-accent); font-weight: var(--cc-weight-medium); }
+  .sess-entry .title { font-family: var(--cc-font-sans); font-size: 12.5px; color: var(--cc-text); line-height: var(--cc-leading-snug); }
+  .sess-entry .workspace { font-family: var(--cc-font-sans); font-style: normal; font-size: 11px; color: var(--cc-text-muted); }
 
   /* — Main Stage · conversation thread */
   .conv-thread {
@@ -1102,15 +1571,16 @@
     margin: 0 0 var(--cc-space-2);
     padding-bottom: var(--cc-space-1);
     font-family: var(--cc-font-sans);
-    font-size: var(--cc-text-caption);
+    font-size: 12px;
     font-weight: var(--cc-weight-semibold);
     letter-spacing: var(--cc-tracking-normal);
-    color: var(--cc-text-muted);
+    color: var(--cc-text);
     text-transform: none;
     border-bottom: 1px solid var(--cc-border-soft);
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    line-height: var(--cc-leading-snug);
   }
   .panel-title .muted {
     color: var(--cc-text-faint);
@@ -1507,14 +1977,14 @@
     height: 100%;
     width: 100%;
     font-family: 'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace !important;
-    background: var(--cream-paper) !important;
-    color: var(--ink) !important;
+    background: #11202a !important;
+    color: var(--cc-text-strong) !important;
   }
   .term-body .xterm-viewport {
-    background-color: var(--cream-paper) !important;
+    background-color: #11202a !important;
   }
   .term-body .xterm-screen {
-    background-color: var(--cream-paper) !important;
+    background-color: #11202a !important;
   }
   .term-body .xterm-helpers,
   .term-body .xterm-rows,
@@ -1816,12 +2286,12 @@
   }
   .cc-eyebrow {
     display: inline-block;
-    font-family: var(--cc-font-mono);
-    font-size: var(--cc-text-label);
-    font-weight: var(--cc-weight-medium);
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    font-weight: var(--cc-weight-semibold);
     color: var(--cc-text-faint);
-    letter-spacing: var(--cc-tracking-label);
-    text-transform: uppercase;
+    letter-spacing: var(--cc-tracking-normal);
+    text-transform: none;
   }
 
   /* — Status dots / badges enterprise */
@@ -1841,6 +2311,11 @@
   .cc-status-dot[data-status='proven']  { background: var(--cc-dot-passed); }
   .cc-status-dot[data-status='unknown'] { background: var(--cc-dot-unknown); }
   .cc-status-dot[data-status='ready']   { background: var(--cc-accent); }
+  /* Premium · sem animação halo (cafona). Dot estático calmo, status é por cor. */
+  .cc-status-dot[data-pulse='true'] {
+    box-shadow: none;
+    animation: none;
+  }
 
   .cc-badge {
     display: inline-flex;
@@ -2071,16 +2546,16 @@
   unlayered rules beat layered Atlas rules. This block is the final authority
   for the Atlas terminal surface.
 */
-.terminal-dock,
-.terminal-dock .term-tabs,
-.terminal-dock .term-body,
-.terminal-dock .term-status,
-.terminal-dock .xterm,
-.terminal-dock .xterm-viewport,
-.terminal-dock .xterm-screen {
-  background: var(--cream-paper) !important;
-  background-color: var(--cream-paper) !important;
-  color: var(--ink) !important;
+.atlas-shell.surface-code .terminal-dock,
+.atlas-shell.surface-code .terminal-dock .term-tabs,
+.atlas-shell.surface-code .terminal-dock .term-body,
+.atlas-shell.surface-code .terminal-dock .term-status,
+.atlas-shell.surface-code .terminal-dock .xterm,
+.atlas-shell.surface-code .terminal-dock .xterm-viewport,
+.atlas-shell.surface-code .terminal-dock .xterm-screen {
+  background: #11202a !important;
+  background-color: #11202a !important;
+  color: var(--cc-text-strong) !important;
 }
 
 .terminal-dock .term-body {
@@ -2089,12 +2564,12 @@
   line-height: 1.22;
 }
 
-.terminal-dock .term-body::before {
+.atlas-shell.surface-code .terminal-dock .term-body::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--cream-paper);
+  background: #11202a;
 }
 
 .terminal-dock .term-body.has-error::after {
@@ -2125,9 +2600,9 @@
   background-color: transparent !important;
 }
 
-.terminal-dock .xterm-screen canvas {
-  background: var(--cream-paper) !important;
-  background-color: var(--cream-paper) !important;
+.atlas-shell.surface-code .terminal-dock .xterm-screen canvas {
+  background: #11202a !important;
+  background-color: #11202a !important;
 }
 
 .terminal-dock .xterm .xterm-rows {

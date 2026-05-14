@@ -35,7 +35,7 @@ export function ContextPackPanel({ liveExecution }: ContextPackPanelProps) {
         }}
       >
         {contextPack.contextPackHash ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
             hash · {contextPack.contextPackHash}
           </div>
         ) : null}
@@ -58,19 +58,19 @@ export function ContextPackPanel({ liveExecution }: ContextPackPanelProps) {
                   alignItems: 'baseline',
                 }}
               >
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)' }}>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--bronze)' }}>
                   {ref.rank}
                 </span>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-all' }}>
+                <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-all' }}>
                   {ref.path}
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--mono)',
+                    fontFamily: 'var(--cc-font-mono)',
                     fontSize: 8,
                     letterSpacing: '1px',
                     color: ref.evidenceMarker === 'present' ? 'var(--moss)' : 'var(--rec-red, #8a3025)',
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                   }}
                 >
                   {ref.kind} · {ref.evidenceMarker}

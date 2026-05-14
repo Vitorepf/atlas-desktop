@@ -78,6 +78,7 @@ export function useAtomNotePreview({ atom, enabled }: UseAtomNotePreviewOptions)
 
   useEffect(() => {
     if (!enabled || !atom) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreview(null)
       return
     }

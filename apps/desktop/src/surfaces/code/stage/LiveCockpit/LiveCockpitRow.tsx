@@ -73,7 +73,7 @@ export function LiveCockpitRow({
   }
 
   const glyphStyle: CSSProperties = {
-    fontFamily: 'var(--mono)',
+    fontFamily: 'var(--cc-font-mono)',
     fontSize: 11,
     color: tone.color,
     textAlign: 'center',
@@ -81,15 +81,15 @@ export function LiveCockpitRow({
   }
 
   const labelStyle: CSSProperties = {
-    fontFamily: 'var(--mono)',
+    fontFamily: 'var(--cc-font-mono)',
     fontSize: 9,
-    letterSpacing: '1.3px',
+    letterSpacing: 0,
     color: 'var(--bronze)',
-    textTransform: 'uppercase',
+    textTransform: 'none',
   }
 
   const detailStyle: CSSProperties = {
-    fontFamily: 'var(--serif)',
+    fontFamily: 'var(--cc-font-sans)',
     fontSize: 13,
     color: DETAIL_TONE[state.status],
     fontStyle: tone.italic ? 'italic' : 'normal',
@@ -100,7 +100,7 @@ export function LiveCockpitRow({
   }
 
   const durationStyle: CSSProperties = {
-    fontFamily: 'var(--mono)',
+    fontFamily: 'var(--cc-font-mono)',
     fontSize: 10,
     color: 'var(--ink3)',
     fontVariantNumeric: 'tabular-nums',

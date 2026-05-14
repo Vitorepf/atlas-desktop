@@ -178,14 +178,14 @@ function ReviewGatingHeader({
         }}
         role="status"
       >
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginBottom: 2 }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, textTransform: 'none', marginBottom: 2 }}>
           Decisão humana pendente
         </div>
-        <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5 }}>
+        <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 11.5 }}>
           Revise o resultado e aprove ou rejeite abaixo. Aprovar libera completion;
           rejeitar abre reparo; rollback reverte promoção sob governança.
         </div>
-        <div style={{ marginTop: 4, fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+        <div style={{ marginTop: 4, fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)' }}>
           approveButtonVisible={String(approveButtonVisible)} · rejectButtonVisible={String(rejectButtonVisible)} · rollbackButtonVisible={String(rollbackButtonVisible)}
         </div>
       </div>
@@ -202,10 +202,10 @@ function ReviewGatingHeader({
       }}
       role="status"
     >
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginBottom: 2 }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, textTransform: 'none', marginBottom: 2 }}>
         Aguardando resultado revisável
       </div>
-      <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic' }}>
+      <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 11.5, fontStyle: 'normal' }}>
         Sem revisão real pendente. Approve/Reject/Rollback ficam ocultos até o Forge
         emitir review packet — Atlas nunca infere completion no frontend.
       </div>
@@ -228,7 +228,7 @@ function GovernanceGateRow({ run }: { run: ProgrammingGateRunSnapshot }) {
         alignItems: 'baseline',
       }}
     >
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: tone.color }}>{tone.glyph}</span>
+      <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 11, color: tone.color }}>{tone.glyph}</span>
       <div style={{ display: 'grid', gap: 2 }}>
         <span style={{ fontSize: 11.5, color: 'var(--ink)' }}>
           {run.gateName}
@@ -236,11 +236,11 @@ function GovernanceGateRow({ run }: { run: ProgrammingGateRunSnapshot }) {
             <span
               style={{
                 marginLeft: 6,
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 8,
-                letterSpacing: '1.1px',
+                letterSpacing: 0,
                 color: 'var(--rec-red)',
-                textTransform: 'uppercase',
+                textTransform: 'none',
               }}
             >
               blocking
@@ -255,7 +255,7 @@ function GovernanceGateRow({ run }: { run: ProgrammingGateRunSnapshot }) {
             style={{
               fontSize: 10,
               color: 'var(--bronze)',
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
             }}
           >
             waiver · {run.waiverReason}
@@ -264,11 +264,11 @@ function GovernanceGateRow({ run }: { run: ProgrammingGateRunSnapshot }) {
       </div>
       <span
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8,
-          letterSpacing: '1.1px',
+          letterSpacing: 0,
           color: tone.color,
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {run.status}
@@ -356,15 +356,15 @@ function LegacyGateRow({
         alignItems: 'baseline',
       }}
     >
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: tone.color }}>{tone.glyph}</span>
+      <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 11, color: tone.color }}>{tone.glyph}</span>
       <span style={{ fontSize: 11.5, color: 'var(--ink)' }}>{gate.name}</span>
       <span
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8,
-          letterSpacing: '1.1px',
+          letterSpacing: 0,
           color: tone.color,
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {gate.state}
@@ -375,10 +375,10 @@ function LegacyGateRow({
         disabled={busy}
         style={{
           padding: '1px 6px',
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8,
           letterSpacing: '1px',
-          textTransform: 'uppercase',
+          textTransform: 'none',
           color: 'var(--bronze)',
           border: '1px solid var(--bronze-soft)',
           borderRadius: 2,

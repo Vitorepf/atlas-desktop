@@ -64,23 +64,23 @@ export function ForgeWorkspaceBanner({
         >
           <div
             style={{
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 8.5,
-              letterSpacing: '1.3px',
+              letterSpacing: 0,
               color: 'var(--rec-red, #8a3025)',
-              textTransform: 'uppercase',
+              textTransform: 'none',
             }}
           >
             forge workspace blocker · obra_required
           </div>
-          <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12.5, color: 'var(--ink2)', lineHeight: 1.4 }}>
+          <div style={{ fontFamily: 'var(--cc-font-sans)', fontStyle: 'normal', fontSize: 12.5, color: 'var(--ink2)', lineHeight: 1.4 }}>
             Atlas Code SCOR-1 opera apenas em Forge e exige Obra vinculada. Sem Obra, o ciclo
             Atlas Code → Obra → Forge Workspace → programming.forge fica bloqueado.
           </div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink3)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink3)' }}>
             schema · atlas.forge_workspace_blocker.v1 · requires_obra=true
           </div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink3)', wordBreak: 'break-all' }}>
             $ {liveCommand}
           </div>
         </div>
@@ -102,33 +102,33 @@ export function ForgeWorkspaceBanner({
       >
         <div
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 8.5,
-            letterSpacing: '1.3px',
+            letterSpacing: 0,
             color: 'var(--bronze)',
-            textTransform: 'uppercase',
+            textTransform: 'none',
           }}
         >
           forge workspace · obras_shared_workspace · forge_workspace
         </div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10.5, color: 'var(--ink)', wordBreak: 'break-all' }}>
           obra · {obraId}
         </div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
           flow · programming.forge · surface · atlas_code
         </div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
           {receiptStatus} · gate runs · {gateRunCount} · evidence refs · {evidenceCount}
         </div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
           live · {liveStatus} · context · {contextPackStatus} · repair · {repairStatus}
         </div>
         {liveExecution ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
             stages · {liveExecution.stageCount ?? 0} · ledger · {liveExecution.ledgerEventCount ?? 0} · blockers · {liveExecution.remainingBlockers.length}
           </div>
         ) : null}
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--bronze)', wordBreak: 'break-all' }}>
+        <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--bronze)', wordBreak: 'break-all' }}>
           $ {liveCommand}
         </div>
         <button
@@ -140,10 +140,10 @@ export function ForgeWorkspaceBanner({
             border: '1px solid var(--bronze)',
             background: busy ? 'var(--paper)' : 'var(--ink)',
             color: busy ? 'var(--ink4)' : 'var(--paper)',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 9,
-            letterSpacing: '1.2px',
-            textTransform: 'uppercase',
+            letterSpacing: 0,
+            textTransform: 'none',
             padding: '8px 10px',
             cursor: busy ? 'default' : 'pointer',
           }}

@@ -63,7 +63,7 @@ export function ForgeEvidencePackPanel({ liveExecution }: ForgeEvidencePackPanel
         </div>
 
         {pack.remainingBlockers.length > 0 ? (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
+          <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--rec-red, #8a3025)', wordBreak: 'break-word' }}>
             blockers | {pack.remainingBlockers.join(' | ')}
           </div>
         ) : null}
@@ -77,16 +77,16 @@ function MonoBlock({ label, value }: { label: string; value: string }) {
     <div style={{ display: 'grid', gap: 2 }}>
       <span
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8,
           letterSpacing: '1px',
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {label}
       </span>
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, color: 'var(--ink3)', wordBreak: 'break-all' }}>
         {value}
       </div>
     </div>
@@ -98,21 +98,21 @@ function ListBlock({ label, empty, items }: { label: string; empty: string; item
     <div style={{ display: 'grid', gap: 3 }}>
       <span
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8,
           letterSpacing: '1px',
           color: 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {label}
       </span>
       {items.length === 0 ? (
-        <span style={{ fontSize: 10.5, color: 'var(--ink3)', fontFamily: 'var(--mono)' }}>{empty}</span>
+        <span style={{ fontSize: 10.5, color: 'var(--ink3)', fontFamily: 'var(--cc-font-mono)' }}>{empty}</span>
       ) : (
         <div style={{ display: 'grid', gap: 2, maxHeight: 120, overflow: 'auto' }}>
           {items.map((item) => (
-            <span key={item} style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--mono)', wordBreak: 'break-all' }}>
+            <span key={item} style={{ fontSize: 10.5, color: 'var(--ink2)', fontFamily: 'var(--cc-font-mono)', wordBreak: 'break-all' }}>
               {item}
             </span>
           ))}
@@ -125,7 +125,7 @@ function ListBlock({ label, empty, items }: { label: string; empty: string; item
 function HashLine({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--mono)', wordBreak: 'break-all' }}>
+    <div style={{ fontSize: 9.5, color: 'var(--ink3)', fontFamily: 'var(--cc-font-mono)', wordBreak: 'break-all' }}>
       <span style={{ color: 'var(--bronze)' }}>{label} hash | </span>
       {value}
     </div>

@@ -25,6 +25,16 @@ import type {
   AtlasSelfImprovementActivationAcceptPayload,
   AtlasSelfImprovementActivationRejectPayload,
   AtlasSelfImprovementActivationCreatePayload,
+  AtlasSelfImprovementProposalBacklog,
+  AtlasSelfImprovementProposalBacklogItem,
+  AtlasSelfImprovementProposalBacklogFilters,
+  AtlasSelfImprovementProposalCreatePayload,
+  AtlasSelfImprovementProposalPrioritizePayload,
+  AtlasSelfImprovementClosedLoop,
+  AtlasSelfImprovementResultLedger,
+  AtlasSelfImprovementResultEntry,
+  AtlasSelfImprovementNextCycleRecommendation,
+  AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
   BootSnapshot,
   CoreStatus,
@@ -64,6 +74,10 @@ interface RightRailProps {
   selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
   selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
   selfImprovementActivationCockpit: AtlasSelfImprovementActivationCockpit | null
+  selfImprovementProposalBacklog: AtlasSelfImprovementProposalBacklog | null
+  selfImprovementClosedLoop: AtlasSelfImprovementClosedLoop | null
+  selfImprovementResultLedger: AtlasSelfImprovementResultLedger | null
+  selfImprovementNextCycle: AtlasSelfImprovementNextCycleRecommendation | null
   forgeRunHistoryReplay: WorkStateSnapshot['forgeRunHistoryReplay']
   forgeReview: WorkStateSnapshot['forgeReview']
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
@@ -102,6 +116,14 @@ interface RightRailProps {
   onCreateSelfImprovementForgeActivation: (payload: AtlasSelfImprovementActivationCreatePayload) => Promise<AtlasSelfImprovementActivationDetail | null>
   onAcceptSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationAcceptPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
   onRejectSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationRejectPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
+  onRefreshSelfImprovementProposalBacklog: (filters?: AtlasSelfImprovementProposalBacklogFilters) => Promise<void>
+  onCreateSelfImprovementProposal: (payload: AtlasSelfImprovementProposalCreatePayload) => Promise<AtlasSelfImprovementProposalBacklogItem | null>
+  onEvaluateSelfImprovementProposal: (proposalId: string) => Promise<AtlasSelfImprovementProposalBacklogItem | null>
+  onPrioritizeSelfImprovementProposal: (proposalId: string, payload?: AtlasSelfImprovementProposalPrioritizePayload) => Promise<AtlasSelfImprovementProposalBacklogItem | null>
+  onRefreshSelfImprovementClosedLoop: (proposalId: string) => Promise<void>
+  onMeasureSelfImprovementResult: (proposalId: string, payload: AtlasSelfImprovementMeasureResultPayload) => Promise<AtlasSelfImprovementResultEntry | null>
+  onRefreshSelfImprovementResultLedger: (filters?: { grade?: string; proposalId?: string }) => Promise<void>
+  onRefreshSelfImprovementNextCycle: (opts?: { proposalId?: string; latest?: boolean }) => Promise<void>
   onStartForgeLiveExecutionAsync: () => Promise<void>
   onRefreshForgeLiveExecutionAsync: () => Promise<void>
   onInspectForgeRunHistory: (historyId: string) => Promise<void>

@@ -1,4 +1,4 @@
-import { AtlasSelfImprovementActivationCockpitPanel } from './AtlasSelfImprovementActivationCockpitPanel'
+import { AtlasSelfImprovementLevel7Panel } from './AtlasSelfImprovementLevel7Panel'
 import { EvidencePanel } from './EvidencePanel'
 import { ForgeAdvancedPanel } from './ForgeAdvancedPanel'
 import { ForgeHumanPanel } from './ForgeHumanPanel'
@@ -21,7 +21,7 @@ const PANELS: RightRailPanelDefinition[] = [
     id: 'self_improvement',
     label: 'Self-Improvement',
     priority: 0,
-    render: (ctx: RightRailContext) => <AtlasSelfImprovementActivationCockpitPanel {...ctx} />,
+    render: (ctx: RightRailContext) => <AtlasSelfImprovementLevel7Panel {...ctx} />,
   },
   {
     id: 'forge',

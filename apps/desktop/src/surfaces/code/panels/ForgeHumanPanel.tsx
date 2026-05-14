@@ -1,61 +1,29 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { PanelTitle } from '@atlas/ui'
-import type { AtlasCodeForgeUxOrchestrator } from '@atlas/domain'
 import type { RightRailContext } from './rightRailTypes'
 import { btnPrimary, EmptyText, Row } from './RightRailPrimitives'
-
-const TONE_BLOCKED = { fg: 'var(--rec-red, #8a3025)', bg: 'var(--rec-red-veil, rgba(138,48,37,0.08))', border: 'var(--rec-red, #8a3025)' }
-const TONE_WAITING = { fg: 'var(--bronze)', bg: 'var(--bronze-veil)', border: 'var(--bronze-soft)' }
-const TONE_GO = { fg: 'var(--moss)', bg: 'var(--moss-veil)', border: 'var(--moss-soft)' }
-const TONE_NEUTRAL = { fg: 'var(--ink)', bg: 'var(--cream)', border: 'var(--hair-soft)' }
-const TONE_MUTED = { fg: 'var(--ink3)', bg: 'var(--cream)', border: 'var(--hair-soft)' }
-
-const STATE_TONE: Record<string, { fg: string; bg: string; border: string }> = {
-  no_obra: TONE_MUTED,
-  idle: TONE_MUTED,
-  ready_to_define: TONE_NEUTRAL,
-  intake_required: TONE_WAITING,
-  intake_ready: TONE_NEUTRAL,
-  ready_to_prepare: TONE_NEUTRAL,
-  prepared: TONE_GO,
-  ready_to_execute: TONE_GO,
-  running: { fg: 'var(--ink2)', bg: 'var(--cream)', border: 'var(--hair-soft)' },
-  waiting_worker: TONE_WAITING,
-  waiting_provider_confirmation: TONE_WAITING,
-  waiting_budget_confirmation: TONE_WAITING,
-  waiting_runtime_dispatch_confirmation: TONE_WAITING,
-  waiting_review: TONE_WAITING,
-  repair_required: TONE_WAITING,
-  blocked: TONE_BLOCKED,
-  blocked_scope: TONE_BLOCKED,
-  blocked_definition: TONE_WAITING,
-  blocked_provider: TONE_BLOCKED,
-  blocked_driver: TONE_BLOCKED,
-  blocked_capacity: TONE_BLOCKED,
-  blocked_governance: TONE_BLOCKED,
-  completed: TONE_GO,
-  failed: TONE_BLOCKED,
-  rejected: TONE_BLOCKED,
-  rolled_back: TONE_WAITING,
-}
+import { StatusBadge } from '../workbench/StatusBadge'
+import type { WorkbenchTone } from '../workbench/tokens'
 
 /**
- * Atlas Code Forge Human-First Panel.
+ * Atlas Code Forge Human-First Panel · premium workbench v1.
  *
- * The single human-facing entry point for the Forge runtime. Reads the
- * canonical UX Orchestrator state and exposes:
- *   - one large primary action (no technical jargon);
- *   - safety strip (provider call, tokens, completion claim, review gate);
- *   - checklist (Obra → Intake → Spec/Plan → Provider → Execução → Revisão → Provas);
- *   - blocker card when the runtime is blocked honestly;
- *   - advanced details collapsed under a `<details>` tag.
- *
- * NEVER bypasses Atlas Decide / Provider / Review / Evidence. The primary
- * action only dispatches the safe useBridge action that maps to the current
- * state — provider real exige confirmação explícita.
- *
- * Doc: docs/engineering-knowledge-base/atlas-code-forge-human-first-ux-orchestrator-v1.md
+ * Tipografia sans 12h-friendly, tokens dark warm, status colors semânticos
+ * (success/warning/danger/info). Diagnóstico técnico colapsado. NUNCA chama
+ * provider externo, NUNCA promove completion claim.
  */
+
+function toneFor(state: string): WorkbenchTone {
+  if (state.startsWith('blocked')) return 'danger'
+  if (state === 'failed' || state === 'rejected') return 'danger'
+  if (state.startsWith('waiting')) return 'warning'
+  if (state === 'repair_required' || state === 'rolled_back') return 'warning'
+  if (state === 'completed' || state === 'prepared' || state === 'ready_to_execute') return 'success'
+  if (state === 'running') return 'info'
+  if (state === 'ready_to_prepare' || state === 'intake_ready') return 'accent'
+  return 'neutral'
+}
+
 export function ForgeHumanPanel(ctx: RightRailContext) {
   const {
     obra,
@@ -71,10 +39,10 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
   const [error, setError] = useState<string | null>(null)
 
   const orchestrator = forgeUxOrchestrator
-  const tone = STATE_TONE[orchestrator?.state ?? 'no_obra'] ?? STATE_TONE.no_obra
+  const tone = orchestrator ? toneFor(orchestrator.state) : 'neutral'
 
   useEffect(() => {
-    if (obra?.id && ! orchestrator) {
+    if (obra?.id && !orchestrator) {
       void onRefreshForgeUxOrchestrator().catch(() => undefined)
     }
   }, [obra?.id, orchestrator, onRefreshForgeUxOrchestrator])
@@ -82,14 +50,8 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
   const blockerTranslation = orchestrator?.blockerTranslation ?? null
   const completionGating = orchestrator?.completionGating ?? null
 
-  /**
-   * Resolve the primary CTA. When a blocker translation exists with its own
-   * suggested action (e.g. "Corrigir escopo" for blocked_scope), it overrides
-   * the orchestrator's default primary action so the human always sees the
-   * correct next safe button.
-   */
   const primaryAction = useMemo(() => {
-    if (! orchestrator) return null
+    if (!orchestrator) return null
     const suggested = blockerTranslation?.suggestedActionLabel ?? null
     const suggestedKind = blockerTranslation?.suggestedActionKind ?? null
     return {
@@ -101,7 +63,7 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
   }, [orchestrator, blockerTranslation, busy, pending])
 
   const handlePrimary = () => {
-    if (! orchestrator || ! primaryAction || ! primaryAction.enabled) return
+    if (!orchestrator || !primaryAction || !primaryAction.enabled) return
     setError(null)
     startTransition(() => {
       const promise = (async () => {
@@ -123,9 +85,6 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
           case 'confirm_provider':
           case 'confirm_budget':
           case 'confirm_runtime_dispatch':
-            // Non-mutating CTAs: just refresh state so the panel reflects the
-            // user's manual navigation in other tabs. Provider real ainda
-            // exige caminho explícito em Avançado > Provider Invocation.
             return onRefreshForgeUxOrchestrator()
           default:
             return onRefreshForgeUxOrchestrator()
@@ -137,16 +96,18 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
     })
   }
 
-  if (! obra?.id) {
+  if (!obra?.id) {
     return (
       <section className="rail-panel" aria-labelledby="forge-human-title">
         <PanelTitle label="Forge" />
-        <EmptyText>Selecione ou crie uma Obra à esquerda. Atlas Code Forge é fail-closed sem Obra vinculada.</EmptyText>
+        <EmptyText>
+          Selecione ou crie uma Obra à esquerda. Atlas Code Forge é fail-closed sem Obra vinculada.
+        </EmptyText>
       </section>
     )
   }
 
-  if (! orchestrator) {
+  if (!orchestrator) {
     return (
       <section className="rail-panel" aria-labelledby="forge-human-title">
         <PanelTitle label="Forge" />
@@ -157,49 +118,102 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
           onClick={() => void onRefreshForgeUxOrchestrator()}
           disabled={busy || pending}
         >
-          atualizar estado
+          Atualizar estado
         </button>
       </section>
     )
   }
 
+  const isBlocking = blockerTranslation?.isBlocking ?? false
+
   return (
     <section className="rail-panel" aria-labelledby="forge-human-title">
       <PanelTitle label="Forge" />
 
+      {/* Status card · tom semântico, sans operacional */}
       <div
         style={{
-          padding: '10px 12px',
-          margin: '8px 0 12px 0',
-          border: `1px solid ${tone.border}`,
-          background: tone.bg,
-          color: tone.fg,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
+          padding: '12px 14px',
+          margin: '4px 0 14px',
+          border: `1px solid var(--cc-${tone === 'neutral' ? 'border' : tone + '-border'})`,
+          background: `var(--cc-${tone === 'neutral' ? 'surface-raised' : tone + '-veil'})`,
+          borderRadius: 'var(--cc-radius-sm)',
+          display: 'grid',
+          gap: 6,
         }}
         role="status"
         aria-live="polite"
       >
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase' }}>
-          {orchestrator.state}
-        </span>
-        <span style={{ fontFamily: 'var(--serif)', fontSize: 14, fontWeight: 500 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <StatusBadge label={orchestrator.state.replace(/_/g, ' ')} tone={tone} />
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 14.5,
+            fontWeight: 600,
+            color: 'var(--cc-text-strong)',
+            lineHeight: 1.3,
+          }}
+        >
           {orchestrator.humanStatusLabel}
-        </span>
-        <span style={{ fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic', color: 'var(--ink3)' }}>
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 12.5,
+            color: 'var(--cc-text-muted)',
+            lineHeight: 1.6,
+          }}
+        >
           {orchestrator.humanStatusDetail}
-        </span>
+        </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      {/* Progress · % grande + texto descritivo separado */}
+      <div
+        style={{
+          display: 'grid',
+          gap: 10,
+          padding: '14px 16px',
+          marginBottom: 16,
+          background: 'var(--cc-surface)',
+          border: '1px solid var(--cc-border-soft)',
+          borderRadius: 'var(--cc-radius-md)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+          <span
+            style={{
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 22,
+              fontWeight: 700,
+              color: 'var(--cc-text-strong)',
+              lineHeight: 1,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {orchestrator.progressPercent}%
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 11,
+              color: 'var(--cc-text-faint)',
+              fontWeight: 500,
+            }}
+          >
+            Progresso
+          </span>
+        </div>
         <div
           style={{
             height: 6,
-            background: 'var(--hair-soft)',
+            background: 'var(--cc-surface-sunken)',
             position: 'relative',
-            borderRadius: 1,
+            borderRadius: 999,
             overflow: 'hidden',
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.18)',
           }}
           role="progressbar"
           aria-valuemin={0}
@@ -213,137 +227,201 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
               left: 0,
               height: '100%',
               width: `${orchestrator.progressPercent}%`,
-              background: tone.fg,
-              transition: 'width 200ms ease',
+              background: tone === 'neutral' ? 'var(--cc-accent)' : `var(--cc-${tone})`,
+              borderRadius: 999,
+              transition: 'width 280ms var(--ease-i)',
             }}
           />
         </div>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
-          {orchestrator.progressPercent}% · {orchestrator.nextSafeStep}
-        </span>
+        <div
+          style={{
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 12.5,
+            color: 'var(--cc-text-muted)',
+            lineHeight: 1.6,
+          }}
+        >
+          {orchestrator.nextSafeStep}
+        </div>
       </div>
 
+      {/* Primary action · accent gold premium */}
       <button
         type="button"
         style={{
           ...btnPrimary,
           width: '100%',
-          padding: '14px 18px',
-          fontSize: 12.5,
-          letterSpacing: '1.6px',
+          padding: '12px 16px',
+          fontSize: 13.5,
           opacity: primaryAction?.enabled ? 1 : 0.45,
           cursor: primaryAction?.enabled ? 'pointer' : 'not-allowed',
         }}
         onClick={handlePrimary}
-        disabled={! primaryAction?.enabled}
-        aria-disabled={! primaryAction?.enabled}
+        disabled={!primaryAction?.enabled}
+        aria-disabled={!primaryAction?.enabled}
       >
-        {busy || pending ? 'processando…' : (primaryAction?.label ?? 'Continuar Forge')}
+        {busy || pending ? 'Processando…' : (primaryAction?.label ?? 'Continuar Forge')}
       </button>
       {primaryAction?.disabledReason ? (
-        <div style={{ marginTop: 4, fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+        <div
+          style={{
+            marginTop: 6,
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 11.5,
+            color: 'var(--cc-text-faint)',
+          }}
+        >
           {primaryAction.disabledReason}
         </div>
       ) : null}
 
-      <h3
-        style={{
-          marginTop: 16,
-          marginBottom: 6,
-          fontFamily: 'var(--mono)',
-          fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
-          color: 'var(--bronze)',
-        }}
-      >
-        Checklist
-      </h3>
-      <ChecklistRow label="Obra" done={orchestrator.checklist.obra} />
-      <ChecklistRow label="Definição" done={orchestrator.checklist.intake} />
-      <ChecklistRow label="Spec / Plan" done={orchestrator.checklist.specPlan} />
-      <ChecklistRow label="Provider / Modelo" done={orchestrator.checklist.provider} />
-      <ChecklistRow label="Execução" done={orchestrator.checklist.execution} />
-      <ChecklistRow label="Revisão" done={orchestrator.checklist.review} />
-      <ChecklistRow label="Provas" done={orchestrator.checklist.evidence} />
+      {/* Checklist · card próprio com padding generoso */}
+      <SectionCard title="Checklist">
+        <ChecklistRow label="Obra" done={orchestrator.checklist.obra} />
+        <ChecklistRow label="Definição" done={orchestrator.checklist.intake} />
+        <ChecklistRow label="Spec / Plan" done={orchestrator.checklist.specPlan} />
+        <ChecklistRow label="Provider / Modelo" done={orchestrator.checklist.provider} />
+        <ChecklistRow label="Execução" done={orchestrator.checklist.execution} />
+        <ChecklistRow label="Revisão" done={orchestrator.checklist.review} />
+        <ChecklistRow label="Provas" done={orchestrator.checklist.evidence} last />
+      </SectionCard>
 
-      <h3
-        style={{
-          marginTop: 16,
-          marginBottom: 6,
-          fontFamily: 'var(--mono)',
-          fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
-          color: 'var(--bronze)',
-        }}
-      >
-        Segurança
-      </h3>
-      <Row k="external provider call" v={orchestrator.safetySummary.externalProviderCall ? 'sim' : 'não'} ok={! orchestrator.safetySummary.externalProviderCall} />
-      <Row k="tokens gastos" v={String(orchestrator.safetySummary.providerTokensSpent ?? 0)} ok={(orchestrator.safetySummary.providerTokensSpent ?? 0) === 0} />
-      <Row k="completion claim promovido" v={orchestrator.safetySummary.completionClaimPromoted ? 'sim' : 'não'} ok={! orchestrator.safetySummary.completionClaimPromoted} />
-      <Row k="review gate preservado" v={orchestrator.safetySummary.reviewCompletionGatePreserved ? 'sim' : 'não'} ok={orchestrator.safetySummary.reviewCompletionGatePreserved} />
+      {/* Segurança · card com rows espaçadas */}
+      <SectionCard title="Segurança">
+        <Row
+          k="Provider externo"
+          v={orchestrator.safetySummary.externalProviderCall ? 'sim' : 'não'}
+          ok={!orchestrator.safetySummary.externalProviderCall}
+        />
+        <Row
+          k="Tokens gastos"
+          v={String(orchestrator.safetySummary.providerTokensSpent ?? 0)}
+          ok={(orchestrator.safetySummary.providerTokensSpent ?? 0) === 0}
+        />
+        <Row
+          k="Completion promovido"
+          v={orchestrator.safetySummary.completionClaimPromoted ? 'sim' : 'não'}
+          ok={!orchestrator.safetySummary.completionClaimPromoted}
+        />
+        <Row
+          k="Review gate"
+          v={orchestrator.safetySummary.reviewCompletionGatePreserved ? 'preservado' : 'AUSENTE'}
+          ok={orchestrator.safetySummary.reviewCompletionGatePreserved}
+        />
+      </SectionCard>
 
-      <h3
-        style={{
-          marginTop: 16,
-          marginBottom: 6,
-          fontFamily: 'var(--mono)',
-          fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
-          color: 'var(--bronze)',
-        }}
-      >
-        Provider / Modelo
-      </h3>
-      <Row k="provider" v={orchestrator.providerSummary.provider ?? '—'} mono />
-      <Row k="modelo" v={orchestrator.providerSummary.model ?? '—'} mono />
-      <Row k="decision source" v={orchestrator.providerSummary.decisionSource} />
-      <Row k="capacity" v={orchestrator.providerSummary.capacityState} />
-      <Row k="driver configurado" v={orchestrator.providerSummary.driverConfigured ? 'sim' : 'não'} ok={orchestrator.providerSummary.driverConfigured} />
+      <SectionCard title="Provider / Modelo">
+        <Row k="Provider" v={orchestrator.providerSummary.provider ?? '—'} mono />
+        <Row k="Modelo" v={orchestrator.providerSummary.model ?? '—'} mono />
+        <Row k="Decision source" v={orchestrator.providerSummary.decisionSource} />
+        <Row k="Capacity" v={orchestrator.providerSummary.capacityState} />
+        <Row
+          k="Driver configurado"
+          v={orchestrator.providerSummary.driverConfigured ? 'sim' : 'não'}
+          ok={orchestrator.providerSummary.driverConfigured}
+        />
+      </SectionCard>
 
       {blockerTranslation && (blockerTranslation.isBlocking || blockerTranslation.kind) ? (
         <div
           style={{
             marginTop: 14,
-            padding: 12,
-            border: `1px solid ${blockerTranslation.isBlocking ? 'var(--rec-red, #8a3025)' : 'var(--bronze-soft)'}`,
-            background: blockerTranslation.isBlocking
-              ? 'var(--rec-red-veil, rgba(138,48,37,0.08))'
-              : 'var(--bronze-veil)',
-            color: blockerTranslation.isBlocking ? 'var(--rec-red, #8a3025)' : 'var(--ink)',
+            padding: 14,
+            border: `1px solid var(--cc-${isBlocking ? 'danger' : 'warning'}-border)`,
+            background: `var(--cc-${isBlocking ? 'danger' : 'warning'}-veil)`,
+            borderRadius: 'var(--cc-radius-sm)',
+            display: 'grid',
+            gap: 6,
           }}
-          role={blockerTranslation.isBlocking ? 'alert' : 'status'}
+          role={isBlocking ? 'alert' : 'status'}
         >
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <StatusBadge
+              label={blockerTranslation.kind ?? 'blocker'}
+              tone={isBlocking ? 'danger' : 'warning'}
+            />
+          </div>
+          <div
+            style={{
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 13.5,
+              fontWeight: 600,
+              color: 'var(--cc-text-strong)',
+            }}
+          >
             {blockerTranslation.humanTitle ?? 'Bloqueado'}
           </div>
           {blockerTranslation.humanDetail ? (
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 12, marginBottom: 6 }}>
+            <div
+              style={{
+                fontFamily: 'var(--cc-font-sans)',
+                fontSize: 12.5,
+                color: 'var(--cc-text-muted)',
+                lineHeight: 1.6,
+              }}
+            >
               {blockerTranslation.humanDetail}
             </div>
           ) : null}
           {blockerTranslation.filesOutOfScope.length > 0 ? (
-            <ul style={{ margin: '4px 0 6px', paddingLeft: 18, fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+            <ul
+              style={{
+                margin: '4px 0 0',
+                paddingLeft: 18,
+                fontFamily: 'var(--cc-font-mono)',
+                fontSize: 11.5,
+                color: 'var(--cc-danger-fg)',
+                letterSpacing: 'var(--cc-tracking-data)',
+              }}
+            >
               {blockerTranslation.filesOutOfScope.map((f: string) => (
                 <li key={f}>{f}</li>
               ))}
             </ul>
           ) : null}
-          <div style={{ marginTop: 4, fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic' }}>
-            {orchestrator.nextSafeStep}
+          <div
+            style={{
+              marginTop: 4,
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: 'var(--cc-accent-strong)',
+            }}
+          >
+            O que fazer · {orchestrator.nextSafeStep}
           </div>
-          <details style={{ marginTop: 8 }}>
-            <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', cursor: 'pointer' }}>
+          <details style={{ marginTop: 6 }}>
+            <summary
+              style={{
+                fontFamily: 'var(--cc-font-sans)',
+                fontSize: 11.5,
+                color: 'var(--cc-text-muted)',
+                cursor: 'pointer',
+              }}
+            >
               Ver detalhes técnicos
             </summary>
-            <div style={{ marginTop: 6, fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+            <div
+              style={{
+                marginTop: 6,
+                fontFamily: 'var(--cc-font-mono)',
+                fontSize: 11,
+                color: 'var(--cc-text-faint)',
+                letterSpacing: 'var(--cc-tracking-data)',
+              }}
+            >
               {blockerTranslation.technicalDetail ?? orchestrator.blockers.join(', ')}
             </div>
             {orchestrator.blockers.length > 0 ? (
-              <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+              <ul
+                style={{
+                  margin: '4px 0 0',
+                  paddingLeft: 18,
+                  fontFamily: 'var(--cc-font-mono)',
+                  fontSize: 11,
+                  color: 'var(--cc-text-faint)',
+                }}
+              >
                 {orchestrator.blockers.map((b: string) => (
                   <li key={b}>{b}</li>
                 ))}
@@ -353,68 +431,113 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
         </div>
       ) : null}
 
-      {completionGating && (completionGating.approveButtonVisible
-          || completionGating.rejectButtonVisible
-          || completionGating.rollbackButtonVisible) ? (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 8,
-            border: '1px solid var(--bronze-soft)',
-            background: 'var(--bronze-veil)',
-            color: 'var(--ink)',
-            fontFamily: 'var(--mono)',
-            fontSize: 9.5,
-            letterSpacing: '1.1px',
-            textTransform: 'uppercase',
-          }}
-        >
-          Decisão humana pendente — abra <strong>Revisar</strong>.
-        </div>
-      ) : null}
-
-      {orchestrator.state === 'waiting_provider_confirmation'
-        || orchestrator.state === 'waiting_budget_confirmation'
-        || orchestrator.state === 'waiting_runtime_dispatch_confirmation' ? (
+      {completionGating &&
+      (completionGating.approveButtonVisible ||
+        completionGating.rejectButtonVisible ||
+        completionGating.rollbackButtonVisible) ? (
         <div
           style={{
             marginTop: 14,
-            padding: 10,
-            border: '1px solid var(--bronze-soft)',
-            background: 'var(--bronze-veil)',
-            color: 'var(--ink)',
+            padding: '10px 12px',
+            border: '1px solid var(--cc-accent-border)',
+            background: 'var(--cc-accent-veil)',
+            color: 'var(--cc-text)',
+            borderRadius: 'var(--cc-radius-sm)',
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 12.5,
+            lineHeight: 1.5,
           }}
         >
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 4 }}>
+          <strong style={{ color: 'var(--cc-accent-strong)', fontWeight: 600 }}>
+            Decisão humana pendente
+          </strong>{' '}
+          — abra <strong>Revisar</strong>.
+        </div>
+      ) : null}
+
+      {orchestrator.state === 'waiting_provider_confirmation' ||
+      orchestrator.state === 'waiting_budget_confirmation' ||
+      orchestrator.state === 'waiting_runtime_dispatch_confirmation' ? (
+        <div
+          style={{
+            marginTop: 14,
+            padding: 12,
+            border: '1px solid var(--cc-warning-border)',
+            background: 'var(--cc-warning-veil)',
+            borderRadius: 'var(--cc-radius-sm)',
+            display: 'grid',
+            gap: 6,
+          }}
+        >
+          <strong
+            style={{
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: 'var(--cc-warning-fg)',
+            }}
+          >
             Confirmar Provider real
-          </div>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5 }}>
-            Para invocar provider externo real, abra <strong>Avançado &gt; Provider Invocation</strong> e marque
-            <em> confirm_provider_call</em>, <em>confirm_budget</em> e <em>confirm_runtime_dispatch</em>. O Atlas
-            nunca chama provider sem essas três aprovações explícitas.
+          </strong>
+          <div
+            style={{
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 12,
+              color: 'var(--cc-text-muted)',
+              lineHeight: 1.6,
+            }}
+          >
+            Para invocar provider externo real, abra <strong>Avançado &gt; Provider Invocation</strong>{' '}
+            e marque <em>confirm_provider_call</em>, <em>confirm_budget</em> e{' '}
+            <em>confirm_runtime_dispatch</em>. Atlas nunca chama provider sem essas três aprovações.
           </div>
         </div>
       ) : null}
 
       <details style={{ marginTop: 18 }}>
-        <summary style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '1.3px', textTransform: 'uppercase', color: 'var(--ink3)', cursor: 'pointer' }}>
-          Detalhes avançados (diagnóstico)
+        <summary
+          style={{
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 11.5,
+            fontWeight: 500,
+            color: 'var(--cc-text-muted)',
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          Avançado · diagnóstico técnico
         </summary>
-        <div style={{ marginTop: 8, padding: '6px 0' }}>
-          <Row k="schema" v={orchestrator.schemaVersion} mono />
-          <Row k="generated_at" v={orchestrator.generatedAt} mono />
-          <Row k="separated_from" v={orchestrator.separatedFrom} />
-          <Row k="definition_status" v={orchestrator.definitionStatus} />
-          <Row k="evidence_refs (obra)" v={String(orchestrator.evidenceSeparation.obraEvidenceRefCount)} mono />
-          <Row k="ledger_events (obra)" v={String(orchestrator.evidenceSeparation.obraLedgerEventCount)} mono />
-          <Row k="review_required" v={orchestrator.reviewSummary.reviewRequired ? 'sim' : 'não'} />
-          <Row k="review_status" v={orchestrator.reviewSummary.reviewStatus} />
-          <Row k="final_completion_allowed" v={orchestrator.reviewSummary.finalCompletionAllowed ? 'sim' : 'não'} />
+        <div style={{ marginTop: 8 }}>
+          <Row k="Schema" v={orchestrator.schemaVersion} mono />
+          <Row k="Generated at" v={orchestrator.generatedAt} mono />
+          <Row k="Separated from" v={orchestrator.separatedFrom} />
+          <Row k="Definition status" v={orchestrator.definitionStatus} />
+          <Row k="Evidence refs (obra)" v={String(orchestrator.evidenceSeparation.obraEvidenceRefCount)} mono />
+          <Row k="Ledger events (obra)" v={String(orchestrator.evidenceSeparation.obraLedgerEventCount)} mono />
+          <Row k="Review required" v={orchestrator.reviewSummary.reviewRequired ? 'sim' : 'não'} />
+          <Row k="Review status" v={orchestrator.reviewSummary.reviewStatus} />
+          <Row
+            k="Final completion allowed"
+            v={orchestrator.reviewSummary.finalCompletionAllowed ? 'sim' : 'não'}
+          />
           {Object.entries(orchestrator.advancedRefs).map(([key, value]) => (
-            <Row key={key} k={key} v={value === null || value === undefined ? '—' : String(value)} mono />
+            <Row
+              key={key}
+              k={key}
+              v={value === null || value === undefined ? '—' : String(value)}
+              mono
+            />
           ))}
-          <div style={{ marginTop: 6, fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
-            Para diagnóstico técnico, abra a aba <strong>Avançado</strong> · Topology · Capacity · Provider Invocation.
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: 'var(--cc-font-sans)',
+              fontSize: 11,
+              color: 'var(--cc-text-faint)',
+            }}
+          >
+            Para diagnóstico técnico mais profundo: aba <strong>Avançado</strong> · Topology · Capacity ·
+            Provider Invocation.
           </div>
         </div>
       </details>
@@ -423,11 +546,14 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
         <div
           style={{
             marginTop: 12,
-            padding: 8,
-            border: '1px solid var(--rec-red, #8a3025)',
-            color: 'var(--rec-red, #8a3025)',
-            fontFamily: 'var(--mono)',
-            fontSize: 10,
+            padding: 10,
+            border: '1px solid var(--cc-danger-border)',
+            background: 'var(--cc-danger-veil)',
+            color: 'var(--cc-danger-fg)',
+            borderRadius: 'var(--cc-radius-sm)',
+            fontFamily: 'var(--cc-font-sans)',
+            fontSize: 12,
+            lineHeight: 1.5,
           }}
           role="alert"
         >
@@ -438,26 +564,93 @@ export function ForgeHumanPanel(ctx: RightRailContext) {
   )
 }
 
-function ChecklistRow({ label, done }: { label: string; done: boolean }) {
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section
+      style={{
+        marginTop: 14,
+        padding: '14px 16px',
+        background: 'var(--cc-surface)',
+        border: '1px solid var(--cc-border-soft)',
+        borderRadius: 'var(--cc-radius-md)',
+        display: 'grid',
+        gap: 4,
+      }}
+    >
+      <header
+        style={{
+          fontFamily: 'var(--cc-font-sans)',
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--cc-text-faint)',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          marginBottom: 8,
+        }}
+      >
+        {title}
+      </header>
+      <div style={{ display: 'grid' }}>{children}</div>
+    </section>
+  )
+}
+
+function ChecklistRow({ label, done, last = false }: { label: string; done: boolean; last?: boolean }) {
   return (
     <div
       style={{
         display: 'flex',
         justifyContent: 'space-between',
-        padding: '3px 0',
-        fontFamily: 'var(--mono)',
-        fontSize: 10,
-        color: done ? 'var(--moss)' : 'var(--ink3)',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 0',
+        borderBottom: last ? 'none' : '1px solid var(--cc-border-soft)',
+        minHeight: 32,
       }}
     >
-      <span>{done ? '✓' : '○'} {label}</span>
-      <span>{done ? 'ok' : '—'}</span>
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 10,
+          fontFamily: 'var(--cc-font-sans)',
+          fontSize: 13,
+          color: done ? 'var(--cc-text)' : 'var(--cc-text-muted)',
+          fontWeight: done ? 500 : 400,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 18,
+            height: 18,
+            borderRadius: 999,
+            background: done ? 'var(--cc-success-veil)' : 'transparent',
+            border: done ? '1px solid var(--cc-success-border)' : '1px solid var(--cc-border)',
+            color: done ? 'var(--cc-success)' : 'var(--cc-text-disabled)',
+            fontSize: 11,
+            fontWeight: 700,
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >
+          {done ? '✓' : ''}
+        </span>
+        {label}
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--cc-font-mono)',
+          fontSize: 10.5,
+          color: done ? 'var(--cc-success-fg)' : 'var(--cc-text-faint)',
+          letterSpacing: 'var(--cc-tracking-data)',
+        }}
+      >
+        {done ? 'ok' : '—'}
+      </span>
     </div>
   )
 }
-
-/**
- * Type re-export so the registry/consumer can import the orchestrator alongside
- * the panel.
- */
-export type { AtlasCodeForgeUxOrchestrator }

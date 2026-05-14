@@ -82,8 +82,8 @@ export function smartFlowPath(
   // Standard S-curve. Control points are clamped to live INSIDE the channel
   // (between ax and bx) so the bezier never overshoots into source/target
   // column siblings. We split the channel 35/65 around the midpoint.
-  let c1x = clampControl(ax, bx, ax + direction * Math.min(channel * 0.35, Math.abs(bx - ax) * 0.5))
-  let c2x = clampControl(ax, bx, bx - direction * Math.min(channel * 0.35, Math.abs(bx - ax) * 0.5))
+  const c1x = clampControl(ax, bx, ax + direction * Math.min(channel * 0.35, Math.abs(bx - ax) * 0.5))
+  const c2x = clampControl(ax, bx, bx - direction * Math.min(channel * 0.35, Math.abs(bx - ax) * 0.5))
 
   // Obstacle avoidance · se um rect bloqueia a trajetória do bezier, ajusta
   // control points pra "puxar" o curve pra cima/baixo do obstacle.
@@ -183,6 +183,7 @@ function findBlocker(
   ey: number,
   ax: number,
   bx: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _direction: number
 ): TrailRect | null {
   const xMin = Math.min(ax, bx)

@@ -135,10 +135,10 @@ function Counter({
     >
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8,
-          letterSpacing: '1.1px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -148,7 +148,7 @@ function Counter({
       </div>
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 15,
           lineHeight: 1.2,
           color: alert ? 'var(--rec-red, #8a3025)' : ok ? 'var(--moss)' : 'var(--ink)',
@@ -185,8 +185,8 @@ function QueueEntryCard({ entry, active }: { entry: ForgeTaskQueueEntry; active:
       >
         <div
           style={{
-            fontFamily: 'var(--serif)',
-            fontStyle: 'italic',
+            fontFamily: 'var(--cc-font-sans)',
+            fontStyle: 'normal',
             color: 'var(--ink2)',
             fontSize: 12.5,
             lineHeight: 1.35,
@@ -197,10 +197,10 @@ function QueueEntryCard({ entry, active }: { entry: ForgeTaskQueueEntry; active:
         </div>
         <span
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 8.5,
-            letterSpacing: '1.1px',
-            textTransform: 'uppercase',
+            letterSpacing: 0,
+            textTransform: 'none',
             color: blocked ? 'var(--rec-red, #8a3025)' : verified ? 'var(--moss)' : 'var(--bronze)',
             whiteSpace: 'nowrap',
           }}
@@ -235,17 +235,17 @@ function CompactList({ label, items, alert = false }: { label: string; items: st
     <div style={{ display: 'grid', gap: 2 }}>
       <div
         style={{
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 8.5,
-          letterSpacing: '1.2px',
+          letterSpacing: 0,
           color: alert ? 'var(--rec-red, #8a3025)' : 'var(--bronze)',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {label}
       </div>
       {items.slice(0, 4).map((item) => (
-        <div key={item} style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink3)', wordBreak: 'break-all' }}>
+        <div key={item} style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink3)', wordBreak: 'break-all' }}>
           {item}
         </div>
       ))}
@@ -257,7 +257,7 @@ function HashLine({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        fontFamily: 'var(--mono)',
+        fontFamily: 'var(--cc-font-mono)',
         fontSize: 9.5,
         color: 'var(--ink4)',
         wordBreak: 'break-all',

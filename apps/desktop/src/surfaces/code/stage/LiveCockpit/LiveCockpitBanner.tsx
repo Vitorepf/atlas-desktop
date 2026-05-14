@@ -100,22 +100,22 @@ export function LiveCockpitBanner() {
       >
         <span
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 9,
-            letterSpacing: '1.6px',
+            letterSpacing: 0,
             color: 'var(--bronze)',
-            textTransform: 'uppercase',
+            textTransform: 'none',
           }}
         >
           Live · pipeline
         </span>
         <span
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 9,
-            letterSpacing: '0.8px',
+            letterSpacing: 0,
             color: reconnecting ? 'var(--rec-red)' : 'var(--ink3)',
-            textTransform: 'uppercase',
+            textTransform: 'none',
           }}
         >
           {reconnecting
@@ -146,8 +146,8 @@ export function LiveCockpitBanner() {
             paddingTop: 6,
             paddingLeft: 24,
             borderTop: '1px solid var(--hair-soft)',
-            fontFamily: 'var(--serif)',
-            fontStyle: 'italic',
+            fontFamily: 'var(--cc-font-sans)',
+            fontStyle: 'normal',
             fontSize: 12.5,
             color: 'var(--ink2)',
             lineHeight: 1.4,
@@ -160,7 +160,7 @@ export function LiveCockpitBanner() {
             textOverflow: 'ellipsis',
           }}
         >
-          <span style={{ color: 'var(--bronze)', fontStyle: 'normal', fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginRight: 6 }}>
+          <span style={{ color: 'var(--bronze)', fontStyle: 'normal', fontFamily: 'var(--cc-font-mono)', fontSize: 9, letterSpacing: 0, textTransform: 'none', marginRight: 6 }}>
             pensando
           </span>
           {thinkingText}

@@ -155,10 +155,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
           border: `1px solid ${lifecycleTone.border}`,
           background: lifecycleTone.bg,
           color: lifecycleTone.fg,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9.5,
-          letterSpacing: '1.2px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
         }}
       >
         {topology.status}
@@ -182,10 +182,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
         style={{
           marginTop: 16,
           marginBottom: 6,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
         }}
       >
@@ -205,10 +205,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
         style={{
           marginTop: 16,
           marginBottom: 6,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
         }}
       >
@@ -227,7 +227,7 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
                 padding: '4px 0',
                 borderBottom: '1px solid var(--hair-soft)',
                 alignItems: 'baseline',
-                fontFamily: 'var(--mono)',
+                fontFamily: 'var(--cc-font-mono)',
                 fontSize: 10,
                 color: entry.capable ? 'var(--ink)' : 'var(--ink3)',
               }}
@@ -243,10 +243,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
         style={{
           marginTop: 16,
           marginBottom: 6,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
         }}
       >
@@ -269,10 +269,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
         style={{
           marginTop: 16,
           marginBottom: 6,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
         }}
       >
@@ -286,10 +286,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
             border: '1px solid var(--bronze-soft)',
             background: 'var(--bronze-veil)',
             color: 'var(--bronze)',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 9.5,
-            letterSpacing: '1.1px',
-            textTransform: 'uppercase',
+            letterSpacing: 0,
+            textTransform: 'none',
           }}
         >
           static policy · aguardando Decision Receipt real do Atlas Decide
@@ -302,10 +302,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
           border: '1px solid var(--hair-soft)',
           background: 'var(--cream)',
           color: 'var(--ink2)',
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9.5,
-          letterSpacing: '1.1px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
         }}
         aria-live="polite"
       >
@@ -319,7 +319,7 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
             margin: '6px 0',
             border: '1px solid var(--bronze-soft)',
             background: 'var(--bronze-veil)',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
           }}
         >
@@ -348,10 +348,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
             border: '1px solid var(--rec-red, #8a3025)',
             background: 'var(--rec-red-veil, rgba(138,48,37,0.08))',
             color: 'var(--rec-red, #8a3025)',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
-            letterSpacing: '1.2px',
-            textTransform: 'uppercase',
+            letterSpacing: 0,
+            textTransform: 'none',
           }}
           role="alert"
         >
@@ -363,10 +363,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
         style={{
           marginTop: 16,
           marginBottom: 6,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
         }}
       >
@@ -380,7 +380,7 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
             flex: 1,
             minWidth: 160,
             padding: '5px 8px',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
             border: '1px solid var(--hair-soft)',
             background: 'var(--cream)',
@@ -425,10 +425,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
             style={{
               marginTop: 16,
               marginBottom: 6,
-              fontFamily: 'var(--mono)',
+              fontFamily: 'var(--cc-font-mono)',
               fontSize: 9,
-              letterSpacing: '1.4px',
-              textTransform: 'uppercase',
+              letterSpacing: 0,
+              textTransform: 'none',
               color: 'var(--bronze)',
             }}
           >
@@ -448,10 +448,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
         style={{
           marginTop: 16,
           marginBottom: 6,
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
           color: 'var(--bronze)',
         }}
       >
@@ -486,7 +486,7 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
           onChange={(e) => setDispatchRole(e.target.value)}
           style={{
             padding: '5px 8px',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
             border: '1px solid var(--hair-soft)',
             background: 'var(--cream)',
@@ -500,7 +500,7 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
           <option value="repair_agent">repair_agent</option>
           <option value="local_tool_runner">local_tool_runner</option>
         </select>
-        <label style={{ fontFamily: 'var(--mono)', fontSize: 9.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 9.5, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input
             type="checkbox"
             checked={createChildReceipt}
@@ -566,10 +566,10 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
           border: '1px solid var(--hair-soft)',
           background: 'var(--cream)',
           color: 'var(--ink2)',
-          fontFamily: 'var(--mono)',
+          fontFamily: 'var(--cc-font-mono)',
           fontSize: 9.5,
-          letterSpacing: '1.1px',
-          textTransform: 'uppercase',
+          letterSpacing: 0,
+          textTransform: 'none',
         }}
         aria-live="polite"
       >
@@ -583,7 +583,7 @@ export function ForgeProviderTopologyPanel(ctx: RightRailContext) {
             padding: 8,
             border: '1px solid var(--rec-red, #8a3025)',
             color: 'var(--rec-red, #8a3025)',
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 10,
           }}
           role="alert"
@@ -609,30 +609,30 @@ function RoleCard({ role }: { role: AtlasForgeProviderRole }) {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 500, color: tone.fg }}>
+        <span style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 11, fontWeight: 500, color: tone.fg }}>
           {role.role}
         </span>
         <span
           style={{
-            fontFamily: 'var(--mono)',
+            fontFamily: 'var(--cc-font-mono)',
             fontSize: 9,
-            letterSpacing: '1.1px',
-            textTransform: 'uppercase',
+            letterSpacing: 0,
+            textTransform: 'none',
             color: tone.fg,
           }}
         >
           {role.status}
         </span>
       </div>
-      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink2)' }}>
+      <div style={{ fontFamily: 'var(--cc-font-mono)', fontSize: 10, color: 'var(--ink2)' }}>
         {role.provider ?? '—'} / {role.model ?? '—'}
       </div>
       {role.capabilityReason ? (
-        <div style={{ fontFamily: 'var(--serif)', fontSize: 11, fontStyle: 'italic', color: 'var(--ink3)' }}>
+        <div style={{ fontFamily: 'var(--cc-font-sans)', fontSize: 11, fontStyle: 'normal', color: 'var(--ink3)' }}>
           {role.capabilityReason}
         </div>
       ) : null}
-      <div style={{ display: 'flex', gap: 8, fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+      <div style={{ display: 'flex', gap: 8, fontFamily: 'var(--cc-font-mono)', fontSize: 9, color: 'var(--ink3)' }}>
         <span>risk: {role.riskFit ?? '—'}</span>
         <span>·</span>
         <span>autonomy: {role.autonomyLevel ?? '—'}</span>
