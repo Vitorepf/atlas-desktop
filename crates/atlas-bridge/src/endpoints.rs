@@ -46,6 +46,13 @@ pub const ATLAS_CODE_WORK_FORGE_REVIEWS: &str = "/atlas-code/works/"; // V2 (+ {
 pub const ATLAS_CODE_WORK_CHECKPOINTS: &str = "/atlas-code/works/"; // V2 (+ {id}/checkpoints)
 pub const ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEMS: &str = "/atlas-code/works/"; // V2 (+ {id}/programming/work-items)
 pub const ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEM_SPEC: &str = "/atlas-code/works/"; // V2 (+ {id}/programming/work-items/{work_item}/spec)
+pub const ATLAS_CODE_WORK_FORGE_FAST_PATH: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/fast-path)
+pub const ATLAS_CODE_WORK_FORGE_INTAKE: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/intake)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_TOPOLOGY: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-topology)
+pub const ATLAS_CODE_WORK_FORGE_CONTINUUM_CERTIFICATION: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/continuum-certification)
+pub const ATLAS_CODE_FORGE_PROVIDER_CAPACITY: &str = "/atlas-code/forge/provider-capacity"; // V2 (global capacity)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_CAPACITY: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-capacity)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_FAILURES: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-failures)
 pub const ATLAS_CODE_THREAD: &str = "/atlas-code/threads/"; // V2 (+ {id})
 pub const ATLAS_CODE_RECEIPT: &str = "/atlas-code/decisions/"; // V2 (+ {id}/receipt)
 

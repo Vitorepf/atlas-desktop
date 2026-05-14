@@ -22,11 +22,12 @@ import type { Point, TrailRect } from './trailTypes'
  *    the bezier never bows outward into the source/target column.
  */
 
-const EXIT_RUN = 40        // horizontal run hugging the source before curving
-const APPROACH_RUN = 40    // horizontal run hugging the target before landing
-const MIN_CHANNEL = 96     // minimum horizontal channel between source and target
-const LANE_STAGGER = 14    // px to stagger parallel trails
-const LONG_VERTICAL = 200  // px · above this we switch to a "parked S" topology
+// Pass 5× · todos × 5 do canon (40, 40, 96, 14, 200).
+const EXIT_RUN = 200       // horizontal run hugging the source before curving
+const APPROACH_RUN = 200   // horizontal run hugging the target before landing
+const MIN_CHANNEL = 480    // minimum horizontal channel between source and target
+const LANE_STAGGER = 70    // px to stagger parallel trails
+const LONG_VERTICAL = 1000 // px · above this we switch to a "parked S" topology
 
 export function smartFlowPath(
   from: TrailRect,
@@ -136,7 +137,8 @@ export function returnLoopPath(from: TrailRect, to: TrailRect, side: 'left' | 'r
   // Wider loop so the lobe escapes the column instead of curving back into
   // siblings. The base width scales with the lane order so parallel
   // feedback trails don't overlap.
-  const loopWidth = 168 + Math.min(lane, 3) * 32
+  // Pass 5× · canon 168 + lane*32 → 840 + lane*160.
+  const loopWidth = 840 + Math.min(lane, 3) * 160
   const railX = side === 'left' ? Math.min(from.l, to.l) - loopWidth : Math.max(from.r, to.r) + loopWidth
   const lobeX = railX + sideSign * 64
   const lobeTopY = sy - 58

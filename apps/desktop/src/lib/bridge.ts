@@ -15,8 +15,24 @@
 
 import type {
   AtlasCodeEnterpriseCertificationReport,
+  AtlasCodeForgeCompletionClaim,
   AtlasCodeForgeFastPathRunStatus,
   AtlasCodeForgeFastPathSnapshot,
+  AtlasCodeForgeReviewDecisionResponse,
+  AtlasCodeForgeReviewPacket,
+  AtlasCodeForgeWorkIntake,
+  AtlasCodeForgeWorkIntakePayload,
+  AtlasForgeContinuumCertification,
+  AtlasForgeContinuumCertificationSummary,
+  AtlasForgeProviderCapacity,
+  AtlasForgeProviderCapacityEntry,
+  AtlasForgeProviderFailureMemory,
+  AtlasForgeProviderFailureMemoryEvent,
+  AtlasForgeProviderFallbackEntry,
+  AtlasForgeProviderFallbackEvent,
+  AtlasForgeProviderRole,
+  AtlasForgeProviderTopology,
+  AtlasForgeRuntimeDispatchPlan,
   BootSnapshot,
   CartographyGraph,
   CartographyNote,
@@ -743,6 +759,288 @@ export const bridge = {
     return adaptForgeFastPathStatus(raw)
   },
 
+  // 10b.9 · Atlas Code Forge Review & Completion Gate v1 · packet read
+  async getForgeReviewPacket(
+    obraId: string,
+    runId: string,
+  ): Promise<AtlasCodeForgeReviewPacket | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_review_packet', { workId: obraId, runId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/fast-path/${encodeURIComponent(runId)}/review`,
+      )
+    } else {
+      offline('getForgeReviewPacket')
+    }
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return adaptForgeReviewPacket(r.review_packet ?? r.reviewPacket ?? r)
+  },
+
+  // 10b.10 · Atlas Code Forge Review · approve
+  async approveForgeReview(
+    obraId: string,
+    runId: string,
+    payload: { reviewer: string; reason: string },
+  ): Promise<AtlasCodeForgeReviewDecisionResponse> {
+    return forgeReviewDecision(obraId, runId, 'approve', payload)
+  },
+
+  // 10b.11 · Atlas Code Forge Review · reject
+  async rejectForgeReview(
+    obraId: string,
+    runId: string,
+    payload: { reviewer: string; reason: string },
+  ): Promise<AtlasCodeForgeReviewDecisionResponse> {
+    return forgeReviewDecision(obraId, runId, 'reject', payload)
+  },
+
+  // 10b.12 · Atlas Code Forge Review · rollback
+  async rollbackForgeReview(
+    obraId: string,
+    runId: string,
+    payload: { reviewer: string; reason: string },
+  ): Promise<AtlasCodeForgeReviewDecisionResponse> {
+    return forgeReviewDecision(obraId, runId, 'rollback', payload)
+  },
+
+  // 10b.13 · Atlas Code Forge Work Intake · read
+  async getForgeWorkIntake(obraId: string): Promise<AtlasCodeForgeWorkIntake | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_work_intake', { workId: obraId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/intake`)
+    } else {
+      offline('getForgeWorkIntake')
+    }
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return adaptForgeWorkIntake(r.forge_work_intake ?? r.forgeWorkIntake ?? r)
+  },
+
+  // 10b.13.1 · Atlas Forge Provider Topology read-model · GET
+  // Schema canonico: atlas.forge.provider_topology.v1
+  // Doc: docs/engineering-knowledge-base/atlas-forge-provider-topology-and-fallback-v1.md
+  async getForgeProviderTopology(
+    obraId: string,
+    options: {
+      simulateProviderFailure?: string
+      strategy?: string
+      fastPathRunId?: string
+      decisionReceiptId?: string
+    } = {},
+  ): Promise<AtlasForgeProviderTopology> {
+    const params = new URLSearchParams()
+    if (options.simulateProviderFailure) params.set('simulate_provider_failure', options.simulateProviderFailure)
+    if (options.strategy) params.set('strategy', options.strategy)
+    if (options.fastPathRunId) params.set('fast_path_run_id', options.fastPathRunId)
+    if (options.decisionReceiptId) params.set('decision_receipt_id', options.decisionReceiptId)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_provider_topology', {
+        workId: obraId,
+        options: {
+          simulate_provider_failure: options.simulateProviderFailure ?? null,
+          strategy: options.strategy ?? null,
+          fast_path_run_id: options.fastPathRunId ?? null,
+          decision_receipt_id: options.decisionReceiptId ?? null,
+        },
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-topology${qs}`,
+      )
+    } else {
+      offline('getForgeProviderTopology')
+    }
+    return adaptForgeProviderTopology(raw)
+  },
+
+  // 10b.13.3 · Atlas Forge Runtime Dispatch · POST/GET
+  // Schema canonico: atlas.forge.runtime_dispatch_plan.v1
+  // Doc: docs/engineering-knowledge-base/atlas-forge-provider-topology-and-fallback-v1.md
+  async runForgeRuntimeDispatch(
+    obraId: string,
+    options: {
+      role?: string
+      simulateProviderFailure?: string
+      createChildReceipt?: boolean
+      fastPathRunId?: string
+    } = {},
+  ): Promise<AtlasForgeRuntimeDispatchPlan> {
+    const body: Record<string, unknown> = {}
+    if (options.role !== undefined) body.role = options.role
+    if (options.simulateProviderFailure !== undefined) body.simulate_provider_failure = options.simulateProviderFailure
+    if (options.createChildReceipt !== undefined) body.create_child_receipt = options.createChildReceipt
+    if (options.fastPathRunId !== undefined) body.fast_path_run_id = options.fastPathRunId
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_run_forge_runtime_dispatch', { workId: obraId, options: body })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/runtime-dispatch`,
+        { method: 'POST', body },
+      )
+    } else {
+      offline('runForgeRuntimeDispatch')
+    }
+    return adaptForgeRuntimeDispatchPlan(raw)
+  },
+
+  async getForgeRuntimeDispatch(obraId: string): Promise<AtlasForgeRuntimeDispatchPlan | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_runtime_dispatch', { workId: obraId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/runtime-dispatch`)
+    } else {
+      offline('getForgeRuntimeDispatch')
+    }
+    return adaptNullableForgeRuntimeDispatchPlan(raw)
+  },
+
+  // 10b.13.2 · Atlas Forge Continuum Certification slim projection · GET
+  // Schema canonico: atlas.forge_continuum_certification.v1
+  // Doc: docs/engineering-knowledge-base/atlas-forge-continuum-os.md
+  // Doc filha: docs/engineering-knowledge-base/atlas-forge-provider-topology-and-fallback-v1.md
+  async getForgeContinuumCertification(
+    obraId: string,
+    options: {
+      simulateProviderFailure?: string
+      strategy?: string
+      strict?: boolean
+    } = {},
+  ): Promise<AtlasForgeContinuumCertification | null> {
+    const params = new URLSearchParams()
+    if (options.simulateProviderFailure) params.set('simulate_provider_failure', options.simulateProviderFailure)
+    if (options.strategy) params.set('strategy', options.strategy)
+    if (options.strict) params.set('strict', 'true')
+    const qs = params.toString() ? `?${params.toString()}` : ''
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_continuum_certification', {
+        workId: obraId,
+        options: {
+          simulate_provider_failure: options.simulateProviderFailure ?? null,
+          strategy: options.strategy ?? null,
+          strict: options.strict ?? null,
+        },
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/continuum-certification${qs}`,
+      )
+    } else {
+      offline('getForgeContinuumCertification')
+    }
+    return adaptForgeContinuumCertificationSummary(raw)
+  },
+
+  // 10b.13.3 · Atlas Forge Provider Capacity (read-model) · GET
+  // Schema canonico: atlas.forge.provider_capacity.v1
+  // Doc: docs/engineering-knowledge-base/atlas-forge-provider-capacity-continuity-v1.md
+  async getForgeProviderCapacity(
+    obraId?: string | null,
+  ): Promise<AtlasForgeProviderCapacity | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_provider_capacity', {
+        workId: obraId ?? null,
+      })
+    } else if (MODE === 'http') {
+      const path = obraId
+        ? `/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-capacity`
+        : '/atlas-code/forge/provider-capacity'
+      raw = await fetchHttp<unknown>(path)
+    } else {
+      offline('getForgeProviderCapacity')
+    }
+    return adaptForgeProviderCapacity(raw)
+  },
+
+  // 10b.13.4 · Atlas Forge Provider Failure · POST record event
+  // Schema canonico: atlas.forge.provider_failure_memory_event.v1
+  async recordForgeProviderFailure(
+    obraId: string,
+    payload: {
+      provider: string
+      failureType: string
+      model?: string
+      role?: string
+      reason?: string
+    },
+  ): Promise<{
+    event: AtlasForgeProviderFailureMemoryEvent | null
+    capacity: AtlasForgeProviderCapacity | null
+    memory: AtlasForgeProviderFailureMemory | null
+  }> {
+    const body: Record<string, unknown> = {
+      provider: payload.provider,
+      failure_type: payload.failureType,
+    }
+    if (payload.model !== undefined) body.model = payload.model
+    if (payload.role !== undefined) body.role = payload.role
+    if (payload.reason !== undefined) body.reason = payload.reason
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_record_forge_provider_failure', {
+        workId: obraId,
+        payload: body,
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-failures`,
+        { method: 'POST', body },
+      )
+    } else {
+      offline('recordForgeProviderFailure')
+    }
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return {
+      event: adaptForgeProviderFailureMemoryEvent(r.event ?? null),
+      capacity: adaptForgeProviderCapacity(r.capacity_snapshot ?? r.capacitySnapshot ?? null),
+      memory: adaptForgeProviderFailureMemory(r.failure_memory ?? r.failureMemory ?? null),
+    }
+  },
+
+  // 10b.14 · Atlas Code Forge Work Intake · save
+  async saveForgeWorkIntake(
+    obraId: string,
+    payload: AtlasCodeForgeWorkIntakePayload,
+  ): Promise<AtlasCodeForgeWorkIntake | null> {
+    const body: Record<string, unknown> = {}
+    if (payload.objective !== undefined) body.objective = payload.objective
+    if (payload.businessRule !== undefined) body.business_rule = payload.businessRule
+    if (payload.scopeIn !== undefined) body.scope_in = payload.scopeIn
+    if (payload.scopeOut !== undefined) body.scope_out = payload.scopeOut
+    if (payload.acceptanceCriteria !== undefined) body.acceptance_criteria = payload.acceptanceCriteria
+    if (payload.canonicalDocs !== undefined) body.canonical_docs = payload.canonicalDocs
+    if (payload.riskLevel !== undefined) body.risk_level = payload.riskLevel
+    if (payload.expectedOutputs !== undefined) body.expected_outputs = payload.expectedOutputs
+    if (payload.constraints !== undefined) body.constraints = payload.constraints
+    if (payload.operatorNotes !== undefined) body.operator_notes = payload.operatorNotes
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_save_forge_work_intake', { workId: obraId, payload: body })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/intake`, {
+        method: 'POST',
+        body,
+      })
+    } else {
+      offline('saveForgeWorkIntake')
+    }
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return adaptForgeWorkIntake(r.forge_work_intake ?? r.forgeWorkIntake ?? r)
+  },
+
   // 10c · create Atlas Code checkpoint for selected Obra
   async createCheckpoint(obraId: string, reason = 'manual'): Promise<WorkStateSnapshot['checkpoint']> {
     if (MODE === 'tauri') {
@@ -1293,6 +1591,14 @@ function adaptWorkState(raw: unknown): WorkStateSnapshot | null {
     forgeRunHistoryReplay: null,
     forgeReview: adaptForgeReview(r.forge_review ?? r.forgeReview),
     forgeReviewHistory: adaptForgeReviewHistory(r.forge_review_history ?? r.forgeReviewHistory),
+    forgeReviewPacket: adaptNullableForgeReviewPacket(r.forge_review_packet ?? r.forgeReviewPacket),
+    forgeCompletionClaim: adaptNullableForgeCompletionClaim(r.forge_completion_claim ?? r.forgeCompletionClaim),
+    forgeWorkIntake: adaptForgeWorkIntake(r.forge_work_intake ?? r.forgeWorkIntake),
+    forgeProviderTopology: adaptNullableForgeProviderTopology(r.forge_provider_topology ?? r.forgeProviderTopology),
+    forgeContinuumCertification: adaptForgeContinuumCertificationSummary(r.forge_continuum_certification ?? r.forgeContinuumCertification),
+    forgeProviderCapacity: adaptForgeProviderCapacity(r.forge_provider_capacity ?? r.forgeProviderCapacity),
+    forgeProviderFailureMemory: adaptForgeProviderFailureMemory(r.forge_provider_failure_memory ?? r.forgeProviderFailureMemory),
+    forgeRuntimeDispatch: adaptNullableForgeRuntimeDispatchPlan(r.forge_runtime_dispatch ?? r.forgeRuntimeDispatch),
     checkpoint: adaptCheckpoint(r.checkpoint),
     atlasCodeEnterpriseCertification: adaptNullableAtlasCodeEnterpriseCertification(
       r.atlas_code_enterprise_certification ?? r.atlasCodeEnterpriseCertification,
@@ -1301,6 +1607,332 @@ function adaptWorkState(raw: unknown): WorkStateSnapshot | null {
       r.programming_governance ?? r.programmingGovernance,
     ),
     generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+  }
+}
+
+function adaptForgeRuntimeDispatchPlan(raw: unknown): AtlasForgeRuntimeDispatchPlan {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.runtime_dispatch_plan.v1'),
+    status: String(r.status ?? 'blocked'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    obraPresent: Boolean(r.obra_present ?? r.obraPresent ?? false),
+    dispatchId: nullableString(r.dispatch_id ?? r.dispatchId),
+    fastPathRunId: nullableString(r.fast_path_run_id ?? r.fastPathRunId),
+    decisionReceiptId: nullableString(r.decision_receipt_id ?? r.decisionReceiptId),
+    decisionReceiptHash: nullableString(r.decision_receipt_hash ?? r.decisionReceiptHash),
+    childDecisionReceiptId: nullableString(r.child_decision_receipt_id ?? r.childDecisionReceiptId),
+    childDecisionReceiptHash: nullableString(r.child_decision_receipt_hash ?? r.childDecisionReceiptHash),
+    providerTopologyId: nullableString(r.provider_topology_id ?? r.providerTopologyId),
+    decisionSource: nullableString(r.decision_source ?? r.decisionSource),
+    role: nullableString(r.role),
+    provider: nullableString(r.provider),
+    model: nullableString(r.model),
+    runtimeDispatchAllowed: Boolean(r.runtime_dispatch_allowed ?? r.runtimeDispatchAllowed ?? false),
+    executionMode: nullableString(r.execution_mode ?? r.executionMode),
+    fallbackEventId: nullableString(r.fallback_event_id ?? r.fallbackEventId),
+    fallbackFailureType: nullableString(r.fallback_failure_type ?? r.fallbackFailureType),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerInvocationPlanned: Boolean(r.provider_invocation_planned ?? r.providerInvocationPlanned ?? false),
+    requiresProviderApproval: Boolean(r.requires_provider_approval ?? r.requiresProviderApproval ?? true),
+    qualityGates: normList(r.quality_gates ?? r.qualityGates),
+    reviewCompletionGatePreserved: Boolean(r.review_completion_gate_preserved ?? r.reviewCompletionGatePreserved ?? true),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    blockers: normList(r.blockers),
+    nextAction: nullableString(r.next_action ?? r.nextAction),
+    generatedAt: nullableString(r.generated_at ?? r.generatedAt),
+    recordedAt: nullableString(r.recorded_at ?? r.recordedAt),
+    note: nullableString(r.note),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+  }
+}
+
+function adaptNullableForgeRuntimeDispatchPlan(raw: unknown): AtlasForgeRuntimeDispatchPlan | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = r.schema_version ?? r.schemaVersion
+  if (typeof schema === 'string' && schema !== '' && schema !== 'atlas.forge.runtime_dispatch_plan.v1') {
+    return null
+  }
+  return adaptForgeRuntimeDispatchPlan(raw)
+}
+
+function adaptForgeProviderTopology(raw: unknown): AtlasForgeProviderTopology {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+
+  const roles: AtlasForgeProviderRole[] = Array.isArray(r.roles)
+    ? (r.roles as unknown[]).map((entry) => {
+        const e = (entry ?? {}) as Record<string, unknown>
+        return {
+          role: String(e.role ?? 'unknown'),
+          provider: nullableString(e.provider),
+          model: nullableString(e.model),
+          status: String(e.status ?? 'available'),
+          capabilityReason: nullableString(e.capability_reason ?? e.capabilityReason),
+          riskFit: nullableString(e.risk_fit ?? e.riskFit),
+          autonomyLevel: nullableString(e.autonomy_level ?? e.autonomyLevel),
+          fallbackOrder: numberOrUndefined(e.fallback_order ?? e.fallbackOrder) ?? 0,
+          qualityRole: nullableString(e.quality_role ?? e.qualityRole),
+          requiresHumanReview: Boolean(e.requires_human_review ?? e.requiresHumanReview ?? false),
+          evidenceRequired: Boolean(e.evidence_required ?? e.evidenceRequired ?? false),
+          decisionSource: nullableString(e.decision_source ?? e.decisionSource),
+        }
+      })
+    : []
+
+  const fallbackChain: AtlasForgeProviderFallbackEntry[] = Array.isArray(r.fallback_chain ?? r.fallbackChain)
+    ? ((r.fallback_chain ?? r.fallbackChain) as unknown[]).map((entry) => {
+        const e = (entry ?? {}) as Record<string, unknown>
+        return {
+          order: numberOrUndefined(e.order) ?? 0,
+          role: nullableString(e.role),
+          provider: nullableString(e.provider),
+          model: nullableString(e.model),
+          capable: e.capable === undefined ? true : Boolean(e.capable),
+          reason: nullableString(e.reason),
+        }
+      })
+    : []
+
+  const providerCapacity: AtlasForgeProviderCapacityEntry[] = Array.isArray(r.provider_capacity ?? r.providerCapacity)
+    ? ((r.provider_capacity ?? r.providerCapacity) as unknown[]).map((entry) => {
+        const e = (entry ?? {}) as Record<string, unknown>
+        return {
+          provider: String(e.provider ?? 'unknown'),
+          capacityState: String(e.capacity_state ?? e.capacityState ?? 'unknown'),
+          quotaState: String(e.quota_state ?? e.quotaState ?? 'unknown'),
+          rateLimitState: String(e.rate_limit_state ?? e.rateLimitState ?? 'unknown'),
+        }
+      })
+    : []
+
+  let lastFallbackEvent: AtlasForgeProviderFallbackEvent | null = null
+  const eventRaw = (r.last_fallback_event ?? r.lastFallbackEvent) as Record<string, unknown> | null | undefined
+  if (eventRaw && typeof eventRaw === 'object') {
+    lastFallbackEvent = {
+      schemaVersion: String(eventRaw.schema_version ?? eventRaw.schemaVersion ?? 'atlas.forge.provider_fallback_event.v1'),
+      eventId: String(eventRaw.event_id ?? eventRaw.eventId ?? ''),
+      occurredAt: String(eventRaw.occurred_at ?? eventRaw.occurredAt ?? ''),
+      failureType: String(eventRaw.failure_type ?? eventRaw.failureType ?? 'provider_error'),
+      failedRole: nullableString(eventRaw.failed_role ?? eventRaw.failedRole),
+      failedProvider: nullableString(eventRaw.failed_provider ?? eventRaw.failedProvider),
+      failedModel: nullableString(eventRaw.failed_model ?? eventRaw.failedModel),
+      reason: nullableString(eventRaw.reason),
+      action: String(eventRaw.action ?? 'block'),
+      selectedFallbackRole: nullableString(eventRaw.selected_fallback_role ?? eventRaw.selectedFallbackRole),
+      selectedFallbackProvider: nullableString(eventRaw.selected_fallback_provider ?? eventRaw.selectedFallbackProvider),
+      selectedFallbackModel: nullableString(eventRaw.selected_fallback_model ?? eventRaw.selectedFallbackModel),
+      blocker: nullableString(eventRaw.blocker),
+      silent: Boolean(eventRaw.silent ?? false),
+      reducesQualityGates: Boolean(eventRaw.reduces_quality_gates ?? eventRaw.reducesQualityGates ?? false),
+      bypassesReviewCompletionGate: Boolean(eventRaw.bypasses_review_completion_gate ?? eventRaw.bypassesReviewCompletionGate ?? false),
+      autoCompletesWork: Boolean(eventRaw.auto_completes_work ?? eventRaw.autoCompletesWork ?? false),
+      fallbackChildReceiptRequired: Boolean(eventRaw.fallback_child_receipt_required ?? eventRaw.fallbackChildReceiptRequired ?? false),
+      runtimeDispatchAllowed: Boolean(eventRaw.runtime_dispatch_allowed ?? eventRaw.runtimeDispatchAllowed ?? false),
+      obraId: nullableString(eventRaw.obra_id ?? eventRaw.obraId),
+      providerTopologyId: nullableString(eventRaw.provider_topology_id ?? eventRaw.providerTopologyId),
+      strategy: nullableString(eventRaw.strategy),
+    }
+  }
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.provider_topology.v1'),
+    status: String(r.status ?? 'available'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    obraPresent: Boolean(r.obra_present ?? r.obraPresent ?? false),
+    fastPathRunId: nullableString(r.fast_path_run_id ?? r.fastPathRunId),
+    decisionReceiptId: nullableString(r.decision_receipt_id ?? r.decisionReceiptId),
+    decisionReceiptHash: nullableString(r.decision_receipt_hash ?? r.decisionReceiptHash),
+    receiptSchemaVersion: nullableString(r.receipt_schema_version ?? r.receiptSchemaVersion),
+    providerTopologyId: String(r.provider_topology_id ?? r.providerTopologyId ?? ''),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    strategy: nullableString(r.strategy),
+    decisionSource: String(r.decision_source ?? r.decisionSource ?? 'static_policy'),
+    roles,
+    fallbackChain,
+    providerCapacity,
+    blockers: normList(r.blockers),
+    lastFallbackEvent,
+    fallbackChildReceiptRequired: Boolean(r.fallback_child_receipt_required ?? r.fallbackChildReceiptRequired ?? false),
+    runtimeDispatchAllowed: Boolean(r.runtime_dispatch_allowed ?? r.runtimeDispatchAllowed ?? false),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    nextAction: String(r.next_action ?? r.nextAction ?? 'unknown'),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptNullableForgeProviderTopology(raw: unknown): AtlasForgeProviderTopology | null {
+  if (!raw || typeof raw !== 'object') return null
+  const schema = (raw as Record<string, unknown>).schema_version ?? (raw as Record<string, unknown>).schemaVersion
+  if (typeof schema === 'string' && schema !== '' && schema !== 'atlas.forge.provider_topology.v1') {
+    return null
+  }
+  return adaptForgeProviderTopology(raw)
+}
+
+function adaptForgeProviderCapacityEntry(raw: unknown): AtlasForgeProviderCapacityEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const provider = String(r.provider ?? '')
+  if (provider === '') return null
+
+  return {
+    provider,
+    capacityState: String(r.capacity_state ?? r.capacityState ?? 'unknown'),
+    quotaState: String(r.quota_state ?? r.quotaState ?? 'unknown'),
+    rateLimitState: String(r.rate_limit_state ?? r.rateLimitState ?? 'unknown'),
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion) ?? undefined,
+    label: nullableString(r.label) ?? undefined,
+    status: nullableString(r.status) ?? undefined,
+    authState: nullableString(r.auth_state ?? r.authState) ?? undefined,
+    runtimePresent: r.runtime_present !== undefined ? Boolean(r.runtime_present) : undefined,
+    configPresent: r.config_present !== undefined ? Boolean(r.config_present) : undefined,
+    lastSuccessAt: nullableString(r.last_success_at ?? r.lastSuccessAt),
+    lastFailureAt: nullableString(r.last_failure_at ?? r.lastFailureAt),
+    lastFailureType: nullableString(r.last_failure_type ?? r.lastFailureType),
+    cooldownUntil: nullableString(r.cooldown_until ?? r.cooldownUntil),
+    confidence: nullableString(r.confidence) ?? undefined,
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    blockers: normList(r.blockers),
+    nextAction: nullableString(r.next_action ?? r.nextAction) ?? undefined,
+    externalProviderCall: r.external_provider_call !== undefined ? Boolean(r.external_provider_call) : undefined,
+  }
+}
+
+function adaptForgeProviderCapacity(raw: unknown): AtlasForgeProviderCapacity | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.forge.provider_capacity.v1') return null
+
+  const providersRaw = Array.isArray(r.providers) ? r.providers : []
+  const providers = providersRaw
+    .map(adaptForgeProviderCapacityEntry)
+    .filter((entry): entry is AtlasForgeProviderCapacityEntry => entry !== null)
+
+  return {
+    schemaVersion: schema || 'atlas.forge.provider_capacity.v1',
+    status: String(r.status ?? 'unknown'),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? new Date().toISOString()),
+    snapshotId: String(r.snapshot_id ?? r.snapshotId ?? ''),
+    workspace: String(r.workspace ?? ''),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    obraResolved: Boolean(r.obra_resolved ?? r.obraResolved ?? false),
+    obraResolutionStatus: String(r.obra_resolution_status ?? r.obraResolutionStatus ?? 'not_required'),
+    providers,
+    bestAvailableProvider: nullableString(r.best_available_provider ?? r.bestAvailableProvider),
+    providerCount: Number(r.provider_count ?? r.providerCount ?? providers.length),
+    availableCount: Number(r.available_count ?? r.availableCount ?? 0),
+    degradedCount: Number(r.degraded_count ?? r.degradedCount ?? 0),
+    unavailableCount: Number(r.unavailable_count ?? r.unavailableCount ?? 0),
+    unknownCount: Number(r.unknown_count ?? r.unknownCount ?? 0),
+    blockers: normList(r.blockers),
+    runtimeDispatchAllowed: Boolean(r.runtime_dispatch_allowed ?? r.runtimeDispatchAllowed ?? false),
+    nextAction: String(r.next_action ?? r.nextAction ?? ''),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+    note: nullableString(r.note),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+  }
+}
+
+function adaptForgeProviderFailureMemoryEvent(raw: unknown): AtlasForgeProviderFailureMemoryEvent | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const eventId = String(r.event_id ?? r.eventId ?? '')
+  if (eventId === '') return null
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.provider_failure_memory_event.v1'),
+    eventId,
+    occurredAt: String(r.occurred_at ?? r.occurredAt ?? new Date().toISOString()),
+    provider: String(r.provider ?? ''),
+    model: nullableString(r.model),
+    role: nullableString(r.role),
+    failureType: String(r.failure_type ?? r.failureType ?? ''),
+    action: nullableString(r.action),
+    blocker: nullableString(r.blocker),
+    reason: nullableString(r.reason),
+    cooldownUntil: nullableString(r.cooldown_until ?? r.cooldownUntil),
+    fallbackEventId: nullableString(r.fallback_event_id ?? r.fallbackEventId),
+    decisionReceiptId: nullableString(r.decision_receipt_id ?? r.decisionReceiptId),
+    providerTopologyId: nullableString(r.provider_topology_id ?? r.providerTopologyId),
+    capacitySnapshotId: nullableString(r.capacity_snapshot_id ?? r.capacitySnapshotId),
+    providerStatusBefore: nullableString(r.provider_status_before ?? r.providerStatusBefore),
+    providerStatusAfter: nullableString(r.provider_status_after ?? r.providerStatusAfter),
+    silent: Boolean(r.silent ?? false),
+    reducesQualityGates: Boolean(r.reduces_quality_gates ?? r.reducesQualityGates ?? false),
+    bypassesReviewCompletionGate: Boolean(r.bypasses_review_completion_gate ?? r.bypassesReviewCompletionGate ?? false),
+    autoCompletesWork: Boolean(r.auto_completes_work ?? r.autoCompletesWork ?? false),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    evidenceHash: nullableString(r.evidence_hash ?? r.evidenceHash),
+  }
+}
+
+function adaptForgeProviderFailureMemory(raw: unknown): AtlasForgeProviderFailureMemory | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.forge.provider_failure_memory.v1') return null
+
+  const eventsRaw = Array.isArray(r.events) ? r.events : []
+  const events = eventsRaw
+    .map(adaptForgeProviderFailureMemoryEvent)
+    .filter((event): event is AtlasForgeProviderFailureMemoryEvent => event !== null)
+
+  const cooldownPolicyRaw = (r.cooldown_policy ?? r.cooldownPolicy) as unknown
+  const cooldownPolicy: Record<string, number> = {}
+  if (cooldownPolicyRaw && typeof cooldownPolicyRaw === 'object') {
+    for (const [key, value] of Object.entries(cooldownPolicyRaw as Record<string, unknown>)) {
+      const numeric = Number(value)
+      if (!Number.isNaN(numeric)) {
+        cooldownPolicy[key] = numeric
+      }
+    }
+  }
+
+  return {
+    schemaVersion: schema || 'atlas.forge.provider_failure_memory.v1',
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    eventCount: Number(r.event_count ?? r.eventCount ?? events.length),
+    events,
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    cooldownPolicy: Object.keys(cooldownPolicy).length > 0 ? cooldownPolicy : undefined,
+    maxEvents: r.max_events !== undefined ? Number(r.max_events) : undefined,
+    dedupeWindowSeconds: r.dedupe_window_seconds !== undefined ? Number(r.dedupe_window_seconds) : undefined,
+    knownFailures: Array.isArray(r.known_failures) ? (r.known_failures as string[]) : undefined,
+  }
+}
+
+function adaptForgeContinuumCertificationSummary(raw: unknown): AtlasForgeContinuumCertificationSummary | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.forge_continuum_certification.v1') return null
+
+  const invariantsRaw = (r.invariants ?? {}) as Record<string, unknown>
+  const invariants: Record<string, boolean> = {}
+  for (const [key, value] of Object.entries(invariantsRaw)) {
+    invariants[key] = Boolean(value)
+  }
+
+  return {
+    schemaVersion: schema || 'atlas.forge_continuum_certification.v1',
+    status: String(r.status ?? 'available'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    obraPresent: Boolean(r.obra_present ?? r.obraPresent ?? false),
+    invariantsAllTrue: Boolean(r.invariants_all_true ?? r.invariantsAllTrue ?? false),
+    invariants,
+    blockers: normList(r.blockers),
+    evidenceCommand: nullableString(r.evidence_command ?? r.evidenceCommand),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    note: nullableString(r.note),
   }
 }
 
@@ -1357,6 +1989,186 @@ function adaptNullableForgeFastPath(raw: unknown): AtlasCodeForgeFastPathSnapsho
   const schema = (raw as Record<string, unknown>).schema_version ?? (raw as Record<string, unknown>).schemaVersion
   if (schema !== 'atlas.code.forge_fast_path.v1') return null
   return adaptForgeFastPath(raw)
+}
+
+async function forgeReviewDecision(
+  obraId: string,
+  runId: string,
+  decision: 'approve' | 'reject' | 'rollback',
+  payload: { reviewer: string; reason: string },
+): Promise<AtlasCodeForgeReviewDecisionResponse> {
+  const body = { reviewer: payload.reviewer, reason: payload.reason }
+  let raw: unknown
+  if (MODE === 'tauri') {
+    raw = await invokeTauri<unknown>('bridge_decide_forge_review', {
+      workId: obraId,
+      runId,
+      decision,
+      payload: body,
+    })
+  } else if (MODE === 'http') {
+    raw = await fetchHttp<unknown>(
+      `/atlas-code/works/${encodeURIComponent(obraId)}/forge/fast-path/${encodeURIComponent(runId)}/review/${decision}`,
+      { method: 'POST', body },
+    )
+  } else {
+    offline(`forgeReview:${decision}`)
+  }
+  return adaptForgeReviewDecisionResponse(raw)
+}
+
+function adaptForgeReviewPacket(raw: unknown): AtlasCodeForgeReviewPacket | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.code.forge_review_packet.v1') return null
+
+  const correlationRaw = (r.correlation && typeof r.correlation === 'object'
+    ? (r.correlation as Record<string, unknown>)
+    : null)
+
+  return {
+    schemaVersion: schema || 'atlas.code.forge_review_packet.v1',
+    reviewPacketId: nullableString(r.review_packet_id ?? r.reviewPacketId),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    fastPathRunId: nullableString(r.fast_path_run_id ?? r.fastPathRunId),
+    workItemId: nullableString(r.work_item_id ?? r.workItemId),
+    executionId: nullableString(r.execution_id ?? r.executionId),
+    historyId: nullableString(r.history_id ?? r.historyId),
+    reviewStatus: String(r.review_status ?? r.reviewStatus ?? 'unknown'),
+    reviewId: nullableString(r.review_id ?? r.reviewId),
+    reviewerId: nullableString(r.reviewer_id ?? r.reviewerId),
+    reviewedAt: nullableString(r.reviewed_at ?? r.reviewedAt),
+    reason: nullableString(r.reason),
+    runtimeStatus: String(r.runtime_status ?? r.runtimeStatus ?? 'missing'),
+    completionClaimAllowedBeforeReview: Boolean(
+      r.completion_claim_allowed_before_review ?? r.completionClaimAllowedBeforeReview ?? false,
+    ),
+    completionClaimAllowedAfterReview: Boolean(
+      r.completion_claim_allowed_after_review ?? r.completionClaimAllowedAfterReview ?? false,
+    ),
+    evidencePackDigest: (r.evidence_pack_digest && typeof r.evidence_pack_digest === 'object'
+      ? (r.evidence_pack_digest as Record<string, unknown>)
+      : {}) as Record<string, unknown>,
+    stageTimelineDigest: (r.stage_timeline_digest && typeof r.stage_timeline_digest === 'object'
+      ? (r.stage_timeline_digest as Record<string, unknown>)
+      : {}) as Record<string, unknown>,
+    changedFiles: normList(r.changed_files ?? r.changedFiles),
+    taskContract: r.task_contract && typeof r.task_contract === 'object'
+      ? (r.task_contract as Record<string, unknown>)
+      : null,
+    diffScope: r.diff_scope && typeof r.diff_scope === 'object'
+      ? (r.diff_scope as Record<string, unknown>)
+      : null,
+    gates: Array.isArray(r.gates)
+      ? (r.gates as Array<Record<string, unknown>>)
+      : [],
+    blockers: normList(r.blockers),
+    rollbackAvailable: Boolean(r.rollback_available ?? r.rollbackAvailable ?? false),
+    rollbackStatus: nullableString(r.rollback_status ?? r.rollbackStatus),
+    approvalRequiresHuman: Boolean(r.approval_requires_human ?? r.approvalRequiresHuman ?? true),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    correlation: correlationRaw
+      ? {
+          executionIdMatch: Boolean(correlationRaw.execution_id_match ?? correlationRaw.executionIdMatch ?? false),
+          historyIdMatch: Boolean(correlationRaw.history_id_match ?? correlationRaw.historyIdMatch ?? false),
+          evidenceIdMatch: Boolean(correlationRaw.evidence_id_match ?? correlationRaw.evidenceIdMatch ?? false),
+        }
+      : null,
+    blocker: nullableString(r.blocker),
+    reasonText: nullableString(r.reason_text ?? r.reasonText),
+  }
+}
+
+function adaptForgeCompletionClaim(raw: unknown): AtlasCodeForgeCompletionClaim | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.code.forge_completion_claim.v1') return null
+
+  return {
+    schemaVersion: schema || 'atlas.code.forge_completion_claim.v1',
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    fastPathRunId: nullableString(r.fast_path_run_id ?? r.fastPathRunId),
+    reviewPacketId: nullableString(r.review_packet_id ?? r.reviewPacketId),
+    reviewId: nullableString(r.review_id ?? r.reviewId),
+    completionStatus: String(r.completion_status ?? r.completionStatus ?? 'not_allowed'),
+    humanApproved: Boolean(r.human_approved ?? r.humanApproved ?? false),
+    approvedBy: nullableString(r.approved_by ?? r.approvedBy),
+    approvedAt: nullableString(r.approved_at ?? r.approvedAt),
+    runtimePassed: Boolean(r.runtime_passed ?? r.runtimePassed ?? false),
+    evidencePackVerified: Boolean(r.evidence_pack_verified ?? r.evidencePackVerified ?? false),
+    diffScopeVerified: Boolean(r.diff_scope_verified ?? r.diffScopeVerified ?? false),
+    rollbackState: nullableString(r.rollback_state ?? r.rollbackState),
+    finalCompletionAllowed: Boolean(r.final_completion_allowed ?? r.finalCompletionAllowed ?? false),
+    blockers: normList(r.blockers),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    ledgerEventIds: normList(r.ledger_event_ids ?? r.ledgerEventIds),
+    nextAction: String(r.next_action ?? r.nextAction ?? 'unknown'),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+  }
+}
+
+function adaptNullableForgeReviewPacket(raw: unknown): AtlasCodeForgeReviewPacket | null {
+  return adaptForgeReviewPacket(raw)
+}
+
+function adaptNullableForgeCompletionClaim(raw: unknown): AtlasCodeForgeCompletionClaim | null {
+  return adaptForgeCompletionClaim(raw)
+}
+
+function adaptForgeReviewDecisionResponse(raw: unknown): AtlasCodeForgeReviewDecisionResponse {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.code.forge_review_completion_response.v1'),
+    workId: nullableString(r.work_id ?? r.workId),
+    status: String(r.status ?? 'blocked'),
+    blocker: nullableString(r.blocker),
+    reason: nullableString(r.reason),
+    reviewPacket: adaptForgeReviewPacket(r.review_packet ?? r.reviewPacket),
+    completionClaim: adaptForgeCompletionClaim(r.completion_claim ?? r.completionClaim),
+    reviewResponse: r.review_response && typeof r.review_response === 'object'
+      ? (r.review_response as Record<string, unknown>)
+      : null,
+    rollback: r.rollback && typeof r.rollback === 'object'
+      ? (r.rollback as Record<string, unknown>)
+      : null,
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+  }
+}
+
+function adaptForgeWorkIntake(raw: unknown): AtlasCodeForgeWorkIntake | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.code.forge_work_intake.v1') return null
+
+  return {
+    schemaVersion: schema || 'atlas.code.forge_work_intake.v1',
+    intakeId: nullableString(r.intake_id ?? r.intakeId),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    workItemId: nullableString(r.work_item_id ?? r.workItemId),
+    workItemCode: nullableString(r.work_item_code ?? r.workItemCode),
+    objective: nullableString(r.objective),
+    businessRule: nullableString(r.business_rule ?? r.businessRule),
+    scopeIn: normList(r.scope_in ?? r.scopeIn),
+    scopeOut: normList(r.scope_out ?? r.scopeOut),
+    acceptanceCriteria: normList(r.acceptance_criteria ?? r.acceptanceCriteria),
+    canonicalDocs: normList(r.canonical_docs ?? r.canonicalDocs),
+    riskLevel: String(r.risk_level ?? r.riskLevel ?? 'medium'),
+    expectedOutputs: normList(r.expected_outputs ?? r.expectedOutputs),
+    constraints: normList(r.constraints),
+    operatorNotes: nullableString(r.operator_notes ?? r.operatorNotes),
+    readinessStatus: String(r.readiness_status ?? r.readinessStatus ?? 'blocked'),
+    enterpriseReady: Boolean(r.enterprise_ready ?? r.enterpriseReady ?? false),
+    blockers: normList(r.blockers),
+    nextAction: String(r.next_action ?? r.nextAction ?? 'unknown'),
+    createdAt: nullableString(r.created_at ?? r.createdAt),
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+  }
 }
 
 function adaptForgeFastPathStatus(raw: unknown): AtlasCodeForgeFastPathRunStatus {

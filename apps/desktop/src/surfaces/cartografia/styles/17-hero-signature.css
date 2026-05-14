@@ -1,0 +1,125 @@
+/*
+ * 17 · HERO SIGNATURE (Pass M · Atlas Decide).
+ *
+ * Atlas Decide (step x · graphId atlas-decide) é o ponto onde a decisão
+ * acontece — o hero canon do pipeline. Hoje só tem borda mais firme e
+ * symbol ring duplo. Pass M dá peso de iluminura:
+ *
+ *   - numeral romano `x.` em Cormorant italic 600 130px bronze com
+ *     text-shadow manuscrita (tinta levemente apoiada no papel)
+ *   - ornamento manuscrito ❦ no canto top-left, vibe "drop cap"
+ *   - hairline gold no topo do atom (gravura sutil)
+ *   - a-name peso 600 (Cormorant italic mais firme)
+ *
+ * Override de 04-atoms.css. Não escala com hover/active (já tem ring duplo).
+ */
+
+.cartografia-surface .atom-pipe#atom-atlas-decide {
+  position: relative;
+  /* override 04 — peso adicional de hero (gradient + border) */
+  border-color: rgba(138, 106, 53, 0.54);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(138, 106, 53, 0.22),
+      rgba(247, 241, 227, 0.95) 42%
+    ),
+    var(--cream-paper);
+  box-shadow:
+    inset 0 5px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -5px 0 rgba(138, 106, 53, 0.12),
+    0 110px 210px rgba(77, 61, 34, 0.11),
+    0 35px 80px rgba(77, 61, 34, 0.06);
+}
+
+/* Hairline gold no topo · gravura editorial */
+.cartografia-surface .atom-pipe#atom-atlas-decide::before {
+  content: '';
+  position: absolute;
+  left: 90px;
+  right: 90px;
+  top: 0;
+  height: 5px;
+  background: linear-gradient(
+    90deg,
+    rgba(138, 106, 53, 0) 0%,
+    rgba(138, 106, 53, 0.42) 24%,
+    rgba(138, 106, 53, 0.48) 50%,
+    rgba(138, 106, 53, 0.42) 76%,
+    rgba(138, 106, 53, 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* Ornamento manuscrito ❦ · "drop cap" no canto superior esquerdo */
+.cartografia-surface .atom-pipe#atom-atlas-decide::after {
+  content: '❦';
+  position: absolute;
+  left: -130px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 110px;
+  font-weight: 500;
+  color: var(--bronze);
+  line-height: 1;
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+/* Numeral romano · 130px italic 600 com text-shadow manuscript */
+.cartografia-surface .atom-pipe#atom-atlas-decide .a-num {
+  font-size: 130px;
+  font-weight: 600;
+  color: var(--bronze);
+  letter-spacing: 2px;
+  /* manuscript subtle — tinta seca apoiada no papel */
+  text-shadow:
+    0 0 3px rgba(94, 69, 32, 0.18),
+    0 5px 0 rgba(247, 241, 227, 0.4);
+}
+
+/* Nome do hero · peso italic 600 + tracking aberto */
+.cartografia-surface .atom-pipe#atom-atlas-decide .a-body .a-name {
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--ink);
+}
+
+/* Symbol pill · ring triplo (era duplo) — peso da decisão */
+.cartografia-surface .atom-pipe#atom-atlas-decide .a-symbol {
+  border-color: var(--bronze);
+  color: var(--bronze-deep);
+  background: linear-gradient(180deg, var(--cream-paper), var(--cream));
+  box-shadow:
+    inset 0 5px 5px rgba(138, 106, 53, 0.12),
+    0 0 0 20px rgba(138, 106, 53, 0.10),
+    0 0 0 35px rgba(138, 106, 53, 0.06),
+    0 0 0 55px rgba(138, 106, 53, 0.03);
+}
+
+/* zoom-close ≥115%: hero ganha ainda mais peso */
+.cartografia-surface .world.zoom-close .atom-pipe#atom-atlas-decide .a-num {
+  font-size: 150px;
+}
+.cartografia-surface .world.zoom-close .atom-pipe#atom-atlas-decide::after {
+  font-size: 130px;
+  left: -160px;
+  opacity: 0.9;
+}
+
+/* zoom-far <65%: drop cap diminui pra não competir com leitura macro */
+.cartografia-surface .world.zoom-far .atom-pipe#atom-atlas-decide::after {
+  font-size: 70px;
+  left: -90px;
+}
+.cartografia-surface .world.zoom-far .atom-pipe#atom-atlas-decide .a-num {
+  font-size: 110px;
+}
+
+/* Modo Foco: hero acende sem distorção de scale (já é hero por design) */
+.cartografia-surface .world.is-isolated .atom-pipe#atom-atlas-decide.active::after {
+  opacity: 0.92;
+  color: var(--bronze-deep);
+}

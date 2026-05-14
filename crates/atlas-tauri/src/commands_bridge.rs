@@ -371,6 +371,154 @@ pub async fn bridge_compile_programming_work_item_spec_plan(
 }
 
 #[tauri::command]
+pub async fn bridge_run_forge_fast_path(
+    state: State<'_, AppState>,
+    work_id: String,
+    options: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .run_forge_fast_path(&work_id, options.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_fast_path_status(
+    state: State<'_, AppState>,
+    work_id: String,
+    run_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_fast_path_status(&work_id, &run_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_resume_forge_fast_path(
+    state: State<'_, AppState>,
+    work_id: String,
+    run_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .resume_forge_fast_path(&work_id, &run_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_review_packet(
+    state: State<'_, AppState>,
+    work_id: String,
+    run_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_review_packet(&work_id, &run_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_decide_forge_review(
+    state: State<'_, AppState>,
+    work_id: String,
+    run_id: String,
+    decision: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .decide_forge_review(
+            &work_id,
+            &run_id,
+            &decision,
+            payload.unwrap_or_else(|| serde_json::json!({})),
+        )
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_work_intake(
+    state: State<'_, AppState>,
+    work_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_work_intake(&work_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_save_forge_work_intake(
+    state: State<'_, AppState>,
+    work_id: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .save_forge_work_intake(&work_id, payload.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_provider_topology(
+    state: State<'_, AppState>,
+    work_id: String,
+    options: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_provider_topology(&work_id, options)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_continuum_certification(
+    state: State<'_, AppState>,
+    work_id: String,
+    options: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_continuum_certification(&work_id, options)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_provider_capacity(
+    state: State<'_, AppState>,
+    work_id: Option<String>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_provider_capacity(work_id.as_deref())
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_record_forge_provider_failure(
+    state: State<'_, AppState>,
+    work_id: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .record_forge_provider_failure(&work_id, payload.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
 pub async fn bridge_create_checkpoint(
     state: State<'_, AppState>,
     work_id: String,

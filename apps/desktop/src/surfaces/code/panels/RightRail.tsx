@@ -1,7 +1,17 @@
 import { useMemo, useState } from 'react'
 import type {
   AtlasCodeEnterpriseCertificationReport,
+  AtlasCodeForgeCompletionClaim,
   AtlasCodeForgeFastPathRunStatus,
+  AtlasCodeForgeReviewPacket,
+  AtlasCodeForgeWorkIntake,
+  AtlasCodeForgeWorkIntakePayload,
+  AtlasForgeContinuumCertificationSummary,
+  AtlasForgeProviderCapacity,
+  AtlasForgeProviderFailureMemory,
+  AtlasForgeProviderFailureMemoryEvent,
+  AtlasForgeProviderTopology,
+  AtlasForgeRuntimeDispatchPlan,
   BootSnapshot,
   CoreStatus,
   DecisionReceipt,
@@ -25,6 +35,14 @@ interface RightRailProps {
   forgeTaskQueue: WorkStateSnapshot['forgeTaskQueue']
   forgeFastPath: WorkStateSnapshot['forgeFastPath']
   forgeFastPathStatus: AtlasCodeForgeFastPathRunStatus | null
+  forgeReviewPacket: AtlasCodeForgeReviewPacket | null
+  forgeCompletionClaim: AtlasCodeForgeCompletionClaim | null
+  forgeWorkIntake: AtlasCodeForgeWorkIntake | null
+  forgeProviderTopology: AtlasForgeProviderTopology | null
+  forgeContinuumCertification: AtlasForgeContinuumCertificationSummary | null
+  forgeProviderCapacity: AtlasForgeProviderCapacity | null
+  forgeProviderFailureMemory: AtlasForgeProviderFailureMemory | null
+  forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
   forgeRunHistoryReplay: WorkStateSnapshot['forgeRunHistoryReplay']
   forgeReview: WorkStateSnapshot['forgeReview']
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
@@ -39,6 +57,18 @@ interface RightRailProps {
   onRunForgeFastPath: (mode?: 'prepare_only' | 'execute_async' | 'execute_sync') => Promise<void>
   onRefreshForgeFastPathStatus: (runId?: string) => Promise<void>
   onResumeForgeFastPath: (runId?: string) => Promise<void>
+  onRefreshForgeReview: (runId?: string) => Promise<void>
+  onApproveForgeReview: (runId?: string, payload?: { reviewer?: string; reason?: string }) => Promise<void>
+  onRejectForgeReview: (runId?: string, payload?: { reviewer?: string; reason?: string }) => Promise<void>
+  onRollbackForgeReview: (runId?: string, payload?: { reviewer?: string; reason?: string }) => Promise<void>
+  onRefreshForgeWorkIntake: () => Promise<void>
+  onSaveForgeWorkIntake: (payload: AtlasCodeForgeWorkIntakePayload) => Promise<void>
+  onRefreshForgeProviderTopology: (options?: { simulateProviderFailure?: string; strategy?: string }) => Promise<void>
+  onRefreshForgeContinuumCertification: (options?: { simulateProviderFailure?: string; strategy?: string; strict?: boolean }) => Promise<void>
+  onRefreshForgeProviderCapacity: () => Promise<void>
+  onRecordForgeProviderFailure: (payload: { provider: string; failureType: string; model?: string; role?: string; reason?: string }) => Promise<AtlasForgeProviderFailureMemoryEvent | null>
+  onRefreshForgeRuntimeDispatch: () => Promise<void>
+  onRunForgeRuntimeDispatch: (options?: { role?: string; simulateProviderFailure?: string; createChildReceipt?: boolean; fastPathRunId?: string }) => Promise<void>
   onStartForgeLiveExecutionAsync: () => Promise<void>
   onRefreshForgeLiveExecutionAsync: () => Promise<void>
   onInspectForgeRunHistory: (historyId: string) => Promise<void>

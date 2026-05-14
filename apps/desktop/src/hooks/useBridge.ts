@@ -18,7 +18,18 @@ import { bridge, type BridgeMode } from '../lib/bridge'
 import { useExecutionStore } from '../state/executionStore'
 import type {
   AtlasCodeEnterpriseCertificationReport,
+  AtlasCodeForgeCompletionClaim,
   AtlasCodeForgeFastPathRunStatus,
+  AtlasCodeForgeReviewDecisionResponse,
+  AtlasCodeForgeReviewPacket,
+  AtlasCodeForgeWorkIntake,
+  AtlasCodeForgeWorkIntakePayload,
+  AtlasForgeContinuumCertificationSummary,
+  AtlasForgeProviderCapacity,
+  AtlasForgeProviderFailureMemory,
+  AtlasForgeProviderFailureMemoryEvent,
+  AtlasForgeProviderTopology,
+  AtlasForgeRuntimeDispatchPlan,
   CoreStatus,
   DecisionReceipt,
   Message,
@@ -51,6 +62,14 @@ export interface BridgeSnapshot {
   forgeTaskQueue: WorkStateSnapshot['forgeTaskQueue']
   forgeFastPath: WorkStateSnapshot['forgeFastPath']
   forgeFastPathStatus: AtlasCodeForgeFastPathRunStatus | null
+  forgeReviewPacket: AtlasCodeForgeReviewPacket | null
+  forgeCompletionClaim: AtlasCodeForgeCompletionClaim | null
+  forgeWorkIntake: AtlasCodeForgeWorkIntake | null
+  forgeProviderTopology: AtlasForgeProviderTopology | null
+  forgeContinuumCertification: AtlasForgeContinuumCertificationSummary | null
+  forgeProviderCapacity: AtlasForgeProviderCapacity | null
+  forgeProviderFailureMemory: AtlasForgeProviderFailureMemory | null
+  forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
   forgeRunHistoryReplay: WorkStateSnapshot['forgeRunHistoryReplay']
   forgeReview: WorkStateSnapshot['forgeReview']
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
@@ -82,6 +101,18 @@ export interface BridgeActions {
   runForgeFastPath: (mode?: 'prepare_only' | 'execute_async' | 'execute_sync') => Promise<void>
   refreshForgeFastPathStatus: (runId?: string) => Promise<void>
   resumeForgeFastPath: (runId?: string) => Promise<void>
+  refreshForgeReview: (runId?: string) => Promise<void>
+  approveForgeReview: (runId?: string, payload?: { reviewer?: string; reason?: string }) => Promise<void>
+  rejectForgeReview: (runId?: string, payload?: { reviewer?: string; reason?: string }) => Promise<void>
+  rollbackForgeReview: (runId?: string, payload?: { reviewer?: string; reason?: string }) => Promise<void>
+  refreshForgeWorkIntake: () => Promise<void>
+  saveForgeWorkIntake: (payload: AtlasCodeForgeWorkIntakePayload) => Promise<void>
+  refreshForgeProviderTopology: (options?: { simulateProviderFailure?: string; strategy?: string }) => Promise<void>
+  refreshForgeContinuumCertification: (options?: { simulateProviderFailure?: string; strategy?: string; strict?: boolean }) => Promise<void>
+  refreshForgeProviderCapacity: () => Promise<void>
+  recordForgeProviderFailure: (payload: { provider: string; failureType: string; model?: string; role?: string; reason?: string }) => Promise<AtlasForgeProviderFailureMemoryEvent | null>
+  refreshForgeRuntimeDispatch: () => Promise<void>
+  runForgeRuntimeDispatch: (options?: { role?: string; simulateProviderFailure?: string; createChildReceipt?: boolean; fastPathRunId?: string }) => Promise<void>
   startForgeLiveExecutionAsync: () => Promise<void>
   refreshForgeLiveExecutionAsync: () => Promise<void>
   inspectForgeRunHistory: (historyId: string) => Promise<void>
@@ -112,6 +143,14 @@ const INITIAL: BridgeSnapshot = {
   forgeTaskQueue: null,
   forgeFastPath: null,
   forgeFastPathStatus: null,
+  forgeReviewPacket: null,
+  forgeCompletionClaim: null,
+  forgeWorkIntake: null,
+  forgeProviderTopology: null,
+  forgeContinuumCertification: null,
+  forgeProviderCapacity: null,
+  forgeProviderFailureMemory: null,
+  forgeRuntimeDispatch: null,
   forgeRunHistoryReplay: null,
   forgeReview: null,
   forgeReviewHistory: null,
@@ -177,6 +216,12 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
           forgeRunHistoryReplay: null,
           forgeReview: null,
           forgeReviewHistory: null,
+          forgeReviewPacket: null,
+          forgeCompletionClaim: null,
+          forgeWorkIntake: null,
+          forgeProviderTopology: null,
+          forgeContinuumCertification: null,
+          forgeRuntimeDispatch: null,
           checkpoint: null,
           atlasCodeEnterpriseCertification: null,
           programmingGovernance: null,
@@ -207,6 +252,12 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         forgeFastPath: state.forgeFastPath,
         forgeReview: state.forgeReview,
         forgeReviewHistory: state.forgeReviewHistory,
+        forgeReviewPacket: state.forgeReviewPacket ?? null,
+        forgeCompletionClaim: state.forgeCompletionClaim ?? null,
+        forgeWorkIntake: state.forgeWorkIntake ?? null,
+        forgeProviderTopology: state.forgeProviderTopology ?? null,
+        forgeContinuumCertification: state.forgeContinuumCertification ?? null,
+        forgeRuntimeDispatch: state.forgeRuntimeDispatch ?? null,
         checkpoint: state.checkpoint,
         atlasCodeEnterpriseCertification: state.atlasCodeEnterpriseCertification,
         programmingGovernance: state.programmingGovernance,
@@ -555,6 +606,309 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     }
   }, [snap.obra, snap.forgeFastPath, snap.forgeFastPathStatus, loadObraDetail, pushError])
 
+  const resolveReviewRunId = useCallback((runId?: string): string | null => {
+    return (
+      runId
+      ?? snap.forgeFastPathStatus?.fastPathRunId
+      ?? snap.forgeFastPath?.fastPathRunId
+      ?? snap.forgeReviewPacket?.fastPathRunId
+      ?? null
+    )
+  }, [snap.forgeFastPath, snap.forgeFastPathStatus, snap.forgeReviewPacket])
+
+  const refreshForgeReview = useCallback(async (runId?: string) => {
+    if (!snap.obra?.id) {
+      pushError('refreshForgeReview', new Error('obra_required'))
+      return
+    }
+    const effectiveRunId = resolveReviewRunId(runId)
+    if (!effectiveRunId) {
+      pushError('refreshForgeReview', new Error('fast_path_run_id_required'))
+      return
+    }
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const packet = await bridge.getForgeReviewPacket(snap.obra.id, effectiveRunId)
+      const detail = await loadObraDetail(snap.obra)
+      let statusReport = null as Awaited<ReturnType<typeof bridge.getForgeFastPathStatus>> | null
+      try {
+        statusReport = await bridge.getForgeFastPathStatus(snap.obra.id, effectiveRunId)
+      } catch {
+        /* status falha não bloqueia refresh */
+      }
+      if (!cancelRef.current) {
+        setSnap((s) => ({
+          ...s,
+          ...detail,
+          forgeReviewPacket: packet ?? detail.forgeReviewPacket ?? null,
+          forgeCompletionClaim: detail.forgeCompletionClaim ?? s.forgeCompletionClaim ?? null,
+          forgeFastPathStatus: statusReport ?? s.forgeFastPathStatus ?? null,
+          busy: false,
+          errors: [...errorBufRef.current],
+        }))
+      }
+    } catch (e) {
+      pushError('refreshForgeReview', e)
+      setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+    }
+  }, [snap.obra, loadObraDetail, pushError, resolveReviewRunId])
+
+  const decideForgeReview = useCallback(
+    async (
+      label: 'approveForgeReview' | 'rejectForgeReview' | 'rollbackForgeReview',
+      fn: (obraId: string, runId: string, payload: { reviewer: string; reason: string }) => Promise<AtlasCodeForgeReviewDecisionResponse>,
+      runId?: string,
+      payload?: { reviewer?: string; reason?: string },
+    ) => {
+      if (!snap.obra?.id) {
+        pushError(label, new Error('obra_required'))
+        return
+      }
+      const effectiveRunId = resolveReviewRunId(runId)
+      if (!effectiveRunId) {
+        pushError(label, new Error('fast_path_run_id_required'))
+        return
+      }
+      const reviewer = (payload?.reviewer ?? '').trim() || 'atlas-code-local-operator'
+      const reason = (payload?.reason ?? '').trim() || `forge_review_${label}`
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const decision = await fn(snap.obra.id, effectiveRunId, { reviewer, reason })
+        const detail = await loadObraDetail(snap.obra)
+        let statusReport = null as Awaited<ReturnType<typeof bridge.getForgeFastPathStatus>> | null
+        try {
+          statusReport = await bridge.getForgeFastPathStatus(snap.obra.id, effectiveRunId)
+        } catch {
+          /* status falha não bloqueia decisão */
+        }
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            ...detail,
+            forgeReviewPacket: decision.reviewPacket ?? detail.forgeReviewPacket ?? s.forgeReviewPacket,
+            forgeCompletionClaim:
+              decision.completionClaim ?? detail.forgeCompletionClaim ?? s.forgeCompletionClaim,
+            forgeFastPathStatus: statusReport ?? s.forgeFastPathStatus ?? null,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError(label, e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [snap.obra, loadObraDetail, pushError, resolveReviewRunId],
+  )
+
+  const approveForgeReview = useCallback(
+    async (runId?: string, payload?: { reviewer?: string; reason?: string }) => {
+      await decideForgeReview('approveForgeReview', bridge.approveForgeReview, runId, payload)
+    },
+    [decideForgeReview],
+  )
+
+  const rejectForgeReview = useCallback(
+    async (runId?: string, payload?: { reviewer?: string; reason?: string }) => {
+      await decideForgeReview('rejectForgeReview', bridge.rejectForgeReview, runId, payload)
+    },
+    [decideForgeReview],
+  )
+
+  const rollbackForgeReview = useCallback(
+    async (runId?: string, payload?: { reviewer?: string; reason?: string }) => {
+      await decideForgeReview('rollbackForgeReview', bridge.rollbackForgeReview, runId, payload)
+    },
+    [decideForgeReview],
+  )
+
+  const refreshForgeWorkIntake = useCallback(async () => {
+    if (!snap.obra?.id) {
+      pushError('refreshForgeWorkIntake', new Error('obra_required'))
+      return
+    }
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const intake = await bridge.getForgeWorkIntake(snap.obra.id)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, forgeWorkIntake: intake, busy: false, errors: [...errorBufRef.current] }))
+      }
+    } catch (e) {
+      pushError('refreshForgeWorkIntake', e)
+      setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+    }
+  }, [snap.obra, pushError])
+
+  const saveForgeWorkIntake = useCallback(
+    async (payload: AtlasCodeForgeWorkIntakePayload) => {
+      if (!snap.obra?.id) {
+        pushError('saveForgeWorkIntake', new Error('obra_required'))
+        return
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const intake = await bridge.saveForgeWorkIntake(snap.obra.id, payload)
+        const detail = await loadObraDetail(snap.obra)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            ...detail,
+            forgeWorkIntake: intake ?? detail.forgeWorkIntake ?? s.forgeWorkIntake,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('saveForgeWorkIntake', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [snap.obra, loadObraDetail, pushError],
+  )
+
+  const refreshForgeProviderTopology = useCallback(
+    async (options?: { simulateProviderFailure?: string; strategy?: string }) => {
+      if (!snap.obra?.id) {
+        pushError('refreshForgeProviderTopology', new Error('obra_required'))
+        return
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const topology = await bridge.getForgeProviderTopology(snap.obra.id, options ?? {})
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            forgeProviderTopology: topology,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshForgeProviderTopology', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [snap.obra, pushError],
+  )
+
+  const refreshForgeContinuumCertification = useCallback(
+    async (options?: { simulateProviderFailure?: string; strategy?: string; strict?: boolean }) => {
+      if (!snap.obra?.id) {
+        pushError('refreshForgeContinuumCertification', new Error('obra_required'))
+        return
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const cert = await bridge.getForgeContinuumCertification(snap.obra.id, options ?? {})
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            forgeContinuumCertification: cert,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshForgeContinuumCertification', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [snap.obra, pushError],
+  )
+
+  const refreshForgeProviderCapacity = useCallback(async () => {
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const capacity = await bridge.getForgeProviderCapacity(snap.obra?.id ?? null)
+      if (!cancelRef.current) {
+        setSnap((s) => ({
+          ...s,
+          forgeProviderCapacity: capacity,
+          busy: false,
+          errors: [...errorBufRef.current],
+        }))
+      }
+    } catch (e) {
+      pushError('refreshForgeProviderCapacity', e)
+      setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+    }
+  }, [snap.obra, pushError])
+
+  const recordForgeProviderFailure = useCallback(
+    async (payload: { provider: string; failureType: string; model?: string; role?: string; reason?: string }) => {
+      if (!snap.obra?.id) {
+        pushError('recordForgeProviderFailure', new Error('obra_required'))
+        return null
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const result = await bridge.recordForgeProviderFailure(snap.obra.id, payload)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            forgeProviderCapacity: result.capacity ?? s.forgeProviderCapacity,
+            forgeProviderFailureMemory: result.memory ?? s.forgeProviderFailureMemory,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return result.event
+      } catch (e) {
+        pushError('recordForgeProviderFailure', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [snap.obra, pushError],
+  )
+
+  const refreshForgeRuntimeDispatch = useCallback(async () => {
+    if (!snap.obra?.id) {
+      pushError('refreshForgeRuntimeDispatch', new Error('obra_required'))
+      return
+    }
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const plan = await bridge.getForgeRuntimeDispatch(snap.obra.id)
+      if (!cancelRef.current) {
+        setSnap((s) => ({
+          ...s,
+          forgeRuntimeDispatch: plan,
+          busy: false,
+          errors: [...errorBufRef.current],
+        }))
+      }
+    } catch (e) {
+      pushError('refreshForgeRuntimeDispatch', e)
+      setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+    }
+  }, [snap.obra, pushError])
+
+  const runForgeRuntimeDispatch = useCallback(
+    async (options?: { role?: string; simulateProviderFailure?: string; createChildReceipt?: boolean; fastPathRunId?: string }) => {
+      if (!snap.obra?.id) {
+        pushError('runForgeRuntimeDispatch', new Error('obra_required'))
+        return
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const plan = await bridge.runForgeRuntimeDispatch(snap.obra.id, options ?? {})
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            forgeRuntimeDispatch: plan,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('runForgeRuntimeDispatch', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [snap.obra, pushError],
+  )
+
   const createCheckpoint = useCallback(async () => {
     if (!snap.obra?.id) {
       pushError('createCheckpoint', new Error('obra_required'))
@@ -860,6 +1214,18 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     runForgeFastPath,
     refreshForgeFastPathStatus,
     resumeForgeFastPath,
+    refreshForgeReview,
+    approveForgeReview,
+    rejectForgeReview,
+    rollbackForgeReview,
+    refreshForgeWorkIntake,
+    saveForgeWorkIntake,
+    refreshForgeProviderTopology,
+    refreshForgeContinuumCertification,
+    refreshForgeProviderCapacity,
+    recordForgeProviderFailure,
+    refreshForgeRuntimeDispatch,
+    runForgeRuntimeDispatch,
     startForgeLiveExecutionAsync,
     refreshForgeLiveExecutionAsync,
     inspectForgeRunHistory,

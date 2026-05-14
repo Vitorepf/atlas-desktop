@@ -3,6 +3,7 @@ import type { ProgrammingGateRunSnapshot, QualityGate } from '@atlas/domain'
 import { EmptyText } from './RightRailPrimitives'
 import { DiffScopeGuard } from './DiffScopeGuard'
 import { ForgeGovernedExecutionPanel } from './ForgeGovernedExecutionPanel'
+import { ForgeReviewCompletionPanel } from './ForgeReviewCompletionPanel'
 import { ForgeReviewGate } from './ForgeReviewGate'
 import { ForgeStageTimelinePanel } from './ForgeStageTimelinePanel'
 import { ForgeWorkspaceBanner } from './ForgeWorkspaceBanner'
@@ -15,11 +16,19 @@ export function VerifyPanel({
   receipt,
   forgeLiveExecution,
   forgeReview,
+  forgeFastPath,
+  forgeFastPathStatus,
+  forgeReviewPacket,
+  forgeCompletionClaim,
   programmingGovernance,
   onRunGate,
   onRunForgeLiveExecution,
   onReviewForgeRun,
   onRollbackForgePromotion,
+  onRefreshForgeReview,
+  onApproveForgeReview,
+  onRejectForgeReview,
+  onRollbackForgeReview,
 }: RightRailContext) {
   const gateRuns = programmingGovernance?.gateRuns ?? []
   const hasGovernedRuns = gateRuns.length > 0
@@ -46,6 +55,17 @@ export function VerifyPanel({
           busy={busy}
           onReview={(decision, comment) => void onReviewForgeRun(decision, comment)}
           onRollback={(promotionId, comment) => void onRollbackForgePromotion(promotionId ?? undefined, comment)}
+        />
+        <ForgeReviewCompletionPanel
+          obraId={obra?.id ?? null}
+          fastPathRunId={forgeFastPathStatus?.fastPathRunId ?? forgeFastPath?.fastPathRunId ?? null}
+          packet={forgeReviewPacket}
+          claim={forgeCompletionClaim}
+          busy={busy}
+          onRefresh={onRefreshForgeReview}
+          onApprove={onApproveForgeReview}
+          onReject={onRejectForgeReview}
+          onRollback={onRollbackForgeReview}
         />
         <div className="ops-section">
           <PanelTitle

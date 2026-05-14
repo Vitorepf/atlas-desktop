@@ -22,7 +22,9 @@ export function useCartografia(): CartografiaState {
   // ─── Reading mode + density (Agente J · narrativa sequencial) ───
   const [readingMode, setReadingModeState] = useState<boolean>(false)
   const [readingFocusOrder, setReadingFocusOrder] = useState<number | null>(null)
-  const [density, setDensityState] = useState<'comfortable' | 'compact'>('compact')
+  // Pass O · default canon = comfortable (atom 84px com deck legível em
+   // zoom-mid). Usuário ainda pode trocar pra compact via UI/atalho.
+  const [density, setDensityState] = useState<'comfortable' | 'compact'>('comfortable')
 
   const pipelineLen = Array.isArray(data.graph?.pipeline) ? data.graph!.pipeline.length : 0
 

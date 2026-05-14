@@ -177,10 +177,71 @@ export interface WorkStateSnapshot {
   forgeRunHistoryReplay: ForgeRunHistoryReplay | null
   forgeReview: AtlasCodeForgeReviewArtifact | null
   forgeReviewHistory: AtlasCodeForgeReviewHistory | null
+  forgeReviewPacket: AtlasCodeForgeReviewPacket | null
+  forgeCompletionClaim: AtlasCodeForgeCompletionClaim | null
+  forgeWorkIntake: AtlasCodeForgeWorkIntake | null
+  forgeProviderTopology: AtlasForgeProviderTopology | null
+  forgeContinuumCertification: AtlasForgeContinuumCertificationSummary | null
+  forgeProviderCapacity: AtlasForgeProviderCapacity | null
+  forgeProviderFailureMemory: AtlasForgeProviderFailureMemory | null
+  forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
   checkpoint: AtlasCodeCheckpointArtifact | null
   atlasCodeEnterpriseCertification: AtlasCodeEnterpriseCertificationReport | null
   programmingGovernance: ProgrammingGovernanceSnapshot | null
   generatedAt: string
+}
+
+/**
+ * Atlas Forge Runtime Dispatch Plan (governed read-model).
+ *
+ * Schema: atlas.forge.runtime_dispatch_plan.v1
+ *
+ * The dispatcher NEVER calls external providers and NEVER promotes completion
+ * claim. It only prepares a governed dispatch plan with the role/provider/model
+ * resolved from the Atlas Decide Decision Receipt; provider invocation requires
+ * explicit operator approval downstream.
+ */
+export type AtlasForgeRuntimeDispatchStatus =
+  | 'dispatch_planned'
+  | 'blocked'
+  | 'fallback_child_receipt_required'
+  | 'provider_capacity_exhausted'
+  | 'no_dispatch_history'
+  | string
+
+export interface AtlasForgeRuntimeDispatchPlan {
+  schemaVersion: string
+  status: AtlasForgeRuntimeDispatchStatus
+  obraId: string | null
+  obraPresent: boolean
+  dispatchId: string | null
+  fastPathRunId: string | null
+  decisionReceiptId: string | null
+  decisionReceiptHash: string | null
+  childDecisionReceiptId: string | null
+  childDecisionReceiptHash: string | null
+  providerTopologyId: string | null
+  decisionSource: string | null
+  role: string | null
+  provider: string | null
+  model: string | null
+  runtimeDispatchAllowed: boolean
+  executionMode: string | null
+  fallbackEventId: string | null
+  fallbackFailureType: string | null
+  externalProviderCall: boolean
+  providerInvocationPlanned: boolean
+  requiresProviderApproval: boolean
+  qualityGates: string[]
+  reviewCompletionGatePreserved: boolean
+  completionClaimPromoted: boolean
+  evidenceRefs: string[]
+  blockers: string[]
+  nextAction: string | null
+  generatedAt: string | null
+  recordedAt: string | null
+  note: string | null
+  separatedFrom: string
 }
 
 export interface AtlasCodeCheckpointArtifact {
@@ -302,6 +363,272 @@ export interface AtlasCodeEnterpriseCertificationStage {
   [key: string]: unknown
 }
 
+/**
+ * Atlas Forge Provider Topology (read-model).
+ *
+ * Materializes the canonical role assignment, provider/model, capability and
+ * fallback chain that Atlas Decide produces for a heavy Forge run. The desktop
+ * panel renders this as-is — never mutates, never invents.
+ *
+ * Schema: atlas.forge.provider_topology.v1
+ * Doc: docs/engineering-knowledge-base/atlas-forge-provider-topology-and-fallback-v1.md
+ */
+export type AtlasForgeProviderRoleId =
+  | 'primary_builder'
+  | 'critical_reviewer'
+  | 'context_scout'
+  | 'repair_agent'
+  | 'local_tool_runner'
+  | string
+
+export type AtlasForgeProviderRoleStatus =
+  | 'selected'
+  | 'available'
+  | 'unavailable'
+  | 'fallback_selected'
+  | 'blocked'
+  | 'not_required'
+  | string
+
+export interface AtlasForgeProviderRole {
+  role: AtlasForgeProviderRoleId
+  provider: string | null
+  model: string | null
+  status: AtlasForgeProviderRoleStatus
+  capabilityReason: string | null
+  riskFit: string | null
+  autonomyLevel: string | null
+  fallbackOrder: number
+  qualityRole?: string | null
+  requiresHumanReview?: boolean
+  evidenceRequired: boolean
+  decisionSource?: string | null
+}
+
+export interface AtlasForgeProviderFallbackEntry {
+  order: number
+  role: AtlasForgeProviderRoleId | null
+  provider: string | null
+  model: string | null
+  capable: boolean
+  reason: string | null
+}
+
+export interface AtlasForgeProviderCapacityEntry {
+  provider: string
+  capacityState: string
+  quotaState: string
+  rateLimitState: string
+  // Extended capacity fields (Atlas Forge Provider Capacity v1):
+  schemaVersion?: string
+  label?: string
+  status?: 'available' | 'degraded' | 'unavailable' | 'unknown' | string
+  authState?: string
+  runtimePresent?: boolean
+  configPresent?: boolean
+  lastSuccessAt?: string | null
+  lastFailureAt?: string | null
+  lastFailureType?: string | null
+  cooldownUntil?: string | null
+  confidence?: 'high' | 'medium' | 'low' | string
+  evidenceRefs?: string[]
+  blockers?: string[]
+  nextAction?: string
+  externalProviderCall?: boolean
+}
+
+/**
+ * Atlas Forge Provider Capacity (read-model snapshot).
+ *
+ * Local-only telemetry for the 5 canonical Forge runtime providers
+ * (claude_cli, codex_cli, gemini_cli, claude_codex, atlas-local). Atlas
+ * Decide consumes this snapshot to materialize the runtime topology — the
+ * snapshot itself NEVER calls a provider and NEVER spends a token.
+ *
+ * Schema: atlas.forge.provider_capacity.v1
+ * Doc: docs/engineering-knowledge-base/atlas-forge-provider-capacity-continuity-v1.md
+ */
+export interface AtlasForgeProviderCapacity {
+  schemaVersion: string
+  status: 'available' | 'degraded' | 'blocked' | string
+  generatedAt: string
+  snapshotId: string
+  workspace: string
+  obraId: string | null
+  obraResolved: boolean
+  obraResolutionStatus: 'not_required' | 'resolved' | 'not_found' | string
+  providers: AtlasForgeProviderCapacityEntry[]
+  bestAvailableProvider: string | null
+  providerCount: number
+  availableCount: number
+  degradedCount: number
+  unavailableCount: number
+  unknownCount: number
+  blockers: string[]
+  runtimeDispatchAllowed: boolean
+  nextAction: string
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  isReadModel: boolean
+  note: string | null
+  separatedFrom: string
+}
+
+/**
+ * Single canonical failure event recorded for an Obra.
+ *
+ * Schema: atlas.forge.provider_failure_memory_event.v1
+ */
+export interface AtlasForgeProviderFailureMemoryEvent {
+  schemaVersion: string
+  eventId: string
+  occurredAt: string
+  provider: string
+  model: string | null
+  role: string | null
+  failureType: string
+  action: string | null
+  blocker: string | null
+  reason: string | null
+  cooldownUntil: string | null
+  fallbackEventId: string | null
+  decisionReceiptId: string | null
+  providerTopologyId: string | null
+  capacitySnapshotId: string | null
+  providerStatusBefore: string | null
+  providerStatusAfter: string | null
+  silent: boolean
+  reducesQualityGates: boolean
+  bypassesReviewCompletionGate: boolean
+  autoCompletesWork: boolean
+  externalProviderCall: boolean
+  evidenceHash: string | null
+}
+
+/**
+ * Capped failure memory for an Obra (max 50 events, deduped within 60s).
+ *
+ * Schema: atlas.forge.provider_failure_memory.v1
+ */
+export interface AtlasForgeProviderFailureMemory {
+  schemaVersion: string
+  obraId: string | null
+  eventCount: number
+  events: AtlasForgeProviderFailureMemoryEvent[]
+  updatedAt: string | null
+  externalProviderCall: boolean
+  cooldownPolicy?: Record<string, number>
+  maxEvents?: number
+  dedupeWindowSeconds?: number
+  knownFailures?: string[]
+}
+
+export interface AtlasForgeProviderFallbackEvent {
+  schemaVersion: string
+  eventId: string
+  occurredAt: string
+  failureType: string
+  failedRole: string | null
+  failedProvider: string | null
+  failedModel: string | null
+  reason: string | null
+  action: 'reroute' | 'retry_later' | 'block' | string
+  selectedFallbackRole: string | null
+  selectedFallbackProvider: string | null
+  selectedFallbackModel: string | null
+  blocker: string | null
+  silent: boolean
+  reducesQualityGates: boolean
+  bypassesReviewCompletionGate: boolean
+  autoCompletesWork: boolean
+  fallbackChildReceiptRequired?: boolean
+  runtimeDispatchAllowed?: boolean
+  obraId: string | null
+  providerTopologyId: string | null
+  strategy: string | null
+}
+
+export interface AtlasForgeProviderTopology {
+  schemaVersion: string
+  status:
+    | 'available'
+    | 'rerouted'
+    | 'retry_later'
+    | 'blocked'
+    | 'provider_capacity_exhausted'
+    | 'blocked_obra_required'
+    | string
+  obraId: string | null
+  obraPresent: boolean
+  fastPathRunId: string | null
+  decisionReceiptId: string | null
+  decisionReceiptHash?: string | null
+  receiptSchemaVersion?: string | null
+  providerTopologyId: string
+  generatedAt: string
+  strategy: string | null
+  decisionSource?: 'live_atlas_decide' | 'static_policy' | 'operator_override_pending' | string
+  roles: AtlasForgeProviderRole[]
+  fallbackChain: AtlasForgeProviderFallbackEntry[]
+  providerCapacity: AtlasForgeProviderCapacityEntry[]
+  blockers: string[]
+  lastFallbackEvent: AtlasForgeProviderFallbackEvent | null
+  fallbackChildReceiptRequired?: boolean
+  runtimeDispatchAllowed?: boolean
+  evidenceRefs: string[]
+  nextAction: string
+  externalProviderCall: boolean
+  isReadModel: boolean
+  note: string | null
+}
+
+/**
+ * Atlas Forge Continuum Certification summary (slim state-projection).
+ *
+ * Full audit lives at `php artisan atlas:forge:continuum-certify --json --strict`.
+ * The desktop snapshot only needs the canonical status + invariant pulse so the
+ * cockpit can render "all green" / "backend ready, UI pending" / blockers.
+ *
+ * Schema: atlas.forge_continuum_certification.v1
+ */
+/**
+ * Map of canonical Continuum invariants. Each key is a canonical invariant
+ * id (e.g. `provider_topology_available`) and the value is whether that
+ * invariant currently passes for the local repo state.
+ *
+ * The 25 canonical keys are enforced by the backend
+ * `AtlasForgeContinuumCertificationService::REQUIRED_INVARIANTS`.
+ */
+export type AtlasForgeContinuumInvariantMap = Record<string, boolean>
+
+export interface AtlasForgeContinuumCertificationSummary {
+  schemaVersion: string
+  status:
+    | 'available'
+    | 'available_without_obra_context'
+    | 'backend_available_ui_pending'
+    | 'missing_artifacts'
+    | 'blocked'
+    | 'blocked_obra_required_for_runtime_projection'
+    | string
+  obraId: string | null
+  obraPresent: boolean
+  invariantsAllTrue: boolean
+  invariants: AtlasForgeContinuumInvariantMap
+  blockers: string[]
+  evidenceCommand: string | null
+  externalProviderCall: boolean
+  separatedFrom: string
+  note: string | null
+}
+
+/**
+ * Canonical alias for the Continuum certification snapshot. The cockpit, the
+ * bridge adapter and the panel all consume this name; the long-form
+ * `AtlasForgeContinuumCertificationSummary` exists for backwards compat.
+ */
+export type AtlasForgeContinuumCertification = AtlasForgeContinuumCertificationSummary
+
 export interface AtlasCodeForgeFastPathStage {
   name: string
   status: string
@@ -388,6 +715,116 @@ export interface AtlasCodeForgeFastPathRunStatus {
   runFound: boolean
   blocker?: string | null
   reason?: string | null
+  externalProviderCall: boolean
+}
+
+export interface AtlasCodeForgeReviewPacket {
+  schemaVersion: string
+  reviewPacketId: string | null
+  obraId: string | null
+  fastPathRunId: string | null
+  workItemId: string | null
+  executionId: string | null
+  historyId: string | null
+  reviewStatus: 'pending' | 'approved' | 'rejected' | 'rolled_back' | 'blocked' | string
+  reviewId: string | null
+  reviewerId: string | null
+  reviewedAt: string | null
+  reason: string | null
+  runtimeStatus: 'passed' | 'blocked' | 'degraded' | 'missing' | string
+  completionClaimAllowedBeforeReview: boolean
+  completionClaimAllowedAfterReview: boolean
+  evidencePackDigest: Record<string, unknown>
+  stageTimelineDigest: Record<string, unknown>
+  changedFiles: string[]
+  taskContract: Record<string, unknown> | null
+  diffScope: Record<string, unknown> | null
+  gates: Array<Record<string, unknown>>
+  blockers: string[]
+  rollbackAvailable: boolean
+  rollbackStatus: string | null
+  approvalRequiresHuman: boolean
+  externalProviderCall: boolean
+  sourceAuthority: string | null
+  correlation: {
+    executionIdMatch: boolean
+    historyIdMatch: boolean
+    evidenceIdMatch: boolean
+  } | null
+  blocker?: string | null
+  reasonText?: string | null
+}
+
+export interface AtlasCodeForgeCompletionClaim {
+  schemaVersion: string
+  obraId: string | null
+  fastPathRunId: string | null
+  reviewPacketId: string | null
+  reviewId: string | null
+  completionStatus: 'not_allowed' | 'allowed' | 'completed' | 'blocked' | 'rolled_back' | string
+  humanApproved: boolean
+  approvedBy: string | null
+  approvedAt: string | null
+  runtimePassed: boolean
+  evidencePackVerified: boolean
+  diffScopeVerified: boolean
+  rollbackState: string | null
+  finalCompletionAllowed: boolean
+  blockers: string[]
+  evidenceRefs: string[]
+  ledgerEventIds: string[]
+  nextAction: string
+  externalProviderCall: boolean
+}
+
+export interface AtlasCodeForgeWorkIntake {
+  schemaVersion: string
+  intakeId: string | null
+  obraId: string | null
+  workItemId: string | null
+  workItemCode: string | null
+  objective: string | null
+  businessRule: string | null
+  scopeIn: string[]
+  scopeOut: string[]
+  acceptanceCriteria: string[]
+  canonicalDocs: string[]
+  riskLevel: string
+  expectedOutputs: string[]
+  constraints: string[]
+  operatorNotes: string | null
+  readinessStatus: 'ready' | 'blocked' | string
+  enterpriseReady: boolean
+  blockers: string[]
+  nextAction: string
+  createdAt: string | null
+  updatedAt: string | null
+  externalProviderCall: boolean
+}
+
+export interface AtlasCodeForgeWorkIntakePayload {
+  objective?: string | null
+  businessRule?: string | null
+  scopeIn?: string[]
+  scopeOut?: string[]
+  acceptanceCriteria?: string[]
+  canonicalDocs?: string[]
+  riskLevel?: string
+  expectedOutputs?: string[]
+  constraints?: string[]
+  operatorNotes?: string | null
+}
+
+export interface AtlasCodeForgeReviewDecisionResponse {
+  schemaVersion: string
+  workId: string | null
+  status: 'approved' | 'rejected' | 'rolled_back' | 'blocked' | string
+  blocker: string | null
+  reason: string | null
+  reviewPacket: AtlasCodeForgeReviewPacket | null
+  completionClaim: AtlasCodeForgeCompletionClaim | null
+  reviewResponse: Record<string, unknown> | null
+  rollback: Record<string, unknown> | null
   externalProviderCall: boolean
 }
 

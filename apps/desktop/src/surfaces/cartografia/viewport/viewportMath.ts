@@ -33,15 +33,22 @@ export function fitWorld({
   world,
   minScale,
   maxScale,
+  initialScale,
 }: {
   viewport: HTMLElement
   world: StageSize
   minScale: number
   maxScale: number
+  /** Pass 5× · floor canônico — fit nunca desce abaixo desse valor.
+      Sem floor, mundo 5× fisicamente faz fit cair pra ~0.15, anulando
+      o ganho de tamanho. */
+  initialScale?: number
 }): ViewTransform {
   const width = viewport.clientWidth - 60
   const height = viewport.clientHeight - 60
-  const scale = clampScale(Math.min(width / world.width, height / world.height), minScale, maxScale)
+  const computed = Math.min(width / world.width, height / world.height)
+  const floored = initialScale != null ? Math.max(computed, initialScale) : computed
+  const scale = clampScale(floored, minScale, maxScale)
   return {
     scale,
     x: (viewport.clientWidth - world.width * scale) / 2,

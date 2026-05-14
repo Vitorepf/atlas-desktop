@@ -2,6 +2,21 @@ import type { CartographyAtom, Lane, RecentChange } from '@atlas/domain'
 import { LANE_LAYOUT } from '../map/layout'
 import { computeRegionSignals, LANE_TONE } from './flowModel'
 
+/**
+ * Eyebrow editorial por lane · Mono caps acima do título Cormorant.
+ * Traduz o conceito da lane, evitando label técnico ("Domain Plane" →
+ * eyebrow "domínio" · título "Domain Plane"). Lowercase aqui, CSS aplica
+ * `text-transform: uppercase` para mantê-lo como tipográfico.
+ */
+export const LANE_EYEBROW: Record<string, string> = {
+  'domain-plane': 'domínio',
+  capabilities: 'capacidade',
+  'business-context-side': 'contexto',
+  hks: 'humano',
+  'evidence-loop': 'evidência',
+  'doc-os': 'documentação',
+}
+
 export interface FlowLaneViewModel {
   key: string
   lane: Lane

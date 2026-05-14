@@ -1,15 +1,15 @@
 /* ─── RIBBON ─────────────────────────────── */
 .cartografia-surface .ribbon {
   position: absolute;
-  padding: 9px 26px;
+  padding: 45px 130px;
   background: var(--ink);
   color: var(--cream);
   font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 2.4px;
+  font-size: 52.5px;
+  letter-spacing: 12px;
   text-transform: uppercase;
-  border-radius: 3px;
-  box-shadow: 0 14px 32px rgba(26, 23, 20, 0.18);
+  border-radius: 15px;
+  box-shadow: 0 70px 160px rgba(26, 23, 20, 0.18);
   z-index: 5;
 }
 
@@ -19,59 +19,59 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 1200px;
-  max-width: calc(100% - 80px);
+  width: 6000px;
+  max-width: calc(100% - 400px);
 }
 .cartografia-surface .scene-head {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 180px;
 }
 .cartografia-surface .scene-eyebrow {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 2.4px;
+  font-size: 55px;
+  letter-spacing: 12px;
   color: var(--bronze);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 30px;
 }
 .cartografia-surface .scene-title {
   margin: 0;
   font-weight: 500;
-  font-size: 40px;
-  letter-spacing: 1.4px;
+  font-size: 200px;
+  letter-spacing: 7px;
   color: var(--ink);
   text-transform: uppercase;
   line-height: 1.05;
 }
 .cartografia-surface .scene-lede {
-  margin: 10px auto 0;
+  margin: 50px auto 0;
   font-style: italic;
-  font-size: 15.5px;
+  font-size: 77.5px;
   color: var(--ink2);
-  max-width: 720px;
+  max-width: 3600px;
   line-height: 1.5;
 }
 .cartografia-surface .continent-grid,
 .cartografia-surface .system-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 120px;
 }
-.cartografia-surface .system-grid { gap: 18px; }
+.cartografia-surface .system-grid { gap: 90px; }
 
 .cartografia-surface .continent-card {
   text-align: left;
-  padding: 20px 22px;
+  padding: 100px 110px;
   cursor: pointer;
 }
 .cartografia-surface .continent-card .continent-name {
-  font-size: 18px;
-  letter-spacing: 0.6px;
+  font-size: 90px;
+  letter-spacing: 3px;
 }
 
 .cartografia-surface .system-card {
   text-align: left;
-  padding: 18px 20px;
+  padding: 90px 100px;
   cursor: pointer;
 }
 .cartografia-surface .system-card-flow {
@@ -83,10 +83,10 @@
 }
 .cartografia-surface .system-card-cta {
   display: inline-block;
-  margin-top: 8px;
+  margin-top: 40px;
   font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 1.5px;
+  font-size: 42.5px;
+  letter-spacing: 7.5px;
   color: var(--bronze);
   text-transform: uppercase;
 }
@@ -97,98 +97,98 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 1400px;
+  width: 7000px;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 240px;
+  grid-template-columns: 1200px minmax(0, 1fr) 1200px;
   grid-template-rows: auto auto auto;
   grid-template-areas:
     'header header header'
     'left   center right'
     'footer footer footer';
-  gap: 24px;
+  gap: 120px;
 }
 .cartografia-surface .focus-header { grid-area: header; text-align: center; }
 .cartografia-surface .focus-eyebrow {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 2.4px;
+  font-size: 55px;
+  letter-spacing: 12px;
   color: var(--bronze);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 30px;
 }
 .cartografia-surface .focus-title {
   margin: 0;
   font-weight: 500;
-  font-size: 36px;
-  letter-spacing: 0.8px;
+  font-size: 180px;
+  letter-spacing: 4px;
   color: var(--ink);
   line-height: 1.05;
 }
 .cartografia-surface .focus-lede {
-  margin: 10px auto 0;
+  margin: 50px auto 0;
   font-style: italic;
-  font-size: 15px;
+  font-size: 75px;
   color: var(--ink2);
-  max-width: 760px;
+  max-width: 3800px;
   line-height: 1.5;
 }
 .cartografia-surface .focus-side-meta {
-  margin-top: 12px;
+  margin-top: 60px;
   display: inline-flex;
-  gap: 12px;
+  gap: 60px;
   align-items: baseline;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 47.5px;
   color: var(--ink3);
-  letter-spacing: 1px;
+  letter-spacing: 5px;
   text-transform: uppercase;
 }
 .cartografia-surface .meta-source-badge {
-  padding: 2px 7px;
-  border-radius: 2px;
-  font-size: 9px;
-  letter-spacing: 1.3px;
+  padding: 10px 35px;
+  border-radius: 10px;
+  font-size: 45px;
+  letter-spacing: 6.5px;
 }
-.cartografia-surface .meta-source-badge.repo { background: var(--bronze-veil); color: var(--bronze-deep); border: 1px solid var(--bronze-soft); }
-.cartografia-surface .meta-source-badge.vault { background: var(--moss-veil); color: var(--moss); border: 1px solid var(--moss-soft); }
+.cartografia-surface .meta-source-badge.repo { background: var(--bronze-veil); color: var(--bronze-deep); border: 5px solid var(--bronze-soft); }
+.cartografia-surface .meta-source-badge.vault { background: var(--moss-veil); color: var(--moss); border: 5px solid var(--moss-soft); }
 
-.cartografia-surface .focus-side { display: grid; gap: 10px; align-content: start; }
+.cartografia-surface .focus-side { display: grid; gap: 50px; align-content: start; }
 .cartografia-surface .focus-side.left { grid-area: left; }
 .cartografia-surface .focus-side.right { grid-area: right; }
 .cartografia-surface .side-label {
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 2px;
+  font-size: 50px;
+  letter-spacing: 10px;
   color: var(--bronze);
   text-transform: uppercase;
   display: flex;
-  gap: 6px;
+  gap: 30px;
   align-items: baseline;
 }
 .cartografia-surface .side-glyph { color: var(--bronze-deep); }
-.cartografia-surface .empty-state { color: var(--ink3); font-style: italic; font-size: 12px; }
+.cartografia-surface .empty-state { color: var(--ink3); font-style: italic; font-size: 60px; }
 
 .cartografia-surface .satellite {
   text-align: left;
   background: var(--cream-paper);
-  border: 1px solid var(--hair);
-  border-radius: 3px;
-  padding: 10px 12px;
+  border: 5px solid var(--hair);
+  border-radius: 15px;
+  padding: 50px 60px;
   cursor: pointer;
   transition: background 180ms cubic-bezier(0.32, 0.72, 0.24, 1), border-color 180ms cubic-bezier(0.32, 0.72, 0.24, 1);
   display: grid;
-  gap: 4px;
+  gap: 20px;
 }
 .cartografia-surface .satellite:hover { background: var(--cream-deep); border-color: var(--bronze-soft); }
-.cartografia-surface .satellite .s-name { font-weight: 500; font-size: 13px; color: var(--ink); }
-.cartografia-surface .satellite .s-sub { font-style: italic; font-size: 11px; color: var(--ink2); }
+.cartografia-surface .satellite .s-name { font-weight: 500; font-size: 65px; color: var(--ink); }
+.cartografia-surface .satellite .s-sub { font-style: italic; font-size: 55px; color: var(--ink2); }
 .cartografia-surface .satellite .s-source {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid var(--hair-soft);
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 5px solid var(--hair-soft);
   font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 1px;
+  font-size: 42.5px;
+  letter-spacing: 5px;
   color: var(--ink3);
   text-transform: uppercase;
 }
@@ -196,34 +196,34 @@
 .cartografia-surface .focus-center-card {
   grid-area: center;
   background: var(--cream-paper);
-  border: 1px solid var(--bronze-soft);
-  border-radius: 3px;
-  padding: 22px 26px;
+  border: 5px solid var(--bronze-soft);
+  border-radius: 15px;
+  padding: 110px 130px;
 }
 .cartografia-surface .center-fields { display: grid; gap: 0; }
 .cartografia-surface .field-row {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 14px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--hair);
+  grid-template-columns: 900px 1fr;
+  gap: 70px;
+  padding: 50px 0;
+  border-bottom: 5px solid var(--hair);
   align-items: baseline;
 }
 .cartografia-surface .field-row:last-child { border-bottom: 0; }
 .cartografia-surface .field-label {
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1.6px;
+  font-size: 50px;
+  letter-spacing: 8px;
   color: var(--bronze);
   text-transform: uppercase;
   display: flex;
-  gap: 8px;
+  gap: 40px;
   align-items: baseline;
 }
 .cartografia-surface .fglyph { color: var(--bronze-deep); }
 .cartografia-surface .field-value {
   font-style: italic;
-  font-size: 14.5px;
+  font-size: 72.5px;
   color: var(--ink);
   line-height: 1.45;
 }
@@ -233,19 +233,19 @@
 .cartografia-surface .focus-footer {
   grid-area: footer;
   display: flex;
-  gap: 10px;
+  gap: 50px;
   flex-wrap: wrap;
   justify-content: center;
 }
 .cartografia-surface .focus-action {
-  padding: 8px 14px;
+  padding: 40px 70px;
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1.5px;
+  font-size: 50px;
+  letter-spacing: 7.5px;
   color: var(--bronze);
   background: var(--cream-paper);
-  border: 1px solid var(--bronze-soft);
-  border-radius: 2px;
+  border: 5px solid var(--bronze-soft);
+  border-radius: 10px;
   cursor: pointer;
   text-transform: uppercase;
   transition: background 180ms cubic-bezier(0.32, 0.72, 0.24, 1), border-color 180ms cubic-bezier(0.32, 0.72, 0.24, 1);
@@ -260,48 +260,48 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 1100px;
-  max-width: calc(100% - 80px);
+  width: 5500px;
+  max-width: calc(100% - 400px);
 }
-.cartografia-surface .subflow-head { text-align: center; margin-bottom: 28px; }
+.cartografia-surface .subflow-head { text-align: center; margin-bottom: 140px; }
 .cartografia-surface .sh-roman {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 2.4px;
+  font-size: 55px;
+  letter-spacing: 12px;
   color: var(--bronze);
   text-transform: uppercase;
 }
 .cartografia-surface .sh-title {
-  margin-top: 6px;
-  font-size: 32px;
-  letter-spacing: 0.8px;
+  margin-top: 30px;
+  font-size: 160px;
+  letter-spacing: 4px;
   color: var(--ink);
   line-height: 1.05;
 }
 .cartografia-surface .sh-sub {
-  margin-top: 10px;
+  margin-top: 50px;
   font-style: italic;
-  font-size: 13.5px;
+  font-size: 67.5px;
   color: var(--ink2);
 }
 .cartografia-surface .subflow-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+  gap: 70px;
 }
 .cartografia-surface .subcomp {
   background: var(--cream-paper);
-  border: 1px solid var(--hair);
-  border-radius: 3px;
-  padding: 14px 16px;
+  border: 5px solid var(--hair);
+  border-radius: 15px;
+  padding: 70px 80px;
   display: grid;
-  gap: 4px;
+  gap: 20px;
 }
-.cartografia-surface .subcomp .sc-name { font-weight: 500; font-size: 14px; color: var(--ink); }
+.cartografia-surface .subcomp .sc-name { font-weight: 500; font-size: 70px; color: var(--ink); }
 .cartografia-surface .subcomp .sc-meta {
   font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 1.2px;
+  font-size: 47.5px;
+  letter-spacing: 6px;
   color: var(--bronze);
   text-transform: uppercase;
 }

@@ -1,6 +1,7 @@
 import type { CartographyAtom, RecentChange } from '@atlas/domain'
 import { Atom } from '../map/Atom'
 import type { FlowLaneViewModel } from './flowLaneModel'
+import { LANE_EYEBROW } from './flowLaneModel'
 
 interface FlowLaneRegionProps {
   model: FlowLaneViewModel
@@ -35,8 +36,19 @@ export function FlowLaneRegion({
       }}
     >
       <div className="region-head">
-        {model.lane.head}
-        {model.lane.deck ? <span className="deck">{model.lane.deck}</span> : null}
+        <span className="eyebrow">
+          {LANE_EYEBROW[model.key] ?? 'plano lateral'}
+        </span>
+        <span
+          className="count"
+          aria-label={`${model.nodes.length} peças`}
+        >
+          {String(model.nodes.length).padStart(2, '0')}
+        </span>
+        <span className="title">{model.lane.head}</span>
+        {model.lane.deck ? (
+          <span className="deck">{model.lane.deck}</span>
+        ) : null}
       </div>
       <RegionSignals
         relations={model.regionSignals.relations}

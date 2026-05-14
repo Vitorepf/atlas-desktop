@@ -47,11 +47,12 @@ export function routeGatePoint(
   span: ResolvedPath['span'],
   lane: number
 ): Point {
-  const offset = 86 + Math.min(lane, 3) * 18
+  // Pass 5× · canon 86 + lane*18 → 430 + lane*90; offset y canon 42 → 210.
+  const offset = 430 + Math.min(lane, 3) * 90
   if (span === 'return') {
     return {
       x: side === 'left' ? Math.min(from.l, to.l) - offset : Math.max(from.r, to.r) + offset,
-      y: Math.min(from.cy, to.cy) - 42,
+      y: Math.min(from.cy, to.cy) - 210,
     }
   }
   return {

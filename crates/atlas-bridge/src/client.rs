@@ -485,6 +485,238 @@ impl AtlasBridge {
             .await
     }
 
+    pub async fn run_forge_fast_path(
+        &self,
+        work_id: &str,
+        options: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/fast-path",
+            endpoints::ATLAS_CODE_WORK_FORGE_FAST_PATH,
+            work_id
+        );
+        let body = match options {
+            serde_json::Value::Object(_) => options,
+            _ => serde_json::json!({}),
+        };
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn get_forge_fast_path_status(
+        &self,
+        work_id: &str,
+        run_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/fast-path/{}/status",
+            endpoints::ATLAS_CODE_WORK_FORGE_FAST_PATH,
+            work_id,
+            encode_path_segment(run_id)
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn resume_forge_fast_path(
+        &self,
+        work_id: &str,
+        run_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/fast-path/{}/resume",
+            endpoints::ATLAS_CODE_WORK_FORGE_FAST_PATH,
+            work_id,
+            encode_path_segment(run_id)
+        );
+        let body = serde_json::json!({});
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn get_forge_review_packet(
+        &self,
+        work_id: &str,
+        run_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/fast-path/{}/review",
+            endpoints::ATLAS_CODE_WORK_FORGE_FAST_PATH,
+            work_id,
+            encode_path_segment(run_id)
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn decide_forge_review(
+        &self,
+        work_id: &str,
+        run_id: &str,
+        decision: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/fast-path/{}/review/{}",
+            endpoints::ATLAS_CODE_WORK_FORGE_FAST_PATH,
+            work_id,
+            encode_path_segment(run_id),
+            encode_path_segment(decision)
+        );
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn get_forge_work_intake(
+        &self,
+        work_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/intake",
+            endpoints::ATLAS_CODE_WORK_FORGE_INTAKE,
+            work_id,
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn save_forge_work_intake(
+        &self,
+        work_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/intake",
+            endpoints::ATLAS_CODE_WORK_FORGE_INTAKE,
+            work_id,
+        );
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    /// Atlas Forge Provider Topology read-model — never calls external provider.
+    /// Schema: atlas.forge.provider_topology.v1
+    pub async fn get_forge_provider_topology(
+        &self,
+        work_id: &str,
+        options: Option<serde_json::Value>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/provider-topology",
+            endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_TOPOLOGY,
+            work_id,
+        );
+
+        let mut request = self.build(Method::GET, &path);
+        if let Some(opts) = options {
+            if let Some(map) = opts.as_object() {
+                let mut pairs: Vec<(String, String)> = Vec::new();
+                for (key, value) in map {
+                    if value.is_null() {
+                        continue;
+                    }
+                    if let Some(s) = value.as_str() {
+                        if !s.is_empty() {
+                            pairs.push((key.clone(), s.to_string()));
+                        }
+                    }
+                }
+                if !pairs.is_empty() {
+                    request = request.query(&pairs);
+                }
+            }
+        }
+
+        self.execute(request).await
+    }
+
+    /// Atlas Forge Provider Capacity — local read-model snapshot for the 5
+    /// canonical Forge runtime providers. Never calls a provider.
+    /// Schema: atlas.forge.provider_capacity.v1
+    pub async fn get_forge_provider_capacity(
+        &self,
+        work_id: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = match work_id {
+            Some(id) => format!(
+                "{}{}/forge/provider-capacity",
+                endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_CAPACITY,
+                id,
+            ),
+            None => endpoints::ATLAS_CODE_FORGE_PROVIDER_CAPACITY.to_string(),
+        };
+
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Atlas Forge Provider Failure Memory — record a governed failure event.
+    /// Returns the recorded event + updated capacity snapshot + memory.
+    /// Schema: atlas.forge.provider_failure_memory_event.v1
+    pub async fn record_forge_provider_failure(
+        &self,
+        work_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/provider-failures",
+            endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_FAILURES,
+            work_id,
+        );
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    /// Atlas Forge Continuum Certification — slim audit projection for desktop.
+    /// Full audit: `php artisan atlas:forge:continuum-certify --json --strict`.
+    /// Schema: atlas.forge_continuum_certification.v1
+    pub async fn get_forge_continuum_certification(
+        &self,
+        work_id: &str,
+        options: Option<serde_json::Value>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/continuum-certification",
+            endpoints::ATLAS_CODE_WORK_FORGE_CONTINUUM_CERTIFICATION,
+            work_id,
+        );
+
+        let mut request = self.build(Method::GET, &path);
+        if let Some(opts) = options {
+            if let Some(map) = opts.as_object() {
+                let mut pairs: Vec<(String, String)> = Vec::new();
+                for (key, value) in map {
+                    if value.is_null() {
+                        continue;
+                    }
+                    if let Some(s) = value.as_str() {
+                        if !s.is_empty() {
+                            pairs.push((key.clone(), s.to_string()));
+                        }
+                    } else if let Some(b) = value.as_bool() {
+                        if b {
+                            pairs.push((key.clone(), "true".to_string()));
+                        }
+                    }
+                }
+                if !pairs.is_empty() {
+                    request = request.query(&pairs);
+                }
+            }
+        }
+
+        self.execute(request).await
+    }
+
     pub async fn create_checkpoint(
         &self,
         work_id: &str,

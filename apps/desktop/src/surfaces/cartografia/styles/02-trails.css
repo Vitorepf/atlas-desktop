@@ -96,7 +96,7 @@
   fill: currentColor;
   stroke: var(--cream);
   stroke-width: 2.2;
-  filter: drop-shadow(0 1px 2px rgba(77, 61, 34, 0.18));
+  filter: drop-shadow(0 5px 10px rgba(77, 61, 34, 0.18));
 }
 
 /* CANON SILENCE · ripple breathe desligado em baseline. */
@@ -123,7 +123,7 @@
   color: inherit;
   opacity: 0;
   pointer-events: none;
-  filter: drop-shadow(0 1px 4px rgba(77, 61, 34, 0.14));
+  filter: drop-shadow(0 5px 20px rgba(77, 61, 34, 0.14));
 }
 .cartografia-surface .trail-group.path-active .trail-gate {
   opacity: 1;
@@ -145,7 +145,7 @@
 .cartografia-surface .trail-beacon {
   color: inherit;
   display: none;
-  filter: drop-shadow(0 1px 2px rgba(77, 61, 34, 0.18));
+  filter: drop-shadow(0 5px 10px rgba(77, 61, 34, 0.18));
 }
 .cartografia-surface .trail-group.path-active .trail-beacon {
   display: block;
@@ -165,7 +165,7 @@
 .cartografia-surface .trail-vessel {
   color: inherit;
   display: none;
-  filter: drop-shadow(0 1px 3px rgba(77, 61, 34, 0.24));
+  filter: drop-shadow(0 5px 15px rgba(77, 61, 34, 0.24));
 }
 .cartografia-surface .trail-group.path-active .trail-vessel {
   display: block;
@@ -200,7 +200,7 @@
 .cartografia-surface .world.lens-relations .atom.has-relations {
   opacity: 1;
   border-color: var(--bronze-soft);
-  box-shadow: 0 12px 28px rgba(77, 61, 34, 0.08);
+  box-shadow: 0 60px 140px rgba(77, 61, 34, 0.08);
 }
 .cartografia-surface .world.lens-relations .trail-group.trail-feed.path-visible {
   opacity: 0.72;
@@ -210,14 +210,14 @@
 }
 .cartografia-surface .atom .a-relation-port {
   position: absolute;
-  right: -5px;
+  right: -25px;
   top: 50%;
-  width: 9px;
-  height: 9px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
-  border: 1px solid var(--bronze);
+  border: 5px solid var(--bronze);
   background: var(--cream);
-  box-shadow: 0 0 0 5px rgba(138, 106, 53, 0.08);
+  box-shadow: 0 0 0 25px rgba(138, 106, 53, 0.08);
   opacity: 0;
   transform: translateY(-50%);
   transition: opacity 180ms cubic-bezier(0.32, 0.72, 0.24, 1);
@@ -314,7 +314,7 @@
 .cartografia-surface .trail-group.path-active {
   color: var(--bronze-deep);
   opacity: 1;
-  filter: drop-shadow(0 2px 3px rgba(94, 69, 32, 0.18));
+  filter: drop-shadow(0 10px 15px rgba(94, 69, 32, 0.18));
 }
 .cartografia-surface .trail-group.path-active .trail-halo {
   stroke-width: 14;
@@ -357,12 +357,12 @@
 .cartografia-surface .world.lens-risk .atom.has-risk {
   opacity: 1;
   border-color: var(--rec-red-soft);
-  box-shadow: inset 4px 0 0 var(--rec-red), 0 16px 34px rgba(138, 48, 37, 0.14);
+  box-shadow: inset 20px 0 0 var(--rec-red), 0 80px 170px rgba(138, 48, 37, 0.14);
 }
 .cartografia-surface .world.lens-risk .region.has-risk {
   opacity: 1;
   border-color: rgba(138, 48, 37, 0.24);
-  box-shadow: 0 20px 42px rgba(138, 48, 37, 0.08);
+  box-shadow: 0 100px 210px rgba(138, 48, 37, 0.08);
 }
 .cartografia-surface .world.lens-recent .atom:not(.recently-touched),
 .cartografia-surface .world.lens-recent .region:not(.has-recent) {
@@ -371,12 +371,12 @@
 .cartografia-surface .world.lens-recent .atom.recently-touched {
   opacity: 1;
   border-color: var(--bronze-soft);
-  box-shadow: 0 0 0 2px var(--bronze-veil), 0 14px 30px rgba(138, 106, 53, 0.13);
+  box-shadow: 0 0 0 10px var(--bronze-veil), 0 70px 150px rgba(138, 106, 53, 0.13);
 }
 .cartografia-surface .world.lens-recent .region.has-recent {
   opacity: 1;
   border-color: var(--bronze-soft);
-  box-shadow: 0 20px 42px rgba(138, 106, 53, 0.10);
+  box-shadow: 0 100px 210px rgba(138, 106, 53, 0.10);
 }
 .cartografia-surface .world.lens-evidence .region:not(.territory-evidence):not(.territory-docs):not(.has-evidence),
 .cartografia-surface .world.lens-evidence .atom:not(.has-evidence):not(.has-next):not(.just-edited) {
@@ -388,7 +388,7 @@
 .cartografia-surface .world.lens-evidence .atom.has-evidence {
   opacity: 1;
   border-color: var(--moss-soft);
-  box-shadow: 0 18px 42px rgba(74, 95, 58, 0.10);
+  box-shadow: 0 90px 210px rgba(74, 95, 58, 0.10);
 }
 
 /* ─── ISOLATE MODE ───────────────────────── */
@@ -411,9 +411,9 @@
   transition: opacity 320ms cubic-bezier(0.4, 1, 0.2, 1);
 }
 .cartografia-surface .world.isolate-mode .atom.active {
-  border: 2px solid var(--bronze);
+  border: 10px solid var(--bronze);
   background: var(--cream);
-  box-shadow: 0 22px 44px rgba(138, 106, 53, 0.22), 0 0 0 6px var(--bronze-glow);
+  box-shadow: 0 110px 220px rgba(138, 106, 53, 0.22), 0 0 0 30px var(--bronze-glow);
   transform: scale(1.035);
   z-index: 10;
   transition:
@@ -471,7 +471,7 @@
 /* ─── TRAIL LABELS · Mono caps midpoint (canon) ──────────────
    Hidden by default; surface when the trail is active so a focused
    atom acquires a vocabulary of relationships without polluting the
-   default Mapa view. Background is cream with a 0.8px bronze border
+   default Mapa view. Background is cream with a 4px bronze border
    per the editorial DNA. */
 .cartografia-surface .trail-label-group {
   opacity: 0;
@@ -488,8 +488,8 @@
 }
 .cartografia-surface .trail-label-text {
   font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 1.3px;
+  font-size: 42.5px;
+  letter-spacing: 6.5px;
   fill: var(--bronze-deep);
   text-transform: uppercase;
 }
