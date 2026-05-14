@@ -49,6 +49,9 @@ export function RenderFlow({
   onEnterIsolate,
   onExitIsolate,
   onEnterGear,
+  scale,
+  editMode,
+  customLayout,
 }: RenderFlowProps) {
   return (
     <FlowScene
@@ -66,6 +69,9 @@ export function RenderFlow({
         else onExitIsolate()
       }}
       onFocus={onEnterGear}
+      scale={scale}
+      editMode={editMode}
+      customLayout={customLayout}
     />
   )
 }

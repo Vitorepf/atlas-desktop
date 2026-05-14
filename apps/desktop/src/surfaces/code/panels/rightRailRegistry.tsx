@@ -1,17 +1,38 @@
+import { AtlasSelfImprovementActivationCockpitPanel } from './AtlasSelfImprovementActivationCockpitPanel'
 import { EvidencePanel } from './EvidencePanel'
-import { ForgeOperatorCockpitPanel } from './ForgeOperatorCockpitPanel'
-import { ForgeProviderCapacityPanel } from './ForgeProviderCapacityPanel'
-import { ForgeProviderTopologyPanel } from './ForgeProviderTopologyPanel'
+import { ForgeAdvancedPanel } from './ForgeAdvancedPanel'
+import { ForgeHumanPanel } from './ForgeHumanPanel'
 import { ForgeWorkIntakePanel } from './ForgeWorkIntakePanel'
-import { PlanPanel } from './PlanPanel'
 import { VerifyPanel } from './VerifyPanel'
 import type { RightRailContext, RightRailPanelDefinition } from './rightRailTypes'
 
+/**
+ * Right rail canonical layout (Atlas Code Forge Human-First UX Orchestrator v1).
+ *
+ * Tabs reduzidas para o usuário humano:
+ *   Forge → Definir → Revisar → Provas → Avançado.
+ *
+ * O cockpit técnico antigo (ForgeOperatorCockpitPanel) virou conteúdo da aba
+ * `Avançado`. A aba primária (`forge`) é a única que o usuário precisa para
+ * tocar o trabalho — botão único, segurança visível, blockers honestos.
+ */
 const PANELS: RightRailPanelDefinition[] = [
   {
-    id: 'intake',
-    label: 'Intake',
+    id: 'self_improvement',
+    label: 'Self-Improvement',
+    priority: 0,
+    render: (ctx: RightRailContext) => <AtlasSelfImprovementActivationCockpitPanel {...ctx} />,
+  },
+  {
+    id: 'forge',
+    label: 'Forge',
     priority: 1,
+    render: (ctx: RightRailContext) => <ForgeHumanPanel {...ctx} />,
+  },
+  {
+    id: 'intake',
+    label: 'Definir',
+    priority: 10,
     render: (ctx: RightRailContext) => (
       <ForgeWorkIntakePanel
         obraId={ctx.obra?.id ?? null}
@@ -19,44 +40,27 @@ const PANELS: RightRailPanelDefinition[] = [
         busy={ctx.busy}
         onRefresh={ctx.onRefreshForgeWorkIntake}
         onSave={ctx.onSaveForgeWorkIntake}
+        selfImprovementActivation={ctx.selfImprovementActivation}
       />
     ),
   },
   {
-    id: 'cockpit',
-    label: 'Cockpit',
-    priority: 5,
-    render: (ctx: RightRailContext) => <ForgeOperatorCockpitPanel {...ctx} />,
-  },
-  {
-    id: 'topology',
-    label: 'Topology',
-    priority: 7,
-    render: (ctx: RightRailContext) => <ForgeProviderTopologyPanel {...ctx} />,
-  },
-  {
-    id: 'capacity',
-    label: 'Capacity',
-    priority: 8,
-    render: (ctx: RightRailContext) => <ForgeProviderCapacityPanel {...ctx} />,
-  },
-  {
-    id: 'plan',
-    label: 'Plan',
-    priority: 10,
-    render: (ctx: RightRailContext) => <PlanPanel {...ctx} />,
-  },
-  {
     id: 'verify',
-    label: 'Verify',
+    label: 'Revisar',
     priority: 20,
     render: (ctx: RightRailContext) => <VerifyPanel {...ctx} />,
   },
   {
     id: 'evidence',
-    label: 'Evidence',
-    priority: 30,
+    label: 'Provas',
+    priority: 60,
     render: (ctx: RightRailContext) => <EvidencePanel {...ctx} />,
+  },
+  {
+    id: 'advanced',
+    label: 'Avançado',
+    priority: 90,
+    render: (ctx: RightRailContext) => <ForgeAdvancedPanel {...ctx} />,
   },
 ]
 

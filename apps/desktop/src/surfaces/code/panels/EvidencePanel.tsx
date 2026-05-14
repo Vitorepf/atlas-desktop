@@ -9,6 +9,40 @@ import { ForgeReviewHistoryPanel } from './ForgeReviewHistoryPanel'
 import { ForgeWorkspaceBanner } from './ForgeWorkspaceBanner'
 import type { RightRailContext } from './rightRailTypes'
 
+/**
+ * Atlas Code Human Interface Upgrade v2 · Provas separadas.
+ *
+ * Três seções canônicas:
+ *   1. Provas desta Obra        → evidence/ledger refs vinculadas a ESTA Obra
+ *   2. Certificações do sistema → AtlasCodeEnterpriseCertification (estado do sistema Atlas)
+ *   3. Histórico técnico        → execution history + replay + review history
+ *
+ * Se a Obra atual está blocked, "Certificações do sistema passed" NÃO deve
+ * parecer que a Obra passou. O header sempre lembra disso.
+ */
+function EvidenceSeparationHeader({ obraEvidenceCount }: { obraEvidenceCount: number }) {
+  return (
+    <div
+      style={{
+        padding: '8px 10px',
+        margin: '0 0 8px',
+        border: '1px solid var(--hair-soft)',
+        background: 'var(--cream)',
+        color: 'var(--ink2)',
+      }}
+      role="status"
+    >
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginBottom: 2, color: 'var(--bronze)' }}>
+        Provas desta Obra · sistema · histórico
+      </div>
+      <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic' }}>
+        Provas desta Obra ({obraEvidenceCount}) são distintas das Certificações do sistema Atlas.
+        Certificações verdes do sistema não significam que esta Obra passou.
+      </div>
+    </div>
+  )
+}
+
 export function EvidencePanel({
   obra,
   evidence,
@@ -17,6 +51,7 @@ export function EvidencePanel({
   forgeLiveExecutionHistory,
   forgeRunHistoryReplay,
   forgeReviewHistory,
+  forgeUxOrchestrator,
   atlasCodeEnterpriseCertification,
   programmingGovernance,
   busy,
@@ -26,10 +61,13 @@ export function EvidencePanel({
 }: RightRailContext) {
   const refs = programmingGovernance?.evidenceRefs ?? []
   const hasGovernanceRefs = refs.length > 0
+  const obraEvidenceCount = (forgeUxOrchestrator?.evidenceSeparation?.obraEvidenceRefCount ?? 0)
+    + (forgeUxOrchestrator?.evidenceSeparation?.obraLedgerEventCount ?? 0)
 
   if (hasGovernanceRefs) {
     return (
       <section className="ops-panel">
+        <EvidenceSeparationHeader obraEvidenceCount={obraEvidenceCount} />
         <ForgeWorkspaceBanner
           obra={obra}
           receipt={receipt}
@@ -68,6 +106,7 @@ export function EvidencePanel({
   if (programmingGovernance?.workItem) {
     return (
       <section className="ops-panel">
+        <EvidenceSeparationHeader obraEvidenceCount={obraEvidenceCount} />
         <ForgeWorkspaceBanner
           obra={obra}
           receipt={receipt}
@@ -100,6 +139,7 @@ export function EvidencePanel({
 
   return (
     <section className="ops-panel">
+      <EvidenceSeparationHeader obraEvidenceCount={obraEvidenceCount} />
       <ForgeWorkspaceBanner
         obra={obra}
         receipt={receipt}
@@ -124,7 +164,7 @@ export function EvidencePanel({
       <ForgeEvidencePackPanel liveExecution={forgeLiveExecution} />
       <div className="ops-section">
         <PanelTitle
-          label="Evidence Ledger"
+          label="Provas desta Obra"
           meta={evidence.length === 0 ? 'sem evidências' : `${evidence.length} eventos`}
         />
         {evidence.length === 0 ? (

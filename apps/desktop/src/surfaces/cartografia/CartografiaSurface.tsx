@@ -17,6 +17,10 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from './map/layout'
 import { useCartografiaSearch } from './search/useCartografiaSearch'
 import { useInspectorColumn } from './layout/useInspectorColumn'
 import { useVisualLens } from './state/useVisualLens'
+import { useCustomLayout } from './state/useCustomLayout'
+import { useEditMode } from './state/useEditMode'
+import { useLayoutPresets } from './state/useLayoutPresets'
+import { useLayoutShortcuts } from './state/useLayoutShortcuts'
 import { CartografiaViewportSlot } from './CartografiaViewportSlot'
 
 export function CartografiaSurface() {
@@ -33,6 +37,18 @@ export function CartografiaSurface() {
   const [auditOpen, setAuditOpen] = useState(false)
   const toggleAudit = useCallback(() => setAuditOpen((v) => !v), [])
   const closeAudit = useCallback(() => setAuditOpen(false), [])
+
+  // Edit mode (Fase 1+2) · lock/unlock + custom layout overlay por view.
+  const editMode = useEditMode()
+  const customLayout = useCustomLayout(c.continent)
+  // Feature #4 · presets nomeados de layout
+  const layoutPresets = useLayoutPresets(c.continent)
+  // Feature #6 · Cmd+Z / Cmd+Shift+Z keyboard shortcuts pra undo/redo
+  useLayoutShortcuts({
+    isEditMode: editMode.isEditMode,
+    undo: customLayout.undo,
+    redo: customLayout.redo,
+  })
 
   useSceneAutoFit({
     viewport,
@@ -70,6 +86,9 @@ export function CartografiaSurface() {
         visualLens={visualLens}
         setVisualLens={setVisualLens}
         search={search}
+        editMode={editMode}
+        customLayout={customLayout}
+        layoutPresets={layoutPresets}
       />
       {auditOpen ? (
         <AuditPanel

@@ -6,12 +6,26 @@ import type {
   AtlasCodeForgeReviewPacket,
   AtlasCodeForgeWorkIntake,
   AtlasCodeForgeWorkIntakePayload,
+  AtlasCodeForgeUxOrchestrator,
   AtlasForgeContinuumCertificationSummary,
   AtlasForgeProviderCapacity,
+  AtlasForgeProviderDriverPlanPacket,
+  AtlasForgeProviderDriverStatus,
   AtlasForgeProviderFailureMemory,
   AtlasForgeProviderFailureMemoryEvent,
+  AtlasForgeProviderInvocationReceipt,
+  AtlasForgeProviderInvocationSnapshot,
   AtlasForgeProviderTopology,
   AtlasForgeRuntimeDispatchPlan,
+  AtlasSelfImprovementForgeActivationState,
+  AtlasSelfImprovementGovernanceState,
+  AtlasSelfImprovementActivationCockpit,
+  AtlasSelfImprovementActivationCockpitFilters,
+  AtlasSelfImprovementActivationDetail,
+  AtlasSelfImprovementActivationAcceptPayload,
+  AtlasSelfImprovementActivationRejectPayload,
+  AtlasSelfImprovementActivationCreatePayload,
+  AtlasSelfImprovementTrustLedgerEntry,
   BootSnapshot,
   CoreStatus,
   DecisionReceipt,
@@ -43,6 +57,13 @@ interface RightRailProps {
   forgeProviderCapacity: AtlasForgeProviderCapacity | null
   forgeProviderFailureMemory: AtlasForgeProviderFailureMemory | null
   forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
+  forgeProviderDriverStatus: AtlasForgeProviderDriverStatus | null
+  forgeProviderInvocation: AtlasForgeProviderInvocationSnapshot | null
+  forgeProviderInvocationReceipt: AtlasForgeProviderInvocationReceipt | null
+  forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
+  selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
+  selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
+  selfImprovementActivationCockpit: AtlasSelfImprovementActivationCockpit | null
   forgeRunHistoryReplay: WorkStateSnapshot['forgeRunHistoryReplay']
   forgeReview: WorkStateSnapshot['forgeReview']
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
@@ -69,6 +90,18 @@ interface RightRailProps {
   onRecordForgeProviderFailure: (payload: { provider: string; failureType: string; model?: string; role?: string; reason?: string }) => Promise<AtlasForgeProviderFailureMemoryEvent | null>
   onRefreshForgeRuntimeDispatch: () => Promise<void>
   onRunForgeRuntimeDispatch: (options?: { role?: string; simulateProviderFailure?: string; createChildReceipt?: boolean; fastPathRunId?: string }) => Promise<void>
+  onRefreshForgeProviderDrivers: () => Promise<void>
+  onPlanForgeProviderDriver: (options?: { role?: string; dispatchId?: string }) => Promise<AtlasForgeProviderDriverPlanPacket | null>
+  onRunForgeProviderInvocation: (options?: { role?: string; mode?: 'dry_run' | 'execute'; dispatchId?: string; confirmProviderCall?: boolean; confirmBudget?: boolean; confirmRuntimeDispatch?: boolean; timeoutSeconds?: number }) => Promise<void>
+  onRefreshForgeProviderInvocationLatest: () => Promise<void>
+  onRefreshForgeUxOrchestrator: () => Promise<void>
+  onRecordSelfImprovementTrustLedgerEntry: (payload: { outcome: string; proposalId?: string; reviewer?: string; reason?: string; area?: string }) => Promise<AtlasSelfImprovementTrustLedgerEntry | null>
+  onRefreshSelfImprovementGovernance: () => Promise<void>
+  onRefreshSelfImprovementActivationCockpit: (filters?: AtlasSelfImprovementActivationCockpitFilters) => Promise<void>
+  onSelectSelfImprovementActivation: (activationId: string | null) => Promise<void>
+  onCreateSelfImprovementForgeActivation: (payload: AtlasSelfImprovementActivationCreatePayload) => Promise<AtlasSelfImprovementActivationDetail | null>
+  onAcceptSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationAcceptPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
+  onRejectSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationRejectPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
   onStartForgeLiveExecutionAsync: () => Promise<void>
   onRefreshForgeLiveExecutionAsync: () => Promise<void>
   onInspectForgeRunHistory: (historyId: string) => Promise<void>
@@ -87,7 +120,7 @@ interface RightRailProps {
  * registry so future panels can be added without growing this component.
  */
 export function RightRail(props: RightRailProps) {
-  const [tab, setTab] = useState<OpsTab>('plan')
+  const [tab, setTab] = useState<OpsTab>('forge')
 
   const ctx: RightRailContext = props
   const activePanel = useMemo(

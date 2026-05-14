@@ -1,6 +1,8 @@
 import type { RefObject } from 'react'
 import type { CartographyAtom, CartographyGraph, RecentChange } from '@atlas/domain'
 import type { VisualLens } from '../state/visualLens'
+import type { useCustomLayout } from '../state/useCustomLayout'
+import type { useEditMode } from '../state/useEditMode'
 
 export interface FlowSceneProps {
   graph: CartographyGraph
@@ -13,6 +15,9 @@ export interface FlowSceneProps {
   onHover: (graphId: string | null) => void
   onIsolate: (graphId: string) => void
   onFocus: (graphId: string) => void
+  scale: number
+  editMode: ReturnType<typeof useEditMode>
+  customLayout: ReturnType<typeof useCustomLayout>
 }
 
 export interface FlowPhase {

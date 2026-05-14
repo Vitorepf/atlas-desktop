@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react'
 
+/**
+ * Atlas Code Visual Ergonomics v1 · LeftRailSection enterprise.
+ *
+ * Substitui o `<h3>` cru por header tipográfico legível em sans, com count
+ * em mono pequeno. Sem borda inferior pesada — hierarquia por peso e cor.
+ */
 export function LeftRailSection({
   label,
   count,
@@ -10,27 +16,28 @@ export function LeftRailSection({
   children: ReactNode
 }) {
   return (
-    <section className="sess-section">
-      <h3>
-        {label} <span className="meta">{count}</span>
-      </h3>
+    <section className="cc-rail-section" aria-label={label}>
+      <header className="cc-rail-section-head">
+        <span>{label}</span>
+        <span className="count">{count}</span>
+      </header>
       {children}
     </section>
   )
 }
 
+/**
+ * Empty state alinhado ao token enterprise — sai do italic-serif decorativo
+ * para um bloco honesto que diz o que está vazio.
+ */
 export function EmptyRow({ text }: { text: string }) {
   return (
     <div
-      style={{
-        padding: '12px 0 4px',
-        fontFamily: 'var(--serif)',
-        fontStyle: 'italic',
-        fontSize: 12.5,
-        color: 'var(--ink3)',
-      }}
+      className="cc-empty"
+      role="status"
+      style={{ padding: '10px 12px', marginTop: 2, fontStyle: 'normal' }}
     >
-      {text}
+      <span>{text}</span>
     </div>
   )
 }

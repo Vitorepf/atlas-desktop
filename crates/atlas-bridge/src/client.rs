@@ -717,6 +717,123 @@ impl AtlasBridge {
         self.execute(request).await
     }
 
+    /// Atlas Forge Runtime Dispatch · POST prepare governed dispatch plan.
+    /// Schema: atlas.forge.runtime_dispatch_plan.v1
+    pub async fn run_forge_runtime_dispatch(
+        &self,
+        work_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/runtime-dispatch",
+            endpoints::ATLAS_CODE_WORK_FORGE_RUNTIME_DISPATCH,
+            work_id
+        );
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    /// Atlas Forge Runtime Dispatch · GET latest dispatch plan for work.
+    pub async fn get_forge_runtime_dispatch(
+        &self,
+        work_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/runtime-dispatch",
+            endpoints::ATLAS_CODE_WORK_FORGE_RUNTIME_DISPATCH,
+            work_id
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Atlas Forge Governed Provider Invocation · POST prepare/execute invocation.
+    /// NEVER calls external provider unless caller sets confirm_provider_call +
+    /// confirm_budget (external) + confirm_runtime_dispatch and the driver is configured.
+    /// Schema: atlas.forge.provider_invocation.v1
+    pub async fn run_forge_provider_invocation(
+        &self,
+        work_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/provider-invocations",
+            endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_INVOCATIONS,
+            work_id
+        );
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    /// Atlas Forge Governed Provider Invocation · GET latest invocation for work.
+    pub async fn get_forge_provider_invocation_latest(
+        &self,
+        work_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/provider-invocations/latest",
+            endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_INVOCATION_LATEST,
+            work_id
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Atlas Code Forge UX Orchestrator · GET human state machine read-model.
+    /// Schema: atlas.code.forge_ux_orchestrator.v1
+    pub async fn get_forge_ux_orchestrator(
+        &self,
+        work_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/ux-orchestrator",
+            endpoints::ATLAS_CODE_WORK_FORGE_UX_ORCHESTRATOR,
+            work_id
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Atlas Forge Real Provider Drivers · GET driver status (router + 4 drivers).
+    /// NEVER calls external provider.
+    /// Schema: atlas.forge.provider_driver_router_status.v1
+    pub async fn get_forge_provider_drivers(
+        &self,
+        work_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/provider-invocations/drivers",
+            endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_DRIVERS,
+            work_id
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Atlas Forge Real Provider Drivers · POST plan driver packet (no provider call).
+    /// Schema: atlas.forge.provider_driver_plan_packet.v1
+    pub async fn plan_forge_provider_driver(
+        &self,
+        work_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/provider-invocations/plan-driver",
+            endpoints::ATLAS_CODE_WORK_FORGE_PROVIDER_PLAN_DRIVER,
+            work_id
+        );
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
     pub async fn create_checkpoint(
         &self,
         work_id: &str,
@@ -809,6 +926,100 @@ impl AtlasBridge {
             encode_path_segment(graph_id)
         );
         self.execute(self.build(Method::GET, &path)).await
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // ATLAS SELF-IMPROVEMENT ACTIVATION COCKPIT v1
+    //
+    // Schema canonico: atlas.self_improvement.activation_cockpit.v1
+    // Doc: docs/engineering-knowledge-base/atlas-self-improvement-activation-cockpit-v1.md
+    //
+    // The cockpit is pure read-model + 2 humans-only mutations
+    // (accept/reject) that NEVER auto-execute Fast Path, NEVER call a
+    // provider and NEVER unlock external_rivals_certification. Mutations
+    // require reviewer + reason.
+
+    /// Cockpit list + counters + summary (read-only).
+    pub async fn list_self_improvement_forge_activations(
+        &self,
+        status: Option<String>,
+        bucket: Option<String>,
+        has_obra: Option<bool>,
+    ) -> BridgeResult<serde_json::Value> {
+        let mut path = String::from("/atlas-code/self-improvement/activation-cockpit");
+        let mut params: Vec<String> = Vec::new();
+        if let Some(s) = status {
+            if !s.is_empty() {
+                params.push(format!("status={}", encode_path_segment(&s)));
+            }
+        }
+        if let Some(b) = bucket {
+            if !b.is_empty() {
+                params.push(format!("bucket={}", encode_path_segment(&b)));
+            }
+        }
+        if let Some(value) = has_obra {
+            params.push(format!("has_obra={}", value));
+        }
+        if !params.is_empty() {
+            path.push('?');
+            path.push_str(&params.join("&"));
+        }
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Cockpit detail (humanised projection) for one activation.
+    pub async fn get_self_improvement_forge_activation(
+        &self,
+        activation_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "/atlas-code/self-improvement/activation-cockpit/{}",
+            encode_path_segment(activation_id)
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    /// Plan a new activation via the canonical mutation endpoint. Returns
+    /// the activation payload (controller enriches with human_summary +
+    /// next_safe_action). NEVER auto-executes Fast Path.
+    pub async fn create_self_improvement_forge_activation(
+        &self,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = "/atlas-code/self-improvement/forge-activations";
+        self.execute(self.build(Method::POST, path).json(&payload))
+            .await
+    }
+
+    /// Accept activation — requires reviewer + reason. Materialises an
+    /// Obra but does not start Fast Path.
+    pub async fn accept_self_improvement_forge_activation(
+        &self,
+        activation_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "/atlas-code/self-improvement/forge-activations/{}/accept",
+            encode_path_segment(activation_id)
+        );
+        self.execute(self.build(Method::POST, &path).json(&payload))
+            .await
+    }
+
+    /// Reject activation — requires reviewer + reason. Records rejection,
+    /// never creates an Obra.
+    pub async fn reject_self_improvement_forge_activation(
+        &self,
+        activation_id: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "/atlas-code/self-improvement/forge-activations/{}/reject",
+            encode_path_segment(activation_id)
+        );
+        self.execute(self.build(Method::POST, &path).json(&payload))
+            .await
     }
 }
 

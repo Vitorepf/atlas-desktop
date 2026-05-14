@@ -1,5 +1,6 @@
 import type { CartographyAtom, Lane, RecentChange } from '@atlas/domain'
 import { LANE_LAYOUT } from '../map/layout'
+import type { CustomLayoutMap } from '../state/useCustomLayout'
 import { computeRegionSignals, LANE_TONE } from './flowModel'
 
 /**
@@ -20,7 +21,10 @@ export const LANE_EYEBROW: Record<string, string> = {
 export interface FlowLaneViewModel {
   key: string
   lane: Lane
-  layout: NonNullable<(typeof LANE_LAYOUT)[string]>
+  /** Layout aplicado (canon LANE_LAYOUT + override do edit mode se houver). */
+  layout: { x: number; y: number; w: number; h?: number }
+  /** Marca se layout veio do overlay (pra estilo "custom" sutil). */
+  isCustom: boolean
   nodes: Lane['nodes']
   regionAtoms: CartographyAtom[]
   regionSignals: ReturnType<typeof computeRegionSignals>
@@ -36,6 +40,7 @@ export function buildFlowLaneViewModel({
   recentByGraphId,
   isolatedId,
   kinSet,
+  customLayout,
 }: {
   key: string
   lane: Lane
@@ -43,9 +48,21 @@ export function buildFlowLaneViewModel({
   recentByGraphId: Record<string, RecentChange>
   isolatedId: string | null
   kinSet: Set<string>
+  /** Overlay do edit mode. Se presente, sobrescreve campos individualmente. */
+  customLayout?: CustomLayoutMap
 }): FlowLaneViewModel | null {
-  const layout = LANE_LAYOUT[key]
-  if (!layout) return null
+  const canon = LANE_LAYOUT[key]
+  if (!canon) return null
+  const override = customLayout?.[key]
+  const layout = override
+    ? {
+        x: override.x ?? canon.x,
+        y: override.y ?? canon.y,
+        w: override.w ?? canon.w,
+        h: override.h,
+      }
+    : { ...canon }
+  const isCustom = !!override
 
   const nodes = Array.isArray(lane.nodes) ? lane.nodes : []
   const regionAtoms = nodes
@@ -59,12 +76,13 @@ export function buildFlowLaneViewModel({
     key,
     lane,
     layout,
+    isCustom,
     nodes,
     regionAtoms,
     regionSignals,
     isolatedInside,
     kinInside,
-    className: flowLaneClassName(key, regionSignals, isolatedInside, kinInside),
+    className: flowLaneClassName(key, regionSignals, isolatedInside, kinInside, isCustom),
   }
 }
 
@@ -72,7 +90,8 @@ function flowLaneClassName(
   key: string,
   signals: ReturnType<typeof computeRegionSignals>,
   isolatedInside: boolean,
-  kinInside: boolean
+  kinInside: boolean,
+  isCustom: boolean
 ): string {
   return [
     'region',
@@ -82,6 +101,7 @@ function flowLaneClassName(
     signals.evidence > 0 ? 'has-evidence' : '',
     signals.relations > 0 ? 'has-relations' : '',
     isolatedInside || kinInside ? 'kin-host' : '',
+    isCustom ? 'is-custom-layout' : '',
   ]
     .filter(Boolean)
     .join(' ')

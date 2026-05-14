@@ -33,6 +33,7 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
           loading={b.loading}
           busy={b.busy}
           onSelectObra={b.selectObra}
+          onCreateObra={b.createObra}
         />
       }
       stage={
@@ -44,6 +45,9 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
           busy={b.busy}
           hasObra={!!b.obra}
           programmingGovernance={b.programmingGovernance}
+          obra={b.obra}
+          forgeUxOrchestrator={b.forgeUxOrchestrator}
+          obraCommandCenter={b.obraCommandCenter}
           onSend={b.sendIntent}
         />
       }
@@ -68,8 +72,15 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             forgeContinuumCertification={b.forgeContinuumCertification}
             forgeProviderCapacity={b.forgeProviderCapacity}
             forgeProviderFailureMemory={b.forgeProviderFailureMemory}
+            selfImprovementGovernance={b.selfImprovementGovernance}
+            selfImprovementActivationCockpit={b.selfImprovementActivationCockpit}
             forgeRuntimeDispatch={b.forgeRuntimeDispatch}
+            forgeProviderDriverStatus={b.forgeProviderDriverStatus}
+            forgeProviderInvocation={b.forgeProviderInvocation}
+            forgeProviderInvocationReceipt={b.forgeProviderInvocationReceipt}
+            forgeUxOrchestrator={b.forgeUxOrchestrator}
             forgeRunHistoryReplay={b.forgeRunHistoryReplay}
+            selfImprovementActivation={b.selfImprovementActivation}
             forgeReview={b.forgeReview}
             forgeReviewHistory={b.forgeReviewHistory}
             checkpoint={b.checkpoint}
@@ -93,8 +104,20 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             onRefreshForgeContinuumCertification={b.refreshForgeContinuumCertification}
             onRefreshForgeProviderCapacity={b.refreshForgeProviderCapacity}
             onRecordForgeProviderFailure={b.recordForgeProviderFailure}
+            onRefreshSelfImprovementGovernance={b.refreshSelfImprovementGovernance}
+            onRecordSelfImprovementTrustLedgerEntry={b.recordSelfImprovementTrustLedgerEntry}
+            onRefreshSelfImprovementActivationCockpit={b.refreshSelfImprovementActivationCockpit}
+            onSelectSelfImprovementActivation={b.selectSelfImprovementActivation}
+            onCreateSelfImprovementForgeActivation={b.createSelfImprovementForgeActivation}
+            onAcceptSelfImprovementForgeActivation={b.acceptSelfImprovementForgeActivation}
+            onRejectSelfImprovementForgeActivation={b.rejectSelfImprovementForgeActivation}
             onRefreshForgeRuntimeDispatch={b.refreshForgeRuntimeDispatch}
             onRunForgeRuntimeDispatch={b.runForgeRuntimeDispatch}
+            onRefreshForgeProviderDrivers={b.refreshForgeProviderDrivers}
+            onPlanForgeProviderDriver={b.planForgeProviderDriver}
+            onRunForgeProviderInvocation={b.runForgeProviderInvocation}
+            onRefreshForgeProviderInvocationLatest={b.refreshForgeProviderInvocationLatest}
+            onRefreshForgeUxOrchestrator={b.refreshForgeUxOrchestrator}
             onStartForgeLiveExecutionAsync={b.startForgeLiveExecutionAsync}
             onRefreshForgeLiveExecutionAsync={b.refreshForgeLiveExecutionAsync}
             onInspectForgeRunHistory={b.inspectForgeRunHistory}

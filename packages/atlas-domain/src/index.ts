@@ -184,7 +184,14 @@ export interface WorkStateSnapshot {
   forgeContinuumCertification: AtlasForgeContinuumCertificationSummary | null
   forgeProviderCapacity: AtlasForgeProviderCapacity | null
   forgeProviderFailureMemory: AtlasForgeProviderFailureMemory | null
+  selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
+  selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
   forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
+  forgeProviderDriverStatus: AtlasForgeProviderDriverStatus | null
+  forgeProviderInvocation: AtlasForgeProviderInvocationSnapshot | null
+  forgeProviderInvocationReceipt: AtlasForgeProviderInvocationReceipt | null
+  forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
+  obraCommandCenter: AtlasCodeObraCommandCenter | null
   checkpoint: AtlasCodeCheckpointArtifact | null
   atlasCodeEnterpriseCertification: AtlasCodeEnterpriseCertificationReport | null
   programmingGovernance: ProgrammingGovernanceSnapshot | null
@@ -242,6 +249,432 @@ export interface AtlasForgeRuntimeDispatchPlan {
   recordedAt: string | null
   note: string | null
   separatedFrom: string
+}
+
+/**
+ * Atlas Forge Provider Driver Status (router v2 snapshot).
+ *
+ * Schema: atlas.forge.provider_driver_router_status.v1
+ *
+ * The driver status is a pure read-model — never calls an external provider.
+ * Each entry follows `atlas.forge.provider_driver_config_status.v1`.
+ */
+export interface AtlasForgeProviderDriverEntry {
+  schemaVersion: string
+  provider: string
+  configured: boolean
+  runtimePresent: boolean
+  binaryPath: string | null
+  authState: string
+  modelPrefixes: string[]
+  allowedBinaries: string[]
+  blockers: string[]
+  externalProviderCallPossible: boolean
+  providerTokensMaySpend: boolean
+  note: string | null
+}
+
+export interface AtlasForgeProviderDriverStatus {
+  schemaVersion: string
+  drivers: AtlasForgeProviderDriverEntry[]
+  configuredDrivers: string[]
+  note: string | null
+}
+
+/**
+ * Atlas Forge Real Provider Driver Plan Packet.
+ *
+ * Schema: atlas.forge.provider_driver_plan_packet.v1
+ *
+ * Wraps an invocation dry-run + driver_status + driver_plan.
+ */
+export interface AtlasForgeProviderDriverPlanPacket {
+  schemaVersion: string
+  invocation: Record<string, unknown>
+  driverStatus: Record<string, unknown>
+  driverPlan: Record<string, unknown>
+  externalProviderCall: boolean
+  note: string | null
+}
+
+/**
+ * Slim snapshot of the latest provider invocation. Full schema lives in PHP;
+ * the desktop only needs the structurally relevant fields to render.
+ *
+ * Schema: atlas.forge.provider_invocation.v1
+ */
+export interface AtlasForgeProviderInvocationSnapshot {
+  schemaVersion: string
+  status: string
+  mode: string
+  obraId: string | null
+  invocationId: string | null
+  dispatchId: string | null
+  role: string | null
+  provider: string | null
+  model: string | null
+  providerCalled: boolean
+  externalProviderCall: boolean
+  providerTokensSpent: boolean | string
+  exitCode: number | null
+  durationMs: number | null
+  stdoutHash: string | null
+  stderrHash: string | null
+  outputExcerpt: string | null
+  completionClaimPromoted: boolean
+  reviewCompletionGatePreserved: boolean
+  blockers: string[]
+  nextAction: string | null
+  separatedFrom: string
+  note: string | null
+}
+
+/**
+ * Schema: atlas.forge.provider_invocation_receipt.v1
+ */
+export interface AtlasForgeProviderInvocationReceipt {
+  schemaVersion: string
+  receiptId: string
+  receiptHash: string
+  invocationId: string | null
+  status: string
+  mode: string
+  provider: string | null
+  model: string | null
+  providerCalled: boolean
+  startedAt: string | null
+  completedAt: string | null
+  durationMs: number | null
+  exitCode: number | null
+  completionClaimPromoted: boolean
+  separatedFrom: string
+}
+
+/**
+ * Atlas Code Forge UX Orchestrator (human-first read-model).
+ *
+ * Schema: atlas.code.forge_ux_orchestrator.v1
+ *
+ * Consolidates intake + fast path + topology + dispatch + driver status +
+ * invocation + review + completion into a single state machine that drives
+ * the desktop Forge panel. NEVER promotes completion claim.
+ */
+export type AtlasCodeForgeUxState =
+  | 'no_obra'
+  | 'intake_required'
+  | 'intake_ready'
+  | 'ready_to_define'
+  | 'ready_to_prepare'
+  | 'prepared'
+  | 'ready_to_execute'
+  | 'running'
+  | 'waiting_worker'
+  | 'waiting_provider_confirmation'
+  | 'waiting_budget_confirmation'
+  | 'waiting_runtime_dispatch_confirmation'
+  | 'waiting_review'
+  | 'repair_required'
+  | 'blocked'
+  | 'blocked_scope'
+  | 'blocked_definition'
+  | 'blocked_provider'
+  | 'blocked_driver'
+  | 'blocked_capacity'
+  | 'blocked_governance'
+  | 'completed'
+  | 'failed'
+  | 'rejected'
+  | 'rolled_back'
+  | 'idle'
+  | string
+
+export type AtlasCodeForgeUxActionKind =
+  | 'bind_obra'
+  | 'open_intake'
+  | 'fix_scope'
+  | 'prepare_fast_path'
+  | 'execute_fast_path'
+  | 'refresh_status'
+  | 'wait_worker'
+  | 'confirm_provider'
+  | 'confirm_budget'
+  | 'confirm_runtime_dispatch'
+  | 'open_review'
+  | 'plan_repair'
+  | 'view_evidence'
+  | 'open_advanced'
+  | string
+
+export type AtlasCodeChatMessageKind =
+  | 'definition'
+  | 'command'
+  | 'question'
+  | 'decision'
+  | 'note'
+  | 'restriction'
+  | 'acceptance_criterion'
+  | string
+
+/**
+ * Atlas Code Human Interface Upgrade v2.
+ *
+ * Canonical translation of a technical blocker into the human-facing block the
+ * Forge panel renders (title + detail + suggested action + technical detail).
+ */
+export interface AtlasCodeForgeUxBlockerTranslation {
+  kind: string | null
+  humanTitle: string | null
+  humanDetail: string | null
+  suggestedActionLabel: string | null
+  suggestedActionKind: AtlasCodeForgeUxActionKind | null
+  technicalDetail: string | null
+  filesOutOfScope: string[]
+  isBlocking: boolean
+}
+
+export interface AtlasCodeForgeUxCompletionGating {
+  reviewRequired: boolean
+  finalCompletionAllowed: boolean
+  approveButtonVisible: boolean
+  rejectButtonVisible: boolean
+  rollbackButtonVisible: boolean
+}
+
+export interface AtlasCodeForgeUxEvidenceSeparation {
+  obraEvidenceRefCount: number
+  obraLedgerEventCount: number
+  systemCertificationVisible: boolean
+  note: string
+}
+
+export interface AtlasCodeForgeUxOrchestrator {
+  schemaVersion: string
+  generatedAt: string
+  obraId: string | null
+  obraPresent: boolean
+  state: AtlasCodeForgeUxState
+  humanStatusLabel: string
+  humanStatusDetail: string
+  primaryActionLabel: string
+  primaryActionKind: AtlasCodeForgeUxActionKind
+  primaryActionEnabled: boolean
+  primaryActionDisabledReason: string | null
+  nextSafeStep: string
+  blockers: string[]
+  blockerTranslation: AtlasCodeForgeUxBlockerTranslation
+  definitionStatus: 'ready' | 'incomplete' | 'blocking_execution' | string
+  completionGating: AtlasCodeForgeUxCompletionGating
+  evidenceSeparation: AtlasCodeForgeUxEvidenceSeparation
+  chatMessageKinds: AtlasCodeChatMessageKind[]
+  safetySummary: {
+    externalProviderCall: boolean
+    providerTokensSpent: number | string
+    completionClaimPromoted: boolean
+    reviewCompletionGatePreserved: boolean
+  }
+  providerSummary: {
+    provider: string | null
+    model: string | null
+    decisionSource: string
+    capacityState: string
+    driverConfigured: boolean
+  }
+  evidenceSummary: {
+    evidenceRefCount: number
+    ledgerEventCount: number
+  }
+  reviewSummary: {
+    reviewRequired: boolean
+    reviewStatus: string
+    humanApproved: boolean
+    finalCompletionAllowed: boolean
+  }
+  checklist: {
+    obra: boolean
+    intake: boolean
+    specPlan: boolean
+    provider: boolean
+    execution: boolean
+    review: boolean
+    evidence: boolean
+  }
+  progressPercent: number
+  signals: Record<string, unknown>
+  advancedRefs: Record<string, unknown>
+  externalProviderCall: boolean
+  providerTokensSpent: boolean | string
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  note: string | null
+}
+
+/**
+ * Atlas Code Obra Command Center v1.
+ *
+ * Schema: atlas.code.obra_command_center.v1
+ *
+ * Read-model canônico que substitui o "centro vazio" do Atlas Code por uma
+ * cabine humana viva: lifecycle de 8 fases, progresso duplo (preparação vs
+ * entrega comprovada), decision inbox, trust summary, operational health
+ * honesto e safety strip. Nunca chama provider externo. Nunca promove
+ * completion claim.
+ */
+export type AtlasCodeObraCommandCenterStatus = 'ok' | 'blocked' | 'no_obra' | string
+
+export type AtlasCodeObraCommandCenterPhaseKey =
+  | 'intake'
+  | 'architecture'
+  | 'forge_prep'
+  | 'build'
+  | 'review'
+  | 'proofs'
+  | 'decision'
+  | 'learning'
+  | string
+
+export type AtlasCodeObraCommandCenterPhaseStatus =
+  | 'not_started'
+  | 'ready'
+  | 'running'
+  | 'blocked'
+  | 'passed'
+  | 'needs_human'
+  | 'completed'
+  | string
+
+export interface AtlasCodeObraCommandCenterPhase {
+  key: AtlasCodeObraCommandCenterPhaseKey
+  label: string
+  status: AtlasCodeObraCommandCenterPhaseStatus
+  description: string
+  evidenceCount: number
+  blockerCount: number
+  nextAction: string
+}
+
+export interface AtlasCodeObraCommandCenterMilestone {
+  key: string
+  label: string
+  reached: boolean
+  reachedAt: string | null
+}
+
+export interface AtlasCodeObraCommandCenterProgressItem {
+  key: string
+  label: string
+  reached: boolean
+}
+
+export interface AtlasCodeObraCommandCenterProgress {
+  label: string
+  reached: number
+  total: number
+  percent: number
+  breakdown: AtlasCodeObraCommandCenterProgressItem[]
+}
+
+export type AtlasCodeObraCommandCenterRisk = 'none' | 'low' | 'medium' | 'high' | string
+
+export interface AtlasCodeObraCommandCenterDecision {
+  key: string
+  label: string
+  reason: string
+  risk: AtlasCodeObraCommandCenterRisk
+  recommendedAction: string
+  allowedActions: string[]
+}
+
+export interface AtlasCodeObraCommandCenterBlockerSummary {
+  count: number
+  kinds: string[]
+  primaryKind: string | null
+  primaryHumanTitle: string | null
+}
+
+export interface AtlasCodeObraCommandCenterOperationalHealth {
+  queueName: string
+  queueStatus: 'idle' | 'queued' | 'running' | 'stale' | 'unknown' | string
+  workerStatus: 'idle' | 'running' | 'unknown' | string
+  lastEventAt: string | null
+  currentStateAgeSeconds: number | null
+  heartbeatStatus: 'ok' | 'stale' | 'unknown' | string
+  stale: boolean
+  watchdogNextAction: string | null
+  humanMessage: string
+  note: string
+}
+
+export interface AtlasCodeObraCommandCenterTrustSummary {
+  evidenceStrength: 'none' | 'weak' | 'partial' | 'strong' | string
+  testsRunCount: number
+  receiptsCount: number
+  ledgerEventsCount: number
+  missingEvidence: string[]
+  riskLevel: 'low' | 'medium' | 'high' | string
+  claimStatus: string
+  reviewStatus: string
+  providerExternalCall: boolean
+  tokenSpend: boolean
+  note: string
+}
+
+export interface AtlasCodeObraCommandCenterEvidenceDigest {
+  obraEvidenceRefCount: number
+  obraLedgerEventCount: number
+  latestEvidenceAt: string | null
+  systemCertificationsSeparated: boolean
+  note: string
+}
+
+export interface AtlasCodeObraCommandCenter {
+  schemaVersion: string
+  status: AtlasCodeObraCommandCenterStatus
+  generatedAt: string
+  obraId: string | null
+  obraPresent: boolean
+  obraTitle: string | null
+  objectiveSummary: string | null
+  humanStatusLabel: string
+  humanStatusDetail: string
+  currentPhase: AtlasCodeObraCommandCenterPhaseKey | null
+  nextPhase: AtlasCodeObraCommandCenterPhaseKey | null
+  nextSafeAction: string
+  primaryActionKind: AtlasCodeForgeUxActionKind | string
+  primaryActionLabel: string
+  primaryActionEnabled: boolean
+  primaryActionDisabledReason: string | null
+  lifecyclePhases: AtlasCodeObraCommandCenterPhase[]
+  milestones: AtlasCodeObraCommandCenterMilestone[]
+  readinessProgress: AtlasCodeObraCommandCenterProgress
+  provenDeliveryProgress: AtlasCodeObraCommandCenterProgress
+  decisionInbox: AtlasCodeObraCommandCenterDecision[]
+  blockerSummary: AtlasCodeObraCommandCenterBlockerSummary
+  blockerTranslation: AtlasCodeForgeUxBlockerTranslation
+  operationalHealth: AtlasCodeObraCommandCenterOperationalHealth
+  trustSummary: AtlasCodeObraCommandCenterTrustSummary
+  evidenceDigest: AtlasCodeObraCommandCenterEvidenceDigest
+  providerSummary: {
+    provider: string | null
+    model: string | null
+    decisionSource: string
+    capacityState: string
+    driverConfigured: boolean
+  }
+  safetySummary: {
+    externalProviderCall: boolean
+    providerTokensSpent: number | string
+    completionClaimPromoted: boolean
+    reviewCompletionGatePreserved: boolean
+    externalRivalsCertification: string
+  }
+  advancedRefs: Record<string, unknown>
+  chatMessageKinds: AtlasCodeChatMessageKind[]
+  externalProviderCall: boolean
+  providerTokensSpent: boolean | string
+  completionClaimPromoted: boolean
+  reviewGatePreserved: boolean
+  separatedFrom: string
+  note: string | null
 }
 
 export interface AtlasCodeCheckpointArtifact {
@@ -510,6 +943,377 @@ export interface AtlasForgeProviderFailureMemoryEvent {
  *
  * Schema: atlas.forge.provider_failure_memory.v1
  */
+/**
+ * Atlas Self-Improvement Governance State (slim state-projection).
+ *
+ * Surface for the 7-level self-improvement governance ladder. Read-model
+ * only — UI never promotes, never calls a provider, never bypasses Forge
+ * Review/Completion.
+ *
+ * Schema: atlas.self_improvement.governance_state.v1
+ */
+export interface AtlasSelfImprovementForgeActivationState {
+  schemaVersion: string
+  activationId: string | null
+  proposalId: string | null
+  proposalHash: string | null
+  powerGateHash: string | null
+  invariantLockHash: string | null
+  regressionSentinelHash: string | null
+  strategyBucket: string | null
+  portfolioDeviation: boolean
+  maturityTarget: number | null
+  reviewer: string | null
+  reason: string | null
+  approvedAt: string | null
+  externalProviderCall: boolean
+  separatedFrom: string
+}
+
+export interface AtlasSelfImprovementGovernanceState {
+  schemaVersion: string
+  trustLedger: AtlasSelfImprovementTrustLedgerSnapshot | null
+  strategyPortfolio: AtlasSelfImprovementStrategyPortfolioSnapshot | null
+  commands: Record<string, string>
+  externalProviderCall: boolean
+  separatedFrom: string
+}
+
+export interface AtlasSelfImprovementTrustLedgerSnapshot {
+  schemaVersion: string
+  obraId: string | null
+  entryCount: number
+  entries: AtlasSelfImprovementTrustLedgerEntry[]
+  updatedAt: string | null
+  externalProviderCall: boolean
+  counts?: Record<string, number>
+  summary?: {
+    totalProposals: number
+    approvalRate: number | null
+    autopromotionAccepted: number
+    autopromotionReverted: number
+    autopromotionRevertRate: number | null
+    overreachFlagged: number
+    overConservativeFlagged: number
+    trustBand:
+      | 'high_trust'
+      | 'medium_trust'
+      | 'low_trust'
+      | 'low_trust_overreach'
+      | 'low_trust_too_conservative'
+      | 'insufficient_data'
+      | string
+  }
+  knownOutcomes?: string[]
+  maxEntries?: number
+  dedupeWindowSeconds?: number
+}
+
+export interface AtlasSelfImprovementTrustLedgerEntry {
+  schemaVersion: string
+  entryId: string
+  occurredAt: string
+  outcome: string
+  proposalId: string | null
+  reviewer: string | null
+  reason: string | null
+  area: string | null
+  silent: boolean
+  autoPromotesWork: boolean
+  externalProviderCall: boolean
+}
+
+export interface AtlasSelfImprovementStrategyPortfolioSnapshot {
+  schemaVersion: string
+  portfolioId: string
+  generatedAt: string
+  totalProposals: number
+  buckets: AtlasSelfImprovementStrategyPortfolioBucket[]
+  balanceHealth: 'empty_portfolio' | 'balanced' | 'mild_imbalance' | 'severe_imbalance' | string
+  recommendedNextBucket: string | null
+  nextAction: string
+  externalProviderCall: boolean
+  separatedFrom: string
+}
+
+export interface AtlasSelfImprovementStrategyPortfolioBucket {
+  bucket: string
+  count: number
+  readyCount: number
+  blockedCount: number
+  sharePercent: number
+  targetPercent: number
+  deviationPercent: number
+  underweight: boolean
+  overweight: boolean
+  proposalIds: string[]
+}
+
+/**
+ * Self-Improvement Activation Cockpit v1 — human-first read-model that
+ * projects activation registry + detail into the shape Atlas Code renders
+ * (status tone, status label, human power gate translation, before
+ * snapshot summary, approval receipt visibility, created Obra metadata).
+ *
+ * Read-only. Mutations stay on the existing activation endpoints
+ * (accept/reject) — the cockpit type captures the projection, never the
+ * decision.
+ *
+ * Schema: atlas.self_improvement.activation_cockpit.v1
+ */
+export type AtlasSelfImprovementActivationTone = 'rec-red' | 'bronze' | 'moss' | 'cream' | 'ink' | string
+
+export type AtlasSelfImprovementActivationStatus =
+  | 'blocked'
+  | 'needs_revision'
+  | 'pending_human_review'
+  | 'accepted'
+  | 'obra_created'
+  | 'dry_run_planned'
+  | 'rejected'
+  | string
+
+export type AtlasSelfImprovementActivationPowerGateOutcome =
+  | 'approved'
+  | 'needs_revision'
+  | 'rejected'
+  | 'human_review_required'
+  | 'unknown'
+  | string
+
+export interface AtlasSelfImprovementActivationCockpit {
+  schemaVersion: string
+  generatedAt: string
+  filters: {
+    status: string | null
+    bucket: string | null
+    hasObra: boolean | null
+    activationId: string | null
+  }
+  activations: AtlasSelfImprovementActivationListItem[]
+  counters: {
+    total: number
+    blocked: number
+    needsRevision: number
+    pendingHumanReview: number
+    rejected: number
+    accepted: number
+    obraCreated: number
+    dryRunPlanned: number
+    withObra: number
+    withBlockers: number
+  }
+  selectedActivation: AtlasSelfImprovementActivationDetail | null
+  strategyPortfolio: AtlasSelfImprovementStrategyPortfolioSnapshot | null
+  trustLedger: AtlasSelfImprovementTrustLedgerSnapshot | null
+  humanSummary: string
+  nextSafeAction: string
+  commands: Record<string, string>
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export interface AtlasSelfImprovementActivationListItem {
+  activationId: string
+  status: AtlasSelfImprovementActivationStatus
+  statusLabel: string
+  tone: AtlasSelfImprovementActivationTone
+  title: string
+  proposalId: string | null
+  strategyBucket: string | null
+  riskLevel: string | null
+  createdObraId: string | null
+  createdObraTitle: string | null
+  updatedAt: string | null
+  nextAction: string
+  nextSafeAction: string
+  hasBlockers: boolean
+  blockersCount: number
+}
+
+export interface AtlasSelfImprovementActivationProposalSummary {
+  title: string
+  problemStatement: string | null
+  businessRule: string | null
+  targetCapability: string | null
+  whyNow: string | null
+  expectedPowerGain: string | null
+  riskLevel: string | null
+  successMetrics: string[]
+  acceptanceGates: string[]
+  canonicalDocs: string[]
+  allowedPaths: string[]
+  forbiddenPaths: string[]
+  rivalsEvaluationPlan: string | null
+  rollbackStrategy: string | null
+  testStrategy: string | null
+  createsObra: boolean
+  neverExecutesFastPathAutomatically: boolean
+  neverCallsProviderWithoutExplicitApproval: boolean
+}
+
+export interface AtlasSelfImprovementActivationPowerGate {
+  outcome: AtlasSelfImprovementActivationPowerGateOutcome
+  label: string
+  tone: AtlasSelfImprovementActivationTone
+  hardFails: string[]
+  softFindings: string[]
+  requiresHumanReview: boolean
+  autopromotionAllowed: boolean
+  nextAction: string | null
+  gateId: string | null
+}
+
+export interface AtlasSelfImprovementActivationBeforeSnapshot {
+  schemaVersion: string | null
+  capturedAt: string | null
+  rationale: string
+  maturity: {
+    achievedLevel: number | string | null
+    targetLevel: number | string | null
+    label: string
+    hash: string | null
+  }
+  invariantLock: {
+    status: string
+    tone: AtlasSelfImprovementActivationTone
+    violationsCount: number
+    hash: string | null
+  }
+  regressionSentinel: {
+    status: string
+    tone: AtlasSelfImprovementActivationTone
+    findingsCount: number
+    hash: string | null
+  }
+  strategyPortfolio: {
+    balanceHealth: string
+    recommendedNextBucket: string | null
+    hash: string | null
+  }
+  trustLedger: {
+    trustBand: string
+    entryCount: number
+    hash: string | null
+  }
+  docsStatus: {
+    requiredCount: number
+    requiredPresentCount: number
+    missingRequired: string[]
+    tone: AtlasSelfImprovementActivationTone
+  }
+}
+
+export interface AtlasSelfImprovementActivationApprovalReceipt {
+  schemaVersion: string | null
+  activationId: string | null
+  reviewer: string | null
+  reason: string | null
+  approvedAt: string | null
+  receiptHash: string | null
+  proposalHash: string | null
+  powerGateHash: string | null
+  silent: boolean
+  autoPromotesCompletionClaim: boolean
+  autoExecutesFastPath: boolean
+  externalProviderCall: boolean
+}
+
+export interface AtlasSelfImprovementActivationRejection {
+  reviewer: string | null
+  reason: string | null
+  rejectedAt: string | null
+  silent: boolean
+}
+
+export interface AtlasSelfImprovementActivationCreatedObra {
+  obraId: string
+  title: string
+  status: string
+  intakeId: string | null
+  intakeStatus: 'filled' | 'pending' | string
+  objective: string | null
+  businessRule: string | null
+  acceptanceCriteriaCount: number
+  canonicalDocsCount: number
+  scopeIn: string[]
+  scopeOut: string[]
+  riskLevel: string | null
+  fastPathStarted: boolean
+}
+
+export interface AtlasSelfImprovementActivationOpenObraAction {
+  enabled: boolean
+  label: string
+  obraId: string | null
+}
+
+export interface AtlasSelfImprovementActivationDetail {
+  schemaVersion: string
+  generatedAt: string
+  activationId: string | null
+  status: AtlasSelfImprovementActivationStatus
+  statusLabel: string
+  tone: AtlasSelfImprovementActivationTone
+  riskLevel: string | null
+  strategyBucket: string | null
+  portfolioDeviation: boolean
+  portfolioReason: string | null
+  maturityTarget: number | string | null
+  proposalSummary: AtlasSelfImprovementActivationProposalSummary | null
+  powerGate: AtlasSelfImprovementActivationPowerGate | null
+  beforeSnapshot: AtlasSelfImprovementActivationBeforeSnapshot | null
+  approvalState: string
+  approvalReceipt: AtlasSelfImprovementActivationApprovalReceipt | null
+  rejection: AtlasSelfImprovementActivationRejection | null
+  createdObra: AtlasSelfImprovementActivationCreatedObra | null
+  forgeIntakeReady: boolean
+  fastPathStarted: boolean
+  openObraAction: AtlasSelfImprovementActivationOpenObraAction
+  nextAction: string
+  nextSafeAction: string
+  humanSummary: string
+  blockers: string[]
+  missingRequiredDocs: string[]
+  evidenceRefs: string[]
+  commands: Record<string, string>
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  autoFastPathExecuted: boolean
+  completionClaimPromoted: boolean
+  separatedFrom: string
+  isReadModel: boolean
+}
+
+export interface AtlasSelfImprovementActivationCockpitFilters {
+  status?: string | null
+  bucket?: string | null
+  hasObra?: boolean | null
+}
+
+export interface AtlasSelfImprovementActivationAcceptPayload {
+  reviewer: string
+  reason: string
+  acknowledgesNoFastPath: boolean
+  obraTitle?: string | null
+}
+
+export interface AtlasSelfImprovementActivationRejectPayload {
+  reviewer: string
+  reason: string
+}
+
+export interface AtlasSelfImprovementActivationCreatePayload {
+  proposal?: Record<string, unknown> | null
+  proposalId?: string | null
+  obraTitle?: string | null
+  dryRun?: boolean
+}
+
 export interface AtlasForgeProviderFailureMemory {
   schemaVersion: string
   obraId: string | null

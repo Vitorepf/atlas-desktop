@@ -27,28 +27,27 @@
  * ar generoso, nunca raspar). World absorve tudo + 80px de borda inferior.
  */
 
-/* Tudo escalado 5× fisicamente (Pass 5×). Atoms, fontes, padding, gaps
- * e coordenadas do canvas multiplicados por 5 pra que cada elemento fique
- * 5× maior preservando as relações proporcionais. Usuário ajusta via
- * Cmd+menos externo se ficar grande demais. */
-export const WORLD_WIDTH = 9400
-export const WORLD_HEIGHT = 9100
+export const WORLD_WIDTH = 1880
+export const WORLD_HEIGHT = 2500
 
 export const PIPELINE_LAYOUT = {
-  x: 4500,
-  y: 400,
-  w: 2200,
-  stepHeight: 450,   // (58px min-height + 20 padding + 12 gap) × 5
-  runtimeHeight: 1100, // Runtime/Executor é o atom mais alto · canon 220 × 5
+  x: 900,
+  y: 80,
+  w: 440,
+  stepHeight: 110,   // canon 90 + 20 (atoms-pipe maiores: min-height 58→80)
+  runtimeHeight: 240, // canon 220 + 20
 }
 
+/* Y ajustado pras lanes inferiores compensarem crescimento vertical
+ * dos atoms (72→108, gap 12→18). X mantém canon — distância horizontal
+ * entre lanes preservada como Vitor pediu. */
 export const LANE_LAYOUT: Record<string, { x: number; y: number; w: number }> = {
-  'domain-plane': { x: 400, y: 400, w: 1700 },
-  capabilities: { x: 400, y: 4970, w: 1700 },
-  'business-context-side': { x: 2700, y: 1650, w: 1400 },
-  hks: { x: 7500, y: 400, w: 1600 },
-  'evidence-loop': { x: 7500, y: 3375, w: 1600 },
-  'doc-os': { x: 7500, y: 6840, w: 1600 },
+  'domain-plane': { x: 80, y: 80, w: 340 },
+  capabilities: { x: 80, y: 1430, w: 340 },         // canon 994 + 436 (Domain Plane growth)
+  'business-context-side': { x: 540, y: 360, w: 280 },
+  hks: { x: 1500, y: 80, w: 320 },
+  'evidence-loop': { x: 1500, y: 900, w: 320 },     // canon 675 + 225 (HKS growth)
+  'doc-os': { x: 1500, y: 1840, w: 320 },           // canon 1368 + 472 (HKS + Evi growth)
 }
 
 /**
@@ -58,7 +57,7 @@ export function computeStepYs(
   pipeline: Array<{ graphOrder: number }>
 ): number[] {
   const ys: number[] = []
-  let curY = PIPELINE_LAYOUT.y + 200 // canon 40 × 5
+  let curY = PIPELINE_LAYOUT.y + 40
   for (const p of pipeline) {
     ys.push(curY)
     curY +=

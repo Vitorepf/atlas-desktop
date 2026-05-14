@@ -519,6 +519,93 @@ pub async fn bridge_record_forge_provider_failure(
 }
 
 #[tauri::command]
+pub async fn bridge_run_forge_runtime_dispatch(
+    state: State<'_, AppState>,
+    work_id: String,
+    options: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .run_forge_runtime_dispatch(&work_id, options.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_runtime_dispatch(
+    state: State<'_, AppState>,
+    work_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_runtime_dispatch(&work_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_run_forge_provider_invocation(
+    state: State<'_, AppState>,
+    work_id: String,
+    options: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .run_forge_provider_invocation(&work_id, options.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_provider_invocation_latest(
+    state: State<'_, AppState>,
+    work_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_provider_invocation_latest(&work_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_ux_orchestrator(
+    state: State<'_, AppState>,
+    work_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_ux_orchestrator(&work_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_provider_drivers(
+    state: State<'_, AppState>,
+    work_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_provider_drivers(&work_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_plan_forge_provider_driver(
+    state: State<'_, AppState>,
+    work_id: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .plan_forge_provider_driver(&work_id, payload.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
 pub async fn bridge_create_checkpoint(
     state: State<'_, AppState>,
     work_id: String,
@@ -708,6 +795,84 @@ pub async fn pty_resize(
 #[tauri::command]
 pub async fn pty_close(pty: State<'_, Arc<PtyManager>>, id: String) -> Result<(), String> {
     pty.close(&id)
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// SELF-IMPROVEMENT ACTIVATION COCKPIT v1
+//
+// Pure read-model + 2 governed mutations (accept/reject). Mutations
+// REQUIRE reviewer + reason at the API layer; this surface forwards the
+// payload as-is and never injects synthetic values. Fast Path is NEVER
+// executed automatically.
+
+#[tauri::command]
+pub async fn bridge_list_self_improvement_forge_activations(
+    state: State<'_, AppState>,
+    status: Option<String>,
+    bucket: Option<String>,
+    has_obra: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .list_self_improvement_forge_activations(status, bucket, has_obra)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_self_improvement_forge_activation(
+    state: State<'_, AppState>,
+    activation_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_self_improvement_forge_activation(&activation_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_create_self_improvement_forge_activation(
+    state: State<'_, AppState>,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .create_self_improvement_forge_activation(payload.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_accept_self_improvement_forge_activation(
+    state: State<'_, AppState>,
+    activation_id: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .accept_self_improvement_forge_activation(
+            &activation_id,
+            payload.unwrap_or_else(|| serde_json::json!({})),
+        )
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_reject_self_improvement_forge_activation(
+    state: State<'_, AppState>,
+    activation_id: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .reject_self_improvement_forge_activation(
+            &activation_id,
+            payload.unwrap_or_else(|| serde_json::json!({})),
+        )
+        .await
+        .map_err(into_str_err)
 }
 
 // ────────────────────────────────────────────────────────────────────────

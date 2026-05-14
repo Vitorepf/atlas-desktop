@@ -7,6 +7,8 @@ import type {
   RecentChange,
 } from '@atlas/domain'
 import type { VisualLens } from '../state/visualLens'
+import type { useCustomLayout } from '../state/useCustomLayout'
+import type { useEditMode } from '../state/useEditMode'
 
 export interface WorldSceneSwitchProps {
   graph: CartographyGraph | null
@@ -29,6 +31,9 @@ export interface WorldSceneSwitchProps {
   onSetHover: (graphId: string | null) => void
   onEnterIsolate: (graphId: string) => void
   onExitIsolate: () => void
+  scale: number
+  editMode: ReturnType<typeof useEditMode>
+  customLayout: ReturnType<typeof useCustomLayout>
 }
 
 export interface RenderUniverseProps {
@@ -56,6 +61,9 @@ export interface RenderFlowProps {
   onEnterIsolate: (graphId: string) => void
   onExitIsolate: () => void
   onEnterGear: (graphId: string) => void
+  scale: number
+  editMode: ReturnType<typeof useEditMode>
+  customLayout: ReturnType<typeof useCustomLayout>
 }
 
 export interface RenderGearProps {

@@ -9,6 +9,7 @@ export interface LeftRailContext {
   loading: boolean
   busy: boolean
   onSelectObra: (obraId: string) => Promise<void>
+  onCreateObra: (intent: string, objective: string) => Promise<Obra | null>
 }
 
 export interface LeftRailSectionDefinition {

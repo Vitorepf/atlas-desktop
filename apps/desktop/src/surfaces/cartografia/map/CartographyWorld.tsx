@@ -7,6 +7,8 @@ import type {
   RecentChange,
 } from '@atlas/domain'
 import type { VisualLens } from '../state/visualLens'
+import type { useCustomLayout } from '../state/useCustomLayout'
+import type { useEditMode } from '../state/useEditMode'
 import { WorldSceneSwitch } from './WorldSceneSwitch'
 import { worldClassName, worldStyle } from './worldModel'
 
@@ -36,6 +38,8 @@ interface CartographyWorldProps {
   onSetHover: (graphId: string | null) => void
   onEnterIsolate: (graphId: string) => void
   onExitIsolate: () => void
+  editMode: ReturnType<typeof useEditMode>
+  customLayout: ReturnType<typeof useCustomLayout>
 }
 
 export function CartographyWorld({
@@ -64,6 +68,8 @@ export function CartographyWorld({
   onSetHover,
   onEnterIsolate,
   onExitIsolate,
+  editMode,
+  customLayout,
 }: CartographyWorldProps) {
   return (
     <div
@@ -92,6 +98,9 @@ export function CartographyWorld({
         onSetHover={onSetHover}
         onEnterIsolate={onEnterIsolate}
         onExitIsolate={onExitIsolate}
+        scale={transform.scale}
+        editMode={editMode}
+        customLayout={customLayout}
       />
     </div>
   )

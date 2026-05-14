@@ -20,6 +20,7 @@ export function VerifyPanel({
   forgeFastPathStatus,
   forgeReviewPacket,
   forgeCompletionClaim,
+  forgeUxOrchestrator,
   programmingGovernance,
   onRunGate,
   onRunForgeLiveExecution,
@@ -33,11 +34,27 @@ export function VerifyPanel({
   const gateRuns = programmingGovernance?.gateRuns ?? []
   const hasGovernedRuns = gateRuns.length > 0
 
+  // Atlas Code Human Interface Upgrade v2 · completionGating
+  // approve/reject/rollback só aparecem quando a UX Orchestrator confirma
+  // que existe revisão real pendente. Antes disso o painel mostra apenas
+  // o estado e nenhum CTA destrutivo.
+  const completionGating = forgeUxOrchestrator?.completionGating ?? null
+  const approveButtonVisible = completionGating?.approveButtonVisible ?? false
+  const rejectButtonVisible = completionGating?.rejectButtonVisible ?? false
+  const rollbackButtonVisible = completionGating?.rollbackButtonVisible ?? false
+  const anyDecisionVisible = approveButtonVisible || rejectButtonVisible || rollbackButtonVisible
+
   // SCOR-1 preferred path: render the real Programming Governance gate runs.
   if (hasGovernedRuns) {
     const passed = gateRuns.filter((g) => g.status === 'passed').length
     return (
       <section className="ops-panel">
+        <ReviewGatingHeader
+          anyDecisionVisible={anyDecisionVisible}
+          approveButtonVisible={approveButtonVisible}
+          rejectButtonVisible={rejectButtonVisible}
+          rollbackButtonVisible={rollbackButtonVisible}
+        />
         <ForgeWorkspaceBanner
           obra={obra}
           receipt={receipt}
@@ -87,6 +104,12 @@ export function VerifyPanel({
   const passed = gates.filter((g) => g.state === 'passed').length
   return (
     <section className="ops-panel">
+      <ReviewGatingHeader
+        anyDecisionVisible={anyDecisionVisible}
+        approveButtonVisible={approveButtonVisible}
+        rejectButtonVisible={rejectButtonVisible}
+        rollbackButtonVisible={rollbackButtonVisible}
+      />
       <ForgeWorkspaceBanner
         obra={obra}
         receipt={receipt}
@@ -129,6 +152,64 @@ export function VerifyPanel({
         )}
       </div>
     </section>
+  )
+}
+
+function ReviewGatingHeader({
+  anyDecisionVisible,
+  approveButtonVisible,
+  rejectButtonVisible,
+  rollbackButtonVisible,
+}: {
+  anyDecisionVisible: boolean
+  approveButtonVisible: boolean
+  rejectButtonVisible: boolean
+  rollbackButtonVisible: boolean
+}) {
+  if (anyDecisionVisible) {
+    return (
+      <div
+        style={{
+          padding: '8px 10px',
+          margin: '0 0 8px',
+          border: '1px solid var(--bronze-soft)',
+          background: 'var(--bronze-veil)',
+          color: 'var(--ink)',
+        }}
+        role="status"
+      >
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginBottom: 2 }}>
+          Decisão humana pendente
+        </div>
+        <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5 }}>
+          Revise o resultado e aprove ou rejeite abaixo. Aprovar libera completion;
+          rejeitar abre reparo; rollback reverte promoção sob governança.
+        </div>
+        <div style={{ marginTop: 4, fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink3)' }}>
+          approveButtonVisible={String(approveButtonVisible)} · rejectButtonVisible={String(rejectButtonVisible)} · rollbackButtonVisible={String(rollbackButtonVisible)}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div
+      style={{
+        padding: '8px 10px',
+        margin: '0 0 8px',
+        border: '1px solid var(--hair-soft)',
+        background: 'var(--cream)',
+        color: 'var(--ink3)',
+      }}
+      role="status"
+    >
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', marginBottom: 2 }}>
+        Aguardando resultado revisável
+      </div>
+      <div style={{ fontFamily: 'var(--serif)', fontSize: 11.5, fontStyle: 'italic' }}>
+        Sem revisão real pendente. Approve/Reject/Rollback ficam ocultos até o Forge
+        emitir review packet — Atlas nunca infere completion no frontend.
+      </div>
+    </div>
   )
 }
 

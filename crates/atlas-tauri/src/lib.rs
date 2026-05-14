@@ -211,6 +211,13 @@ pub fn run() {
             commands_bridge::bridge_get_forge_continuum_certification,
             commands_bridge::bridge_get_forge_provider_capacity,
             commands_bridge::bridge_record_forge_provider_failure,
+            commands_bridge::bridge_run_forge_runtime_dispatch,
+            commands_bridge::bridge_get_forge_runtime_dispatch,
+            commands_bridge::bridge_run_forge_provider_invocation,
+            commands_bridge::bridge_get_forge_provider_invocation_latest,
+            commands_bridge::bridge_get_forge_ux_orchestrator,
+            commands_bridge::bridge_get_forge_provider_drivers,
+            commands_bridge::bridge_plan_forge_provider_driver,
             commands_bridge::bridge_create_checkpoint,
             commands_bridge::bridge_review_forge_run,
             commands_bridge::bridge_rollback_forge_promotion,
@@ -242,6 +249,11 @@ pub fn run() {
             commands_bridge::bridge_cartography_graph,
             commands_bridge::bridge_cartography_recent_changes,
             commands_bridge::bridge_cartography_note,
+            commands_bridge::bridge_list_self_improvement_forge_activations,
+            commands_bridge::bridge_get_self_improvement_forge_activation,
+            commands_bridge::bridge_create_self_improvement_forge_activation,
+            commands_bridge::bridge_accept_self_improvement_forge_activation,
+            commands_bridge::bridge_reject_self_improvement_forge_activation,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Atlas Code");

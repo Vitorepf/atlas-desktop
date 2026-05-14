@@ -1,4 +1,11 @@
-import type { Message, ProgrammingGovernanceSnapshot, SddStage } from '@atlas/domain'
+import type {
+  AtlasCodeForgeUxOrchestrator,
+  AtlasCodeObraCommandCenter,
+  Message,
+  Obra,
+  ProgrammingGovernanceSnapshot,
+  SddStage,
+} from '@atlas/domain'
 import { ComposerPanel } from './ComposerPanel'
 import { MAIN_STAGE_MODES } from './mainStageRegistry'
 import type { MainStageContext } from './mainStageTypes'
@@ -11,6 +18,9 @@ interface MainStageProps {
   busy: boolean
   hasObra: boolean
   programmingGovernance: ProgrammingGovernanceSnapshot | null
+  obra: Obra | null
+  forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
+  obraCommandCenter: AtlasCodeObraCommandCenter | null
   onSend: (text: string) => Promise<void>
 }
 

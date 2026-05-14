@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { PanelTitle } from '@atlas/ui'
-import type { AtlasCodeForgeWorkIntake, AtlasCodeForgeWorkIntakePayload } from '@atlas/domain'
+import type {
+  AtlasCodeForgeWorkIntake,
+  AtlasCodeForgeWorkIntakePayload,
+  AtlasSelfImprovementForgeActivationState,
+} from '@atlas/domain'
 import { btnPrimary, Row } from './RightRailPrimitives'
 
 interface ForgeWorkIntakePanelProps {
@@ -9,6 +13,13 @@ interface ForgeWorkIntakePanelProps {
   busy: boolean
   onRefresh: () => Promise<void>
   onSave: (payload: AtlasCodeForgeWorkIntakePayload) => Promise<void>
+  /**
+   * Self-Improvement Activation provenance projected from the per-Obra state
+   * endpoint. When non-null the Definir tab renders the "Criada por
+   * Self-Improvement Activation" badge so the operator knows the Obra was
+   * not entered manually — the field is read-only metadata, not actionable.
+   */
+  selfImprovementActivation?: AtlasSelfImprovementForgeActivationState | null
 }
 
 const READINESS_TONE: Record<string, { fg: string; bg: string; border: string }> = {
@@ -24,7 +35,7 @@ const READINESS_TONE: Record<string, { fg: string; bg: string; border: string }>
  *
  * Doc: docs/engineering-knowledge-base/atlas-code-forge-work-intake-spec-governance-v1.md
  */
-export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }: ForgeWorkIntakePanelProps) {
+export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave, selfImprovementActivation }: ForgeWorkIntakePanelProps) {
   const [objective, setObjective] = useState(intake?.objective ?? '')
   const [businessRule, setBusinessRule] = useState(intake?.businessRule ?? '')
   const [scopeInText, setScopeInText] = useState((intake?.scopeIn ?? []).join('\n'))
@@ -145,6 +156,47 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
       <div className="ops-section">
         <PanelTitle label="Forge Work Intake" meta={meta} />
 
+        {selfImprovementActivation?.activationId && (
+          <div
+            style={{
+              padding: '8px 10px',
+              marginTop: 8,
+              border: '1px solid var(--bronze-soft)',
+              background: 'var(--bronze-veil)',
+              borderRadius: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+            }}
+            role="note"
+            aria-label="Origem da Obra"
+          >
+            <span
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 8.5,
+                letterSpacing: '1.3px',
+                color: 'var(--bronze)',
+                textTransform: 'uppercase',
+              }}
+            >
+              origem
+            </span>
+            <span style={{ fontFamily: 'var(--serif)', fontSize: 12.5, color: 'var(--ink)' }}>
+              Criada por Self-Improvement Activation ·{' '}
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                {selfImprovementActivation.activationId.slice(0, 16)}…
+              </span>
+            </span>
+            <span style={{ fontFamily: 'var(--serif)', fontSize: 11, fontStyle: 'italic', color: 'var(--ink3)' }}>
+              {selfImprovementActivation.reviewer
+                ? `reviewer: ${selfImprovementActivation.reviewer}`
+                : 'sem reviewer registrado'}
+              {selfImprovementActivation.approvedAt ? ` · ${selfImprovementActivation.approvedAt}` : ''}
+            </span>
+          </div>
+        )}
+
         <div
           style={{
             padding: '8px 10px',
@@ -186,7 +238,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
         <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
           <label style={{ display: 'grid', gap: 2 }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-              objective
+              O que você quer?
             </span>
             <input
               type="text"
@@ -198,7 +250,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
           </label>
           <label style={{ display: 'grid', gap: 2 }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-              business rule
+              Regra que não pode quebrar
             </span>
             <textarea
               value={businessRule}
@@ -209,7 +261,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
           </label>
           <label style={{ display: 'grid', gap: 2 }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-              acceptance criteria · uma por linha
+              Como saberemos que deu certo? · uma por linha
             </span>
             <textarea
               value={acceptanceText}
@@ -220,7 +272,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
           </label>
           <label style={{ display: 'grid', gap: 2 }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-              canonical docs · uma por linha
+              Docs/arquivos de referência · uma por linha
             </span>
             <textarea
               value={canonicalDocsText}
@@ -232,7 +284,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <label style={{ display: 'grid', gap: 2 }}>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-                scope in
+                Pode mexer
               </span>
               <textarea
                 value={scopeInText}
@@ -243,7 +295,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
             </label>
             <label style={{ display: 'grid', gap: 2 }}>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-                scope out
+                Não pode mexer
               </span>
               <textarea
                 value={scopeOutText}
@@ -255,7 +307,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 6, alignItems: 'center' }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-              risk
+              Risco
             </span>
             <select
               value={riskLevel}
@@ -271,7 +323,7 @@ export function ForgeWorkIntakePanel({ obraId, intake, busy, onRefresh, onSave }
           </div>
           <label style={{ display: 'grid', gap: 2 }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 8.5, letterSpacing: '1.3px', color: 'var(--bronze)', textTransform: 'uppercase' }}>
-              operator notes
+              Notas do operador
             </span>
             <textarea
               value={operatorNotes}

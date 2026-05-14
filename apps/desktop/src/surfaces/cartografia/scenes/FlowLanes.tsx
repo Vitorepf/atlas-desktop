@@ -1,4 +1,6 @@
 import type { CartographyAtom, Lane, RecentChange } from '@atlas/domain'
+import type { useCustomLayout } from '../state/useCustomLayout'
+import type { useEditMode } from '../state/useEditMode'
 import { FlowLaneRegion } from './FlowLaneRegion'
 import { buildFlowLaneViewModel } from './flowLaneModel'
 
@@ -11,6 +13,9 @@ interface FlowLanesProps {
   onHover: (graphId: string | null) => void
   onIsolate: (graphId: string) => void
   onFocus: (graphId: string) => void
+  scale: number
+  editMode: ReturnType<typeof useEditMode>
+  customLayout: ReturnType<typeof useCustomLayout>
 }
 
 export function FlowLanes({
@@ -22,6 +27,9 @@ export function FlowLanes({
   onHover,
   onIsolate,
   onFocus,
+  scale,
+  editMode,
+  customLayout,
 }: FlowLanesProps) {
   return (
     <>
@@ -34,6 +42,7 @@ export function FlowLanes({
           recentByGraphId,
           isolatedId,
           kinSet,
+          customLayout: customLayout.overlay,
         })
         if (!model) return null
 
@@ -48,6 +57,9 @@ export function FlowLanes({
             onHover={onHover}
             onIsolate={onIsolate}
             onFocus={onFocus}
+            scale={scale}
+            isEditMode={editMode.isEditMode}
+            onLayoutChange={customLayout.updateLane}
           />
         )
       })}

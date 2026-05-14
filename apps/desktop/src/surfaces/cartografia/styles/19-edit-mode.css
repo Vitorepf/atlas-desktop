@@ -1,0 +1,508 @@
+/*
+ * 19 · EDIT MODE (Fase 1+2 · drag/resize de lanes).
+ *
+ * Quando `.viewport.is-edit-mode` ativo:
+ *   · region-head → cursor grab (drag pra mover a lane inteira)
+ *   · 8 handles aparecem nas bordas/cantos (n/e/s/w + ne/se/sw/nw)
+ *   · cursor change apropriado por handle
+ *   · regions ganham outline sutil pra indicar "editáveis"
+ *
+ * Quando lock travado (default): handles invisíveis, region-head com
+ * cursor default. Zero impacto visual.
+ */
+
+/* ─── HANDLES (escondidos por padrão) ─── */
+.cartografia-surface .region-edit-handle {
+  display: none;
+  position: absolute;
+  z-index: 8;
+  background: var(--bronze);
+  opacity: 0;
+  transition: opacity 160ms cubic-bezier(0.32, 0.72, 0.24, 1);
+  pointer-events: none;
+}
+
+.cartografia-surface .viewport.is-edit-mode .region-edit-handle {
+  display: block;
+  pointer-events: auto;
+  opacity: 0.5;
+}
+
+.cartografia-surface .viewport.is-edit-mode .region-edit-handle:hover {
+  opacity: 1;
+}
+
+/* Cantos (8x8px) — 4 cantos */
+.cartografia-surface .region-edit-handle.h-nw,
+.cartografia-surface .region-edit-handle.h-ne,
+.cartografia-surface .region-edit-handle.h-se,
+.cartografia-surface .region-edit-handle.h-sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.cartografia-surface .region-edit-handle.h-nw { top: -5px; left: -5px; cursor: nwse-resize; }
+.cartografia-surface .region-edit-handle.h-ne { top: -5px; right: -5px; cursor: nesw-resize; }
+.cartografia-surface .region-edit-handle.h-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+.cartografia-surface .region-edit-handle.h-sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+
+/* Bordas (linha fina ao longo da borda) */
+.cartografia-surface .region-edit-handle.h-n,
+.cartografia-surface .region-edit-handle.h-s {
+  left: 14px;
+  right: 14px;
+  height: 4px;
+  border-radius: 1px;
+}
+.cartografia-surface .region-edit-handle.h-n { top: -2px; cursor: ns-resize; }
+.cartografia-surface .region-edit-handle.h-s { bottom: -2px; cursor: ns-resize; }
+
+.cartografia-surface .region-edit-handle.h-e,
+.cartografia-surface .region-edit-handle.h-w {
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 1px;
+}
+.cartografia-surface .region-edit-handle.h-e { right: -2px; cursor: ew-resize; }
+.cartografia-surface .region-edit-handle.h-w { left: -2px; cursor: ew-resize; }
+
+/* ─── REGION HEAD · cursor grab quando edit mode ─── */
+.cartografia-surface .viewport.is-edit-mode .region-head {
+  cursor: grab;
+  user-select: none;
+}
+.cartografia-surface .viewport.is-edit-mode .region-head:active {
+  cursor: grabbing;
+}
+
+/* ─── REGION · outline sutil quando editável ─── */
+.cartografia-surface .viewport.is-edit-mode .region {
+  outline: 1px dashed rgba(138, 106, 53, 0.32);
+  outline-offset: 2px;
+}
+.cartografia-surface .viewport.is-edit-mode .region.is-custom-layout {
+  outline: 1px solid var(--bronze-soft);
+}
+
+/* ─── REGION · feedback visual durante drag (Feature #2 · drop shadow) ── */
+.cartografia-surface .region.is-dragging {
+  outline: 2px solid var(--bronze);
+  outline-offset: 3px;
+  box-shadow:
+    0 22px 48px rgba(77, 61, 34, 0.18),
+    0 8px 18px rgba(77, 61, 34, 0.10);
+  /* Sutil destaque editorial: peso de operação em curso */
+}
+.cartografia-surface .region.is-dragging::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(138, 106, 53, 0.08), rgba(138, 106, 53, 0.02));
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ─── BOTÃO LOCK no ZoomControls ─── */
+.cartografia-surface .canvas-controls .edit-toggle {
+  font-size: 14px;
+  padding: 0 9px;
+  transition: background 160ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+.cartografia-surface .canvas-controls .edit-toggle.is-on {
+  background: var(--bronze-veil);
+  color: var(--bronze-deep);
+}
+.cartografia-surface .canvas-controls .layout-reset {
+  font-size: 14px;
+  padding: 0 8px;
+  color: var(--rec-red);
+  font-weight: 600;
+}
+.cartografia-surface .canvas-controls .layout-reset:hover {
+  background: rgba(138, 48, 37, 0.08);
+}
+
+/* ─── LayoutSaveIndicator (Feature #6) ─── */
+.cartografia-surface .layout-save-indicator {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--cream-paper);
+  border: 1px solid var(--bronze-soft);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: var(--ink2);
+  text-transform: uppercase;
+  box-shadow:
+    0 14px 28px rgba(77, 61, 34, 0.07),
+    0 4px 10px rgba(77, 61, 34, 0.04);
+  z-index: 30;
+  pointer-events: auto;
+  animation: lsi-fade-in 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+@keyframes lsi-fade-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.cartografia-surface .layout-save-indicator .lsi-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--moss);
+  box-shadow: 0 0 0 3px rgba(74, 95, 58, 0.12);
+}
+.cartografia-surface .layout-save-indicator .lsi-text {
+  color: var(--ink2);
+  font-weight: 500;
+}
+.cartografia-surface .layout-save-indicator .lsi-action {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 2px 6px;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--bronze-deep);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 160ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+.cartografia-surface .layout-save-indicator .lsi-action:hover {
+  background: var(--bronze-veil);
+}
+.cartografia-surface .layout-save-indicator .lsi-action:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* ─── LayoutPresetsMenu (Feature #4) ─── */
+.cartografia-surface .layout-presets {
+  position: absolute;
+  top: 64px;
+  right: 20px;
+  z-index: 18;
+  pointer-events: auto;
+}
+.cartografia-surface .presets-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cream-paper);
+  border: 1px solid var(--bronze-soft);
+  border-radius: 2px;
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--bronze-deep);
+  cursor: pointer;
+  transition: background 160ms cubic-bezier(0.32, 0.72, 0.24, 1);
+  font-weight: 500;
+}
+.cartografia-surface .presets-toggle:hover,
+.cartografia-surface .presets-toggle.is-open {
+  background: var(--bronze-veil);
+}
+.cartografia-surface .presets-toggle .presets-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--bronze-deep);
+  color: var(--cream);
+  border-radius: 2px;
+  font-size: 9px;
+  margin-left: 2px;
+}
+.cartografia-surface .presets-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background: var(--cream-paper);
+  border: 1px solid var(--bronze-soft);
+  border-radius: 3px;
+  box-shadow:
+    0 22px 48px rgba(77, 61, 34, 0.10),
+    0 8px 18px rgba(77, 61, 34, 0.06);
+  z-index: 19;
+  animation: presets-menu-in 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+@keyframes presets-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cartografia-surface .presets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hair);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+.cartografia-surface .presets-close {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--ink3);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.cartografia-surface .presets-close:hover { color: var(--ink); }
+.cartografia-surface .presets-empty {
+  padding: 18px 14px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink3);
+  text-align: center;
+}
+.cartografia-surface .presets-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.cartografia-surface .presets-item {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--hair-soft);
+}
+.cartografia-surface .presets-item:last-child { border-bottom: none; }
+.cartografia-surface .presets-item-load {
+  flex: 1;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+.cartografia-surface .presets-item-load:hover { background: var(--bronze-veil); }
+.cartografia-surface .presets-item-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.cartografia-surface .presets-item-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+.cartografia-surface .presets-item-delete {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 12px;
+  font-size: 16px;
+  color: var(--ink3);
+  cursor: pointer;
+  transition: color 140ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+.cartografia-surface .presets-item-delete:hover { color: var(--rec-red); }
+.cartografia-surface .presets-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hair);
+  background: rgba(247, 241, 227, 0.6);
+}
+.cartografia-surface .presets-save-btn {
+  appearance: none;
+  flex: 1;
+  background: transparent;
+  border: 1px dashed var(--bronze-soft);
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--bronze-deep);
+  cursor: pointer;
+  transition: background 160ms cubic-bezier(0.32, 0.72, 0.24, 1);
+}
+.cartografia-surface .presets-save-btn:hover:not(:disabled) {
+  background: var(--bronze-veil);
+}
+.cartografia-surface .presets-save-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.cartografia-surface .presets-name-input {
+  flex: 1;
+  appearance: none;
+  background: var(--cream);
+  border: 1px solid var(--bronze-soft);
+  border-radius: 2px;
+  padding: 7px 9px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+}
+.cartografia-surface .presets-name-input:focus {
+  border-color: var(--bronze);
+}
+.cartografia-surface .presets-confirm,
+.cartografia-surface .presets-cancel {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--bronze-soft);
+  border-radius: 2px;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  color: var(--bronze-deep);
+  cursor: pointer;
+}
+.cartografia-surface .presets-confirm:hover:not(:disabled) {
+  background: var(--moss-veil);
+  border-color: var(--moss);
+  color: var(--moss);
+}
+.cartografia-surface .presets-confirm:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.cartografia-surface .presets-cancel:hover {
+  background: rgba(138, 48, 37, 0.06);
+  border-color: var(--rec-red-soft);
+  color: var(--rec-red);
+}
+
+/* ─── AtomHoverPreview (Feature #3) ─── */
+.cartografia-surface .atom-hover-preview {
+  position: fixed;
+  width: 320px;
+  background: var(--cream-paper);
+  border: 1px solid var(--bronze-soft);
+  border-radius: 3px;
+  padding: 14px 16px 13px;
+  box-shadow:
+    0 18px 42px rgba(77, 61, 34, 0.10),
+    0 6px 16px rgba(77, 61, 34, 0.06);
+  z-index: 22;
+  pointer-events: none;
+  animation: ahp-in 200ms cubic-bezier(0.32, 0.72, 0.24, 1);
+  font-family: var(--serif);
+}
+@keyframes ahp-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.cartografia-surface .atom-hover-preview .ahp-eyebrow {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--bronze-deep);
+  margin-bottom: 4px;
+}
+.cartografia-surface .atom-hover-preview .ahp-title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: 0.2px;
+  color: var(--ink);
+  line-height: 1.18;
+  margin-bottom: 4px;
+}
+.cartografia-surface .atom-hover-preview .ahp-summary {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--ink2);
+  line-height: 1.36;
+  margin-bottom: 8px;
+}
+.cartografia-surface .atom-hover-preview .ahp-body {
+  font-family: var(--serif);
+  font-size: 12px;
+  font-style: normal;
+  color: var(--ink2);
+  line-height: 1.5;
+  padding-top: 6px;
+  border-top: 1px solid var(--hair-soft);
+  margin-top: 2px;
+}
+.cartografia-surface .atom-hover-preview.is-loading .ahp-body::after {
+  content: '';
+  display: block;
+  height: 8px;
+  width: 60%;
+  margin-top: 4px;
+  background: linear-gradient(90deg, var(--bronze-veil), transparent);
+  border-radius: 1px;
+  animation: ahp-loading 1.2s ease-in-out infinite;
+}
+@keyframes ahp-loading {
+  0%, 100% { opacity: 0.4; transform: translateX(0); }
+  50%      { opacity: 1; transform: translateX(20%); }
+}
+.cartografia-surface .atom-hover-preview .ahp-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hair-soft);
+}
+.cartografia-surface .atom-hover-preview .ahp-source-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--bronze-veil);
+  color: var(--bronze-deep);
+  border: 1px solid var(--bronze-soft);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 1.3px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.cartografia-surface .atom-hover-preview .ahp-source-path {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.4px;
+  color: var(--ink3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cartografia-surface .atom-hover-preview.is-error .ahp-eyebrow {
+  color: var(--rec-red);
+}

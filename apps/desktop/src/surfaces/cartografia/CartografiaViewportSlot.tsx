@@ -1,13 +1,21 @@
 /* eslint-disable react-hooks/refs -- Cartografia ref/viewport refactor em curso; divida lateral isolada do Atlas Forge core (project_atlas_vault_cartografia). */
-import { useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CartografiaState } from './state/cartografiaTypes'
 import type { CartografiaViewModel } from './state/useCartografiaViewModel'
 import type { CartografiaSearchController } from './search/useCartografiaSearch'
 import type { CartografiaViewportController } from './viewport/useCartografiaViewport'
 import type { VisualLens } from './state/visualLens'
+import type { useCustomLayout } from './state/useCustomLayout'
+import type { useEditMode } from './state/useEditMode'
+import type { useLayoutPresets } from './state/useLayoutPresets'
 import { CartographyFloaters } from './floaters/CartographyFloaters'
+import { LayoutPresetsMenu } from './floaters/LayoutPresetsMenu'
+import { LayoutSaveIndicator } from './floaters/LayoutSaveIndicator'
+import { ReadingModeNarrator } from './floaters/ReadingModeNarrator'
 import { CartographyOverlay } from './layout/CartographyOverlay'
 import { CartographyWorld } from './map/CartographyWorld'
+import { AtomHoverPreview } from './map/AtomHoverPreview'
+import { useAtomNotePreview } from './map/useAtomNotePreview'
 
 export function CartografiaViewportSlot({
   cartografia,
@@ -16,6 +24,9 @@ export function CartografiaViewportSlot({
   visualLens,
   setVisualLens,
   search,
+  editMode,
+  customLayout,
+  layoutPresets,
 }: {
   cartografia: CartografiaState
   viewModel: CartografiaViewModel
@@ -23,8 +34,42 @@ export function CartografiaViewportSlot({
   visualLens: VisualLens
   setVisualLens: (lens: VisualLens) => void
   search: CartografiaSearchController
+  editMode: ReturnType<typeof useEditMode>
+  customLayout: ReturnType<typeof useCustomLayout>
+  layoutPresets: ReturnType<typeof useLayoutPresets>
 }) {
   const worldRef = useRef<HTMLDivElement | null>(null)
+
+  // Feature #3 · hover insight (.md preview). Habilita só quando NÃO em
+  // edit mode (no edit mode, hover é prompt pra drag, não pra leitura).
+  // Não mostra durante isolate mode (peça já em foco — preview redundante).
+  const hoveredAtomLite = useMemo(
+    () =>
+      viewModel.hoveredAtom
+        ? {
+            graphId: viewModel.hoveredAtom.graphId,
+            name: viewModel.hoveredAtom.name,
+            deck: viewModel.hoveredAtom.deck,
+          }
+        : null,
+    [viewModel.hoveredAtom]
+  )
+  const previewEnabled = !editMode.isEditMode && !cartografia.isolatedId
+  const notePreview = useAtomNotePreview({ atom: hoveredAtomLite, enabled: previewEnabled })
+  const [previewAnchor, setPreviewAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  useEffect(() => {
+    if (!notePreview) {
+      setPreviewAnchor(null)
+      return
+    }
+    const el = document.getElementById(`atom-${notePreview.graphId}`)
+    if (!el) {
+      setPreviewAnchor(null)
+      return
+    }
+    const r = el.getBoundingClientRect()
+    setPreviewAnchor({ x: r.x, y: r.y, w: r.width, h: r.height })
+  }, [notePreview])
 
   return (
     <div
@@ -34,6 +79,7 @@ export function CartografiaViewportSlot({
         `viewport-${visualLens}`,
         cartografia.isolatedId ? 'is-isolated' : '',
         cartografia.view === 'gear' ? 'mode-focus' : '',
+        editMode.isEditMode ? 'is-edit-mode' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -64,6 +110,10 @@ export function CartografiaViewportSlot({
           onZoomOut={() => viewport.zoomBy(0.83)}
           onFit={viewport.fit}
           onUniverse={() => cartografia.setView('universe')}
+          isEditMode={editMode.isEditMode}
+          onToggleEditMode={editMode.toggle}
+          hasCustomLayout={customLayout.hasOverrides}
+          onResetLayout={customLayout.resetAll}
         />
       ) : null}
 
@@ -93,6 +143,8 @@ export function CartografiaViewportSlot({
         onSetHover={cartografia.setHover}
         onEnterIsolate={cartografia.enterIsolate}
         onExitIsolate={cartografia.exitIsolate}
+        editMode={editMode}
+        customLayout={customLayout}
       />
 
       {cartografia.loading || viewModel.isOffline ? (
@@ -101,6 +153,45 @@ export function CartografiaViewportSlot({
           offline={viewModel.isOffline}
           errors={cartografia.errors}
         />
+      ) : null}
+
+      {notePreview ? <AtomHoverPreview preview={notePreview} anchorRect={previewAnchor} /> : null}
+
+      {cartografia.readingMode && cartografia.graph?.pipeline ? (
+        <ReadingModeNarrator
+          pipeline={cartografia.graph.pipeline}
+          focusOrder={cartografia.readingFocusOrder ?? null}
+          focusedAtom={(() => {
+            const order = cartografia.readingFocusOrder
+            if (order == null) return null
+            const step = cartografia.graph.pipeline[order]
+            return step ? cartografia.atomIndex[step.graphId] ?? null : null
+          })()}
+          onClose={() => cartografia.setReadingMode(false)}
+          onNext={cartografia.readingNext}
+          onPrev={cartografia.readingPrev}
+        />
+      ) : null}
+
+      {editMode.isEditMode ? (
+        <>
+          <LayoutSaveIndicator
+            lastSavedAt={customLayout.lastSavedAt}
+            canUndo={customLayout.canUndo}
+            canRedo={customLayout.canRedo}
+            onUndo={customLayout.undo}
+            onRedo={customLayout.redo}
+          />
+          <LayoutPresetsMenu
+            presetList={layoutPresets.presetList}
+            currentOverlay={customLayout.overlay}
+            hasOverrides={customLayout.hasOverrides}
+            onSavePreset={layoutPresets.savePreset}
+            onLoadPreset={layoutPresets.loadPreset}
+            onDeletePreset={layoutPresets.deletePreset}
+            onApplyOverlay={customLayout.replaceOverlay}
+          />
+        </>
       ) : null}
     </div>
   )

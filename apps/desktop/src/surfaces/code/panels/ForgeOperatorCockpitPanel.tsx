@@ -73,20 +73,24 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
   const [pollOn, setPollOn] = useState(true)
 
   const obraId = obra?.id ?? null
+  const statusForCurrentRun =
+    !forgeFastPathStatus?.fastPathRunId || !forgeFastPath?.fastPathRunId || forgeFastPathStatus.fastPathRunId === forgeFastPath.fastPathRunId
+      ? forgeFastPathStatus
+      : null
   const fastPathRunId =
-    forgeFastPathStatus?.fastPathRunId ?? forgeFastPath?.fastPathRunId ?? null
-  const lifecycleStatus = forgeFastPathStatus?.status ?? forgeFastPath?.status ?? null
+    forgeFastPath?.fastPathRunId ?? statusForCurrentRun?.fastPathRunId ?? null
+  const lifecycleStatus = statusForCurrentRun?.status ?? forgeFastPath?.status ?? null
   const currentStage =
-    forgeFastPathStatus?.currentStage ?? forgeFastPath?.currentStage ?? null
+    statusForCurrentRun?.currentStage ?? forgeFastPath?.currentStage ?? null
   const progressPercent =
-    forgeFastPathStatus?.progressPercent ?? forgeFastPath?.progressPercent ?? null
-  const executionId = forgeFastPathStatus?.executionId ?? forgeFastPath?.executionId ?? null
-  const workItemId = forgeFastPathStatus?.workItemId ?? forgeFastPath?.workItemId ?? null
-  const workItemCode = forgeFastPathStatus?.workItemCode ?? forgeFastPath?.workItemCode ?? null
-  const historyId = forgeFastPathStatus?.historyId ?? forgeFastPath?.historyId ?? null
+    statusForCurrentRun?.progressPercent ?? forgeFastPath?.progressPercent ?? null
+  const executionId = statusForCurrentRun?.executionId ?? forgeFastPath?.executionId ?? null
+  const workItemId = statusForCurrentRun?.workItemId ?? forgeFastPath?.workItemId ?? null
+  const workItemCode = statusForCurrentRun?.workItemCode ?? forgeFastPath?.workItemCode ?? null
+  const historyId = statusForCurrentRun?.historyId ?? forgeFastPath?.historyId ?? null
   const evidenceRefCount =
-    forgeFastPathStatus?.evidenceRefCount ?? forgeFastPath?.evidenceRefs.length ?? 0
-  const ledgerEventCount = forgeFastPathStatus?.ledgerEventCount ?? 0
+    statusForCurrentRun?.evidenceRefCount ?? forgeFastPath?.evidenceRefs.length ?? 0
+  const ledgerEventCount = statusForCurrentRun?.ledgerEventCount ?? 0
 
   const reviewStatus = forgeReviewPacket?.reviewStatus ?? 'pending'
   const completionStatus = forgeCompletionClaim?.completionStatus ?? 'not_allowed'
@@ -102,26 +106,26 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
       : false)
   const rollbackAvailable = forgeReviewPacket?.rollbackAvailable === true
   const nextAction =
-    forgeFastPathStatus?.nextAction ?? forgeFastPath?.nextAction ?? null
+    statusForCurrentRun?.nextAction ?? forgeFastPath?.nextAction ?? null
 
   // Cockpit repair_available signal (audit invariant repair_state_visible).
-  const repair = forgeFastPathStatus
+  const repair = statusForCurrentRun
     ? {
-        available: forgeFastPathStatus.repair?.repairAvailable === true,
-        loopStatus: forgeFastPathStatus.repair?.repairLoopStatus ?? null,
-        suggested: forgeFastPathStatus.repair?.suggestedRepairCommand ?? null,
-        failurePacket: forgeFastPathStatus.repair?.failurePacket ?? null,
-        failClosed: forgeFastPathStatus.repair?.failClosedWithoutEvidence === true,
+        available: statusForCurrentRun.repair?.repairAvailable === true,
+        loopStatus: statusForCurrentRun.repair?.repairLoopStatus ?? null,
+        suggested: statusForCurrentRun.repair?.suggestedRepairCommand ?? null,
+        failurePacket: statusForCurrentRun.repair?.failurePacket ?? null,
+        failClosed: statusForCurrentRun.repair?.failClosedWithoutEvidence === true,
       }
     : null
 
   const blockers = useMemo(() => {
     const list = new Set<string>()
-    for (const blocker of forgeFastPathStatus?.blockers ?? []) list.add(blocker)
+    for (const blocker of statusForCurrentRun?.blockers ?? []) list.add(blocker)
     for (const blocker of forgeFastPath?.blockers ?? []) list.add(blocker)
     for (const blocker of forgeReviewPacket?.blockers ?? []) list.add(blocker)
     return Array.from(list)
-  }, [forgeFastPathStatus, forgeFastPath, forgeReviewPacket])
+  }, [statusForCurrentRun, forgeFastPath, forgeReviewPacket])
 
   const visualState: PollVisualState = useMemo(() => {
     if (! obraId) return 'idle'
@@ -177,6 +181,63 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
 
   const lifecycleTone = lifecycleStatus ? STATUS_TONE[lifecycleStatus] : undefined
   const completionTone = STATUS_TONE[completionStatus] ?? STATUS_TONE.prepared
+  const primaryAction = useMemo((): {
+    label: string
+    disabled: boolean
+    run: () => Promise<void>
+  } => {
+    if (!fastPathRunId) {
+      return {
+        label: 'Iniciar Forge',
+        disabled: runDisabled,
+        run: () => onRunForgeFastPath('execute_async'),
+      }
+    }
+    if (lifecycleStatus === 'prepared') {
+      return {
+        label: 'Continuar Execução',
+        disabled: runDisabled,
+        run: () => onRunForgeFastPath('execute_async'),
+      }
+    }
+    if (lifecycleStatus === 'queued' || lifecycleStatus === 'running') {
+      return {
+        label: 'Atualizar Status',
+        disabled: refreshDisabled,
+        run: () => onRefreshForgeFastPathStatus(fastPathRunId),
+      }
+    }
+    if (lifecycleStatus === 'review_required' || (runtimePassed && !humanApproved)) {
+      return {
+        label: 'Abrir Revisão',
+        disabled: refreshDisabled,
+        run: () => onRefreshForgeReview(fastPathRunId),
+      }
+    }
+    if (lifecycleStatus === 'blocked' || lifecycleStatus === 'failed') {
+      return {
+        label: 'Revalidar',
+        disabled: refreshDisabled,
+        run: () => onRefreshForgeFastPathStatus(fastPathRunId),
+      }
+    }
+
+    return {
+      label: 'Continuar Forge',
+      disabled: runDisabled,
+      run: () => onRunForgeFastPath('execute_async'),
+    }
+  }, [
+    fastPathRunId,
+    humanApproved,
+    lifecycleStatus,
+    refreshDisabled,
+    runDisabled,
+    runtimePassed,
+    onRefreshForgeFastPathStatus,
+    onRefreshForgeReview,
+    onRunForgeFastPath,
+  ])
 
   const meta = useMemo(() => {
     if (! obraId) return 'sem Obra'
@@ -404,7 +465,21 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
             ) : null}
 
             <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+              <button
+                type="button"
+                disabled={primaryAction.disabled}
+                onClick={() => dispatch(primaryAction.label, primaryAction.run)}
+                style={{ ...btnPrimary, minHeight: 42, fontSize: 11 }}
+              >
+                ✦ {primaryAction.label}
+              </button>
+
+              <details>
+                <summary style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--bronze)', cursor: 'pointer', letterSpacing: '1.1px', textTransform: 'uppercase' }}>
+                  ações avançadas
+                </summary>
+                <div style={{ marginTop: 6, display: 'grid', gap: 6 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
                 <button
                   type="button"
                   disabled={runDisabled}
@@ -429,8 +504,8 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                 >
                   sync
                 </button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
                 <button
                   type="button"
                   disabled={refreshDisabled}
@@ -455,7 +530,9 @@ export function ForgeOperatorCockpitPanel(ctx: RightRailContext) {
                 >
                   open review
                 </button>
-              </div>
+                  </div>
+                </div>
+              </details>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                 <input

@@ -29,7 +29,22 @@ import type {
   AtlasForgeProviderFailureMemory,
   AtlasForgeProviderFailureMemoryEvent,
   AtlasForgeProviderTopology,
+  AtlasCodeForgeUxOrchestrator,
+  AtlasCodeObraCommandCenter,
+  AtlasForgeProviderDriverPlanPacket,
+  AtlasForgeProviderDriverStatus,
+  AtlasForgeProviderInvocationReceipt,
+  AtlasForgeProviderInvocationSnapshot,
   AtlasForgeRuntimeDispatchPlan,
+  AtlasSelfImprovementForgeActivationState,
+  AtlasSelfImprovementGovernanceState,
+  AtlasSelfImprovementActivationCockpit,
+  AtlasSelfImprovementActivationCockpitFilters,
+  AtlasSelfImprovementActivationDetail,
+  AtlasSelfImprovementActivationAcceptPayload,
+  AtlasSelfImprovementActivationRejectPayload,
+  AtlasSelfImprovementActivationCreatePayload,
+  AtlasSelfImprovementTrustLedgerEntry,
   CoreStatus,
   DecisionReceipt,
   Message,
@@ -69,7 +84,15 @@ export interface BridgeSnapshot {
   forgeContinuumCertification: AtlasForgeContinuumCertificationSummary | null
   forgeProviderCapacity: AtlasForgeProviderCapacity | null
   forgeProviderFailureMemory: AtlasForgeProviderFailureMemory | null
+  selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
+  selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
+  selfImprovementActivationCockpit: AtlasSelfImprovementActivationCockpit | null
   forgeRuntimeDispatch: AtlasForgeRuntimeDispatchPlan | null
+  forgeProviderDriverStatus: AtlasForgeProviderDriverStatus | null
+  forgeProviderInvocation: AtlasForgeProviderInvocationSnapshot | null
+  forgeProviderInvocationReceipt: AtlasForgeProviderInvocationReceipt | null
+  forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
+  obraCommandCenter: AtlasCodeObraCommandCenter | null
   forgeRunHistoryReplay: WorkStateSnapshot['forgeRunHistoryReplay']
   forgeReview: WorkStateSnapshot['forgeReview']
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
@@ -111,8 +134,20 @@ export interface BridgeActions {
   refreshForgeContinuumCertification: (options?: { simulateProviderFailure?: string; strategy?: string; strict?: boolean }) => Promise<void>
   refreshForgeProviderCapacity: () => Promise<void>
   recordForgeProviderFailure: (payload: { provider: string; failureType: string; model?: string; role?: string; reason?: string }) => Promise<AtlasForgeProviderFailureMemoryEvent | null>
+  refreshSelfImprovementGovernance: () => Promise<void>
+  recordSelfImprovementTrustLedgerEntry: (payload: { outcome: string; proposalId?: string; reviewer?: string; reason?: string; area?: string }) => Promise<AtlasSelfImprovementTrustLedgerEntry | null>
+  refreshSelfImprovementActivationCockpit: (filters?: AtlasSelfImprovementActivationCockpitFilters) => Promise<void>
+  selectSelfImprovementActivation: (activationId: string | null) => Promise<void>
+  createSelfImprovementForgeActivation: (payload: AtlasSelfImprovementActivationCreatePayload) => Promise<AtlasSelfImprovementActivationDetail | null>
+  acceptSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationAcceptPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
+  rejectSelfImprovementForgeActivation: (activationId: string, payload: AtlasSelfImprovementActivationRejectPayload) => Promise<AtlasSelfImprovementActivationDetail | null>
   refreshForgeRuntimeDispatch: () => Promise<void>
   runForgeRuntimeDispatch: (options?: { role?: string; simulateProviderFailure?: string; createChildReceipt?: boolean; fastPathRunId?: string }) => Promise<void>
+  refreshForgeProviderDrivers: () => Promise<void>
+  planForgeProviderDriver: (options?: { role?: string; dispatchId?: string }) => Promise<AtlasForgeProviderDriverPlanPacket | null>
+  runForgeProviderInvocation: (options?: { role?: string; mode?: 'dry_run' | 'execute'; dispatchId?: string; confirmProviderCall?: boolean; confirmBudget?: boolean; confirmRuntimeDispatch?: boolean; timeoutSeconds?: number }) => Promise<void>
+  refreshForgeProviderInvocationLatest: () => Promise<void>
+  refreshForgeUxOrchestrator: () => Promise<void>
   startForgeLiveExecutionAsync: () => Promise<void>
   refreshForgeLiveExecutionAsync: () => Promise<void>
   inspectForgeRunHistory: (historyId: string) => Promise<void>
@@ -150,7 +185,15 @@ const INITIAL: BridgeSnapshot = {
   forgeContinuumCertification: null,
   forgeProviderCapacity: null,
   forgeProviderFailureMemory: null,
+  selfImprovementGovernance: null,
+  selfImprovementActivation: null,
+  selfImprovementActivationCockpit: null,
   forgeRuntimeDispatch: null,
+  forgeProviderDriverStatus: null,
+  forgeProviderInvocation: null,
+  forgeProviderInvocationReceipt: null,
+  forgeUxOrchestrator: null,
+  obraCommandCenter: null,
   forgeRunHistoryReplay: null,
   forgeReview: null,
   forgeReviewHistory: null,
@@ -222,6 +265,13 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
           forgeProviderTopology: null,
           forgeContinuumCertification: null,
           forgeRuntimeDispatch: null,
+          forgeProviderDriverStatus: null,
+          forgeProviderInvocation: null,
+          forgeProviderInvocationReceipt: null,
+          forgeUxOrchestrator: null,
+          obraCommandCenter: null,
+          selfImprovementGovernance: null,
+          selfImprovementActivation: null,
           checkpoint: null,
           atlasCodeEnterpriseCertification: null,
           programmingGovernance: null,
@@ -258,6 +308,13 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         forgeProviderTopology: state.forgeProviderTopology ?? null,
         forgeContinuumCertification: state.forgeContinuumCertification ?? null,
         forgeRuntimeDispatch: state.forgeRuntimeDispatch ?? null,
+        forgeProviderDriverStatus: state.forgeProviderDriverStatus ?? null,
+        forgeProviderInvocation: state.forgeProviderInvocation ?? null,
+        forgeProviderInvocationReceipt: state.forgeProviderInvocationReceipt ?? null,
+        forgeUxOrchestrator: state.forgeUxOrchestrator ?? null,
+        obraCommandCenter: state.obraCommandCenter ?? null,
+        selfImprovementGovernance: state.selfImprovementGovernance ?? null,
+        selfImprovementActivation: state.selfImprovementActivation ?? null,
         checkpoint: state.checkpoint,
         atlasCodeEnterpriseCertification: state.atlasCodeEnterpriseCertification,
         programmingGovernance: state.programmingGovernance,
@@ -862,6 +919,199 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     [snap.obra, pushError],
   )
 
+  const refreshSelfImprovementGovernance = useCallback(async () => {
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const obraId = snap.obra?.id ?? null
+      const trustLedger = obraId ? await bridge.getSelfImprovementTrustLedger(obraId) : null
+      const portfolio = await bridge.getSelfImprovementStrategyPortfolio()
+      if (!cancelRef.current) {
+        setSnap((s) => ({
+          ...s,
+          selfImprovementGovernance: {
+            schemaVersion: 'atlas.self_improvement.governance_state.v1',
+            trustLedger,
+            strategyPortfolio: portfolio,
+            commands: {},
+            externalProviderCall: false,
+            separatedFrom: 'external_rivals_certification',
+          },
+          busy: false,
+          errors: [...errorBufRef.current],
+        }))
+      }
+    } catch (e) {
+      pushError('refreshSelfImprovementGovernance', e)
+      setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+    }
+  }, [snap.obra, pushError])
+
+  const recordSelfImprovementTrustLedgerEntry = useCallback(
+    async (payload: { outcome: string; proposalId?: string; reviewer?: string; reason?: string; area?: string }) => {
+      if (!snap.obra?.id) {
+        pushError('recordSelfImprovementTrustLedgerEntry', new Error('obra_required'))
+        return null
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const entry = await bridge.recordSelfImprovementTrustLedgerEntry(snap.obra.id, payload)
+        const trustLedger = await bridge.getSelfImprovementTrustLedger(snap.obra.id)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementGovernance: {
+              schemaVersion: 'atlas.self_improvement.governance_state.v1',
+              trustLedger,
+              strategyPortfolio: s.selfImprovementGovernance?.strategyPortfolio ?? null,
+              commands: s.selfImprovementGovernance?.commands ?? {},
+              externalProviderCall: false,
+              separatedFrom: 'external_rivals_certification',
+            },
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return entry
+      } catch (e) {
+        pushError('recordSelfImprovementTrustLedgerEntry', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [snap.obra, pushError],
+  )
+
+  const refreshSelfImprovementActivationCockpit = useCallback(
+    async (filters?: AtlasSelfImprovementActivationCockpitFilters) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const cockpit = await bridge.listSelfImprovementForgeActivations(filters)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementActivationCockpit: cockpit,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('refreshSelfImprovementActivationCockpit', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [pushError],
+  )
+
+  const selectSelfImprovementActivation = useCallback(
+    async (activationId: string | null) => {
+      if (activationId === null) {
+        // Drop selected_activation while preserving the list/counters.
+        setSnap((s) => ({
+          ...s,
+          selfImprovementActivationCockpit: s.selfImprovementActivationCockpit
+            ? { ...s.selfImprovementActivationCockpit, selectedActivation: null }
+            : null,
+        }))
+        return
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const cockpit = await bridge.getSelfImprovementForgeActivation(activationId)
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementActivationCockpit: cockpit,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('selectSelfImprovementActivation', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [pushError],
+  )
+
+  const createSelfImprovementForgeActivation = useCallback(
+    async (payload: AtlasSelfImprovementActivationCreatePayload) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const detail = await bridge.createSelfImprovementForgeActivation(payload)
+        // Refresh the cockpit list so the new activation shows up.
+        const cockpit = await bridge.listSelfImprovementForgeActivations()
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementActivationCockpit: cockpit
+              ? { ...cockpit, selectedActivation: detail }
+              : s.selfImprovementActivationCockpit,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return detail
+      } catch (e) {
+        pushError('createSelfImprovementForgeActivation', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const acceptSelfImprovementForgeActivation = useCallback(
+    async (activationId: string, payload: AtlasSelfImprovementActivationAcceptPayload) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const detail = await bridge.acceptSelfImprovementForgeActivation(activationId, payload)
+        const cockpit = await bridge.listSelfImprovementForgeActivations()
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementActivationCockpit: cockpit
+              ? { ...cockpit, selectedActivation: detail }
+              : s.selfImprovementActivationCockpit,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return detail
+      } catch (e) {
+        pushError('acceptSelfImprovementForgeActivation', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const rejectSelfImprovementForgeActivation = useCallback(
+    async (activationId: string, payload: AtlasSelfImprovementActivationRejectPayload) => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const detail = await bridge.rejectSelfImprovementForgeActivation(activationId, payload)
+        const cockpit = await bridge.listSelfImprovementForgeActivations()
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            selfImprovementActivationCockpit: cockpit
+              ? { ...cockpit, selectedActivation: detail }
+              : s.selfImprovementActivationCockpit,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+        return detail
+      } catch (e) {
+        pushError('rejectSelfImprovementForgeActivation', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
   const refreshForgeRuntimeDispatch = useCallback(async () => {
     if (!snap.obra?.id) {
       pushError('refreshForgeRuntimeDispatch', new Error('obra_required'))
@@ -908,6 +1158,102 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     },
     [snap.obra, pushError],
   )
+
+  const refreshForgeProviderDrivers = useCallback(async () => {
+    if (!snap.obra?.id) {
+      pushError('refreshForgeProviderDrivers', new Error('obra_required'))
+      return
+    }
+    try {
+      const status = await bridge.getForgeProviderDrivers(snap.obra.id)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, forgeProviderDriverStatus: status, errors: [...errorBufRef.current] }))
+      }
+    } catch (e) {
+      pushError('refreshForgeProviderDrivers', e)
+    }
+  }, [snap.obra, pushError])
+
+  const planForgeProviderDriver = useCallback(
+    async (options?: { role?: string; dispatchId?: string }) => {
+      if (!snap.obra?.id) {
+        pushError('planForgeProviderDriver', new Error('obra_required'))
+        return null
+      }
+      try {
+        const packet = await bridge.planForgeProviderDriver(snap.obra.id, options ?? {})
+        if (!cancelRef.current && packet) {
+          setSnap((s) => ({
+            ...s,
+            forgeProviderInvocation:
+              (packet.invocation as unknown as AtlasForgeProviderInvocationSnapshot) ?? s.forgeProviderInvocation,
+            forgeProviderDriverStatus:
+              (packet.driverStatus as unknown as AtlasForgeProviderDriverStatus) ?? s.forgeProviderDriverStatus,
+          }))
+        }
+        return packet
+      } catch (e) {
+        pushError('planForgeProviderDriver', e)
+        return null
+      }
+    },
+    [snap.obra, pushError],
+  )
+
+  const runForgeProviderInvocation = useCallback(
+    async (options?: { role?: string; mode?: 'dry_run' | 'execute'; dispatchId?: string; confirmProviderCall?: boolean; confirmBudget?: boolean; confirmRuntimeDispatch?: boolean; timeoutSeconds?: number }) => {
+      if (!snap.obra?.id) {
+        pushError('runForgeProviderInvocation', new Error('obra_required'))
+        return
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const inv = await bridge.runForgeProviderInvocation(snap.obra.id, options ?? {})
+        if (!cancelRef.current) {
+          setSnap((s) => ({
+            ...s,
+            forgeProviderInvocation: inv,
+            busy: false,
+            errors: [...errorBufRef.current],
+          }))
+        }
+      } catch (e) {
+        pushError('runForgeProviderInvocation', e)
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    },
+    [snap.obra, pushError],
+  )
+
+  const refreshForgeProviderInvocationLatest = useCallback(async () => {
+    if (!snap.obra?.id) {
+      pushError('refreshForgeProviderInvocationLatest', new Error('obra_required'))
+      return
+    }
+    try {
+      const latest = await bridge.getForgeProviderInvocationLatest(snap.obra.id)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, forgeProviderInvocation: latest, errors: [...errorBufRef.current] }))
+      }
+    } catch (e) {
+      pushError('refreshForgeProviderInvocationLatest', e)
+    }
+  }, [snap.obra, pushError])
+
+  const refreshForgeUxOrchestrator = useCallback(async () => {
+    if (!snap.obra?.id) {
+      pushError('refreshForgeUxOrchestrator', new Error('obra_required'))
+      return
+    }
+    try {
+      const orchestrator = await bridge.getForgeUxOrchestrator(snap.obra.id)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, forgeUxOrchestrator: orchestrator, errors: [...errorBufRef.current] }))
+      }
+    } catch (e) {
+      pushError('refreshForgeUxOrchestrator', e)
+    }
+  }, [snap.obra, pushError])
 
   const createCheckpoint = useCallback(async () => {
     if (!snap.obra?.id) {
@@ -1224,8 +1570,20 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     refreshForgeContinuumCertification,
     refreshForgeProviderCapacity,
     recordForgeProviderFailure,
+    refreshSelfImprovementGovernance,
+    recordSelfImprovementTrustLedgerEntry,
+    refreshSelfImprovementActivationCockpit,
+    selectSelfImprovementActivation,
+    createSelfImprovementForgeActivation,
+    acceptSelfImprovementForgeActivation,
+    rejectSelfImprovementForgeActivation,
     refreshForgeRuntimeDispatch,
     runForgeRuntimeDispatch,
+    refreshForgeProviderDrivers,
+    planForgeProviderDriver,
+    runForgeProviderInvocation,
+    refreshForgeProviderInvocationLatest,
+    refreshForgeUxOrchestrator,
     startForgeLiveExecutionAsync,
     refreshForgeLiveExecutionAsync,
     inspectForgeRunHistory,

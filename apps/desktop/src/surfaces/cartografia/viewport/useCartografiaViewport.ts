@@ -7,16 +7,14 @@ export type { ViewTransform } from './viewportTypes'
 
 export function useCartografiaViewport(config: ViewportConfig) {
   const { worldWidth, worldHeight } = config
-  // Pass 5× · world cresceu 5× fisicamente (1880→9400) então o fit canônico
-  // virou scale ~0.15 (mundo todo aparece em ~30% do canon antigo). Pra
-  // manter os elementos 5× maiores visualmente ao abrir, fit() honra
-  // initialScale como floor (Math.max). minScale ainda permite zoom-out
-  // total via Cmd+menos do macOS / botão −.
-  const minScale = config.minScale ?? 0.15
+  const minScale = config.minScale ?? 0.3
   const maxScale = config.maxScale ?? 2.4
 
+  // Abre em scale 0.4 (overview canon). Cards são fisicamente maiores
+  // (A+B), mas inicia em fit-like pra mostrar a topologia inteira. User dá
+  // zoom-in (+) pra ler detalhes nos cards.
   const [transform, setTransform] = useState<ViewTransform>({
-    scale: config.initialScale ?? 0.55,
+    scale: config.initialScale ?? 0.4,
     x: 0,
     y: 0,
   })
@@ -39,16 +37,8 @@ export function useCartografiaViewport(config: ViewportConfig) {
     const viewport = viewportRef.current
     if (!viewport) return
     setAnimating(true)
-    setTransform(
-      fitWorld({
-        viewport,
-        world: { width: worldWidth, height: worldHeight },
-        minScale,
-        maxScale,
-        initialScale: config.initialScale ?? 0.55,
-      })
-    )
-  }, [config.initialScale, maxScale, minScale, worldHeight, worldWidth])
+    setTransform(fitWorld({ viewport, world: { width: worldWidth, height: worldHeight }, minScale, maxScale }))
+  }, [maxScale, minScale, worldHeight, worldWidth])
 
   const fitToStage = useCallback(
     (stage: StageSize) => {
@@ -61,9 +51,16 @@ export function useCartografiaViewport(config: ViewportConfig) {
   )
 
   const reset = useCallback(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
     setAnimating(true)
-    setTransform({ scale: config.initialScale ?? 0.55, x: 0, y: 0 })
-  }, [config.initialScale])
+    const scale = config.initialScale ?? 0.4
+    setTransform({
+      scale,
+      x: (viewport.clientWidth - worldWidth * scale) / 2,
+      y: (viewport.clientHeight - worldHeight * scale) / 2,
+    })
+  }, [config.initialScale, worldHeight, worldWidth])
 
   const pan = useViewportPanBindings({ viewportRef, zoomBy, setAnimating, setTransform })
 

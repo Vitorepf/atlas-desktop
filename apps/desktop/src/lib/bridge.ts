@@ -20,6 +20,17 @@ import type {
   AtlasCodeForgeFastPathSnapshot,
   AtlasCodeForgeReviewDecisionResponse,
   AtlasCodeForgeReviewPacket,
+  AtlasCodeForgeUxOrchestrator,
+  AtlasCodeObraCommandCenter,
+  AtlasCodeObraCommandCenterPhase,
+  AtlasCodeObraCommandCenterMilestone,
+  AtlasCodeObraCommandCenterProgress,
+  AtlasCodeObraCommandCenterProgressItem,
+  AtlasCodeObraCommandCenterDecision,
+  AtlasCodeObraCommandCenterBlockerSummary,
+  AtlasCodeObraCommandCenterOperationalHealth,
+  AtlasCodeObraCommandCenterTrustSummary,
+  AtlasCodeObraCommandCenterEvidenceDigest,
   AtlasCodeForgeWorkIntake,
   AtlasCodeForgeWorkIntakePayload,
   AtlasForgeContinuumCertification,
@@ -28,11 +39,39 @@ import type {
   AtlasForgeProviderCapacityEntry,
   AtlasForgeProviderFailureMemory,
   AtlasForgeProviderFailureMemoryEvent,
+  AtlasSelfImprovementGovernanceState,
+  AtlasSelfImprovementStrategyPortfolioBucket,
+  AtlasSelfImprovementStrategyPortfolioSnapshot,
+  AtlasSelfImprovementTrustLedgerEntry,
+  AtlasSelfImprovementTrustLedgerSnapshot,
   AtlasForgeProviderFallbackEntry,
   AtlasForgeProviderFallbackEvent,
   AtlasForgeProviderRole,
   AtlasForgeProviderTopology,
+  AtlasForgeProviderDriverStatus,
+  AtlasForgeProviderDriverEntry,
+  AtlasForgeProviderDriverPlanPacket,
+  AtlasForgeProviderInvocationSnapshot,
+  AtlasForgeProviderInvocationReceipt,
   AtlasForgeRuntimeDispatchPlan,
+  AtlasSelfImprovementForgeActivationState,
+  AtlasSelfImprovementActivationCockpit,
+  AtlasSelfImprovementActivationCockpitFilters,
+  AtlasSelfImprovementActivationListItem,
+  AtlasSelfImprovementActivationDetail,
+  AtlasSelfImprovementActivationProposalSummary,
+  AtlasSelfImprovementActivationPowerGate,
+  AtlasSelfImprovementActivationBeforeSnapshot,
+  AtlasSelfImprovementActivationApprovalReceipt,
+  AtlasSelfImprovementActivationRejection,
+  AtlasSelfImprovementActivationCreatedObra,
+  AtlasSelfImprovementActivationOpenObraAction,
+  AtlasSelfImprovementActivationAcceptPayload,
+  AtlasSelfImprovementActivationRejectPayload,
+  AtlasSelfImprovementActivationCreatePayload,
+  AtlasSelfImprovementActivationStatus,
+  AtlasSelfImprovementActivationTone,
+  AtlasSelfImprovementActivationPowerGateOutcome,
   BootSnapshot,
   CartographyGraph,
   CartographyNote,
@@ -891,6 +930,105 @@ export const bridge = {
     return adaptForgeRuntimeDispatchPlan(raw)
   },
 
+  // 10b.13.4 · Atlas Forge Real Provider Drivers · GET driver status / POST plan-driver / POST invocation / GET latest
+  // 10b.13.5 · Atlas Code Forge UX Orchestrator · GET human state machine
+  async getForgeUxOrchestrator(obraId: string): Promise<AtlasCodeForgeUxOrchestrator | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_ux_orchestrator', { workId: obraId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/ux-orchestrator`)
+    } else {
+      offline('getForgeUxOrchestrator')
+    }
+    return adaptForgeUxOrchestrator(raw)
+  },
+
+  async getForgeProviderDrivers(obraId: string): Promise<AtlasForgeProviderDriverStatus | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_provider_drivers', { workId: obraId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-invocations/drivers`)
+    } else {
+      offline('getForgeProviderDrivers')
+    }
+    return adaptForgeProviderDriverStatus(raw)
+  },
+
+  async planForgeProviderDriver(
+    obraId: string,
+    options: { role?: string; dispatchId?: string } = {},
+  ): Promise<AtlasForgeProviderDriverPlanPacket | null> {
+    const body: Record<string, unknown> = {}
+    if (options.role !== undefined) body.role = options.role
+    if (options.dispatchId !== undefined) body.dispatch_id = options.dispatchId
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_plan_forge_provider_driver', { workId: obraId, payload: body })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-invocations/plan-driver`,
+        { method: 'POST', body },
+      )
+    } else {
+      offline('planForgeProviderDriver')
+    }
+    return adaptForgeProviderDriverPlanPacket(raw)
+  },
+
+  async runForgeProviderInvocation(
+    obraId: string,
+    options: {
+      role?: string
+      mode?: 'dry_run' | 'execute'
+      dispatchId?: string
+      confirmProviderCall?: boolean
+      confirmBudget?: boolean
+      confirmRuntimeDispatch?: boolean
+      timeoutSeconds?: number
+      maxOutputChars?: number
+    } = {},
+  ): Promise<AtlasForgeProviderInvocationSnapshot | null> {
+    const body: Record<string, unknown> = {}
+    if (options.role !== undefined) body.role = options.role
+    if (options.mode !== undefined) body.mode = options.mode
+    if (options.dispatchId !== undefined) body.dispatch_id = options.dispatchId
+    if (options.confirmProviderCall !== undefined) body.confirm_provider_call = options.confirmProviderCall
+    if (options.confirmBudget !== undefined) body.confirm_budget = options.confirmBudget
+    if (options.confirmRuntimeDispatch !== undefined) body.confirm_runtime_dispatch = options.confirmRuntimeDispatch
+    if (options.timeoutSeconds !== undefined) body.timeout_seconds = options.timeoutSeconds
+    if (options.maxOutputChars !== undefined) body.max_output_chars = options.maxOutputChars
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_run_forge_provider_invocation', { workId: obraId, options: body })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-invocations`,
+        { method: 'POST', body },
+      )
+    } else {
+      offline('runForgeProviderInvocation')
+    }
+    return adaptForgeProviderInvocationSnapshot(raw)
+  },
+
+  async getForgeProviderInvocationLatest(obraId: string): Promise<AtlasForgeProviderInvocationSnapshot | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_provider_invocation_latest', { workId: obraId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/provider-invocations/latest`,
+      )
+    } else {
+      offline('getForgeProviderInvocationLatest')
+    }
+    return adaptForgeProviderInvocationSnapshot(raw)
+  },
+
   async getForgeRuntimeDispatch(obraId: string): Promise<AtlasForgeRuntimeDispatchPlan | null> {
     let raw: unknown
     if (MODE === 'tauri') {
@@ -1007,6 +1145,214 @@ export const bridge = {
       capacity: adaptForgeProviderCapacity(r.capacity_snapshot ?? r.capacitySnapshot ?? null),
       memory: adaptForgeProviderFailureMemory(r.failure_memory ?? r.failureMemory ?? null),
     }
+  },
+
+  // 10b.13.5 · Atlas Self-Improvement Governance · GET trust ledger + portfolio
+  // Schema canonico: atlas.self_improvement.governance_state.v1
+  // Doc: docs/engineering-knowledge-base/atlas-self-improvement-governance-ladder.md
+  async getSelfImprovementTrustLedger(
+    obraId: string,
+  ): Promise<AtlasSelfImprovementTrustLedgerSnapshot | null> {
+    let raw: unknown
+    if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/self-improvement/trust-ledger`,
+      )
+    } else {
+      // Tauri command not yet wired — fall back to HTTP via offline shim, but
+      // don't crash; UI tolerates null.
+      try {
+        raw = await fetchHttp<unknown>(
+          `/atlas-code/works/${encodeURIComponent(obraId)}/self-improvement/trust-ledger`,
+        )
+      } catch {
+        return null
+      }
+    }
+    return adaptSelfImprovementTrustLedgerSnapshot(raw)
+  },
+
+  // 10b.13.6 · Atlas Self-Improvement Governance · POST trust ledger entry
+  async recordSelfImprovementTrustLedgerEntry(
+    obraId: string,
+    payload: { outcome: string; proposalId?: string; reviewer?: string; reason?: string; area?: string },
+  ): Promise<AtlasSelfImprovementTrustLedgerEntry | null> {
+    const body: Record<string, unknown> = { outcome: payload.outcome }
+    if (payload.proposalId !== undefined) body.proposal_id = payload.proposalId
+    if (payload.reviewer !== undefined) body.reviewer = payload.reviewer
+    if (payload.reason !== undefined) body.reason = payload.reason
+    if (payload.area !== undefined) body.area = payload.area
+
+    let raw: unknown
+    if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/self-improvement/trust-ledger`,
+        { method: 'POST', body },
+      )
+    } else {
+      try {
+        raw = await fetchHttp<unknown>(
+          `/atlas-code/works/${encodeURIComponent(obraId)}/self-improvement/trust-ledger`,
+          { method: 'POST', body },
+        )
+      } catch {
+        return null
+      }
+    }
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return adaptSelfImprovementTrustLedgerEntry(r.entry ?? null)
+  },
+
+  // 10b.13.7 · Atlas Self-Improvement Strategy Portfolio (global)
+  async getSelfImprovementStrategyPortfolio(): Promise<AtlasSelfImprovementStrategyPortfolioSnapshot | null> {
+    let raw: unknown
+    if (MODE === 'http') {
+      // The endpoint is GET; pass proposals via query if present.
+      raw = await fetchHttp<unknown>('/atlas-code/self-improvement/strategy-portfolio')
+    } else {
+      try {
+        raw = await fetchHttp<unknown>('/atlas-code/self-improvement/strategy-portfolio')
+      } catch {
+        return null
+      }
+    }
+    return adaptSelfImprovementStrategyPortfolioSnapshot(raw)
+  },
+
+  // 10b.13.8 · Atlas Self-Improvement Activation Cockpit v1 · list + counters + summary
+  // Schema canônico: atlas.self_improvement.activation_cockpit.v1
+  // Doc: docs/engineering-knowledge-base/atlas-self-improvement-activation-cockpit-v1.md
+  async listSelfImprovementForgeActivations(
+    filters?: AtlasSelfImprovementActivationCockpitFilters,
+  ): Promise<AtlasSelfImprovementActivationCockpit | null> {
+    const query = buildCockpitQuery(filters)
+    const url = `/atlas-code/self-improvement/activation-cockpit${query}`
+    let raw: unknown
+    try {
+      if (MODE === 'tauri') {
+        raw = await invokeTauri<unknown>('bridge_list_self_improvement_forge_activations', {
+          status: filters?.status ?? null,
+          bucket: filters?.bucket ?? null,
+          hasObra: filters?.hasObra ?? null,
+        })
+      } else if (MODE === 'http') {
+        raw = await fetchHttp<unknown>(url)
+      } else {
+        raw = await fetchHttp<unknown>(url)
+      }
+    } catch (e) {
+      console.warn('[bridge] listSelfImprovementForgeActivations', e)
+      return null
+    }
+    return adaptSelfImprovementActivationCockpit(raw)
+  },
+
+  // 10b.13.9 · Activation cockpit detail (humanised projection)
+  async getSelfImprovementForgeActivation(
+    activationId: string,
+  ): Promise<AtlasSelfImprovementActivationCockpit | null> {
+    const path = `/atlas-code/self-improvement/activation-cockpit/${encodeURIComponent(activationId)}`
+    let raw: unknown
+    try {
+      if (MODE === 'tauri') {
+        raw = await invokeTauri<unknown>('bridge_get_self_improvement_forge_activation', {
+          activationId,
+        })
+      } else {
+        raw = await fetchHttp<unknown>(path)
+      }
+    } catch (e) {
+      console.warn('[bridge] getSelfImprovementForgeActivation', e)
+      return null
+    }
+    return adaptSelfImprovementActivationCockpit(raw)
+  },
+
+  // 10b.13.10 · Plan a new activation (calls the existing POST endpoint)
+  // Read-write but NEVER auto-executes Fast Path; obra creation requires
+  // explicit accept downstream.
+  async createSelfImprovementForgeActivation(
+    payload: AtlasSelfImprovementActivationCreatePayload,
+  ): Promise<AtlasSelfImprovementActivationDetail | null> {
+    const body: Record<string, unknown> = {}
+    if (payload.proposal !== undefined) body.proposal = payload.proposal
+    if (payload.proposalId !== undefined) body.proposal_id = payload.proposalId
+    if (payload.obraTitle !== undefined) body.obra_title = payload.obraTitle
+    if (payload.dryRun !== undefined) body.dry_run = payload.dryRun
+
+    let raw: unknown
+    try {
+      if (MODE === 'tauri') {
+        raw = await invokeTauri<unknown>('bridge_create_self_improvement_forge_activation', { payload: body })
+      } else {
+        raw = await fetchHttp<unknown>('/atlas-code/self-improvement/forge-activations', {
+          method: 'POST',
+          body,
+        })
+      }
+    } catch (e) {
+      console.warn('[bridge] createSelfImprovementForgeActivation', e)
+      return null
+    }
+    return adaptSelfImprovementActivationDetail(raw)
+  },
+
+  // 10b.13.11 · Accept activation — REQUIRES reviewer + reason + ack.
+  // UI must enforce checkbox + non-empty fields before calling this.
+  async acceptSelfImprovementForgeActivation(
+    activationId: string,
+    payload: AtlasSelfImprovementActivationAcceptPayload,
+  ): Promise<AtlasSelfImprovementActivationDetail | null> {
+    if (!payload.reviewer?.trim() || !payload.reason?.trim() || payload.acknowledgesNoFastPath !== true) {
+      throw new Error('acceptSelfImprovementForgeActivation requires reviewer, reason and explicit no-fast-path acknowledgement')
+    }
+    const body: Record<string, unknown> = {
+      reviewer: payload.reviewer,
+      reason: payload.reason,
+      acknowledges_no_fast_path: payload.acknowledgesNoFastPath,
+    }
+    if (payload.obraTitle) body.obra_title = payload.obraTitle
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_accept_self_improvement_forge_activation', {
+        activationId,
+        payload: body,
+      })
+    } else {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/forge-activations/${encodeURIComponent(activationId)}/accept`,
+        { method: 'POST', body },
+      )
+    }
+    return adaptSelfImprovementActivationDetail(raw)
+  },
+
+  // 10b.13.12 · Reject activation — REQUIRES reviewer + reason.
+  async rejectSelfImprovementForgeActivation(
+    activationId: string,
+    payload: AtlasSelfImprovementActivationRejectPayload,
+  ): Promise<AtlasSelfImprovementActivationDetail | null> {
+    if (!payload.reviewer?.trim() || !payload.reason?.trim()) {
+      throw new Error('rejectSelfImprovementForgeActivation requires reviewer and reason')
+    }
+    const body: Record<string, unknown> = {
+      reviewer: payload.reviewer,
+      reason: payload.reason,
+    }
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_reject_self_improvement_forge_activation', {
+        activationId,
+        payload: body,
+      })
+    } else {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/self-improvement/forge-activations/${encodeURIComponent(activationId)}/reject`,
+        { method: 'POST', body },
+      )
+    }
+    return adaptSelfImprovementActivationDetail(raw)
   },
 
   // 10b.14 · Atlas Code Forge Work Intake · save
@@ -1598,7 +1944,14 @@ function adaptWorkState(raw: unknown): WorkStateSnapshot | null {
     forgeContinuumCertification: adaptForgeContinuumCertificationSummary(r.forge_continuum_certification ?? r.forgeContinuumCertification),
     forgeProviderCapacity: adaptForgeProviderCapacity(r.forge_provider_capacity ?? r.forgeProviderCapacity),
     forgeProviderFailureMemory: adaptForgeProviderFailureMemory(r.forge_provider_failure_memory ?? r.forgeProviderFailureMemory),
+    selfImprovementGovernance: adaptSelfImprovementGovernanceState(r.self_improvement_governance ?? r.selfImprovementGovernance),
+    selfImprovementActivation: adaptSelfImprovementForgeActivationState(r.self_improvement_activation ?? r.selfImprovementActivation),
     forgeRuntimeDispatch: adaptNullableForgeRuntimeDispatchPlan(r.forge_runtime_dispatch ?? r.forgeRuntimeDispatch),
+    forgeProviderDriverStatus: adaptForgeProviderDriverStatus(r.forge_provider_driver_status ?? r.forgeProviderDriverStatus),
+    forgeProviderInvocation: adaptForgeProviderInvocationSnapshot(r.forge_provider_invocation ?? r.forgeProviderInvocation),
+    forgeProviderInvocationReceipt: adaptForgeProviderInvocationReceipt(r.forge_provider_invocation_receipt ?? r.forgeProviderInvocationReceipt),
+    forgeUxOrchestrator: adaptForgeUxOrchestrator(r.forge_ux_orchestrator ?? r.forgeUxOrchestrator),
+    obraCommandCenter: adaptObraCommandCenter(r.obra_command_center ?? r.obraCommandCenter),
     checkpoint: adaptCheckpoint(r.checkpoint),
     atlasCodeEnterpriseCertification: adaptNullableAtlasCodeEnterpriseCertification(
       r.atlas_code_enterprise_certification ?? r.atlasCodeEnterpriseCertification,
@@ -1607,6 +1960,918 @@ function adaptWorkState(raw: unknown): WorkStateSnapshot | null {
       r.programming_governance ?? r.programmingGovernance,
     ),
     generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+  }
+}
+
+function adaptSelfImprovementTrustLedgerEntry(raw: unknown): AtlasSelfImprovementTrustLedgerEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const entryId = String(r.entry_id ?? r.entryId ?? '')
+  if (entryId === '') return null
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.self_improvement.human_trust_ledger_entry.v1'),
+    entryId,
+    occurredAt: String(r.occurred_at ?? r.occurredAt ?? new Date().toISOString()),
+    outcome: String(r.outcome ?? ''),
+    proposalId: nullableString(r.proposal_id ?? r.proposalId),
+    reviewer: nullableString(r.reviewer),
+    reason: nullableString(r.reason),
+    area: nullableString(r.area),
+    silent: Boolean(r.silent ?? false),
+    autoPromotesWork: Boolean(r.auto_promotes_work ?? r.autoPromotesWork ?? false),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+  }
+}
+
+function adaptSelfImprovementTrustLedgerSnapshot(raw: unknown): AtlasSelfImprovementTrustLedgerSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.self_improvement.human_trust_ledger.v1') return null
+
+  const entriesRaw = Array.isArray(r.entries) ? r.entries : []
+  const entries = entriesRaw
+    .map(adaptSelfImprovementTrustLedgerEntry)
+    .filter((entry): entry is AtlasSelfImprovementTrustLedgerEntry => entry !== null)
+
+  const summaryRaw = (r.summary && typeof r.summary === 'object' ? r.summary : {}) as Record<string, unknown>
+  const summary = summaryRaw && Object.keys(summaryRaw).length > 0
+    ? {
+        totalProposals: Number(summaryRaw.total_proposals ?? summaryRaw.totalProposals ?? 0),
+        approvalRate: summaryRaw.approval_rate === null
+          ? null
+          : (summaryRaw.approval_rate !== undefined ? Number(summaryRaw.approval_rate) : null),
+        autopromotionAccepted: Number(summaryRaw.autopromotion_accepted ?? summaryRaw.autopromotionAccepted ?? 0),
+        autopromotionReverted: Number(summaryRaw.autopromotion_reverted ?? summaryRaw.autopromotionReverted ?? 0),
+        autopromotionRevertRate: summaryRaw.autopromotion_revert_rate === null
+          ? null
+          : (summaryRaw.autopromotion_revert_rate !== undefined ? Number(summaryRaw.autopromotion_revert_rate) : null),
+        overreachFlagged: Number(summaryRaw.overreach_flagged ?? summaryRaw.overreachFlagged ?? 0),
+        overConservativeFlagged: Number(summaryRaw.over_conservative_flagged ?? summaryRaw.overConservativeFlagged ?? 0),
+        trustBand: String(summaryRaw.trust_band ?? summaryRaw.trustBand ?? 'insufficient_data'),
+      }
+    : undefined
+
+  const countsRaw = (r.counts && typeof r.counts === 'object' ? r.counts : null) as Record<string, unknown> | null
+  const counts: Record<string, number> = {}
+  if (countsRaw) {
+    for (const [key, value] of Object.entries(countsRaw)) {
+      counts[key] = Number(value)
+    }
+  }
+
+  return {
+    schemaVersion: schema || 'atlas.self_improvement.human_trust_ledger.v1',
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    entryCount: Number(r.entry_count ?? r.entryCount ?? entries.length),
+    entries,
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    counts: Object.keys(counts).length > 0 ? counts : undefined,
+    summary,
+    knownOutcomes: Array.isArray(r.known_outcomes) ? (r.known_outcomes as string[]) : undefined,
+    maxEntries: r.max_entries !== undefined ? Number(r.max_entries) : undefined,
+    dedupeWindowSeconds: r.dedupe_window_seconds !== undefined ? Number(r.dedupe_window_seconds) : undefined,
+  }
+}
+
+function adaptSelfImprovementStrategyPortfolioBucket(raw: unknown): AtlasSelfImprovementStrategyPortfolioBucket | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const bucket = String(r.bucket ?? '')
+  if (bucket === '') return null
+
+  return {
+    bucket,
+    count: Number(r.count ?? 0),
+    readyCount: Number(r.ready_count ?? r.readyCount ?? 0),
+    blockedCount: Number(r.blocked_count ?? r.blockedCount ?? 0),
+    sharePercent: Number(r.share_percent ?? r.sharePercent ?? 0),
+    targetPercent: Number(r.target_percent ?? r.targetPercent ?? 0),
+    deviationPercent: Number(r.deviation_percent ?? r.deviationPercent ?? 0),
+    underweight: Boolean(r.underweight ?? false),
+    overweight: Boolean(r.overweight ?? false),
+    proposalIds: Array.isArray(r.proposal_ids)
+      ? (r.proposal_ids as string[])
+      : (Array.isArray(r.proposalIds) ? (r.proposalIds as string[]) : []),
+  }
+}
+
+function adaptSelfImprovementStrategyPortfolioSnapshot(raw: unknown): AtlasSelfImprovementStrategyPortfolioSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.self_improvement.strategy_portfolio.v1') return null
+
+  const bucketsRaw = Array.isArray(r.buckets) ? r.buckets : []
+  const buckets = bucketsRaw
+    .map(adaptSelfImprovementStrategyPortfolioBucket)
+    .filter((bucket): bucket is AtlasSelfImprovementStrategyPortfolioBucket => bucket !== null)
+
+  return {
+    schemaVersion: schema || 'atlas.self_improvement.strategy_portfolio.v1',
+    portfolioId: String(r.portfolio_id ?? r.portfolioId ?? ''),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? new Date().toISOString()),
+    totalProposals: Number(r.total_proposals ?? r.totalProposals ?? 0),
+    buckets,
+    balanceHealth: String(r.balance_health ?? r.balanceHealth ?? 'empty_portfolio'),
+    recommendedNextBucket: nullableString(r.recommended_next_bucket ?? r.recommendedNextBucket),
+    nextAction: String(r.next_action ?? r.nextAction ?? ''),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+  }
+}
+
+function adaptSelfImprovementGovernanceState(raw: unknown): AtlasSelfImprovementGovernanceState | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.self_improvement.governance_state.v1') return null
+
+  const commandsRaw = (r.commands && typeof r.commands === 'object' ? r.commands : {}) as Record<string, unknown>
+  const commands: Record<string, string> = {}
+  for (const [key, value] of Object.entries(commandsRaw)) {
+    if (typeof value === 'string') {
+      commands[key] = value
+    }
+  }
+
+  return {
+    schemaVersion: schema || 'atlas.self_improvement.governance_state.v1',
+    trustLedger: adaptSelfImprovementTrustLedgerSnapshot(r.trust_ledger ?? r.trustLedger ?? null),
+    strategyPortfolio: adaptSelfImprovementStrategyPortfolioSnapshot(r.strategy_portfolio ?? r.strategyPortfolio ?? null),
+    commands,
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+  }
+}
+
+function buildCockpitQuery(filters?: AtlasSelfImprovementActivationCockpitFilters): string {
+  if (!filters) return ''
+  const params: string[] = []
+  if (filters.status) params.push(`status=${encodeURIComponent(filters.status)}`)
+  if (filters.bucket) params.push(`bucket=${encodeURIComponent(filters.bucket)}`)
+  if (filters.hasObra === true) params.push('has_obra=true')
+  if (filters.hasObra === false) params.push('has_obra=false')
+  return params.length > 0 ? `?${params.join('&')}` : ''
+}
+
+function adaptSelfImprovementActivationListItem(raw: unknown): AtlasSelfImprovementActivationListItem | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const activationId = nullableString(r.activation_id ?? r.activationId)
+  if (activationId === null) return null
+  return {
+    activationId,
+    status: String(r.status ?? 'blocked') as AtlasSelfImprovementActivationStatus,
+    statusLabel: String(r.status_label ?? r.statusLabel ?? ''),
+    tone: String(r.tone ?? 'ink') as AtlasSelfImprovementActivationTone,
+    title: String(r.title ?? 'Self-improvement proposal'),
+    proposalId: nullableString(r.proposal_id ?? r.proposalId),
+    strategyBucket: nullableString(r.strategy_bucket ?? r.strategyBucket),
+    riskLevel: nullableString(r.risk_level ?? r.riskLevel),
+    createdObraId: nullableString(r.created_obra_id ?? r.createdObraId),
+    createdObraTitle: nullableString(r.created_obra_title ?? r.createdObraTitle),
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+    nextAction: String(r.next_action ?? r.nextAction ?? 'inspect_status'),
+    nextSafeAction: String(r.next_safe_action ?? r.nextSafeAction ?? ''),
+    hasBlockers: Boolean(r.has_blockers ?? r.hasBlockers ?? false),
+    blockersCount: Number(r.blockers_count ?? r.blockersCount ?? 0),
+  }
+}
+
+function adaptSelfImprovementActivationProposalSummary(raw: unknown): AtlasSelfImprovementActivationProposalSummary | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    title: String(r.title ?? 'Sem título'),
+    problemStatement: nullableString(r.problem_statement ?? r.problemStatement),
+    businessRule: nullableString(r.business_rule ?? r.businessRule),
+    targetCapability: nullableString(r.target_capability ?? r.targetCapability),
+    whyNow: nullableString(r.why_now ?? r.whyNow),
+    expectedPowerGain: nullableString(r.expected_power_gain ?? r.expectedPowerGain),
+    riskLevel: nullableString(r.risk_level ?? r.riskLevel),
+    successMetrics: normList(r.success_metrics ?? r.successMetrics),
+    acceptanceGates: normList(r.acceptance_gates ?? r.acceptanceGates),
+    canonicalDocs: normList(r.canonical_docs ?? r.canonicalDocs),
+    allowedPaths: normList(r.allowed_paths ?? r.allowedPaths),
+    forbiddenPaths: normList(r.forbidden_paths ?? r.forbiddenPaths),
+    rivalsEvaluationPlan: nullableString(r.rivals_evaluation_plan ?? r.rivalsEvaluationPlan),
+    rollbackStrategy: nullableString(r.rollback_strategy ?? r.rollbackStrategy),
+    testStrategy: nullableString(r.test_strategy ?? r.testStrategy),
+    createsObra: Boolean(r.creates_obra ?? r.createsObra ?? true),
+    neverExecutesFastPathAutomatically: Boolean(
+      r.never_executes_fast_path_automatically ?? r.neverExecutesFastPathAutomatically ?? true,
+    ),
+    neverCallsProviderWithoutExplicitApproval: Boolean(
+      r.never_calls_provider_without_explicit_approval ?? r.neverCallsProviderWithoutExplicitApproval ?? true,
+    ),
+  }
+}
+
+function adaptSelfImprovementActivationPowerGate(raw: unknown): AtlasSelfImprovementActivationPowerGate | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    outcome: String(r.outcome ?? 'unknown') as AtlasSelfImprovementActivationPowerGateOutcome,
+    label: String(r.label ?? ''),
+    tone: String(r.tone ?? 'ink') as AtlasSelfImprovementActivationTone,
+    hardFails: normList(r.hard_fails ?? r.hardFails),
+    softFindings: normList(r.soft_findings ?? r.softFindings),
+    requiresHumanReview: Boolean(r.requires_human_review ?? r.requiresHumanReview ?? false),
+    autopromotionAllowed: Boolean(r.autopromotion_allowed ?? r.autopromotionAllowed ?? false),
+    nextAction: nullableString(r.next_action ?? r.nextAction),
+    gateId: nullableString(r.gate_id ?? r.gateId),
+  }
+}
+
+function adaptSelfImprovementActivationBeforeSnapshot(
+  raw: unknown,
+): AtlasSelfImprovementActivationBeforeSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const maturity = (r.maturity ?? {}) as Record<string, unknown>
+  const invariant = (r.invariant_lock ?? r.invariantLock ?? {}) as Record<string, unknown>
+  const regression = (r.regression_sentinel ?? r.regressionSentinel ?? {}) as Record<string, unknown>
+  const portfolio = (r.strategy_portfolio ?? r.strategyPortfolio ?? {}) as Record<string, unknown>
+  const trust = (r.trust_ledger ?? r.trustLedger ?? {}) as Record<string, unknown>
+  const docs = (r.docs_status ?? r.docsStatus ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    capturedAt: nullableString(r.captured_at ?? r.capturedAt),
+    rationale: String(r.rationale ?? 'Este snapshot serve para comparar se o Atlas melhorou depois.'),
+    maturity: {
+      achievedLevel: (maturity.achieved_level ?? maturity.achievedLevel ?? null) as number | string | null,
+      targetLevel: (maturity.target_level ?? maturity.targetLevel ?? null) as number | string | null,
+      label: String(maturity.label ?? 'pendente'),
+      hash: nullableString(maturity.hash),
+    },
+    invariantLock: {
+      status: String(invariant.status ?? 'unknown'),
+      tone: String(invariant.tone ?? 'ink') as AtlasSelfImprovementActivationTone,
+      violationsCount: Number(invariant.violations_count ?? invariant.violationsCount ?? 0),
+      hash: nullableString(invariant.hash),
+    },
+    regressionSentinel: {
+      status: String(regression.status ?? 'unknown'),
+      tone: String(regression.tone ?? 'ink') as AtlasSelfImprovementActivationTone,
+      findingsCount: Number(regression.findings_count ?? regression.findingsCount ?? 0),
+      hash: nullableString(regression.hash),
+    },
+    strategyPortfolio: {
+      balanceHealth: String(portfolio.balance_health ?? portfolio.balanceHealth ?? 'unknown'),
+      recommendedNextBucket: nullableString(portfolio.recommended_next_bucket ?? portfolio.recommendedNextBucket),
+      hash: nullableString(portfolio.hash),
+    },
+    trustLedger: {
+      trustBand: String(trust.trust_band ?? trust.trustBand ?? 'insufficient_data'),
+      entryCount: Number(trust.entry_count ?? trust.entryCount ?? 0),
+      hash: nullableString(trust.hash),
+    },
+    docsStatus: {
+      requiredCount: Number(docs.required_count ?? docs.requiredCount ?? 0),
+      requiredPresentCount: Number(docs.required_present_count ?? docs.requiredPresentCount ?? 0),
+      missingRequired: normList(docs.missing_required ?? docs.missingRequired),
+      tone: String(docs.tone ?? 'ink') as AtlasSelfImprovementActivationTone,
+    },
+  }
+}
+
+function adaptSelfImprovementActivationApprovalReceipt(
+  raw: unknown,
+): AtlasSelfImprovementActivationApprovalReceipt | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    activationId: nullableString(r.activation_id ?? r.activationId),
+    reviewer: nullableString(r.reviewer),
+    reason: nullableString(r.reason),
+    approvedAt: nullableString(r.approved_at ?? r.approvedAt),
+    receiptHash: nullableString(r.receipt_hash ?? r.receiptHash),
+    proposalHash: nullableString(r.proposal_hash ?? r.proposalHash),
+    powerGateHash: nullableString(r.power_gate_hash ?? r.powerGateHash),
+    silent: Boolean(r.silent ?? false),
+    autoPromotesCompletionClaim: Boolean(r.auto_promotes_completion_claim ?? r.autoPromotesCompletionClaim ?? false),
+    autoExecutesFastPath: Boolean(r.auto_executes_fast_path ?? r.autoExecutesFastPath ?? false),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+  }
+}
+
+function adaptSelfImprovementActivationRejection(raw: unknown): AtlasSelfImprovementActivationRejection | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    reviewer: nullableString(r.reviewer),
+    reason: nullableString(r.reason),
+    rejectedAt: nullableString(r.rejected_at ?? r.rejectedAt),
+    silent: Boolean(r.silent ?? false),
+  }
+}
+
+function adaptSelfImprovementActivationCreatedObra(
+  raw: unknown,
+): AtlasSelfImprovementActivationCreatedObra | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const obraId = nullableString(r.obra_id ?? r.obraId)
+  if (obraId === null) return null
+  return {
+    obraId,
+    title: String(r.title ?? 'Self-improvement Obra'),
+    status: String(r.status ?? 'active'),
+    intakeId: nullableString(r.intake_id ?? r.intakeId),
+    intakeStatus: String(r.intake_status ?? r.intakeStatus ?? 'pending') as 'filled' | 'pending' | string,
+    objective: nullableString(r.objective),
+    businessRule: nullableString(r.business_rule ?? r.businessRule),
+    acceptanceCriteriaCount: Number(r.acceptance_criteria_count ?? r.acceptanceCriteriaCount ?? 0),
+    canonicalDocsCount: Number(r.canonical_docs_count ?? r.canonicalDocsCount ?? 0),
+    scopeIn: normList(r.scope_in ?? r.scopeIn),
+    scopeOut: normList(r.scope_out ?? r.scopeOut),
+    riskLevel: nullableString(r.risk_level ?? r.riskLevel),
+    fastPathStarted: Boolean(r.fast_path_started ?? r.fastPathStarted ?? false),
+  }
+}
+
+function adaptSelfImprovementActivationOpenObraAction(
+  raw: unknown,
+): AtlasSelfImprovementActivationOpenObraAction {
+  if (!raw || typeof raw !== 'object') {
+    return { enabled: false, label: 'Abrir Obra no Forge', obraId: null }
+  }
+  const r = raw as Record<string, unknown>
+  return {
+    enabled: Boolean(r.enabled ?? false),
+    label: String(r.label ?? 'Abrir Obra no Forge'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+  }
+}
+
+function adaptSelfImprovementActivationDetail(raw: unknown): AtlasSelfImprovementActivationDetail | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  // Accept BOTH the cockpit detail shape and the underlying activation
+  // payload returned by the existing accept/reject/store endpoints. When
+  // the controller enrichment is applied, the payload includes
+  // human_summary + next_safe_action and the rest of the activation
+  // fields; otherwise we synthesize a minimal detail so the UI can render.
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  const isCockpit = schema === 'atlas.self_improvement.activation_cockpit.v1'
+  const isActivation = schema === 'atlas.self_improvement.forge_activation.v1' || schema === ''
+
+  if (!isCockpit && !isActivation) return null
+
+  const activationId = nullableString(r.activation_id ?? r.activationId)
+  const status = String(r.status ?? 'blocked') as AtlasSelfImprovementActivationStatus
+
+  return {
+    schemaVersion: schema || 'atlas.self_improvement.activation_cockpit.v1',
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    activationId,
+    status,
+    statusLabel: String(r.status_label ?? r.statusLabel ?? statusLabelFromStatus(status)),
+    tone: String(r.tone ?? toneFromStatus(status)) as AtlasSelfImprovementActivationTone,
+    riskLevel: nullableString(r.risk_level ?? r.riskLevel),
+    strategyBucket: nullableString(r.strategy_bucket ?? r.strategyBucket),
+    portfolioDeviation: Boolean(r.portfolio_deviation ?? r.portfolioDeviation ?? false),
+    portfolioReason: nullableString(r.portfolio_reason ?? r.portfolioReason),
+    maturityTarget: (r.maturity_target ?? r.maturityTarget ?? null) as number | string | null,
+    proposalSummary: adaptSelfImprovementActivationProposalSummary(r.proposal_summary ?? r.proposalSummary),
+    powerGate: adaptSelfImprovementActivationPowerGate(r.power_gate ?? r.powerGate),
+    beforeSnapshot: adaptSelfImprovementActivationBeforeSnapshot(r.before_snapshot ?? r.beforeSnapshot),
+    approvalState: String(r.approval_state ?? r.approvalState ?? 'blocked'),
+    approvalReceipt: adaptSelfImprovementActivationApprovalReceipt(r.approval_receipt ?? r.approvalReceipt ?? r.approval),
+    rejection: adaptSelfImprovementActivationRejection(r.rejection),
+    createdObra: adaptSelfImprovementActivationCreatedObra(r.created_obra ?? r.createdObra),
+    forgeIntakeReady: Boolean(r.forge_intake_ready ?? r.forgeIntakeReady ?? false),
+    fastPathStarted: Boolean(r.fast_path_started ?? r.fastPathStarted ?? false),
+    openObraAction: adaptSelfImprovementActivationOpenObraAction(r.open_obra_action ?? r.openObraAction),
+    nextAction: String(r.next_action ?? r.nextAction ?? 'inspect_status'),
+    nextSafeAction: String(r.next_safe_action ?? r.nextSafeAction ?? ''),
+    humanSummary: String(r.human_summary ?? r.humanSummary ?? ''),
+    blockers: normList(r.blockers),
+    missingRequiredDocs: normList(r.missing_required_docs ?? r.missingRequiredDocs),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    commands: (r.commands && typeof r.commands === 'object'
+      ? Object.fromEntries(Object.entries(r.commands as Record<string, unknown>).map(([k, v]) => [k, String(v)]))
+      : {}),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? false),
+  }
+}
+
+function adaptSelfImprovementActivationCockpit(raw: unknown): AtlasSelfImprovementActivationCockpit | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.self_improvement.activation_cockpit.v1') return null
+
+  const filtersRaw = (r.filters ?? {}) as Record<string, unknown>
+  const countersRaw = (r.counters ?? {}) as Record<string, unknown>
+  const activationsRaw = Array.isArray(r.activations) ? (r.activations as unknown[]) : []
+  const activations = activationsRaw
+    .map(adaptSelfImprovementActivationListItem)
+    .filter((item): item is AtlasSelfImprovementActivationListItem => item !== null)
+
+  const commandsRaw = (r.commands && typeof r.commands === 'object'
+    ? r.commands
+    : {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: schema || 'atlas.self_improvement.activation_cockpit.v1',
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    filters: {
+      status: nullableString(filtersRaw.status),
+      bucket: nullableString(filtersRaw.bucket),
+      hasObra: typeof filtersRaw.has_obra === 'boolean'
+        ? (filtersRaw.has_obra as boolean)
+        : typeof filtersRaw.hasObra === 'boolean'
+          ? (filtersRaw.hasObra as boolean)
+          : null,
+      activationId: nullableString(filtersRaw.activation_id ?? filtersRaw.activationId),
+    },
+    activations,
+    counters: {
+      total: Number(countersRaw.total ?? 0),
+      blocked: Number(countersRaw.blocked ?? 0),
+      needsRevision: Number(countersRaw.needs_revision ?? countersRaw.needsRevision ?? 0),
+      pendingHumanReview: Number(countersRaw.pending_human_review ?? countersRaw.pendingHumanReview ?? 0),
+      rejected: Number(countersRaw.rejected ?? 0),
+      accepted: Number(countersRaw.accepted ?? 0),
+      obraCreated: Number(countersRaw.obra_created ?? countersRaw.obraCreated ?? 0),
+      dryRunPlanned: Number(countersRaw.dry_run_planned ?? countersRaw.dryRunPlanned ?? 0),
+      withObra: Number(countersRaw.with_obra ?? countersRaw.withObra ?? 0),
+      withBlockers: Number(countersRaw.with_blockers ?? countersRaw.withBlockers ?? 0),
+    },
+    selectedActivation: adaptSelfImprovementActivationDetail(r.selected_activation ?? r.selectedActivation),
+    strategyPortfolio: adaptSelfImprovementStrategyPortfolioSnapshot(r.strategy_portfolio ?? r.strategyPortfolio),
+    trustLedger: adaptSelfImprovementTrustLedgerSnapshot(r.trust_ledger ?? r.trustLedger),
+    humanSummary: String(r.human_summary ?? r.humanSummary ?? ''),
+    nextSafeAction: String(r.next_safe_action ?? r.nextSafeAction ?? ''),
+    commands: Object.fromEntries(Object.entries(commandsRaw).map(([k, v]) => [k, String(v)])),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    autoFastPathExecuted: Boolean(r.auto_fast_path_executed ?? r.autoFastPathExecuted ?? false),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    isReadModel: Boolean(r.is_read_model ?? r.isReadModel ?? true),
+  }
+}
+
+function statusLabelFromStatus(status: AtlasSelfImprovementActivationStatus): string {
+  switch (status) {
+    case 'blocked':
+      return 'Bloqueada'
+    case 'needs_revision':
+      return 'Precisa revisão'
+    case 'pending_human_review':
+      return 'Aguardando humano'
+    case 'rejected':
+      return 'Rejeitada'
+    case 'accepted':
+      return 'Aceita'
+    case 'obra_created':
+      return 'Obra criada'
+    case 'dry_run_planned':
+      return 'Dry-run'
+    default:
+      return 'Desconhecido'
+  }
+}
+
+function toneFromStatus(status: AtlasSelfImprovementActivationStatus): AtlasSelfImprovementActivationTone {
+  switch (status) {
+    case 'obra_created':
+    case 'accepted':
+      return 'moss'
+    case 'pending_human_review':
+    case 'needs_revision':
+    case 'dry_run_planned':
+      return 'bronze'
+    case 'rejected':
+    case 'blocked':
+      return 'rec-red'
+    default:
+      return 'ink'
+  }
+}
+
+function adaptSelfImprovementForgeActivationState(raw: unknown): AtlasSelfImprovementForgeActivationState | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.self_improvement.forge_activation_state.v1') return null
+
+  return {
+    schemaVersion: schema || 'atlas.self_improvement.forge_activation_state.v1',
+    activationId: nullableString(r.activation_id ?? r.activationId),
+    proposalId: nullableString(r.proposal_id ?? r.proposalId),
+    proposalHash: nullableString(r.proposal_hash ?? r.proposalHash),
+    powerGateHash: nullableString(r.power_gate_hash ?? r.powerGateHash),
+    invariantLockHash: nullableString(r.invariant_lock_hash ?? r.invariantLockHash),
+    regressionSentinelHash: nullableString(r.regression_sentinel_hash ?? r.regressionSentinelHash),
+    strategyBucket: nullableString(r.strategy_bucket ?? r.strategyBucket),
+    portfolioDeviation: Boolean(r.portfolio_deviation ?? r.portfolioDeviation ?? false),
+    maturityTarget: numberOrNull(r.maturity_target ?? r.maturityTarget),
+    reviewer: nullableString(r.reviewer),
+    reason: nullableString(r.reason),
+    approvedAt: nullableString(r.approved_at ?? r.approvedAt),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+  }
+}
+
+function adaptForgeUxOrchestrator(raw: unknown): AtlasCodeForgeUxOrchestrator | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.code.forge_ux_orchestrator.v1') return null
+
+  const safety = (r.safety_summary ?? r.safetySummary ?? {}) as Record<string, unknown>
+  const provider = (r.provider_summary ?? r.providerSummary ?? {}) as Record<string, unknown>
+  const evidence = (r.evidence_summary ?? r.evidenceSummary ?? {}) as Record<string, unknown>
+  const review = (r.review_summary ?? r.reviewSummary ?? {}) as Record<string, unknown>
+  const checklist = (r.checklist ?? {}) as Record<string, unknown>
+  const blockerTranslationRaw = (r.blocker_translation ?? r.blockerTranslation ?? {}) as Record<string, unknown>
+  const completionGatingRaw = (r.completion_gating ?? r.completionGating ?? {}) as Record<string, unknown>
+  const evidenceSeparationRaw = (r.evidence_separation ?? r.evidenceSeparation ?? {}) as Record<string, unknown>
+  const chatKindsRaw = Array.isArray(r.chat_message_kinds ?? r.chatMessageKinds)
+    ? ((r.chat_message_kinds ?? r.chatMessageKinds) as unknown[])
+    : []
+
+  return {
+    schemaVersion: schema || 'atlas.code.forge_ux_orchestrator.v1',
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    obraPresent: Boolean(r.obra_present ?? r.obraPresent ?? false),
+    state: String(r.state ?? 'no_obra'),
+    humanStatusLabel: String(r.human_status_label ?? r.humanStatusLabel ?? ''),
+    humanStatusDetail: String(r.human_status_detail ?? r.humanStatusDetail ?? ''),
+    primaryActionLabel: String(r.primary_action_label ?? r.primaryActionLabel ?? 'Continuar Forge'),
+    primaryActionKind: String(r.primary_action_kind ?? r.primaryActionKind ?? 'refresh_status'),
+    primaryActionEnabled: Boolean(r.primary_action_enabled ?? r.primaryActionEnabled ?? false),
+    primaryActionDisabledReason: nullableString(r.primary_action_disabled_reason ?? r.primaryActionDisabledReason),
+    nextSafeStep: String(r.next_safe_step ?? r.nextSafeStep ?? ''),
+    blockers: normList(r.blockers),
+    blockerTranslation: {
+      kind: nullableString(blockerTranslationRaw.kind),
+      humanTitle: nullableString(blockerTranslationRaw.human_title ?? blockerTranslationRaw.humanTitle),
+      humanDetail: nullableString(blockerTranslationRaw.human_detail ?? blockerTranslationRaw.humanDetail),
+      suggestedActionLabel: nullableString(blockerTranslationRaw.suggested_action_label ?? blockerTranslationRaw.suggestedActionLabel),
+      suggestedActionKind: nullableString(blockerTranslationRaw.suggested_action_kind ?? blockerTranslationRaw.suggestedActionKind),
+      technicalDetail: nullableString(blockerTranslationRaw.technical_detail ?? blockerTranslationRaw.technicalDetail),
+      filesOutOfScope: normList(blockerTranslationRaw.files_out_of_scope ?? blockerTranslationRaw.filesOutOfScope),
+      isBlocking: Boolean(blockerTranslationRaw.is_blocking ?? blockerTranslationRaw.isBlocking ?? false),
+    },
+    definitionStatus: String(r.definition_status ?? r.definitionStatus ?? 'incomplete'),
+    completionGating: {
+      reviewRequired: Boolean(completionGatingRaw.review_required ?? completionGatingRaw.reviewRequired ?? false),
+      finalCompletionAllowed: Boolean(completionGatingRaw.final_completion_allowed ?? completionGatingRaw.finalCompletionAllowed ?? false),
+      approveButtonVisible: Boolean(completionGatingRaw.approve_button_visible ?? completionGatingRaw.approveButtonVisible ?? false),
+      rejectButtonVisible: Boolean(completionGatingRaw.reject_button_visible ?? completionGatingRaw.rejectButtonVisible ?? false),
+      rollbackButtonVisible: Boolean(completionGatingRaw.rollback_button_visible ?? completionGatingRaw.rollbackButtonVisible ?? false),
+    },
+    evidenceSeparation: {
+      obraEvidenceRefCount: Number(evidenceSeparationRaw.obra_evidence_ref_count ?? evidenceSeparationRaw.obraEvidenceRefCount ?? 0),
+      obraLedgerEventCount: Number(evidenceSeparationRaw.obra_ledger_event_count ?? evidenceSeparationRaw.obraLedgerEventCount ?? 0),
+      systemCertificationVisible: Boolean(evidenceSeparationRaw.system_certification_visible ?? evidenceSeparationRaw.systemCertificationVisible ?? true),
+      note: String(evidenceSeparationRaw.note ?? ''),
+    },
+    chatMessageKinds: chatKindsRaw.map((k) => String(k)),
+    safetySummary: {
+      externalProviderCall: Boolean(safety.external_provider_call ?? safety.externalProviderCall ?? false),
+      providerTokensSpent: (safety.provider_tokens_spent ?? safety.providerTokensSpent ?? 0) as number | string,
+      completionClaimPromoted: Boolean(safety.completion_claim_promoted ?? safety.completionClaimPromoted ?? false),
+      reviewCompletionGatePreserved: Boolean(safety.review_completion_gate_preserved ?? safety.reviewCompletionGatePreserved ?? true),
+    },
+    providerSummary: {
+      provider: nullableString(provider.provider),
+      model: nullableString(provider.model),
+      decisionSource: String(provider.decision_source ?? provider.decisionSource ?? 'unknown'),
+      capacityState: String(provider.capacity_state ?? provider.capacityState ?? 'unknown'),
+      driverConfigured: Boolean(provider.driver_configured ?? provider.driverConfigured ?? false),
+    },
+    evidenceSummary: {
+      evidenceRefCount: Number(evidence.evidence_ref_count ?? evidence.evidenceRefCount ?? 0),
+      ledgerEventCount: Number(evidence.ledger_event_count ?? evidence.ledgerEventCount ?? 0),
+    },
+    reviewSummary: {
+      reviewRequired: Boolean(review.review_required ?? review.reviewRequired ?? false),
+      reviewStatus: String(review.review_status ?? review.reviewStatus ?? 'pending'),
+      humanApproved: Boolean(review.human_approved ?? review.humanApproved ?? false),
+      finalCompletionAllowed: Boolean(review.final_completion_allowed ?? review.finalCompletionAllowed ?? false),
+    },
+    checklist: {
+      obra: Boolean(checklist.obra ?? false),
+      intake: Boolean(checklist.intake ?? false),
+      specPlan: Boolean(checklist.spec_plan ?? checklist.specPlan ?? false),
+      provider: Boolean(checklist.provider ?? false),
+      execution: Boolean(checklist.execution ?? false),
+      review: Boolean(checklist.review ?? false),
+      evidence: Boolean(checklist.evidence ?? false),
+    },
+    progressPercent: Number(r.progress_percent ?? r.progressPercent ?? 0),
+    signals: (r.signals && typeof r.signals === 'object' ? (r.signals as Record<string, unknown>) : {}),
+    advancedRefs: (r.advanced_refs && typeof r.advanced_refs === 'object' ? (r.advanced_refs as Record<string, unknown>) : {}),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: (r.provider_tokens_spent ?? r.providerTokensSpent ?? false) as boolean | string,
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptObraCommandCenter(raw: unknown): AtlasCodeObraCommandCenter | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.code.obra_command_center.v1') return null
+
+  const provider = (r.provider_summary ?? r.providerSummary ?? {}) as Record<string, unknown>
+  const safety = (r.safety_summary ?? r.safetySummary ?? {}) as Record<string, unknown>
+  const operationalHealthRaw = (r.operational_health ?? r.operationalHealth ?? {}) as Record<string, unknown>
+  const trustSummaryRaw = (r.trust_summary ?? r.trustSummary ?? {}) as Record<string, unknown>
+  const evidenceDigestRaw = (r.evidence_digest ?? r.evidenceDigest ?? {}) as Record<string, unknown>
+  const blockerSummaryRaw = (r.blocker_summary ?? r.blockerSummary ?? {}) as Record<string, unknown>
+  const blockerTranslationRaw = (r.blocker_translation ?? r.blockerTranslation ?? {}) as Record<string, unknown>
+
+  const phasesRaw = Array.isArray(r.lifecycle_phases ?? r.lifecyclePhases)
+    ? ((r.lifecycle_phases ?? r.lifecyclePhases) as unknown[])
+    : []
+  const phases: AtlasCodeObraCommandCenterPhase[] = phasesRaw.map((p) => {
+    const phase = (p ?? {}) as Record<string, unknown>
+    return {
+      key: String(phase.key ?? ''),
+      label: String(phase.label ?? ''),
+      status: String(phase.status ?? 'not_started'),
+      description: String(phase.description ?? ''),
+      evidenceCount: Number(phase.evidence_count ?? phase.evidenceCount ?? 0),
+      blockerCount: Number(phase.blocker_count ?? phase.blockerCount ?? 0),
+      nextAction: String(phase.next_action ?? phase.nextAction ?? ''),
+    }
+  })
+
+  const milestonesRaw = Array.isArray(r.milestones) ? (r.milestones as unknown[]) : []
+  const milestones: AtlasCodeObraCommandCenterMilestone[] = milestonesRaw.map((m) => {
+    const item = (m ?? {}) as Record<string, unknown>
+    return {
+      key: String(item.key ?? ''),
+      label: String(item.label ?? ''),
+      reached: Boolean(item.reached ?? false),
+      reachedAt: nullableString(item.reached_at ?? item.reachedAt),
+    }
+  })
+
+  const adaptProgress = (rawProgress: unknown): AtlasCodeObraCommandCenterProgress => {
+    const p = (rawProgress ?? {}) as Record<string, unknown>
+    const items = Array.isArray(p.breakdown) ? (p.breakdown as unknown[]) : []
+    return {
+      label: String(p.label ?? ''),
+      reached: Number(p.reached ?? 0),
+      total: Number(p.total ?? 0),
+      percent: Number(p.percent ?? 0),
+      breakdown: items.map((it): AtlasCodeObraCommandCenterProgressItem => {
+        const entry = (it ?? {}) as Record<string, unknown>
+        return {
+          key: String(entry.key ?? ''),
+          label: String(entry.label ?? ''),
+          reached: Boolean(entry.reached ?? false),
+        }
+      }),
+    }
+  }
+
+  const inboxRaw = Array.isArray(r.decision_inbox ?? r.decisionInbox)
+    ? ((r.decision_inbox ?? r.decisionInbox) as unknown[])
+    : []
+  const decisionInbox: AtlasCodeObraCommandCenterDecision[] = inboxRaw.map((d) => {
+    const dec = (d ?? {}) as Record<string, unknown>
+    return {
+      key: String(dec.key ?? ''),
+      label: String(dec.label ?? ''),
+      reason: String(dec.reason ?? ''),
+      risk: String(dec.risk ?? 'low'),
+      recommendedAction: String(dec.recommended_action ?? dec.recommendedAction ?? ''),
+      allowedActions: normList(dec.allowed_actions ?? dec.allowedActions),
+    }
+  })
+
+  const blockerSummary: AtlasCodeObraCommandCenterBlockerSummary = {
+    count: Number(blockerSummaryRaw.count ?? 0),
+    kinds: normList(blockerSummaryRaw.kinds),
+    primaryKind: nullableString(blockerSummaryRaw.primary_kind ?? blockerSummaryRaw.primaryKind),
+    primaryHumanTitle: nullableString(blockerSummaryRaw.primary_human_title ?? blockerSummaryRaw.primaryHumanTitle),
+  }
+
+  const operationalHealth: AtlasCodeObraCommandCenterOperationalHealth = {
+    queueName: String(operationalHealthRaw.queue_name ?? operationalHealthRaw.queueName ?? 'atlas-code-forge'),
+    queueStatus: String(operationalHealthRaw.queue_status ?? operationalHealthRaw.queueStatus ?? 'unknown'),
+    workerStatus: String(operationalHealthRaw.worker_status ?? operationalHealthRaw.workerStatus ?? 'unknown'),
+    lastEventAt: nullableString(operationalHealthRaw.last_event_at ?? operationalHealthRaw.lastEventAt),
+    currentStateAgeSeconds: ((): number | null => {
+      const v = operationalHealthRaw.current_state_age_seconds ?? operationalHealthRaw.currentStateAgeSeconds
+      if (v === null || v === undefined) return null
+      const n = Number(v)
+      return Number.isFinite(n) ? n : null
+    })(),
+    heartbeatStatus: String(operationalHealthRaw.heartbeat_status ?? operationalHealthRaw.heartbeatStatus ?? 'unknown'),
+    stale: Boolean(operationalHealthRaw.stale ?? false),
+    watchdogNextAction: nullableString(operationalHealthRaw.watchdog_next_action ?? operationalHealthRaw.watchdogNextAction),
+    humanMessage: String(operationalHealthRaw.human_message ?? operationalHealthRaw.humanMessage ?? ''),
+    note: String(operationalHealthRaw.note ?? ''),
+  }
+
+  const trustSummary: AtlasCodeObraCommandCenterTrustSummary = {
+    evidenceStrength: String(trustSummaryRaw.evidence_strength ?? trustSummaryRaw.evidenceStrength ?? 'none'),
+    testsRunCount: Number(trustSummaryRaw.tests_run_count ?? trustSummaryRaw.testsRunCount ?? 0),
+    receiptsCount: Number(trustSummaryRaw.receipts_count ?? trustSummaryRaw.receiptsCount ?? 0),
+    ledgerEventsCount: Number(trustSummaryRaw.ledger_events_count ?? trustSummaryRaw.ledgerEventsCount ?? 0),
+    missingEvidence: normList(trustSummaryRaw.missing_evidence ?? trustSummaryRaw.missingEvidence),
+    riskLevel: String(trustSummaryRaw.risk_level ?? trustSummaryRaw.riskLevel ?? 'medium'),
+    claimStatus: String(trustSummaryRaw.claim_status ?? trustSummaryRaw.claimStatus ?? 'not_allowed'),
+    reviewStatus: String(trustSummaryRaw.review_status ?? trustSummaryRaw.reviewStatus ?? 'pending'),
+    providerExternalCall: Boolean(trustSummaryRaw.provider_external_call ?? trustSummaryRaw.providerExternalCall ?? false),
+    tokenSpend: Boolean(trustSummaryRaw.token_spend ?? trustSummaryRaw.tokenSpend ?? false),
+    note: String(trustSummaryRaw.note ?? ''),
+  }
+
+  const evidenceDigest: AtlasCodeObraCommandCenterEvidenceDigest = {
+    obraEvidenceRefCount: Number(evidenceDigestRaw.obra_evidence_ref_count ?? evidenceDigestRaw.obraEvidenceRefCount ?? 0),
+    obraLedgerEventCount: Number(evidenceDigestRaw.obra_ledger_event_count ?? evidenceDigestRaw.obraLedgerEventCount ?? 0),
+    latestEvidenceAt: nullableString(evidenceDigestRaw.latest_evidence_at ?? evidenceDigestRaw.latestEvidenceAt),
+    systemCertificationsSeparated: Boolean(
+      evidenceDigestRaw.system_certifications_separated ?? evidenceDigestRaw.systemCertificationsSeparated ?? true,
+    ),
+    note: String(evidenceDigestRaw.note ?? ''),
+  }
+
+  return {
+    schemaVersion: schema || 'atlas.code.obra_command_center.v1',
+    status: String(r.status ?? 'no_obra'),
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    obraPresent: Boolean(r.obra_present ?? r.obraPresent ?? false),
+    obraTitle: nullableString(r.obra_title ?? r.obraTitle),
+    objectiveSummary: nullableString(r.objective_summary ?? r.objectiveSummary),
+    humanStatusLabel: String(r.human_status_label ?? r.humanStatusLabel ?? ''),
+    humanStatusDetail: String(r.human_status_detail ?? r.humanStatusDetail ?? ''),
+    currentPhase: nullableString(r.current_phase ?? r.currentPhase),
+    nextPhase: nullableString(r.next_phase ?? r.nextPhase),
+    nextSafeAction: String(r.next_safe_action ?? r.nextSafeAction ?? ''),
+    primaryActionKind: String(r.primary_action_kind ?? r.primaryActionKind ?? 'refresh_status'),
+    primaryActionLabel: String(r.primary_action_label ?? r.primaryActionLabel ?? ''),
+    primaryActionEnabled: Boolean(r.primary_action_enabled ?? r.primaryActionEnabled ?? false),
+    primaryActionDisabledReason: nullableString(r.primary_action_disabled_reason ?? r.primaryActionDisabledReason),
+    lifecyclePhases: phases,
+    milestones,
+    readinessProgress: adaptProgress(r.readiness_progress ?? r.readinessProgress),
+    provenDeliveryProgress: adaptProgress(r.proven_delivery_progress ?? r.provenDeliveryProgress),
+    decisionInbox,
+    blockerSummary,
+    blockerTranslation: {
+      kind: nullableString(blockerTranslationRaw.kind),
+      humanTitle: nullableString(blockerTranslationRaw.human_title ?? blockerTranslationRaw.humanTitle),
+      humanDetail: nullableString(blockerTranslationRaw.human_detail ?? blockerTranslationRaw.humanDetail),
+      suggestedActionLabel: nullableString(blockerTranslationRaw.suggested_action_label ?? blockerTranslationRaw.suggestedActionLabel),
+      suggestedActionKind: nullableString(blockerTranslationRaw.suggested_action_kind ?? blockerTranslationRaw.suggestedActionKind),
+      technicalDetail: nullableString(blockerTranslationRaw.technical_detail ?? blockerTranslationRaw.technicalDetail),
+      filesOutOfScope: normList(blockerTranslationRaw.files_out_of_scope ?? blockerTranslationRaw.filesOutOfScope),
+      isBlocking: Boolean(blockerTranslationRaw.is_blocking ?? blockerTranslationRaw.isBlocking ?? false),
+    },
+    operationalHealth,
+    trustSummary,
+    evidenceDigest,
+    providerSummary: {
+      provider: nullableString(provider.provider),
+      model: nullableString(provider.model),
+      decisionSource: String(provider.decision_source ?? provider.decisionSource ?? 'unknown'),
+      capacityState: String(provider.capacity_state ?? provider.capacityState ?? 'unknown'),
+      driverConfigured: Boolean(provider.driver_configured ?? provider.driverConfigured ?? false),
+    },
+    safetySummary: {
+      externalProviderCall: Boolean(safety.external_provider_call ?? safety.externalProviderCall ?? false),
+      providerTokensSpent: (safety.provider_tokens_spent ?? safety.providerTokensSpent ?? 0) as number | string,
+      completionClaimPromoted: Boolean(safety.completion_claim_promoted ?? safety.completionClaimPromoted ?? false),
+      reviewCompletionGatePreserved: Boolean(safety.review_completion_gate_preserved ?? safety.reviewCompletionGatePreserved ?? true),
+      externalRivalsCertification: String(safety.external_rivals_certification ?? safety.externalRivalsCertification ?? 'blocked_requires_operator_approval'),
+    },
+    advancedRefs: (r.advanced_refs && typeof r.advanced_refs === 'object' ? (r.advanced_refs as Record<string, unknown>) : {}),
+    chatMessageKinds: (Array.isArray(r.chat_message_kinds ?? r.chatMessageKinds)
+      ? ((r.chat_message_kinds ?? r.chatMessageKinds) as unknown[]).map((k) => String(k))
+      : []),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: (r.provider_tokens_spent ?? r.providerTokensSpent ?? false) as boolean | string,
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    reviewGatePreserved: Boolean(r.review_gate_preserved ?? r.reviewGatePreserved ?? true),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptForgeProviderDriverStatus(raw: unknown): AtlasForgeProviderDriverStatus | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const driversRaw = Array.isArray(r.drivers) ? (r.drivers as unknown[]) : []
+  const drivers: AtlasForgeProviderDriverEntry[] = driversRaw.map((entry) => {
+    const e = (entry ?? {}) as Record<string, unknown>
+    return {
+      schemaVersion: String(e.schema_version ?? e.schemaVersion ?? 'atlas.forge.provider_driver_config_status.v1'),
+      provider: String(e.provider ?? 'unknown'),
+      configured: Boolean(e.configured ?? false),
+      runtimePresent: Boolean(e.runtime_present ?? e.runtimePresent ?? false),
+      binaryPath: nullableString(e.binary_path ?? e.binaryPath),
+      authState: String(e.auth_state ?? e.authState ?? 'unknown'),
+      modelPrefixes: normList(e.model_prefixes ?? e.modelPrefixes),
+      allowedBinaries: normList(e.allowed_binaries ?? e.allowedBinaries),
+      blockers: normList(e.blockers),
+      externalProviderCallPossible: Boolean(e.external_provider_call_possible ?? e.externalProviderCallPossible ?? false),
+      providerTokensMaySpend: Boolean(e.provider_tokens_may_be_spent ?? e.providerTokensMaySpend ?? false),
+      note: nullableString(e.note),
+    }
+  })
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.provider_driver_router_status.v1'),
+    drivers,
+    configuredDrivers: normList(r.configured_drivers ?? r.configuredDrivers),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptForgeProviderDriverPlanPacket(raw: unknown): AtlasForgeProviderDriverPlanPacket | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.provider_driver_plan_packet.v1'),
+    invocation: (r.invocation && typeof r.invocation === 'object' ? (r.invocation as Record<string, unknown>) : {}),
+    driverStatus: (r.driver_status && typeof r.driver_status === 'object' ? (r.driver_status as Record<string, unknown>) : {}),
+    driverPlan: (r.driver_plan && typeof r.driver_plan === 'object' ? (r.driver_plan as Record<string, unknown>) : {}),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptForgeProviderInvocationSnapshot(raw: unknown): AtlasForgeProviderInvocationSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if ((r.status ?? null) === 'no_invocation_history') {
+    return null
+  }
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.provider_invocation.v1'),
+    status: String(r.status ?? 'blocked'),
+    mode: String(r.mode ?? 'dry_run'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    invocationId: nullableString(r.invocation_id ?? r.invocationId),
+    dispatchId: nullableString(r.dispatch_id ?? r.dispatchId),
+    role: nullableString(r.role),
+    provider: nullableString(r.provider),
+    model: nullableString(r.model),
+    providerCalled: Boolean(r.provider_called ?? r.providerCalled ?? false),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: (() => {
+      const v = r.provider_tokens_spent ?? r.providerTokensSpent
+      if (typeof v === 'boolean' || typeof v === 'string') return v
+      return false
+    })(),
+    exitCode: typeof r.exit_code === 'number' ? r.exit_code : (typeof r.exitCode === 'number' ? r.exitCode : null),
+    durationMs: typeof r.duration_ms === 'number' ? r.duration_ms : (typeof r.durationMs === 'number' ? r.durationMs : null),
+    stdoutHash: nullableString(r.stdout_hash ?? r.stdoutHash),
+    stderrHash: nullableString(r.stderr_hash ?? r.stderrHash),
+    outputExcerpt: nullableString(r.output_excerpt ?? r.outputExcerpt),
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    reviewCompletionGatePreserved: Boolean(r.review_completion_gate_preserved ?? r.reviewCompletionGatePreserved ?? true),
+    blockers: normList(r.blockers),
+    nextAction: nullableString(r.next_action ?? r.nextAction),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptForgeProviderInvocationReceipt(raw: unknown): AtlasForgeProviderInvocationReceipt | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.forge.provider_invocation_receipt.v1'),
+    receiptId: String(r.receipt_id ?? r.receiptId ?? ''),
+    receiptHash: String(r.receipt_hash ?? r.receiptHash ?? ''),
+    invocationId: nullableString(r.invocation_id ?? r.invocationId),
+    status: String(r.status ?? 'blocked'),
+    mode: String(r.mode ?? 'dry_run'),
+    provider: nullableString(r.provider),
+    model: nullableString(r.model),
+    providerCalled: Boolean(r.provider_called ?? r.providerCalled ?? false),
+    startedAt: nullableString(r.started_at ?? r.startedAt),
+    completedAt: nullableString(r.completed_at ?? r.completedAt),
+    durationMs: typeof r.duration_ms === 'number' ? r.duration_ms : null,
+    exitCode: typeof r.exit_code === 'number' ? r.exit_code : null,
+    completionClaimPromoted: Boolean(r.completion_claim_promoted ?? r.completionClaimPromoted ?? false),
+    separatedFrom: String(r.separated_from ?? r.separatedFrom ?? 'external_rivals_certification'),
   }
 }
 

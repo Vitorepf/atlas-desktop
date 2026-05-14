@@ -50,13 +50,17 @@ export function ForgeFastPathPanel({
   const [pending, startTransition] = useTransition()
 
   const disabled = !obraId || busy || pending
-  const runId = status?.fastPathRunId ?? report?.fastPathRunId ?? null
-  const lifecycleStatus = status?.status ?? report?.status ?? null
+  const statusForCurrentRun =
+    !status?.fastPathRunId || !report?.fastPathRunId || status.fastPathRunId === report.fastPathRunId
+      ? status
+      : null
+  const runId = report?.fastPathRunId ?? statusForCurrentRun?.fastPathRunId ?? null
+  const lifecycleStatus = statusForCurrentRun?.status ?? report?.status ?? null
   const tone = lifecycleStatus ? STATUS_COLOR[lifecycleStatus] : undefined
-  const reviewRequired = status?.reviewGate.reviewRequired === true
-  const reviewStatus = status?.reviewGate.reviewStatus ?? 'not_required'
-  const repairAvailable = status?.repair.repairAvailable === true
-  const nextAction = status?.nextAction ?? report?.nextAction ?? null
+  const reviewRequired = statusForCurrentRun?.reviewGate.reviewRequired === true
+  const reviewStatus = statusForCurrentRun?.reviewGate.reviewStatus ?? 'not_required'
+  const repairAvailable = statusForCurrentRun?.repair.repairAvailable === true
+  const nextAction = statusForCurrentRun?.nextAction ?? report?.nextAction ?? null
 
   function trigger(mode: 'prepare_only' | 'execute_async' | 'execute_sync') {
     if (!obraId) return
@@ -108,8 +112,8 @@ export function ForgeFastPathPanel({
           Orquestra Obra → WorkItem → Spec/Plan/Tasks → Forge Live Execution. Sem provider externo.
         </div>
 
-        {status ? (
-          <FastPathRunLifecycle status={status} report={report} />
+        {statusForCurrentRun ? (
+          <FastPathRunLifecycle status={statusForCurrentRun} report={report} />
         ) : report ? (
           <FastPathReportCard report={report} />
         ) : null}
@@ -188,9 +192,9 @@ export function ForgeFastPathPanel({
             error · {error}
           </div>
         ) : null}
-        {repairAvailable && status?.repair.suggestedRepairCommand ? (
+        {repairAvailable && statusForCurrentRun?.repair.suggestedRepairCommand ? (
           <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--bronze)', wordBreak: 'break-all' }}>
-            repair · {status.repair.suggestedRepairCommand}
+            repair · {statusForCurrentRun.repair.suggestedRepairCommand}
           </div>
         ) : null}
         {nextAction ? (

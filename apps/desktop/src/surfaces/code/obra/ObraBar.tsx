@@ -51,6 +51,5 @@ export function ObraBar({ obra, onCreate, busy }: ObraBarProps) {
     return <LoadingObraBar />
   }
 
-  return <ActiveObraBar obra={obra} onCreateNew={() => setCreating(true)} />
+  return <ActiveObraBar obra={obra} />
 }
-

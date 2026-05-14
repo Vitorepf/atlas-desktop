@@ -27,6 +27,10 @@ interface CartographyFloatersProps {
   onZoomOut: () => void
   onFit: () => void
   onUniverse: () => void
+  isEditMode: boolean
+  onToggleEditMode: () => void
+  hasCustomLayout: boolean
+  onResetLayout: () => void
 }
 
 export function CartographyFloaters({
@@ -49,6 +53,10 @@ export function CartographyFloaters({
   onZoomOut,
   onFit,
   onUniverse,
+  isEditMode,
+  onToggleEditMode,
+  hasCustomLayout,
+  onResetLayout,
 }: CartographyFloatersProps) {
   return (
     <>
@@ -77,6 +85,10 @@ export function CartographyFloaters({
         onZoomOut={onZoomOut}
         onFit={onFit}
         onUniverse={onUniverse}
+        isEditMode={isEditMode}
+        onToggleEditMode={onToggleEditMode}
+        hasCustomLayout={hasCustomLayout}
+        onResetLayout={onResetLayout}
       />
     </>
   )

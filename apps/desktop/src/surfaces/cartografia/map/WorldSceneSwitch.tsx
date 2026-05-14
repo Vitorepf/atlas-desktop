@@ -28,6 +28,9 @@ export function WorldSceneSwitch({
   onSetHover,
   onEnterIsolate,
   onExitIsolate,
+  scale,
+  editMode,
+  customLayout,
 }: WorldSceneSwitchProps) {
   if (!graph) return null
 
@@ -59,6 +62,9 @@ export function WorldSceneSwitch({
         onEnterIsolate={onEnterIsolate}
         onExitIsolate={onExitIsolate}
         onEnterGear={onEnterGear}
+        scale={scale}
+        editMode={editMode}
+        customLayout={customLayout}
       />
     )
   }

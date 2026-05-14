@@ -53,6 +53,12 @@ pub const ATLAS_CODE_WORK_FORGE_CONTINUUM_CERTIFICATION: &str = "/atlas-code/wor
 pub const ATLAS_CODE_FORGE_PROVIDER_CAPACITY: &str = "/atlas-code/forge/provider-capacity"; // V2 (global capacity)
 pub const ATLAS_CODE_WORK_FORGE_PROVIDER_CAPACITY: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-capacity)
 pub const ATLAS_CODE_WORK_FORGE_PROVIDER_FAILURES: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-failures)
+pub const ATLAS_CODE_WORK_FORGE_RUNTIME_DISPATCH: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/runtime-dispatch)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_INVOCATIONS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_INVOCATION_LATEST: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations/latest)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_DRIVERS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations/drivers)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_PLAN_DRIVER: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations/plan-driver)
+pub const ATLAS_CODE_WORK_FORGE_UX_ORCHESTRATOR: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/ux-orchestrator)
 pub const ATLAS_CODE_THREAD: &str = "/atlas-code/threads/"; // V2 (+ {id})
 pub const ATLAS_CODE_RECEIPT: &str = "/atlas-code/decisions/"; // V2 (+ {id}/receipt)
 

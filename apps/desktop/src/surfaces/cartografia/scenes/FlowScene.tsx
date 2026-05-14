@@ -19,6 +19,9 @@ export function FlowScene({
   onHover,
   onIsolate,
   onFocus,
+  scale,
+  editMode,
+  customLayout,
 }: FlowSceneProps) {
   // Defensive: nunca confiar 100% no shape do payload do Kernel.
   const pipeline = Array.isArray(graph.pipeline) ? graph.pipeline : []
@@ -62,6 +65,9 @@ export function FlowScene({
         onHover={onHover}
         onIsolate={onIsolate}
         onFocus={onFocus}
+        scale={scale}
+        editMode={editMode}
+        customLayout={customLayout}
       />
       <Trails
         worldElement={worldRef.current}
