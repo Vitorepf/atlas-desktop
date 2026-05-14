@@ -1,11 +1,17 @@
 import type {
   DecisionReceipt,
+  ForgeLiveExecutionSnapshot,
+  Obra,
   ProgrammingGovernanceSnapshot,
 } from '@atlas/domain'
 
 interface ForgeWorkspaceBannerProps {
+  obra: Obra | null
   receipt: DecisionReceipt | null
   governance: ProgrammingGovernanceSnapshot | null
+  liveExecution: ForgeLiveExecutionSnapshot | null
+  busy: boolean
+  onRunLiveExecution: () => Promise<void>
 }
 
 /**
@@ -18,8 +24,15 @@ interface ForgeWorkspaceBannerProps {
  *
  * Doc: docs/engineering-knowledge-base/atlas-forge-live-execution-e2e-v1.md
  */
-export function ForgeWorkspaceBanner({ receipt, governance }: ForgeWorkspaceBannerProps) {
-  const obraId = governance?.workItem?.id ?? receipt?.obraId ?? null
+export function ForgeWorkspaceBanner({
+  obra,
+  receipt,
+  governance,
+  liveExecution,
+  busy,
+  onRunLiveExecution,
+}: ForgeWorkspaceBannerProps) {
+  const obraId = receipt?.obraId ?? obra?.id ?? liveExecution?.obraId ?? null
   const hasObra = !!obraId
   const evidenceCount = governance?.evidenceRefs?.length ?? 0
   const gateRunCount = governance?.gateRuns?.length ?? 0
@@ -32,6 +45,9 @@ export function ForgeWorkspaceBanner({ receipt, governance }: ForgeWorkspaceBann
   const liveCommand = hasObra
     ? `php artisan atlas:forge:live-execute --obra=${obraId} --json --strict`
     : 'php artisan atlas:forge:live-execute --json --strict (bloqueado · sem Obra)'
+  const liveStatus = liveExecution?.status ?? 'sem execução'
+  const contextPackStatus = liveExecution?.contextPack?.contextCompleteness ?? '—'
+  const repairStatus = liveExecution?.repairLoop?.status ?? '—'
 
   if (!hasObra) {
     return (
@@ -104,9 +120,36 @@ export function ForgeWorkspaceBanner({ receipt, governance }: ForgeWorkspaceBann
         <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
           {receiptStatus} · gate runs · {gateRunCount} · evidence refs · {evidenceCount}
         </div>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+          live · {liveStatus} · context · {contextPackStatus} · repair · {repairStatus}
+        </div>
+        {liveExecution ? (
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink3)' }}>
+            stages · {liveExecution.stageCount ?? 0} · ledger · {liveExecution.ledgerEventCount ?? 0} · blockers · {liveExecution.remainingBlockers.length}
+          </div>
+        ) : null}
         <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--bronze)', wordBreak: 'break-all' }}>
           $ {liveCommand}
         </div>
+        <button
+          type="button"
+          onClick={() => void onRunLiveExecution()}
+          disabled={busy}
+          style={{
+            marginTop: 4,
+            border: '1px solid var(--bronze)',
+            background: busy ? 'var(--paper)' : 'var(--ink)',
+            color: busy ? 'var(--ink4)' : 'var(--paper)',
+            fontFamily: 'var(--mono)',
+            fontSize: 9,
+            letterSpacing: '1.2px',
+            textTransform: 'uppercase',
+            padding: '8px 10px',
+            cursor: busy ? 'default' : 'pointer',
+          }}
+        >
+          {busy ? 'executando…' : 'rodar forge live'}
+        </button>
       </div>
     </div>
   )

@@ -235,6 +235,29 @@ pub async fn bridge_mcp_status(state: State<'_, AppState>) -> Result<serde_json:
 }
 
 #[tauri::command]
+pub async fn bridge_get_atlas_code_enterprise_certification(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_atlas_code_enterprise_certification()
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_run_atlas_code_enterprise_certification(
+    state: State<'_, AppState>,
+    keep_workspace: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .run_atlas_code_enterprise_certification(keep_workspace.unwrap_or(false))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
 pub async fn bridge_list_works(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     bridge_of(&state)
         .await
@@ -265,6 +288,125 @@ pub async fn bridge_get_work_state(
     bridge_of(&state)
         .await
         .get_work_state(&work_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_run_forge_live_execution(
+    state: State<'_, AppState>,
+    work_id: String,
+    simulate_failure: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .run_forge_live_execution(&work_id, simulate_failure.unwrap_or(false))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_start_forge_live_execution_async(
+    state: State<'_, AppState>,
+    work_id: String,
+    simulate_failure: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .start_forge_live_execution_async(&work_id, simulate_failure.unwrap_or(false))
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_live_execution_async(
+    state: State<'_, AppState>,
+    work_id: String,
+    execution_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_live_execution_async(&work_id, &execution_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_get_forge_run_history_replay(
+    state: State<'_, AppState>,
+    work_id: String,
+    history_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_forge_run_history_replay(&work_id, &history_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_create_programming_work_item(
+    state: State<'_, AppState>,
+    work_id: String,
+    intent: Option<String>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .create_programming_work_item(&work_id, intent.as_deref())
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_compile_programming_work_item_spec_plan(
+    state: State<'_, AppState>,
+    work_id: String,
+    work_item_id: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .compile_programming_work_item_spec_plan(&work_id, &work_item_id)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_create_checkpoint(
+    state: State<'_, AppState>,
+    work_id: String,
+    reason: Option<String>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .create_checkpoint(&work_id, reason.as_deref())
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_review_forge_run(
+    state: State<'_, AppState>,
+    work_id: String,
+    decision: String,
+    comment: Option<String>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .review_forge_run(&work_id, &decision, comment.as_deref())
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_rollback_forge_promotion(
+    state: State<'_, AppState>,
+    work_id: String,
+    promotion_id: String,
+    comment: Option<String>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .rollback_forge_promotion(&work_id, &promotion_id, comment.as_deref())
         .await
         .map_err(into_str_err)
 }

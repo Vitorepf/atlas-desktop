@@ -2,20 +2,77 @@ import { PanelTitle } from '@atlas/ui'
 import type { DecisionReceipt } from '@atlas/domain'
 import { btnPrimary, Row } from './RightRailPrimitives'
 import type { RightRailContext } from './rightRailTypes'
+import { CheckpointPanel } from './CheckpointPanel'
+import { ContextPackPanel } from './ContextPackPanel'
+import { ForgeAsyncExecutionPanel } from './ForgeAsyncExecutionPanel'
+import { ForgeFastPathPanel } from './ForgeFastPathPanel'
+import { ForgeTaskQueuePanel } from './ForgeTaskQueuePanel'
 import { ForgeWorkspaceBanner } from './ForgeWorkspaceBanner'
+import { TaskContractPanel } from './TaskContractPanel'
 import { WorkItemInspector } from './WorkItemInspector'
 
 export function PlanPanel({
+  obra,
   receipt,
   core,
   boot,
   busy,
+  checkpoint,
+  forgeLiveExecution,
+  forgeLiveExecutionAsync,
+  forgeFastPath,
+  forgeFastPathStatus,
+  forgeTaskQueue,
   programmingGovernance,
+  onCreateCheckpoint,
+  onCreateProgrammingWorkItem,
+  onCompileProgrammingWorkItemSpecPlan,
+  onRunForgeFastPath,
+  onRefreshForgeFastPathStatus,
+  onResumeForgeFastPath,
+  onRunForgeLiveExecution,
+  onRefreshForgeLiveExecutionAsync,
+  onStartForgeLiveExecutionAsync,
   onSignReceipt,
 }: RightRailContext) {
   return (
     <section className="ops-panel">
-      <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+      <ForgeWorkspaceBanner
+        obra={obra}
+        receipt={receipt}
+        governance={programmingGovernance}
+        liveExecution={forgeLiveExecution}
+        busy={busy}
+        onRunLiveExecution={onRunForgeLiveExecution}
+      />
+      <ForgeFastPathPanel
+        obraId={obra?.id ?? null}
+        report={forgeFastPath}
+        status={forgeFastPathStatus}
+        busy={busy}
+        onRun={onRunForgeFastPath}
+        onRefreshStatus={onRefreshForgeFastPathStatus}
+        onResume={onResumeForgeFastPath}
+      />
+      <ForgeAsyncExecutionPanel
+        execution={forgeLiveExecutionAsync}
+        busy={busy}
+        onStart={() => void onStartForgeLiveExecutionAsync()}
+        onRefresh={() => void onRefreshForgeLiveExecutionAsync()}
+      />
+      <ContextPackPanel liveExecution={forgeLiveExecution} />
+      <ForgeTaskQueuePanel
+        queue={forgeTaskQueue}
+        busy={busy}
+        onCreateWorkItem={onCreateProgrammingWorkItem}
+        onCompileSpecPlan={onCompileProgrammingWorkItemSpecPlan}
+      />
+      <TaskContractPanel liveExecution={forgeLiveExecution} />
+      <CheckpointPanel
+        checkpoint={checkpoint}
+        busy={busy}
+        onCreateCheckpoint={onCreateCheckpoint}
+      />
       <WorkItemInspector governance={programmingGovernance} />
 
       <div className="ops-section">

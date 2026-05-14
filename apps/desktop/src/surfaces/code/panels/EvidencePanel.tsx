@@ -1,17 +1,57 @@
 import { PanelTitle } from '@atlas/ui'
 import type { ProgrammingEvidenceReceiptSnapshot } from '@atlas/domain'
+import { AtlasCodeEnterpriseCertificationPanel } from './AtlasCodeEnterpriseCertificationPanel'
 import { EmptyText } from './RightRailPrimitives'
+import { ForgeEvidencePackPanel } from './ForgeEvidencePackPanel'
+import { ForgeExecutionHistoryPanel } from './ForgeExecutionHistoryPanel'
+import { ForgeRunReplayInspectorPanel } from './ForgeRunReplayInspectorPanel'
+import { ForgeReviewHistoryPanel } from './ForgeReviewHistoryPanel'
 import { ForgeWorkspaceBanner } from './ForgeWorkspaceBanner'
 import type { RightRailContext } from './rightRailTypes'
 
-export function EvidencePanel({ evidence, receipt, programmingGovernance }: RightRailContext) {
+export function EvidencePanel({
+  obra,
+  evidence,
+  receipt,
+  forgeLiveExecution,
+  forgeLiveExecutionHistory,
+  forgeRunHistoryReplay,
+  forgeReviewHistory,
+  atlasCodeEnterpriseCertification,
+  programmingGovernance,
+  busy,
+  onRunForgeLiveExecution,
+  onInspectForgeRunHistory,
+  onRunAtlasCodeEnterpriseCertification,
+}: RightRailContext) {
   const refs = programmingGovernance?.evidenceRefs ?? []
   const hasGovernanceRefs = refs.length > 0
 
   if (hasGovernanceRefs) {
     return (
       <section className="ops-panel">
-        <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+        <ForgeWorkspaceBanner
+          obra={obra}
+          receipt={receipt}
+          governance={programmingGovernance}
+          liveExecution={forgeLiveExecution}
+          busy={busy}
+          onRunLiveExecution={onRunForgeLiveExecution}
+        />
+        <AtlasCodeEnterpriseCertificationPanel
+          certification={atlasCodeEnterpriseCertification}
+          busy={busy}
+          onRun={() => void onRunAtlasCodeEnterpriseCertification()}
+        />
+        <ForgeExecutionHistoryPanel
+          history={forgeLiveExecutionHistory}
+          selectedHistoryId={forgeRunHistoryReplay?.historyId}
+          busy={busy}
+          onInspect={(historyId) => void onInspectForgeRunHistory(historyId)}
+        />
+        <ForgeRunReplayInspectorPanel replay={forgeRunHistoryReplay} />
+        <ForgeReviewHistoryPanel history={forgeReviewHistory} />
+        <ForgeEvidencePackPanel liveExecution={forgeLiveExecution} />
         <div className="ops-section">
           <PanelTitle label="Evidence Receipts" meta={`${refs.length} · governance`} />
           <div style={{ display: 'grid', gap: 4 }}>
@@ -28,7 +68,28 @@ export function EvidencePanel({ evidence, receipt, programmingGovernance }: Righ
   if (programmingGovernance?.workItem) {
     return (
       <section className="ops-panel">
-        <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+        <ForgeWorkspaceBanner
+          obra={obra}
+          receipt={receipt}
+          governance={programmingGovernance}
+          liveExecution={forgeLiveExecution}
+          busy={busy}
+          onRunLiveExecution={onRunForgeLiveExecution}
+        />
+        <AtlasCodeEnterpriseCertificationPanel
+          certification={atlasCodeEnterpriseCertification}
+          busy={busy}
+          onRun={() => void onRunAtlasCodeEnterpriseCertification()}
+        />
+        <ForgeExecutionHistoryPanel
+          history={forgeLiveExecutionHistory}
+          selectedHistoryId={forgeRunHistoryReplay?.historyId}
+          busy={busy}
+          onInspect={(historyId) => void onInspectForgeRunHistory(historyId)}
+        />
+        <ForgeRunReplayInspectorPanel replay={forgeRunHistoryReplay} />
+        <ForgeReviewHistoryPanel history={forgeReviewHistory} />
+        <ForgeEvidencePackPanel liveExecution={forgeLiveExecution} />
         <div className="ops-section">
           <PanelTitle label="Evidence Receipts" meta="sem refs" />
           <EmptyText>sem evidence receipts reais</EmptyText>
@@ -39,7 +100,28 @@ export function EvidencePanel({ evidence, receipt, programmingGovernance }: Righ
 
   return (
     <section className="ops-panel">
-      <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+      <ForgeWorkspaceBanner
+        obra={obra}
+        receipt={receipt}
+        governance={programmingGovernance}
+        liveExecution={forgeLiveExecution}
+        busy={busy}
+        onRunLiveExecution={onRunForgeLiveExecution}
+      />
+      <AtlasCodeEnterpriseCertificationPanel
+        certification={atlasCodeEnterpriseCertification}
+        busy={busy}
+        onRun={() => void onRunAtlasCodeEnterpriseCertification()}
+      />
+      <ForgeExecutionHistoryPanel
+        history={forgeLiveExecutionHistory}
+        selectedHistoryId={forgeRunHistoryReplay?.historyId}
+        busy={busy}
+        onInspect={(historyId) => void onInspectForgeRunHistory(historyId)}
+      />
+      <ForgeRunReplayInspectorPanel replay={forgeRunHistoryReplay} />
+      <ForgeReviewHistoryPanel history={forgeReviewHistory} />
+      <ForgeEvidencePackPanel liveExecution={forgeLiveExecution} />
       <div className="ops-section">
         <PanelTitle
           label="Evidence Ledger"

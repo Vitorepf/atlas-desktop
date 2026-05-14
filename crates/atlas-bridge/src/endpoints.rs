@@ -33,10 +33,19 @@ pub const ATLAS_CODE_APPLY_DIFF: &str = "/atlas-code/diffs/"; // NEW (+ {patch}/
 // Atlas Code · V2 endpoints (production-readiness ADR-0002)
 pub const ATLAS_CODE_BOOT: &str = "/atlas-code/boot"; // V2
 pub const ATLAS_CODE_MCP_STATUS: &str = "/atlas-code/mcp/status"; // V2
+pub const ATLAS_CODE_CERTIFICATION: &str = "/atlas-code/certification"; // V2
 pub const ATLAS_CODE_WORKS_LIST: &str = "/atlas-code/works"; // V2
 pub const ATLAS_CODE_WORKS_CREATE: &str = "/atlas-code/works"; // V2
 pub const ATLAS_CODE_WORK_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id})
 pub const ATLAS_CODE_WORK_STATE: &str = "/atlas-code/works/"; // V2 (+ {id}/state)
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions)
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS_ASYNC: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/async)
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTION_ASYNC_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/{execution})
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTION_HISTORY_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/history/{history})
+pub const ATLAS_CODE_WORK_FORGE_REVIEWS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/reviews)
+pub const ATLAS_CODE_WORK_CHECKPOINTS: &str = "/atlas-code/works/"; // V2 (+ {id}/checkpoints)
+pub const ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEMS: &str = "/atlas-code/works/"; // V2 (+ {id}/programming/work-items)
+pub const ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEM_SPEC: &str = "/atlas-code/works/"; // V2 (+ {id}/programming/work-items/{work_item}/spec)
 pub const ATLAS_CODE_THREAD: &str = "/atlas-code/threads/"; // V2 (+ {id})
 pub const ATLAS_CODE_RECEIPT: &str = "/atlas-code/decisions/"; // V2 (+ {id}/receipt)
 

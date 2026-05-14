@@ -50,15 +50,40 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
       right={
         <ErrorBoundary label="RightRail">
           <RightRail
+            obra={b.obra}
             receipt={b.receipt}
             gates={b.gates}
             core={b.core}
             evidence={b.evidence}
+            forgeLiveExecution={b.forgeLiveExecution}
+            forgeLiveExecutionAsync={b.forgeLiveExecutionAsync}
+            forgeLiveExecutionHistory={b.forgeLiveExecutionHistory}
+            forgeTaskQueue={b.forgeTaskQueue}
+            forgeFastPath={b.forgeFastPath}
+            forgeFastPathStatus={b.forgeFastPathStatus}
+            forgeRunHistoryReplay={b.forgeRunHistoryReplay}
+            forgeReview={b.forgeReview}
+            forgeReviewHistory={b.forgeReviewHistory}
+            checkpoint={b.checkpoint}
+            atlasCodeEnterpriseCertification={b.atlasCodeEnterpriseCertification}
             programmingGovernance={b.programmingGovernance}
             boot={boot}
             busy={b.busy}
             onSignReceipt={b.signReceipt}
             onRunGate={b.runGate}
+            onRunForgeLiveExecution={b.runForgeLiveExecution}
+            onRunForgeFastPath={b.runForgeFastPath}
+            onRefreshForgeFastPathStatus={b.refreshForgeFastPathStatus}
+            onResumeForgeFastPath={b.resumeForgeFastPath}
+            onStartForgeLiveExecutionAsync={b.startForgeLiveExecutionAsync}
+            onRefreshForgeLiveExecutionAsync={b.refreshForgeLiveExecutionAsync}
+            onInspectForgeRunHistory={b.inspectForgeRunHistory}
+            onCreateProgrammingWorkItem={b.createProgrammingWorkItem}
+            onCompileProgrammingWorkItemSpecPlan={b.compileProgrammingWorkItemSpecPlan}
+            onReviewForgeRun={b.reviewForgeRun}
+            onRollbackForgePromotion={b.rollbackForgePromotion}
+            onCreateCheckpoint={b.createCheckpoint}
+            onRunAtlasCodeEnterpriseCertification={b.runAtlasCodeEnterpriseCertification}
           />
         </ErrorBoundary>
       }

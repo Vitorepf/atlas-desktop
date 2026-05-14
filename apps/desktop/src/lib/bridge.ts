@@ -14,6 +14,9 @@
  */
 
 import type {
+  AtlasCodeEnterpriseCertificationReport,
+  AtlasCodeForgeFastPathRunStatus,
+  AtlasCodeForgeFastPathSnapshot,
   BootSnapshot,
   CartographyGraph,
   CartographyNote,
@@ -242,6 +245,43 @@ export const bridge = {
     } catch {
       return null
     }
+  },
+
+  // 0c · product-level Atlas Code enterprise certification
+  async getAtlasCodeEnterpriseCertification(): Promise<AtlasCodeEnterpriseCertificationReport | null> {
+    try {
+      let raw: unknown
+      if (MODE === 'tauri') {
+        raw = await invokeTauri<unknown>('bridge_get_atlas_code_enterprise_certification')
+      } else if (MODE === 'http') {
+        raw = await fetchHttp<unknown>('/atlas-code/certification')
+      } else {
+        return null
+      }
+
+      return adaptNullableAtlasCodeEnterpriseCertification(raw)
+    } catch (e) {
+      console.warn('[bridge] getAtlasCodeEnterpriseCertification', e)
+      return null
+    }
+  },
+
+  async runAtlasCodeEnterpriseCertification(): Promise<AtlasCodeEnterpriseCertificationReport> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_run_atlas_code_enterprise_certification', {
+        keepWorkspace: false,
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>('/atlas-code/certification', {
+        method: 'POST',
+        body: { keep_workspace: false },
+      })
+    } else {
+      offline('runAtlasCodeEnterpriseCertification')
+    }
+
+    return adaptAtlasCodeEnterpriseCertification(raw)
   },
 
   // 1 · health
@@ -495,6 +535,273 @@ export const bridge = {
     } catch {
       return []
     }
+  },
+
+  // 10b · run Forge Live Execution for selected Obra
+  async runForgeLiveExecution(obraId: string, simulateFailure = false): Promise<WorkStateSnapshot['forgeLiveExecution']> {
+    if (MODE === 'tauri') {
+      const raw = await invokeTauri<unknown>('bridge_run_forge_live_execution', {
+        workId: obraId,
+        simulateFailure,
+      })
+      return adaptForgeLiveExecutionEnvelope(raw)
+    }
+    if (MODE === 'http') {
+      const raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/live-executions`, {
+        method: 'POST',
+        body: { simulate_failure: simulateFailure },
+      })
+      return adaptForgeLiveExecutionEnvelope(raw)
+    }
+    offline('runForgeLiveExecution')
+  },
+
+  // 10b.1 · start queued Forge Live Execution for selected Obra
+  async startForgeLiveExecutionAsync(obraId: string, simulateFailure = false): Promise<WorkStateSnapshot['forgeLiveExecutionAsync']> {
+    if (MODE === 'tauri') {
+      const raw = await invokeTauri<unknown>('bridge_start_forge_live_execution_async', {
+        workId: obraId,
+        simulateFailure,
+      })
+      return adaptForgeLiveExecutionAsyncEnvelope(raw)
+    }
+    if (MODE === 'http') {
+      const raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/live-executions/async`, {
+        method: 'POST',
+        body: { simulate_failure: simulateFailure },
+      })
+      return adaptForgeLiveExecutionAsyncEnvelope(raw)
+    }
+    offline('startForgeLiveExecutionAsync')
+  },
+
+  // 10b.2 · poll queued Forge Live Execution by id
+  async getForgeLiveExecutionAsync(
+    obraId: string,
+    executionId: string
+  ): Promise<{
+    execution: WorkStateSnapshot['forgeLiveExecutionAsync']
+    snapshot: WorkStateSnapshot['forgeLiveExecution']
+  }> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_live_execution_async', {
+        workId: obraId,
+        executionId,
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/live-executions/${encodeURIComponent(executionId)}`,
+      )
+    } else {
+      offline('getForgeLiveExecutionAsync')
+    }
+
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return {
+      execution: adaptForgeLiveExecutionAsyncEnvelope(raw),
+      snapshot: adaptForgeLiveExecution(r.snapshot ?? r.forge_live_execution ?? r.forgeLiveExecution),
+    }
+  },
+
+  // 10b.3 · read-only replay packet for historical Forge Live Execution
+  async getForgeRunHistoryReplay(obraId: string, historyId: string): Promise<WorkStateSnapshot['forgeRunHistoryReplay']> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_run_history_replay', {
+        workId: obraId,
+        historyId,
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/live-executions/history/${encodeURIComponent(historyId)}`,
+      )
+    } else {
+      offline('getForgeRunHistoryReplay')
+    }
+    return adaptForgeRunHistoryReplay(raw)
+  },
+
+  // 10b.4 · create or reuse governed Programming WorkItem for selected Obra
+  async createProgrammingWorkItem(obraId: string, intent?: string): Promise<ProgrammingGovernanceSnapshot | null> {
+    let raw: unknown
+    const body = intent ? { intent } : {}
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_create_programming_work_item', {
+        workId: obraId,
+        intent: intent ?? null,
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/programming/work-items`, {
+        method: 'POST',
+        body,
+      })
+    } else {
+      offline('createProgrammingWorkItem')
+    }
+
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return adaptProgrammingGovernance(r.programming_governance ?? r.programmingGovernance)
+  },
+
+  // 10b.5 · compile and attach governed Spec/Plan/Tasks for selected WorkItem
+  async compileProgrammingWorkItemSpecPlan(
+    obraId: string,
+    workItemId: string
+  ): Promise<ProgrammingGovernanceSnapshot | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_compile_programming_work_item_spec_plan', {
+        workId: obraId,
+        workItemId,
+      })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/programming/work-items/${encodeURIComponent(workItemId)}/spec`,
+        { method: 'POST', body: {} },
+      )
+    } else {
+      offline('compileProgrammingWorkItemSpecPlan')
+    }
+
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return adaptProgrammingGovernance(r.programming_governance ?? r.programmingGovernance)
+  },
+
+  // 10b.6 · Atlas Code Forge Operator Fast Path v1
+  // Orquestra Obra → WorkItem → Spec/Plan/Tasks → Forge Live Execution (async/sync) → Checkpoint.
+  // Schema canonico: atlas.code.forge_fast_path.v1
+  async runForgeFastPath(
+    obraId: string,
+    options: {
+      mode?: 'prepare_only' | 'execute_async' | 'execute_sync'
+      intent?: string
+      autoCreateWorkItem?: boolean
+      autoCompileSpecPlan?: boolean
+      startExecution?: boolean
+      createCheckpoint?: boolean
+    } = {}
+  ): Promise<AtlasCodeForgeFastPathSnapshot> {
+    const body: Record<string, unknown> = {
+      mode: options.mode ?? 'execute_async',
+    }
+    if (options.intent) body.intent = options.intent
+    if (options.autoCreateWorkItem !== undefined) body.auto_create_work_item = options.autoCreateWorkItem
+    if (options.autoCompileSpecPlan !== undefined) body.auto_compile_spec_plan = options.autoCompileSpecPlan
+    if (options.startExecution !== undefined) body.start_execution = options.startExecution
+    if (options.createCheckpoint !== undefined) body.create_checkpoint = options.createCheckpoint
+
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_run_forge_fast_path', { workId: obraId, options: body })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/fast-path`,
+        { method: 'POST', body },
+      )
+    } else {
+      offline('runForgeFastPath')
+    }
+
+    return adaptForgeFastPath(raw)
+  },
+
+  // 10b.7 · Atlas Code Forge Fast Path v2 · run status read-model
+  async getForgeFastPathStatus(
+    obraId: string,
+    runId: string,
+  ): Promise<AtlasCodeForgeFastPathRunStatus> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_forge_fast_path_status', { workId: obraId, runId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/fast-path/${encodeURIComponent(runId)}/status`,
+      )
+    } else {
+      offline('getForgeFastPathStatus')
+    }
+    return adaptForgeFastPathStatus(raw)
+  },
+
+  // 10b.8 · Atlas Code Forge Fast Path v2 · run resume (idempotente, sem novo runtime)
+  async resumeForgeFastPath(
+    obraId: string,
+    runId: string,
+  ): Promise<AtlasCodeForgeFastPathRunStatus> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_resume_forge_fast_path', { workId: obraId, runId })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/fast-path/${encodeURIComponent(runId)}/resume`,
+        { method: 'POST', body: {} },
+      )
+    } else {
+      offline('resumeForgeFastPath')
+    }
+    return adaptForgeFastPathStatus(raw)
+  },
+
+  // 10c · create Atlas Code checkpoint for selected Obra
+  async createCheckpoint(obraId: string, reason = 'manual'): Promise<WorkStateSnapshot['checkpoint']> {
+    if (MODE === 'tauri') {
+      const raw = await invokeTauri<unknown>('bridge_create_checkpoint', {
+        workId: obraId,
+        reason,
+      })
+      return adaptCheckpointEnvelope(raw)
+    }
+    if (MODE === 'http') {
+      const raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/checkpoints`, {
+        method: 'POST',
+        body: { reason },
+      })
+      return adaptCheckpointEnvelope(raw)
+    }
+    offline('createCheckpoint')
+  },
+
+  // 10d · human-review latest Forge run for selected Obra
+  async reviewForgeRun(obraId: string, decision: 'approved' | 'rejected' = 'approved', comment = 'local operator review'): Promise<WorkStateSnapshot['forgeReview']> {
+    if (MODE === 'tauri') {
+      const raw = await invokeTauri<unknown>('bridge_review_forge_run', {
+        workId: obraId,
+        decision,
+        comment,
+      })
+      return adaptForgeReviewEnvelope(raw)
+    }
+    if (MODE === 'http') {
+      const raw = await fetchHttp<unknown>(`/atlas-code/works/${encodeURIComponent(obraId)}/forge/reviews`, {
+        method: 'POST',
+        body: { decision, comment },
+      })
+      return adaptForgeReviewEnvelope(raw)
+    }
+    offline('reviewForgeRun')
+  },
+
+  async rollbackForgePromotion(obraId: string, promotionId: string, comment = 'operator rollback'): Promise<WorkStateSnapshot['forgeReview']> {
+    if (MODE === 'tauri') {
+      const raw = await invokeTauri<unknown>('bridge_rollback_forge_promotion', {
+        workId: obraId,
+        promotionId,
+        comment,
+      })
+      return adaptForgeReviewEnvelope((raw as Record<string, unknown>)?.review ?? raw)
+    }
+    if (MODE === 'http') {
+      const raw = await fetchHttp<unknown>(
+        `/atlas-code/works/${encodeURIComponent(obraId)}/forge/promotions/${encodeURIComponent(promotionId)}/rollback`,
+        {
+          method: 'POST',
+          body: { comment },
+        },
+      )
+      return adaptForgeReviewEnvelope((raw as Record<string, unknown>)?.review ?? raw)
+    }
+    offline('rollbackForgePromotion')
   },
 
   // 11a · list quality gates · atlas-server returns `{ runs: [...] }` with
@@ -970,11 +1277,963 @@ function adaptWorkState(raw: unknown): WorkStateSnapshot | null {
         createdAt: (ee.createdAt ?? ee.created_at ?? null) as string | null,
       }
     }),
+    forgeLiveExecution: adaptForgeLiveExecution(
+      r.forge_live_execution ?? r.forgeLiveExecution,
+    ),
+    forgeLiveExecutionAsync: adaptForgeLiveExecutionAsync(
+      r.forge_live_execution_async ?? r.forgeLiveExecutionAsync,
+    ),
+    forgeLiveExecutionHistory: adaptForgeLiveExecutionHistory(
+      r.forge_live_execution_history ?? r.forgeLiveExecutionHistory,
+    ),
+    forgeTaskQueue: adaptForgeTaskQueue(
+      r.forge_task_queue ?? r.forgeTaskQueue,
+    ),
+    forgeFastPath: adaptNullableForgeFastPath(r.forge_fast_path ?? r.forgeFastPath),
+    forgeRunHistoryReplay: null,
+    forgeReview: adaptForgeReview(r.forge_review ?? r.forgeReview),
+    forgeReviewHistory: adaptForgeReviewHistory(r.forge_review_history ?? r.forgeReviewHistory),
+    checkpoint: adaptCheckpoint(r.checkpoint),
+    atlasCodeEnterpriseCertification: adaptNullableAtlasCodeEnterpriseCertification(
+      r.atlas_code_enterprise_certification ?? r.atlasCodeEnterpriseCertification,
+    ),
     programmingGovernance: adaptProgrammingGovernance(
       r.programming_governance ?? r.programmingGovernance,
     ),
     generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
   }
+}
+
+function adaptForgeFastPath(raw: unknown): AtlasCodeForgeFastPathSnapshot {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const commands = (r.commands && typeof r.commands === 'object' ? r.commands : {}) as Record<string, unknown>
+  const commandMap: Record<string, string> = {}
+  for (const [key, value] of Object.entries(commands)) {
+    if (typeof value === 'string') commandMap[key] = value
+  }
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.code.forge_fast_path.v1'),
+    fastPathRunId: nullableString(r.fast_path_run_id ?? r.fastPathRunId),
+    generatedAt: nullableString(r.generated_at ?? r.generatedAt),
+    startedAt: nullableString(r.started_at ?? r.startedAt),
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+    status: String(r.status ?? 'unknown'),
+    mode: String(r.mode ?? 'execute_async'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    operatorId: nullableString(r.operator_id ?? r.operatorId),
+    workItemId: nullableString(r.work_item_id ?? r.workItemId),
+    workItemCode: nullableString(r.work_item_code ?? r.workItemCode),
+    specHash: nullableString(r.spec_hash ?? r.specHash),
+    planHash: nullableString(r.plan_hash ?? r.planHash),
+    taskCount: numberOrUndefined(r.task_count ?? r.taskCount) ?? 0,
+    executionId: nullableString(r.execution_id ?? r.executionId),
+    historyId: nullableString(r.history_id ?? r.historyId),
+    checkpointId: nullableString(r.checkpoint_id ?? r.checkpointId),
+    currentStage: nullableString(r.current_stage ?? r.currentStage),
+    progressPercent: numberOrUndefined(r.progress_percent ?? r.progressPercent) ?? null,
+    stages: Array.isArray(r.stages)
+      ? r.stages.map((stage) => {
+          const s = (stage ?? {}) as Record<string, unknown>
+          return {
+            ...s,
+            name: String(s.name ?? 'stage'),
+            status: String(s.status ?? 'unknown'),
+            blocker: nullableString(s.blocker),
+          }
+        })
+      : [],
+    blockers: normList(r.blockers),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    commands: commandMap,
+    nextAction: String(r.next_action ?? r.nextAction ?? 'unknown'),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    note: nullableString(r.note),
+  }
+}
+
+function adaptNullableForgeFastPath(raw: unknown): AtlasCodeForgeFastPathSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const schema = (raw as Record<string, unknown>).schema_version ?? (raw as Record<string, unknown>).schemaVersion
+  if (schema !== 'atlas.code.forge_fast_path.v1') return null
+  return adaptForgeFastPath(raw)
+}
+
+function adaptForgeFastPathStatus(raw: unknown): AtlasCodeForgeFastPathRunStatus {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const review = (r.review_gate ?? r.reviewGate ?? {}) as Record<string, unknown>
+  const repair = (r.repair ?? {}) as Record<string, unknown>
+  const commands = (r.commands && typeof r.commands === 'object' ? r.commands : {}) as Record<string, unknown>
+  const commandMap: Record<string, string> = {}
+  for (const [key, value] of Object.entries(commands)) {
+    if (typeof value === 'string') commandMap[key] = value
+  }
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.code.forge_fast_path_run_status.v1'),
+    fastPathRunId: nullableString(r.fast_path_run_id ?? r.fastPathRunId),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    workItemId: nullableString(r.work_item_id ?? r.workItemId),
+    workItemCode: nullableString(r.work_item_code ?? r.workItemCode),
+    executionId: nullableString(r.execution_id ?? r.executionId),
+    historyId: nullableString(r.history_id ?? r.historyId),
+    checkpointId: nullableString(r.checkpoint_id ?? r.checkpointId),
+    status: String(r.status ?? 'unknown'),
+    mode: String(r.mode ?? 'execute_async'),
+    currentStage: String(r.current_stage ?? r.currentStage ?? 'unknown'),
+    progressPercent: numberOrUndefined(r.progress_percent ?? r.progressPercent) ?? 0,
+    specHash: nullableString(r.spec_hash ?? r.specHash),
+    planHash: nullableString(r.plan_hash ?? r.planHash),
+    taskCount: numberOrUndefined(r.task_count ?? r.taskCount) ?? 0,
+    startedAt: nullableString(r.started_at ?? r.startedAt),
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+    completedAt: nullableString(r.completed_at ?? r.completedAt),
+    blockers: normList(r.blockers),
+    evidenceRefs: normList(r.evidence_refs ?? r.evidenceRefs),
+    evidenceRefCount: numberOrUndefined(r.evidence_ref_count ?? r.evidenceRefCount) ?? 0,
+    ledgerEventCount: numberOrUndefined(r.ledger_event_count ?? r.ledgerEventCount) ?? 0,
+    asyncExecution: r.async_execution && typeof r.async_execution === 'object'
+      ? (r.async_execution as Record<string, unknown>)
+      : null,
+    forgeLiveExecution: r.forge_live_execution && typeof r.forge_live_execution === 'object'
+      ? (r.forge_live_execution as Record<string, unknown>)
+      : null,
+    reviewGate: {
+      schemaVersion: String(review.schema_version ?? review.schemaVersion ?? 'atlas.code.forge_fast_path_run_status.review_gate.v1'),
+      reviewRequired: Boolean(review.review_required ?? review.reviewRequired ?? false),
+      reviewStatus: String(review.review_status ?? review.reviewStatus ?? 'not_required'),
+      completionClaimAllowed: Boolean(review.completion_claim_allowed ?? review.completionClaimAllowed ?? false),
+      reviewRecordPresent: Boolean(review.review_record_present ?? review.reviewRecordPresent ?? false),
+      reviewId: nullableString(review.review_id ?? review.reviewId),
+      approvalApi: String(review.approval_api ?? review.approvalApi ?? ''),
+      noAutoCompletionWithoutReview: Boolean(review.no_auto_completion_without_review ?? true),
+    },
+    repair: {
+      schemaVersion: String(repair.schema_version ?? repair.schemaVersion ?? 'atlas.code.forge_fast_path_run_status.repair.v1'),
+      repairAvailable: Boolean(repair.repair_available ?? repair.repairAvailable ?? false),
+      repairLoopStatus: String(repair.repair_loop_status ?? repair.repairLoopStatus ?? 'skipped_not_needed'),
+      repairLoopTriggered: Boolean(repair.repair_loop_triggered ?? repair.repairLoopTriggered ?? false),
+      failurePacket: repair.failure_packet && typeof repair.failure_packet === 'object'
+        ? (repair.failure_packet as Record<string, unknown>)
+        : null,
+      suggestedRepairCommand: nullableString(repair.suggested_repair_command ?? repair.suggestedRepairCommand),
+      blockers: normList(repair.blockers),
+      failClosedWithoutEvidence: Boolean(repair.fail_closed_without_evidence ?? false),
+    },
+    commands: commandMap,
+    nextAction: String(r.next_action ?? r.nextAction ?? 'unknown'),
+    runFound: Boolean(r.run_found ?? r.runFound ?? true),
+    blocker: nullableString(r.blocker),
+    reason: nullableString(r.reason),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+  }
+}
+
+function adaptForgeLiveExecutionEnvelope(raw: unknown): WorkStateSnapshot['forgeLiveExecution'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return adaptForgeLiveExecution(r.snapshot ?? r.forge_live_execution ?? r.forgeLiveExecution ?? raw)
+}
+
+function adaptAtlasCodeEnterpriseCertification(raw: unknown): AtlasCodeEnterpriseCertificationReport {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const inputs = (r.inputs ?? {}) as Record<string, unknown>
+  const summary = (r.stage_summary ?? r.stageSummary ?? {}) as Record<string, unknown>
+  const commands = (r.commands ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    generatedAt: nullableString(r.generated_at ?? r.generatedAt),
+    certificationId: nullableString(r.certification_id ?? r.certificationId),
+    status: String(r.atlas_code_enterprise_status ?? r.status ?? 'blocked'),
+    objective: nullableString(r.objective),
+    inputs: {
+      obraId: nullableString(inputs.obra_id ?? inputs.obraId),
+      requiresObra: Boolean(inputs.requires_obra ?? inputs.requiresObra ?? true),
+      workspacePathHash: nullableString(inputs.workspace_path_hash ?? inputs.workspacePathHash),
+      targetFile: nullableString(inputs.target_file ?? inputs.targetFile),
+      externalProviderCall: Boolean(inputs.external_provider_call ?? inputs.externalProviderCall ?? false),
+    },
+    stageSummary: {
+      total: numberOrUndefined(summary.total) ?? 0,
+      passed: numberOrUndefined(summary.passed) ?? 0,
+      blocked: numberOrUndefined(summary.blocked) ?? 0,
+      skipped: numberOrUndefined(summary.skipped) ?? 0,
+    },
+    stages: Array.isArray(r.stages)
+      ? r.stages.map((stage) => {
+          const s = (stage ?? {}) as Record<string, unknown>
+          return {
+            ...s,
+            name: String(s.name ?? 'stage'),
+            status: String(s.status ?? 'unknown'),
+            blocker: nullableString(s.blocker),
+          }
+        })
+      : [],
+    promptToArtifactChecklist: Array.isArray(r.prompt_to_artifact_checklist ?? r.promptToArtifactChecklist)
+      ? ((r.prompt_to_artifact_checklist ?? r.promptToArtifactChecklist) as unknown[]).map((item) => {
+          const i = (item ?? {}) as Record<string, unknown>
+          return {
+            requirement: String(i.requirement ?? ''),
+            evidence: normList(i.evidence),
+          }
+        }).filter((item) => item.requirement !== '')
+      : [],
+    evidence: (r.evidence && typeof r.evidence === 'object' ? r.evidence : {}) as Record<string, unknown>,
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    commands: {
+      self: nullableString(commands.self),
+      forgeLive: nullableString(commands.forge_live ?? commands.forgeLive),
+      forgeRuntime: nullableString(commands.forge_runtime ?? commands.forgeRuntime),
+    },
+    note: nullableString(r.note),
+  }
+}
+
+function adaptNullableAtlasCodeEnterpriseCertification(raw: unknown): AtlasCodeEnterpriseCertificationReport | null {
+  if (!raw || typeof raw !== 'object') return null
+  const schema = (raw as Record<string, unknown>).schema_version ?? (raw as Record<string, unknown>).schemaVersion
+  if (schema !== 'atlas.code.enterprise_certification.v1') return null
+  return adaptAtlasCodeEnterpriseCertification(raw)
+}
+
+function adaptForgeLiveExecutionAsyncEnvelope(raw: unknown): WorkStateSnapshot['forgeLiveExecutionAsync'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return adaptForgeLiveExecutionAsync(r.execution ?? r.forge_live_execution_async ?? r.forgeLiveExecutionAsync ?? raw)
+}
+
+function adaptCheckpointEnvelope(raw: unknown): WorkStateSnapshot['checkpoint'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return adaptCheckpoint(r.checkpoint ?? r.latest_checkpoint ?? raw)
+}
+
+function adaptForgeReviewEnvelope(raw: unknown): WorkStateSnapshot['forgeReview'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return adaptForgeReview(r.review ?? r.forge_review ?? r.forgeReview ?? raw)
+}
+
+function adaptForgeReview(raw: unknown): WorkStateSnapshot['forgeReview'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const reviewId = String(r.review_id ?? r.reviewId ?? '')
+  if (!reviewId) return null
+  const gate = (r.review_gate ?? r.reviewGate ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    reviewId,
+    obraId: String(r.obra_id ?? r.obraId ?? ''),
+    historyId: nullableString(r.history_id ?? r.historyId),
+    runId: nullableString(r.run_id ?? r.runId),
+    evidenceId: nullableString(r.evidence_id ?? r.evidenceId),
+    decision: String(r.decision ?? 'approved'),
+    status: String(r.status ?? 'blocked'),
+    reviewerId: nullableString(r.reviewer_id ?? r.reviewerId),
+    reviewedAt: nullableString(r.reviewed_at ?? r.reviewedAt),
+    comment: nullableString(r.comment),
+    approvalEffective: Boolean(r.approval_effective ?? r.approvalEffective ?? false),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    promotion: adaptForgePromotion(r.promotion),
+    rollback: adaptForgeRollback(r.rollback),
+    reviewGate: {
+      completionClaimAllowed: Boolean(gate.completion_claim_allowed ?? gate.completionClaimAllowed ?? false),
+      humanApproved: Boolean(gate.human_approved ?? gate.humanApproved ?? false),
+      finalCompletionAllowed: Boolean(gate.final_completion_allowed ?? gate.finalCompletionAllowed ?? false),
+      blockers: normList(gate.blockers),
+    },
+    summary: nullableString(r.summary),
+  }
+}
+
+function adaptForgeReviewHistory(raw: unknown): WorkStateSnapshot['forgeReviewHistory'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const entriesRaw = (r.entries ?? []) as unknown[]
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    obraId: String(r.obra_id ?? r.obraId ?? ''),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    total: numberOrUndefined(r.total) ?? entriesRaw.length,
+    latestReviewId: nullableString(r.latest_review_id ?? r.latestReviewId),
+    entries: entriesRaw
+      .map((entry) => {
+        const e = (entry ?? {}) as Record<string, unknown>
+        const reviewId = String(e.review_id ?? e.reviewId ?? '')
+        if (!reviewId) return null
+
+        return {
+          schemaVersion: (e.schema_version ?? e.schemaVersion) as string | undefined,
+          reviewId,
+          historyId: nullableString(e.history_id ?? e.historyId),
+          executionId: nullableString(e.execution_id ?? e.executionId),
+          obraId: String(e.obra_id ?? e.obraId ?? ''),
+          decision: String(e.decision ?? 'unknown'),
+          status: String(e.status ?? 'unknown'),
+          comment: nullableString(e.comment),
+          reviewedAt: nullableString(e.reviewed_at ?? e.reviewedAt),
+          reviewerId: nullableString(e.reviewer_id ?? e.reviewerId),
+          approvalEffective: Boolean(e.approval_effective ?? e.approvalEffective ?? false),
+          finalCompletionAllowed: Boolean(e.final_completion_allowed ?? e.finalCompletionAllowed ?? false),
+          completionClaimAllowed: Boolean(e.completion_claim_allowed ?? e.completionClaimAllowed ?? false),
+          humanApproved: Boolean(e.human_approved ?? e.humanApproved ?? false),
+          liveExecutionStatus: nullableString(e.live_execution_status ?? e.liveExecutionStatus),
+          runId: nullableString(e.run_id ?? e.runId),
+          runEvidenceId: nullableString(e.run_evidence_id ?? e.runEvidenceId),
+          reviewEvidenceId: nullableString(e.review_evidence_id ?? e.reviewEvidenceId),
+          promotion: adaptForgePromotion(e.promotion),
+          rollback: adaptForgeRollback(e.rollback),
+          promotionStatus: nullableString(e.promotion_status ?? e.promotionStatus),
+          rollbackId: nullableString(e.rollback_id ?? e.rollbackId),
+          rollbackEvidenceId: nullableString(e.rollback_evidence_id ?? e.rollbackEvidenceId),
+          liveWorkspaceMutated: Boolean(e.live_workspace_mutated ?? e.liveWorkspaceMutated ?? false),
+          stageReceiptCount: numberOrUndefined(e.stage_receipt_count ?? e.stageReceiptCount) ?? 0,
+          ledgerEventCount: numberOrUndefined(e.ledger_event_count ?? e.ledgerEventCount) ?? 0,
+          reportHash: nullableString(e.report_hash ?? e.reportHash),
+          stageTimelineHash: nullableString(e.stage_timeline_hash ?? e.stageTimelineHash),
+          evidencePackHash: nullableString(e.evidence_pack_hash ?? e.evidencePackHash),
+          blockers: normList(e.blockers),
+          sourceAuthority: nullableString(e.source_authority ?? e.sourceAuthority),
+          summary: nullableString(e.summary),
+        }
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  }
+}
+
+function adaptCheckpoint(raw: unknown): WorkStateSnapshot['checkpoint'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const checkpointId = String(r.checkpoint_id ?? r.checkpointId ?? '')
+  if (!checkpointId) return null
+  const resume = (r.resume ?? {}) as Record<string, unknown>
+  const stateRefs = (r.state_refs ?? r.stateRefs ?? {}) as Record<string, unknown>
+  const forge = (r.forge_live_execution ?? r.forgeLiveExecution ?? {}) as Record<string, unknown>
+  const risk = (r.risk ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    checkpointId,
+    obraId: String(r.obra_id ?? r.obraId ?? ''),
+    reason: (r.reason ?? null) as string | null,
+    status: String(r.status ?? 'ready'),
+    createdAt: (r.created_at ?? r.createdAt ?? null) as string | null,
+    evidenceId: (r.evidence_id ?? r.evidenceId ?? null) as string | null,
+    resume: {
+      resumeReady: Boolean(resume.resume_ready ?? resume.resumeReady ?? false),
+      nextSafeAction: String(resume.next_safe_action ?? resume.nextSafeAction ?? ''),
+      summary: String(resume.summary ?? ''),
+      sourceAuthority: (resume.source_authority ?? resume.sourceAuthority ?? null) as string | null,
+    },
+    stateRefs: {
+      activeThreadId: (stateRefs.active_thread_id ?? stateRefs.activeThreadId ?? null) as string | null,
+      sessionCount: numberOrUndefined(stateRefs.session_count ?? stateRefs.sessionCount),
+      messageCount: numberOrUndefined(stateRefs.message_count ?? stateRefs.messageCount),
+      decisionReceiptId: (stateRefs.decision_receipt_id ?? stateRefs.decisionReceiptId ?? null) as string | null,
+      projectStatus: (stateRefs.project_status ?? stateRefs.projectStatus ?? null) as string | null,
+      projectUpdatedAt: (stateRefs.project_updated_at ?? stateRefs.projectUpdatedAt ?? null) as string | null,
+    },
+    forgeLiveExecution: {
+      status: (forge.status ?? null) as string | null,
+      lastRunAt: (forge.last_run_at ?? forge.lastRunAt ?? null) as string | null,
+      contextPackHash: (forge.context_pack_hash ?? forge.contextPackHash ?? null) as string | null,
+      contextCompleteness: (forge.context_completeness ?? forge.contextCompleteness ?? null) as string | null,
+      diffScopeStatus: (forge.diff_scope_status ?? forge.diffScopeStatus ?? null) as string | null,
+      scopeStatus: (forge.scope_status ?? forge.scopeStatus ?? null) as string | null,
+      completionClaimAllowed: Boolean(forge.completion_claim_allowed ?? forge.completionClaimAllowed ?? false),
+      evidenceRefCount: numberOrUndefined(forge.evidence_ref_count ?? forge.evidenceRefCount),
+      ledgerEventCount: numberOrUndefined(forge.ledger_event_count ?? forge.ledgerEventCount),
+    },
+    risk: {
+      remainingBlockers: normList(risk.remaining_blockers ?? risk.remainingBlockers),
+      pendingApprovals: normList(risk.pending_approvals ?? risk.pendingApprovals),
+      residualRisk: String(risk.residual_risk ?? risk.residualRisk ?? 'unknown'),
+    },
+  }
+}
+
+function adaptForgeLiveExecution(raw: unknown): WorkStateSnapshot['forgeLiveExecution'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const status = String(r.status ?? r.forge_live_execution_status ?? '')
+  if (!status) return null
+
+  const contextRaw = (r.context_pack ?? r.contextPack) as Record<string, unknown> | undefined
+  const repairRaw = (r.repair_loop ?? r.repairLoop) as Record<string, unknown> | undefined
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    status,
+    obraId: (r.obra_id ?? r.obraId ?? null) as string | null,
+    executionSource: nullableString(r.execution_source ?? r.executionSource),
+    command: (r.command ?? null) as string | null,
+    strictCommand: (r.strict_command ?? r.strictCommand ?? null) as string | null,
+    simulateFailure: Boolean(r.simulate_failure ?? r.simulateFailure ?? false),
+    lastRunAt: (r.last_run_at ?? r.lastRunAt ?? null) as string | null,
+    stageCount: numberOrUndefined(r.stage_count ?? r.stageCount),
+    evidenceRefCount: numberOrUndefined(r.evidence_ref_count ?? r.evidenceRefCount),
+    ledgerEventCount: numberOrUndefined(r.ledger_event_count ?? r.ledgerEventCount),
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    runId: (r.run_id ?? r.runId ?? null) as string | null,
+    evidenceId: (r.evidence_id ?? r.evidenceId ?? null) as string | null,
+    contextPack: contextRaw && typeof contextRaw === 'object'
+      ? {
+          schemaVersion: (contextRaw.schema_version ?? contextRaw.schemaVersion) as string | undefined,
+          contextCompleteness: (contextRaw.context_completeness ?? contextRaw.contextCompleteness ?? null) as string | null,
+          rankedRefCount: numberOrNull(contextRaw.ranked_ref_count ?? contextRaw.rankedRefCount),
+          presentRefCount: numberOrNull(contextRaw.present_ref_count ?? contextRaw.presentRefCount),
+          contextPackHash: (contextRaw.context_pack_hash ?? contextRaw.contextPackHash ?? null) as string | null,
+          rankedRefs: ((contextRaw.ranked_refs ?? contextRaw.rankedRefs ?? []) as unknown[]).map((ref) => {
+            const rr = (ref ?? {}) as Record<string, unknown>
+            return {
+              rank: Number(rr.rank ?? 0),
+              path: String(rr.path ?? ''),
+              kind: String(rr.kind ?? 'unknown'),
+              reason: String(rr.reason ?? ''),
+              evidenceMarker: String(rr.evidence_marker ?? rr.evidenceMarker ?? 'unknown'),
+              contentHash: (rr.content_hash ?? rr.contentHash ?? null) as string | null,
+              sizeBytes: numberOrNull(rr.size_bytes ?? rr.sizeBytes),
+            }
+          }).filter((ref) => ref.path.length > 0),
+        }
+      : undefined,
+    stageTimeline: adaptForgeStageTimeline(r.stage_timeline ?? r.stageTimeline),
+    evidencePack: adaptForgeEvidencePack(r.evidence_pack ?? r.evidencePack),
+    repairLoop: repairRaw && typeof repairRaw === 'object'
+      ? {
+          status: (repairRaw.status ?? null) as string | null,
+          triggered: Boolean(repairRaw.triggered ?? false),
+          planStatus: (repairRaw.plan_status ?? repairRaw.planStatus ?? null) as string | null,
+          nextAction: (repairRaw.next_action ?? repairRaw.nextAction ?? null) as string | null,
+        }
+      : undefined,
+    taskContract: adaptForgeTaskContract(r.task_contract ?? r.taskContract),
+    diffScope: adaptDiffScope(r.diff_scope ?? r.diffScope),
+    governedExecution: adaptForgeGovernedExecution(r.governed_execution ?? r.governedExecution),
+  }
+}
+
+function adaptForgeGovernedExecution(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecution']>['governedExecution'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const status = String(r.status ?? '')
+  if (!status) return null
+  const validation = (r.validation_result ?? r.validationResult) as Record<string, unknown> | undefined
+  const feedback = (r.governance_feedback ?? r.governanceFeedback) as Record<string, unknown> | undefined
+  const gateSummary = (feedback?.gate_summary ?? feedback?.gateSummary) as Record<string, unknown> | undefined
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    executionId: nullableString(r.execution_id ?? r.executionId),
+    status,
+    executionMode: nullableString(r.execution_mode ?? r.executionMode),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    workItemId: nullableString(r.work_item_id ?? r.workItemId),
+    workItemCode: nullableString(r.work_item_code ?? r.workItemCode),
+    taskId: nullableString(r.task_id ?? r.taskId),
+    changedFiles: normList(r.changed_files ?? r.changedFiles),
+    stageReceiptIds: normList(r.stage_receipt_ids ?? r.stageReceiptIds),
+    receiptId: nullableString(r.receipt_id ?? r.receiptId),
+    validationResult: validation && typeof validation === 'object'
+      ? {
+          command: nullableString(validation.command),
+          exitCode: numberOrNull(validation.exit_code ?? validation.exitCode),
+          passed: Boolean(validation.passed ?? false),
+          stdoutHash: nullableString(validation.stdout_hash ?? validation.stdoutHash),
+          stderrHash: nullableString(validation.stderr_hash ?? validation.stderrHash),
+          stdoutExcerpt: nullableString(validation.stdout_excerpt ?? validation.stdoutExcerpt),
+          stderrExcerpt: nullableString(validation.stderr_excerpt ?? validation.stderrExcerpt),
+        }
+      : null,
+    governanceFeedback: feedback && typeof feedback === 'object'
+      ? {
+          status: nullableString(feedback.status),
+          evidenceAppended: Boolean(feedback.evidence_appended ?? feedback.evidenceAppended ?? false),
+          receiptId: nullableString(feedback.receipt_id ?? feedback.receiptId),
+          allGreen: Boolean(gateSummary?.all_green ?? gateSummary?.allGreen ?? false),
+        }
+      : null,
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    liveWorkspaceMutated: Boolean(r.live_workspace_mutated ?? r.liveWorkspaceMutated ?? false),
+    promotionStatus: nullableString(r.promotion_status ?? r.promotionStatus),
+    promotionArtifact: adaptForgePromotionPatchArtifact(r.promotion_artifact ?? r.promotionArtifact),
+    promotion: adaptForgePromotion(r.promotion),
+    stageCount: numberOrUndefined(r.stage_count ?? r.stageCount),
+  }
+}
+
+function adaptForgePromotionPatchArtifact(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    path: nullableString(r.path),
+    sha256: nullableString(r.sha256),
+    operation: nullableString(r.operation),
+    targetFile: nullableString(r.target_file ?? r.targetFile),
+    expectedBeforeHash: nullableString(r.expected_before_hash ?? r.expectedBeforeHash),
+    expectedAfterHash: nullableString(r.expected_after_hash ?? r.expectedAfterHash),
+    diffPath: nullableString(r.diff_path ?? r.diffPath),
+    diffHash: nullableString(r.diff_hash ?? r.diffHash),
+  }
+}
+
+function adaptForgePromotion(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const rollback = (r.rollback ?? {}) as Record<string, unknown>
+  const evidence = (r.evidence ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    promotionId: nullableString(r.promotion_id ?? r.promotionId),
+    status: nullableString(r.status),
+    promotionStatus: nullableString(r.promotion_status ?? r.promotionStatus),
+    changedFiles: normList(r.changed_files ?? r.changedFiles),
+    liveWorkspaceMutated: Boolean(r.live_workspace_mutated ?? r.liveWorkspaceMutated ?? false),
+    idempotent: Boolean(r.idempotent ?? false),
+    rollback: {
+      available: Boolean(rollback.available ?? false),
+      backupPath: nullableString(rollback.backup_path ?? rollback.backupPath),
+      backupHash: nullableString(rollback.backup_hash ?? rollback.backupHash),
+      command: nullableString(rollback.command),
+    },
+    evidence: {
+      receiptId: nullableString(evidence.receipt_id ?? evidence.receiptId),
+      engineeringEvidenceId: nullableString(evidence.engineering_evidence_id ?? evidence.engineeringEvidenceId),
+      persisted: Boolean(evidence.persisted ?? false),
+    },
+    rollbackExecution: adaptForgeRollback(r.rollback_execution ?? r.rollbackExecution),
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+  }
+}
+
+function adaptForgeRollback(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const evidence = (r.evidence ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    rollbackId: nullableString(r.rollback_id ?? r.rollbackId),
+    promotionId: nullableString(r.promotion_id ?? r.promotionId),
+    status: nullableString(r.status),
+    promotionStatus: nullableString(r.promotion_status ?? r.promotionStatus),
+    changedFiles: normList(r.changed_files ?? r.changedFiles),
+    liveWorkspaceMutated: Boolean(r.live_workspace_mutated ?? r.liveWorkspaceMutated ?? false),
+    idempotent: Boolean(r.idempotent ?? false),
+    targetHashAfterRollback: nullableString(r.target_hash_after_rollback ?? r.targetHashAfterRollback),
+    evidence: {
+      receiptId: nullableString(evidence.receipt_id ?? evidence.receiptId),
+      engineeringEvidenceId: nullableString(evidence.engineering_evidence_id ?? evidence.engineeringEvidenceId),
+      persisted: Boolean(evidence.persisted ?? false),
+    },
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+  }
+}
+
+function adaptForgeEvidencePack(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecution']>['evidencePack'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>
+  const status = String(r.status ?? '')
+  if (!status) return undefined
+  const replayRaw = (r.replay ?? {}) as Record<string, unknown>
+  const persistenceRaw = (r.persistence ?? {}) as Record<string, unknown>
+  const integrityRaw = (r.integrity ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    status,
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    generatedAt: nullableString(r.generated_at ?? r.generatedAt),
+    replay: {
+      command: nullableString(replayRaw.command),
+      strictCommand: nullableString(replayRaw.strict_command ?? replayRaw.strictCommand),
+      failureProbeCommand: nullableString(replayRaw.failure_probe_command ?? replayRaw.failureProbeCommand),
+      externalProviderCall: Boolean(replayRaw.external_provider_call ?? replayRaw.externalProviderCall ?? false),
+    },
+    persistence: {
+      engineeringRunId: nullableString(persistenceRaw.engineering_run_id ?? persistenceRaw.engineeringRunId),
+      engineeringEvidenceId: nullableString(persistenceRaw.engineering_evidence_id ?? persistenceRaw.engineeringEvidenceId),
+      engineeringRunPersisted: Boolean(persistenceRaw.engineering_run_persisted ?? persistenceRaw.engineeringRunPersisted ?? false),
+      engineeringEvidencePersisted: Boolean(persistenceRaw.engineering_evidence_persisted ?? persistenceRaw.engineeringEvidencePersisted ?? false),
+    },
+    stageReceiptCount: numberOrUndefined(r.stage_receipt_count ?? r.stageReceiptCount) ?? 0,
+    stageReceipts: ((r.stage_receipts ?? r.stageReceipts ?? []) as unknown[]).map((receipt) => {
+      const rr = (receipt ?? {}) as Record<string, unknown>
+      return {
+        index: Number(rr.index ?? 0),
+        schemaVersion: nullableString(rr.schema_version ?? rr.schemaVersion),
+        receiptId: String(rr.receipt_id ?? rr.receiptId ?? ''),
+        stage: String(rr.stage ?? 'unknown'),
+        status: String(rr.status ?? 'unknown'),
+        attempt: Number(rr.attempt ?? 0),
+        inputHash: nullableString(rr.input_hash ?? rr.inputHash),
+        outputHash: nullableString(rr.output_hash ?? rr.outputHash),
+        validationStatus: nullableString(rr.validation_status ?? rr.validationStatus),
+        evidenceRefs: normList(rr.evidence_refs ?? rr.evidenceRefs),
+        createdAt: nullableString(rr.created_at ?? rr.createdAt),
+      }
+    }).filter((receipt) => receipt.receiptId.length > 0),
+    ledgerEventCount: numberOrUndefined(r.ledger_event_count ?? r.ledgerEventCount) ?? 0,
+    ledgerEvents: ((r.ledger_events ?? r.ledgerEvents ?? []) as unknown[]).map((event) => {
+      const ee = (event ?? {}) as Record<string, unknown>
+      return {
+        index: Number(ee.index ?? 0),
+        eventId: String(ee.event_id ?? ee.eventId ?? ''),
+        source: String(ee.source ?? 'atlas_ledger_events'),
+      }
+    }).filter((event) => event.eventId.length > 0),
+    changedFiles: normList(r.changed_files ?? r.changedFiles),
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+    integrity: {
+      reportHash: nullableString(integrityRaw.report_hash ?? integrityRaw.reportHash),
+      stageTimelineHash: nullableString(integrityRaw.stage_timeline_hash ?? integrityRaw.stageTimelineHash),
+      evidencePackHash: nullableString(integrityRaw.evidence_pack_hash ?? integrityRaw.evidencePackHash),
+    },
+  }
+}
+
+function adaptForgeStageTimeline(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecution']>['stageTimeline'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>
+  const entriesRaw = (r.entries ?? []) as unknown[]
+  const entries = entriesRaw
+    .map((entry) => {
+      const e = (entry ?? {}) as Record<string, unknown>
+      const name = String(e.name ?? '')
+      if (!name) return null
+
+      return {
+        index: Number(e.index ?? 0),
+        name,
+        phase: String(e.phase ?? 'runtime'),
+        status: String(e.status ?? 'unknown'),
+        blocking: Boolean(e.blocking ?? false),
+        blocker: nullableString(e.blocker),
+        summary: String(e.summary ?? ''),
+      }
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+
+  if (entries.length === 0) return undefined
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    total: numberOrUndefined(r.total) ?? entries.length,
+    passed: numberOrUndefined(r.passed) ?? entries.filter((entry) => entry.status === 'passed').length,
+    blocked: numberOrUndefined(r.blocked) ?? entries.filter((entry) => entry.status === 'blocked').length,
+    degraded: numberOrUndefined(r.degraded) ?? entries.filter((entry) => entry.status === 'degraded').length,
+    skipped: numberOrUndefined(r.skipped) ?? entries.filter((entry) => entry.status.startsWith('skipped')).length,
+    blocking: numberOrUndefined(r.blocking) ?? entries.filter((entry) => entry.blocking).length,
+    entries,
+  }
+}
+
+function adaptForgeLiveExecutionAsync(raw: unknown): WorkStateSnapshot['forgeLiveExecutionAsync'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const executionId = String(r.execution_id ?? r.executionId ?? '')
+  if (!executionId) return null
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    executionId,
+    status: String(r.status ?? 'queued'),
+    obraId: nullableString(r.obra_id ?? r.obraId),
+    simulateFailure: Boolean(r.simulate_failure ?? r.simulateFailure ?? false),
+    queuedAt: nullableString(r.queued_at ?? r.queuedAt),
+    startedAt: nullableString(r.started_at ?? r.startedAt),
+    finishedAt: nullableString(r.finished_at ?? r.finishedAt),
+    jobDispatched: Boolean(r.job_dispatched ?? r.jobDispatched ?? false),
+    command: nullableString(r.command),
+    snapshotStatus: nullableString(r.snapshot_status ?? r.snapshotStatus),
+    runId: nullableString(r.run_id ?? r.runId),
+    evidenceId: nullableString(r.evidence_id ?? r.evidenceId),
+    remainingBlockers: normList(r.remaining_blockers ?? r.remainingBlockers),
+    completionClaimAllowed: Boolean(r.completion_claim_allowed ?? r.completionClaimAllowed ?? false),
+    error: nullableString(r.error),
+    updatedAt: nullableString(r.updated_at ?? r.updatedAt),
+  }
+}
+
+function adaptForgeLiveExecutionHistory(raw: unknown): WorkStateSnapshot['forgeLiveExecutionHistory'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const entriesRaw = (r.entries ?? []) as unknown[]
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    obraId: String(r.obra_id ?? r.obraId ?? ''),
+    sourceAuthority: (r.source_authority ?? r.sourceAuthority ?? null) as string | null,
+    total: numberOrUndefined(r.total) ?? entriesRaw.length,
+    latestEntryId: (r.latest_entry_id ?? r.latestEntryId ?? null) as string | null,
+    entries: entriesRaw
+      .map(adaptForgeLiveExecutionHistoryEntry)
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  }
+}
+
+function adaptForgeLiveExecutionHistoryEntry(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecutionHistory']>['entries'][number] | null {
+  if (!raw || typeof raw !== 'object') return null
+  const e = raw as Record<string, unknown>
+  const historyId = String(e.history_id ?? e.historyId ?? '')
+  if (!historyId) return null
+
+  return {
+    schemaVersion: (e.schema_version ?? e.schemaVersion) as string | undefined,
+    historyId,
+    runId: nullableString(e.run_id ?? e.runId),
+    evidenceId: nullableString(e.evidence_id ?? e.evidenceId),
+    status: String(e.status ?? 'unknown'),
+    obraId: nullableString(e.obra_id ?? e.obraId),
+    lastRunAt: nullableString(e.last_run_at ?? e.lastRunAt),
+    command: nullableString(e.command),
+    strictCommand: nullableString(e.strict_command ?? e.strictCommand),
+    simulateFailure: Boolean(e.simulate_failure ?? e.simulateFailure ?? false),
+    stageCount: numberOrNull(e.stage_count ?? e.stageCount),
+    contextPackHash: nullableString(e.context_pack_hash ?? e.contextPackHash),
+    contextCompleteness: nullableString(e.context_completeness ?? e.contextCompleteness),
+    taskContractStatus: nullableString(e.task_contract_status ?? e.taskContractStatus),
+    diffScopeStatus: nullableString(e.diff_scope_status ?? e.diffScopeStatus),
+    scopeStatus: nullableString(e.scope_status ?? e.scopeStatus),
+    completionClaimAllowed: Boolean(e.completion_claim_allowed ?? e.completionClaimAllowed ?? false),
+    repairStatus: nullableString(e.repair_status ?? e.repairStatus),
+    repairTriggered: Boolean(e.repair_triggered ?? e.repairTriggered ?? false),
+    evidenceRefCount: numberOrNull(e.evidence_ref_count ?? e.evidenceRefCount),
+    ledgerEventCount: numberOrNull(e.ledger_event_count ?? e.ledgerEventCount),
+    evidencePackDigest: adaptForgeEvidencePackDigest(e.evidence_pack_digest ?? e.evidencePackDigest),
+    promotionStatus: nullableString(e.promotion_status ?? e.promotionStatus),
+    promotionId: nullableString(e.promotion_id ?? e.promotionId),
+    promotionEvidenceId: nullableString(e.promotion_evidence_id ?? e.promotionEvidenceId),
+    promotionReceiptId: nullableString(e.promotion_receipt_id ?? e.promotionReceiptId),
+    rollbackId: nullableString(e.rollback_id ?? e.rollbackId),
+    rollbackEvidenceId: nullableString(e.rollback_evidence_id ?? e.rollbackEvidenceId),
+    liveWorkspaceMutated: Boolean(e.live_workspace_mutated ?? e.liveWorkspaceMutated ?? false),
+    remainingBlockers: normList(e.remaining_blockers ?? e.remainingBlockers),
+    externalProviderCall: Boolean(e.external_provider_call ?? e.externalProviderCall ?? false),
+  }
+}
+
+function adaptForgeTaskQueue(raw: unknown): WorkStateSnapshot['forgeTaskQueue'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const entriesRaw = (r.entries ?? []) as unknown[]
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    obraId: String(r.obra_id ?? r.obraId ?? ''),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    workItemId: nullableString(r.work_item_id ?? r.workItemId),
+    workItemCode: nullableString(r.work_item_code ?? r.workItemCode),
+    specHash: nullableString(r.spec_hash ?? r.specHash),
+    planHash: nullableString(r.plan_hash ?? r.planHash),
+    requiresSpec: Boolean(r.requires_spec ?? r.requiresSpec ?? false),
+    requiresPlan: Boolean(r.requires_plan ?? r.requiresPlan ?? false),
+    total: numberOrUndefined(r.total) ?? entriesRaw.length,
+    readyCount: numberOrUndefined(r.ready_count ?? r.readyCount) ?? 0,
+    blockedCount: numberOrUndefined(r.blocked_count ?? r.blockedCount) ?? 0,
+    verifiedCount: numberOrUndefined(r.verified_count ?? r.verifiedCount) ?? 0,
+    needsReviewCount: numberOrUndefined(r.needs_review_count ?? r.needsReviewCount) ?? 0,
+    pendingCount: numberOrUndefined(r.pending_count ?? r.pendingCount) ?? 0,
+    activeTaskId: nullableString(r.active_task_id ?? r.activeTaskId),
+    latestHistoryId: nullableString(r.latest_history_id ?? r.latestHistoryId),
+    entries: entriesRaw
+      .map(adaptForgeTaskQueueEntry)
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  }
+}
+
+function adaptForgeTaskQueueEntry(raw: unknown): NonNullable<WorkStateSnapshot['forgeTaskQueue']>['entries'][number] | null {
+  if (!raw || typeof raw !== 'object') return null
+  const e = raw as Record<string, unknown>
+  const taskId = String(e.task_id ?? e.taskId ?? '')
+  if (!taskId) return null
+
+  return {
+    schemaVersion: (e.schema_version ?? e.schemaVersion) as string | undefined,
+    taskId,
+    sequence: numberOrUndefined(e.sequence) ?? 0,
+    title: String(e.title ?? e.objective ?? 'Forge task'),
+    objective: String(e.objective ?? ''),
+    status: String(e.status ?? 'pending'),
+    owner: nullableString(e.owner),
+    riskLevel: nullableString(e.risk_level ?? e.riskLevel),
+    allowedFiles: normList(e.allowed_files ?? e.allowedFiles),
+    forbiddenFiles: normList(e.forbidden_files ?? e.forbiddenFiles),
+    expectedFiles: normList(e.expected_files ?? e.expectedFiles),
+    validationCommands: normList(e.validation_commands ?? e.validationCommands),
+    acceptanceCriteria: normList(e.acceptance_criteria ?? e.acceptanceCriteria),
+    evidenceRequired: normList(e.evidence_required ?? e.evidenceRequired),
+    docsRequired: normList(e.docs_required ?? e.docsRequired),
+    blockers: normList(e.blockers),
+    source: nullableString(e.source),
+    workItemId: nullableString(e.work_item_id ?? e.workItemId),
+    workItemCode: nullableString(e.work_item_code ?? e.workItemCode),
+    runHistoryId: nullableString(e.run_history_id ?? e.runHistoryId),
+    evidencePackHash: nullableString(e.evidence_pack_hash ?? e.evidencePackHash),
+    stageTimelineHash: nullableString(e.stage_timeline_hash ?? e.stageTimelineHash),
+    completionClaimAllowed: Boolean(e.completion_claim_allowed ?? e.completionClaimAllowed ?? false),
+  }
+}
+
+function adaptForgeRunHistoryReplay(raw: unknown): WorkStateSnapshot['forgeRunHistoryReplay'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const historyId = String(r.history_id ?? r.historyId ?? '')
+  if (!historyId) return null
+  const timelineRaw = (r.stage_timeline_digest ?? r.stageTimelineDigest ?? {}) as Record<string, unknown>
+  const replayRaw = (r.replay ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    workId: String(r.work_id ?? r.workId ?? ''),
+    historyId,
+    status: String(r.status ?? 'unknown'),
+    sourceAuthority: nullableString(r.source_authority ?? r.sourceAuthority),
+    error: nullableString(r.error),
+    blocker: nullableString(r.blocker),
+    historyEntry: adaptForgeLiveExecutionHistoryEntry(r.history_entry ?? r.historyEntry),
+    evidencePackDigest: adaptForgeEvidencePackDigest(r.evidence_pack_digest ?? r.evidencePackDigest) ?? null,
+    stageTimelineDigest: {
+      schemaVersion: nullableString(timelineRaw.schema_version ?? timelineRaw.schemaVersion),
+      status: nullableString(timelineRaw.status),
+      stageTimelineHash: nullableString(timelineRaw.stage_timeline_hash ?? timelineRaw.stageTimelineHash),
+      total: numberOrNull(timelineRaw.total),
+      blocking: numberOrNull(timelineRaw.blocking),
+    },
+    replay: {
+      readOnly: Boolean(replayRaw.read_only ?? replayRaw.readOnly ?? true),
+      command: nullableString(replayRaw.command),
+      strictCommand: nullableString(replayRaw.strict_command ?? replayRaw.strictCommand),
+      failureProbeCommand: nullableString(replayRaw.failure_probe_command ?? replayRaw.failureProbeCommand),
+      externalProviderCall: Boolean(replayRaw.external_provider_call ?? replayRaw.externalProviderCall ?? false),
+    },
+    snapshot: adaptForgeLiveExecution(r.snapshot),
+    snapshotAvailable: Boolean(r.snapshot_available ?? r.snapshotAvailable ?? false),
+    review: adaptForgeReview(r.review),
+  }
+}
+
+function adaptForgeEvidencePackDigest(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecutionHistory']>['entries'][number]['evidencePackDigest'] {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const status = String(r.status ?? '')
+  if (!status) return null
+
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    status,
+    stageReceiptCount: numberOrUndefined(r.stage_receipt_count ?? r.stageReceiptCount) ?? 0,
+    stageReceiptIds: normList(r.stage_receipt_ids ?? r.stageReceiptIds),
+    ledgerEventCount: numberOrUndefined(r.ledger_event_count ?? r.ledgerEventCount) ?? 0,
+    ledgerEventIds: normList(r.ledger_event_ids ?? r.ledgerEventIds),
+    changedFiles: normList(r.changed_files ?? r.changedFiles),
+    engineeringRunId: nullableString(r.engineering_run_id ?? r.engineeringRunId),
+    engineeringEvidenceId: nullableString(r.engineering_evidence_id ?? r.engineeringEvidenceId),
+    engineeringRunPersisted: Boolean(r.engineering_run_persisted ?? r.engineeringRunPersisted ?? false),
+    engineeringEvidencePersisted: Boolean(r.engineering_evidence_persisted ?? r.engineeringEvidencePersisted ?? false),
+    reportHash: nullableString(r.report_hash ?? r.reportHash),
+    stageTimelineHash: nullableString(r.stage_timeline_hash ?? r.stageTimelineHash),
+    evidencePackHash: nullableString(r.evidence_pack_hash ?? r.evidencePackHash),
+  }
+}
+
+function adaptForgeTaskContract(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecution']>['taskContract'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>
+  const taskId = String(r.task_id ?? r.taskId ?? '')
+  if (!taskId) return undefined
+  const rollbackRaw = (r.rollback ?? {}) as Record<string, unknown>
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    taskId,
+    status: String(r.status ?? 'unknown'),
+    objective: String(r.objective ?? ''),
+    owner: (r.owner ?? null) as string | null,
+    riskLevel: (r.risk_level ?? r.riskLevel ?? null) as string | null,
+    allowedFiles: normList(r.allowed_files ?? r.allowedFiles),
+    forbiddenFiles: normList(r.forbidden_files ?? r.forbiddenFiles),
+    expectedFiles: normList(r.expected_files ?? r.expectedFiles),
+    validationCommands: normList(r.validation_commands ?? r.validationCommands),
+    acceptanceCriteria: normList(r.acceptance_criteria ?? r.acceptanceCriteria),
+    rollback: {
+      available: Boolean(rollbackRaw.available ?? false),
+      command: (rollbackRaw.command ?? null) as string | null,
+    },
+    evidenceRequired: normList(r.evidence_required ?? r.evidenceRequired),
+    docsRequired: normList(r.docs_required ?? r.docsRequired),
+    cartographyRequired: Boolean(r.cartography_required ?? r.cartographyRequired ?? false),
+  }
+}
+
+function adaptDiffScope(raw: unknown): NonNullable<WorkStateSnapshot['forgeLiveExecution']>['diffScope'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>
+  const status = String(r.status ?? '')
+  if (!status) return undefined
+  const completionRaw = (r.completion_gate ?? r.completionGate) as Record<string, unknown> | undefined
+  const verifierRaw = (r.patch_verifier ?? r.patchVerifier) as Record<string, unknown> | undefined
+
+  return {
+    schemaVersion: (r.schema_version ?? r.schemaVersion) as string | undefined,
+    status,
+    scopeStatus: (r.scope_status ?? r.scopeStatus ?? null) as string | null,
+    changedFileCount: numberOrUndefined(r.changed_file_count ?? r.changedFileCount),
+    files: ((r.files as unknown[]) ?? []).map((file) => {
+      const f = (file ?? {}) as Record<string, unknown>
+      return {
+        path: String(f.path ?? ''),
+        status: String(f.status ?? 'unknown'),
+        ownership: (f.ownership ?? null) as string | null,
+        manifestCovered: Boolean(f.manifest_covered ?? f.manifestCovered ?? false),
+        reason: (f.reason ?? null) as string | null,
+      }
+    }),
+    manifestId: (r.manifest_id ?? r.manifestId ?? null) as string | null,
+    patchTargetHash: (r.patch_target_hash ?? r.patchTargetHash ?? null) as string | null,
+    rollbackAvailable: Boolean(r.rollback_available ?? r.rollbackAvailable ?? false),
+    blockingReasons: normList(r.blocking_reasons ?? r.blockingReasons),
+    patchVerifier: verifierRaw && typeof verifierRaw === 'object'
+      ? {
+          schemaVersion: (verifierRaw.schema_version ?? verifierRaw.schemaVersion ?? null) as string | null,
+          status: (verifierRaw.status ?? null) as string | null,
+          nextAction: (verifierRaw.next_action ?? verifierRaw.nextAction ?? null) as string | null,
+          completionClaimAllowed: Boolean(verifierRaw.completion_claim_allowed ?? verifierRaw.completionClaimAllowed ?? false),
+        }
+      : undefined,
+    completionGate: completionRaw && typeof completionRaw === 'object'
+      ? {
+          status: (completionRaw.status ?? null) as string | null,
+          completionClaimAllowed: Boolean(completionRaw.completion_claim_allowed ?? completionRaw.completionClaimAllowed ?? false),
+          reasons: normList(completionRaw.reasons),
+        }
+      : undefined,
+  }
+}
+
+function numberOrUndefined(value: unknown): number | undefined {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
+function numberOrNull(value: unknown): number | null {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function nullableString(value: unknown): string | null {
+  return value == null ? null : String(value)
 }
 
 // ──────────────────────────────────────────────────────────────────────────

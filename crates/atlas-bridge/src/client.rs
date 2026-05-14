@@ -280,6 +280,25 @@ impl AtlasBridge {
             .await
     }
 
+    pub async fn get_atlas_code_enterprise_certification(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_CERTIFICATION))
+            .await
+    }
+
+    pub async fn run_atlas_code_enterprise_certification(
+        &self,
+        keep_workspace: bool,
+    ) -> BridgeResult<serde_json::Value> {
+        let body = serde_json::json!({
+            "keep_workspace": keep_workspace,
+        });
+        self.execute(
+            self.build(Method::POST, endpoints::ATLAS_CODE_CERTIFICATION)
+                .json(&body),
+        )
+        .await
+    }
+
     pub async fn list_works(&self) -> BridgeResult<serde_json::Value> {
         self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_WORKS_LIST))
             .await
@@ -369,6 +388,156 @@ impl AtlasBridge {
     pub async fn get_work_state(&self, work_id: &str) -> BridgeResult<serde_json::Value> {
         let path = format!("{}{}/state", endpoints::ATLAS_CODE_WORK_STATE, work_id);
         self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn run_forge_live_execution(
+        &self,
+        work_id: &str,
+        simulate_failure: bool,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/live-executions",
+            endpoints::ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS,
+            work_id
+        );
+        let body = serde_json::json!({
+            "simulate_failure": simulate_failure,
+        });
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn start_forge_live_execution_async(
+        &self,
+        work_id: &str,
+        simulate_failure: bool,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/live-executions/async",
+            endpoints::ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS_ASYNC,
+            work_id
+        );
+        let body = serde_json::json!({
+            "simulate_failure": simulate_failure,
+        });
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn get_forge_live_execution_async(
+        &self,
+        work_id: &str,
+        execution_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/live-executions/{}",
+            endpoints::ATLAS_CODE_WORK_FORGE_LIVE_EXECUTION_ASYNC_SHOW,
+            work_id,
+            execution_id
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn get_forge_run_history_replay(
+        &self,
+        work_id: &str,
+        history_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/live-executions/history/{}",
+            endpoints::ATLAS_CODE_WORK_FORGE_LIVE_EXECUTION_HISTORY_SHOW,
+            work_id,
+            history_id
+        );
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn create_programming_work_item(
+        &self,
+        work_id: &str,
+        intent: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/programming/work-items",
+            endpoints::ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEMS,
+            work_id
+        );
+        let body = serde_json::json!({
+            "intent": intent,
+        });
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn compile_programming_work_item_spec_plan(
+        &self,
+        work_id: &str,
+        work_item_id: &str,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/programming/work-items/{}/spec",
+            endpoints::ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEM_SPEC,
+            work_id,
+            encode_path_segment(work_item_id)
+        );
+        let body = serde_json::json!({});
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn create_checkpoint(
+        &self,
+        work_id: &str,
+        reason: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/checkpoints",
+            endpoints::ATLAS_CODE_WORK_CHECKPOINTS,
+            work_id
+        );
+        let body = serde_json::json!({
+            "reason": reason.unwrap_or("manual"),
+        });
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn review_forge_run(
+        &self,
+        work_id: &str,
+        decision: &str,
+        comment: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/reviews",
+            endpoints::ATLAS_CODE_WORK_FORGE_REVIEWS,
+            work_id
+        );
+        let body = serde_json::json!({
+            "decision": decision,
+            "comment": comment.unwrap_or("local operator review"),
+        });
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
+    }
+
+    pub async fn rollback_forge_promotion(
+        &self,
+        work_id: &str,
+        promotion_id: &str,
+        comment: Option<&str>,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}{}/forge/promotions/{}/rollback",
+            endpoints::ATLAS_CODE_WORK_FORGE_REVIEWS,
+            work_id,
+            promotion_id
+        );
+        let body = serde_json::json!({
+            "comment": comment.unwrap_or("operator rollback"),
+        });
+        self.execute(self.build(Method::POST, &path).json(&body))
+            .await
     }
 
     pub async fn get_thread_v2(&self, thread_id: &str) -> BridgeResult<serde_json::Value> {

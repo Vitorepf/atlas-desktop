@@ -1,10 +1,26 @@
 import { PanelTitle } from '@atlas/ui'
 import type { ProgrammingGateRunSnapshot, QualityGate } from '@atlas/domain'
 import { EmptyText } from './RightRailPrimitives'
+import { DiffScopeGuard } from './DiffScopeGuard'
+import { ForgeGovernedExecutionPanel } from './ForgeGovernedExecutionPanel'
+import { ForgeReviewGate } from './ForgeReviewGate'
+import { ForgeStageTimelinePanel } from './ForgeStageTimelinePanel'
 import { ForgeWorkspaceBanner } from './ForgeWorkspaceBanner'
 import type { RightRailContext } from './rightRailTypes'
 
-export function VerifyPanel({ gates, busy, receipt, programmingGovernance, onRunGate }: RightRailContext) {
+export function VerifyPanel({
+  obra,
+  gates,
+  busy,
+  receipt,
+  forgeLiveExecution,
+  forgeReview,
+  programmingGovernance,
+  onRunGate,
+  onRunForgeLiveExecution,
+  onReviewForgeRun,
+  onRollbackForgePromotion,
+}: RightRailContext) {
   const gateRuns = programmingGovernance?.gateRuns ?? []
   const hasGovernedRuns = gateRuns.length > 0
 
@@ -13,7 +29,24 @@ export function VerifyPanel({ gates, busy, receipt, programmingGovernance, onRun
     const passed = gateRuns.filter((g) => g.status === 'passed').length
     return (
       <section className="ops-panel">
-        <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+        <ForgeWorkspaceBanner
+          obra={obra}
+          receipt={receipt}
+          governance={programmingGovernance}
+          liveExecution={forgeLiveExecution}
+          busy={busy}
+          onRunLiveExecution={onRunForgeLiveExecution}
+        />
+        <ForgeStageTimelinePanel liveExecution={forgeLiveExecution} />
+        <ForgeGovernedExecutionPanel liveExecution={forgeLiveExecution} />
+        <DiffScopeGuard liveExecution={forgeLiveExecution} />
+        <ForgeReviewGate
+          liveExecution={forgeLiveExecution}
+          review={forgeReview}
+          busy={busy}
+          onReview={(decision, comment) => void onReviewForgeRun(decision, comment)}
+          onRollback={(promotionId, comment) => void onRollbackForgePromotion(promotionId ?? undefined, comment)}
+        />
         <div className="ops-section">
           <PanelTitle
             label="Quality Gates"
@@ -34,7 +67,24 @@ export function VerifyPanel({ gates, busy, receipt, programmingGovernance, onRun
   const passed = gates.filter((g) => g.state === 'passed').length
   return (
     <section className="ops-panel">
-      <ForgeWorkspaceBanner receipt={receipt} governance={programmingGovernance} />
+      <ForgeWorkspaceBanner
+        obra={obra}
+        receipt={receipt}
+        governance={programmingGovernance}
+        liveExecution={forgeLiveExecution}
+        busy={busy}
+        onRunLiveExecution={onRunForgeLiveExecution}
+      />
+      <ForgeStageTimelinePanel liveExecution={forgeLiveExecution} />
+      <ForgeGovernedExecutionPanel liveExecution={forgeLiveExecution} />
+      <DiffScopeGuard liveExecution={forgeLiveExecution} />
+      <ForgeReviewGate
+        liveExecution={forgeLiveExecution}
+        review={forgeReview}
+        busy={busy}
+        onReview={(decision, comment) => void onReviewForgeRun(decision, comment)}
+        onRollback={(promotionId, comment) => void onRollbackForgePromotion(promotionId ?? undefined, comment)}
+      />
       <div className="ops-section">
         <PanelTitle
           label="Quality Gates"
