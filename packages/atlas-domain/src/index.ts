@@ -106,6 +106,57 @@ export interface Obra {
   status: ObraStatus
   workspacePath: string
   createdAt: string
+  workspaceSlug?: string | null
+  workspaceName?: string | null
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Atlas Code · Project/Workspace profile (multi-project canon)
+//
+// Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
+// Schema (backend): atlas.code.workspace_profile.v1
+
+export type AtlasWorkspaceKind = 'product' | 'library' | 'experiment' | 'client' | string
+
+export type AtlasWorkspaceProductionStatus = 'production' | 'staging' | 'development' | 'unknown' | string
+
+export type AtlasWorkspaceDocsStatus = 'canonical' | 'partial' | 'incomplete' | 'unknown' | string
+
+export type AtlasWorkspaceRisk = 'low' | 'medium' | 'high' | 'critical' | string
+
+export interface AtlasWorkspaceProfileSafety {
+  executionAllowed: boolean
+  executionBlockedReason: string | null
+  riskFloor: AtlasWorkspaceRisk
+  requiresExplicitInterventionReview: boolean
+}
+
+export interface AtlasWorkspaceProfile {
+  schemaVersion: string
+  id: string
+  slug: string
+  name: string
+  kind: AtlasWorkspaceKind
+  workspacePath: string
+  workspacePathExists: boolean
+  repoRoot: string
+  productionStatus: AtlasWorkspaceProductionStatus
+  stackSummary: string
+  commands: Record<string, string>
+  testCommands: string[]
+  buildCommands: string[]
+  devServerCommand: string | null
+  criticalAreas: string[]
+  docsStatus: AtlasWorkspaceDocsStatus
+  defaultRisk: AtlasWorkspaceRisk
+  deploymentNotes: string
+  safety: AtlasWorkspaceProfileSafety
+}
+
+export interface AtlasWorkspaceProfileList {
+  schemaVersion: string
+  defaultSlug: string
+  profiles: AtlasWorkspaceProfile[]
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2854,6 +2905,204 @@ export interface DiffPatch {
     kind: 'add' | 'del' | 'context'
     text: string
   }>
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Atlas Code Provider Arena · UI snapshot (Atlas Code Provider Arena UI v1)
+//
+// Read-only projection consumed by the Provider Arena RightRail panel. Combines
+// the canonical Forge Rivals registries (arms, modes, presets, task categories)
+// with the local arena run history. NEVER promotes a completion claim. NEVER
+// unblocks `external_rivals_certification`.
+//
+// Schema: atlas.code.provider_arena_snapshot.v1
+
+export type AtlasCodeProviderArenaArmStatus =
+  | 'available'
+  | 'not_yet_executable'
+  | 'placeholder'
+  | string
+
+export type AtlasCodeProviderArenaRunnerType =
+  | 'forge'
+  | 'cli_provider'
+  | 'scripted'
+  | 'manual'
+  | 'placeholder'
+  | string
+
+export type AtlasCodeProviderArenaMode =
+  | 'local_fake'
+  | 'fair'
+  | 'full_power'
+  | string
+
+export type AtlasCodeProviderArenaPreset =
+  | 'smoke'
+  | 'quick'
+  | 'release'
+  | 'full'
+  | string
+
+export interface AtlasCodeProviderArenaArm {
+  armId: string
+  runnerType: AtlasCodeProviderArenaRunnerType
+  provider: string | null
+  modelOptions: string[]
+  executionMode: string
+  requiresExternalProviderCall: boolean
+  requiresCostConfirmation: boolean
+  supportsStreaming: boolean
+  supportsReplay: boolean
+  supportsPatchDiff: boolean
+  supportsTestLog: boolean
+  allowedTaskCategories: string[]
+  status: AtlasCodeProviderArenaArmStatus
+  notExecutableReason: string | null
+  humanLabel: string
+  humanDescription: string
+  safetyContract: {
+    neverPromotesCompletionClaim: boolean
+    neverUnlocksExternalRivalsCertification: boolean
+    requiresThreeConfirmationsForRealProvider: boolean
+    maxScoreWithoutEvidence: number
+    failsClosedOnMissingDriver: boolean
+    auditTrailRequired: boolean
+    replayRequiredBeforeWinner: boolean
+    evidenceRequiredBeforeWinner: boolean
+    scriptedOrManualCannotForgeScore: boolean
+    placeholderBlocksRealRun: boolean
+  }
+}
+
+export interface AtlasCodeProviderArenaArmRegistry {
+  schemaVersion: string
+  arms: AtlasCodeProviderArenaArm[]
+  armCount: number
+  taskCategories: string[]
+  taskCategoryCount: number
+}
+
+export interface AtlasCodeProviderArenaModeEntry {
+  mode: AtlasCodeProviderArenaMode
+  requiresProvider: boolean
+  allowsAtlasDecide: boolean
+  allowsTopologyDeclaration: boolean
+  claimEligible: boolean
+  allowedModels: string[]
+  note: string
+  usableInArena: boolean
+}
+
+export interface AtlasCodeProviderArenaPresetEntry {
+  preset: AtlasCodeProviderArenaPreset
+  caseCount: number
+  note: string
+}
+
+export interface AtlasCodeProviderArenaHistoryArm {
+  armId: string | null
+  runnerType: string | null
+  provider: string | null
+  model: string | null
+  legacyModelId: string | null
+  status: string | null
+  humanLabel: string | null
+}
+
+export interface AtlasCodeProviderArenaHistoryEntry {
+  runId: string
+  basePath: string
+  updatedAtUnix: number
+  mode: AtlasCodeProviderArenaMode | null
+  preset: AtlasCodeProviderArenaPreset | null
+  taskCategory: string | null
+  armA: AtlasCodeProviderArenaHistoryArm | null
+  armB: AtlasCodeProviderArenaHistoryArm | null
+  winner: string | null
+  verdict: string | null
+  claimReady: boolean | null
+  comparableScore: number | null
+  diagnosticScore: number | null
+  reportMdPresent: boolean
+  evidenceDir: string
+  eventsJsonl: string
+  externalProviderCall: boolean | null
+}
+
+export interface AtlasCodeProviderArenaSafetyPromises {
+  neverPromotesCompletionClaim: boolean
+  neverUnlocksExternalRivalsCertification: boolean
+  requiresThreeConfirmationsForRealProvider: boolean
+  localFakeNeverInvokesProvider: boolean
+  replayRequiredBeforeWinner: boolean
+  evidenceRequiredBeforeWinner: boolean
+}
+
+export interface AtlasCodeProviderArenaSnapshot {
+  schemaVersion: string
+  generatedAt: string
+  armRegistry: AtlasCodeProviderArenaArmRegistry
+  modes: AtlasCodeProviderArenaModeEntry[]
+  presets: AtlasCodeProviderArenaPresetEntry[]
+  history: AtlasCodeProviderArenaHistoryEntry[]
+  historyCount: number
+  historyLimit: number
+  lastRun: AtlasCodeProviderArenaHistoryEntry | null
+  safetyPromises: AtlasCodeProviderArenaSafetyPromises
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  separatedFromExternalRivalsCertification: boolean
+  note: string
+}
+
+export interface AtlasCodeProviderArenaConfirmations {
+  runbookReviewed: boolean
+  providerCost: boolean
+  realProviderCall: boolean
+}
+
+export interface AtlasCodeProviderArenaRunPayload {
+  armA: string
+  armB: string
+  armAModel?: string | null
+  armBModel?: string | null
+  taskCategory: string
+  mode: AtlasCodeProviderArenaMode
+  preset?: AtlasCodeProviderArenaPreset
+  sourceRef?: string | null
+  runId?: string | null
+  confirmations?: AtlasCodeProviderArenaConfirmations
+}
+
+/**
+ * Honest, untyped pass-through of the dispatcher payload. The shape mirrors
+ * the `atlas.forge.rivals.action_response.v1` envelope plus the arena
+ * context. Renders use the snapshot for everything stable; this only carries
+ * the latest in-flight call's status / blockers / next_command.
+ */
+export interface AtlasCodeProviderArenaRunResult {
+  status: string
+  action: string
+  schemaVersion: string
+  arenaSchemaVersion: string | null
+  generatedAt: string | null
+  runId: string | null
+  mode: string | null
+  taskCategory: string | null
+  armA: Record<string, unknown> | null
+  armB: Record<string, unknown> | null
+  blockers: string[]
+  nextCommand: string | null
+  externalProviderCall: boolean
+  providerTokensSpent: boolean
+  separatedFromExternalRivalsCertification: boolean
+  evidencePaths: string[]
+  note: string | null
+  winner: string | null
+  scorecard: Record<string, unknown> | null
+  requiresExternalProviderCall: boolean
+  rawPayload: Record<string, unknown>
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

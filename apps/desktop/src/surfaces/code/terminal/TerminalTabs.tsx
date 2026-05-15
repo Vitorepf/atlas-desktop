@@ -56,6 +56,7 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
     searchQuery,
     open,
   })
+  const { clearActive, interruptActive, openNewTab } = terminalActions
 
   useTerminalDockSizing({
     resizeNode,
@@ -82,6 +83,33 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
     const timer = window.setTimeout(() => searchInputRef.current?.focus(), 0)
     return () => window.clearTimeout(timer)
   }, [searchOpen])
+
+  useEffect(() => {
+    const onNewTab = () => openNewTab()
+    const onCloseActive = () => {
+      if (!activeId) return
+      close(activeId)
+      if (useTerminalStore.getState().sessions.length === 0) {
+        open(initialCwd ?? '')
+      }
+    }
+    const onOpenSearch = () => setSearchOpen(true)
+    const onClear = () => clearActive()
+    const onInterrupt = () => interruptActive()
+
+    window.addEventListener('atlas-terminal-new-tab-request', onNewTab)
+    window.addEventListener('atlas-terminal-close-active-request', onCloseActive)
+    window.addEventListener('atlas-terminal-open-search-request', onOpenSearch)
+    window.addEventListener('atlas-terminal-clear-request', onClear)
+    window.addEventListener('atlas-terminal-interrupt-request', onInterrupt)
+    return () => {
+      window.removeEventListener('atlas-terminal-new-tab-request', onNewTab)
+      window.removeEventListener('atlas-terminal-close-active-request', onCloseActive)
+      window.removeEventListener('atlas-terminal-open-search-request', onOpenSearch)
+      window.removeEventListener('atlas-terminal-clear-request', onClear)
+      window.removeEventListener('atlas-terminal-interrupt-request', onInterrupt)
+    }
+  }, [activeId, clearActive, close, initialCwd, interruptActive, open, openNewTab])
 
   if (!dockVisible) return null
 

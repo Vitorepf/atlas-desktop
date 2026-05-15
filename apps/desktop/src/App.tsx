@@ -8,6 +8,7 @@ import { useSurface } from './hooks/useSurface'
 import { AtlasShell } from './shell/AtlasShell'
 import { SurfaceHost } from './shell/SurfaceHost'
 import { TopBarLocationTrailProvider } from './shell/topbar/TopBarLocationTrailProvider'
+import { useNativeMenuEvents } from './shell/useNativeMenuEvents'
 import { useTerminalStore } from './state/terminalStore'
 
 /**
@@ -26,9 +27,10 @@ function App() {
   const { surface, setSurface } = useSurface()
   const b = useBridge()
   const terminalPlacement = useTerminalStore((s) => s.dockPlacement)
-  const terminalVisible = useTerminalStore((s) => s.dockVisible)
   const openTerminalDock = useTerminalStore((s) => s.openDock)
   const toggleTerminalDock = useTerminalStore((s) => s.toggleDock)
+
+  useNativeMenuEvents(surface, setSurface)
 
   const onTerminalToggle = useCallback(() => {
     if (surface !== 'code') {
@@ -80,10 +82,12 @@ function App() {
           errors={b.errors}
           surface={surface}
           onSurfaceChange={setSurface}
-          terminalVisible={surface === 'code' && terminalVisible}
-          onTerminalToggle={onTerminalToggle}
           kernel={kernel}
           mcp={mcp}
+          workspaces={b.workspaces}
+          activeWorkspace={b.activeWorkspace}
+          activeWorkspaceSlug={b.activeWorkspaceSlug}
+          onSelectWorkspace={b.setActiveWorkspaceSlug}
         />
 
         <SurfaceHost surface={surface} bridge={b} boot={boot} />

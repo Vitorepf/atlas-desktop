@@ -21,7 +21,8 @@ export function useTerminalActions({
   const [copyFlash, setCopyFlash] = useState(false)
 
   const openNewTab = useCallback(() => {
-    const fromCwd = displayCwd !== '—' ? displayCwd : activeCwd ?? initialCwd ?? ''
+    const hasDisplayCwd = displayCwd && displayCwd !== '—' && displayCwd !== '-'
+    const fromCwd = hasDisplayCwd ? displayCwd : activeCwd ?? initialCwd ?? ''
     open(fromCwd)
   }, [activeCwd, displayCwd, initialCwd, open])
 

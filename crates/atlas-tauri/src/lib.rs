@@ -18,6 +18,7 @@ use tokio::sync::Mutex;
 
 mod commands_bridge;
 mod kernel_manager;
+mod native_menu;
 
 use kernel_manager::{KernelManagerState, KernelStatusReport};
 
@@ -145,6 +146,8 @@ pub fn run() {
     let pty_manager: Arc<PtyManager> = PtyManager::new();
 
     let app = tauri::Builder::default()
+        .menu(native_menu::atlas_menu)
+        .on_menu_event(native_menu::handle_menu_event)
         .setup({
             let kernel_state = Arc::clone(&kernel_state);
             move |app| {
@@ -216,6 +219,8 @@ pub fn run() {
             commands_bridge::bridge_run_forge_provider_invocation,
             commands_bridge::bridge_get_forge_provider_invocation_latest,
             commands_bridge::bridge_get_forge_ux_orchestrator,
+            commands_bridge::bridge_get_provider_arena_snapshot,
+            commands_bridge::bridge_run_provider_arena,
             commands_bridge::bridge_get_forge_provider_drivers,
             commands_bridge::bridge_plan_forge_provider_driver,
             commands_bridge::bridge_create_checkpoint,

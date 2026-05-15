@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Obra, Session } from '@atlas/domain'
+import type { AtlasWorkspaceProfile, Obra, Session } from '@atlas/domain'
 import { LEFT_RAIL_SECTIONS, renderLeftRailSection } from './leftRailRegistry'
 import type { LeftRailContext } from './leftRailTypes'
 
@@ -10,6 +10,7 @@ interface LeftRailProps {
   recent: Session[]
   loading: boolean
   busy: boolean
+  activeWorkspace: AtlasWorkspaceProfile | null
   onSelectObra: (obraId: string) => Promise<void>
   onCreateObra: (intent: string, objective: string) => Promise<Obra | null>
 }
@@ -26,7 +27,11 @@ export function LeftRail(props: LeftRailProps) {
 
   return (
     <aside className="left-rail" aria-label="Atlas Code · navegação esquerda">
-      <CreateObraControl busy={props.busy} onCreateObra={props.onCreateObra} />
+      <CreateObraControl
+        busy={props.busy}
+        onCreateObra={props.onCreateObra}
+        activeWorkspace={props.activeWorkspace}
+      />
       {LEFT_RAIL_SECTIONS.map((section) => renderLeftRailSection(section, ctx))}
     </aside>
   )
@@ -35,9 +40,11 @@ export function LeftRail(props: LeftRailProps) {
 function CreateObraControl({
   busy,
   onCreateObra,
+  activeWorkspace,
 }: {
   busy: boolean
   onCreateObra: (intent: string, objective: string) => Promise<Obra | null>
+  activeWorkspace: AtlasWorkspaceProfile | null
 }) {
   const [open, setOpen] = useState(false)
   const [objective, setObjective] = useState('')
@@ -60,6 +67,9 @@ function CreateObraControl({
     }
   }
 
+  const isProduction = activeWorkspace?.productionStatus === 'production'
+  const workspaceLabel = activeWorkspace?.name ?? 'Atlas'
+
   return (
     <section
       style={{
@@ -67,7 +77,7 @@ function CreateObraControl({
         paddingBottom: 12,
         borderBottom: '1px solid var(--cc-border-soft)',
       }}
-      aria-label="Criar Obra"
+      aria-label={`Criar Obra em ${workspaceLabel}`}
     >
       {!open ? (
         <button
@@ -78,11 +88,27 @@ function CreateObraControl({
           onClick={() => setOpen(true)}
         >
           <span aria-hidden>✦</span>
-          <span>Nova Obra</span>
+          <span>Nova Obra em {workspaceLabel}</span>
         </button>
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
-          <label className="cc-eyebrow">Nova Obra</label>
+          <label className="cc-eyebrow">Nova Obra em {workspaceLabel}</label>
+          {isProduction ? (
+            <div
+              role="note"
+              style={{
+                fontSize: 10,
+                padding: '6px 8px',
+                border: '1px solid var(--cc-warning, #d4a85a)',
+                borderRadius: 3,
+                color: 'var(--cc-warning, #d4a85a)',
+                lineHeight: 1.4,
+              }}
+            >
+              Projeto em produção · risco padrão maior. Considere Intervenção
+              Rápida ou Candidato de Obra antes de uma Obra estrutural.
+            </div>
+          ) : null}
           <input
             value={objective}
             onChange={(e) => setObjective(e.target.value)}

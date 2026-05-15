@@ -12,14 +12,19 @@ export function LeftRailSection({
   children,
 }: {
   label: string
-  count: number
+  /**
+   * Numeric badge for this section. Pass `null` (or omit when the section's
+   * count would be misleading — e.g. "Projeto ativo" is a singleton header,
+   * not a list) to hide the badge entirely.
+   */
+  count: number | null
   children: ReactNode
 }) {
   return (
     <section className="cc-rail-section" aria-label={label}>
       <header className="cc-rail-section-head">
         <span>{label}</span>
-        <span className="count">{count}</span>
+        {count !== null ? <span className="count">{count}</span> : null}
       </header>
       {children}
     </section>

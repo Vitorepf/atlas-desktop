@@ -1021,6 +1021,42 @@ impl AtlasBridge {
         self.execute(self.build(Method::POST, &path).json(&payload))
             .await
     }
+
+    /// Atlas Code Provider Arena · read-only snapshot for the RightRail
+    /// panel. Combines arm registry, modes, presets, task categories,
+    /// safety promises and the local run history.
+    /// Schema: atlas.code.provider_arena_snapshot.v1
+    pub async fn get_provider_arena_snapshot(
+        &self,
+        history_limit: Option<u32>,
+    ) -> BridgeResult<serde_json::Value> {
+        let mut request = self.build(
+            Method::GET,
+            endpoints::ATLAS_CODE_FORGE_PROVIDER_ARENA_SNAPSHOT,
+        );
+        if let Some(limit) = history_limit {
+            request = request.query(&[("history_limit", limit.to_string())]);
+        }
+        self.execute(request).await
+    }
+
+    /// Atlas Code Provider Arena · dispatch a `run-arena` action.
+    /// The controller enforces the three-confirmation contract on real-
+    /// provider modes; `local_fake` never spends tokens.
+    pub async fn run_provider_arena(
+        &self,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let body = match payload {
+            serde_json::Value::Object(_) => payload,
+            _ => serde_json::json!({}),
+        };
+        self.execute(
+            self.build(Method::POST, endpoints::ATLAS_CODE_FORGE_PROVIDER_ARENA_RUN)
+                .json(&body),
+        )
+        .await
+    }
 }
 
 fn encode_path_segment(value: &str) -> String {

@@ -876,6 +876,33 @@ pub async fn bridge_reject_self_improvement_forge_activation(
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// PROVIDER ARENA · read-only snapshot + governed run dispatch
+
+#[tauri::command]
+pub async fn bridge_get_provider_arena_snapshot(
+    state: State<'_, AppState>,
+    history_limit: Option<u32>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .get_provider_arena_snapshot(history_limit)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_run_provider_arena(
+    state: State<'_, AppState>,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .run_provider_arena(payload.unwrap_or_else(|| serde_json::json!({})))
+        .await
+        .map_err(into_str_err)
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // SIGN · ed25519 canonical Decision-Receipt signature
 
 #[derive(Serialize)]

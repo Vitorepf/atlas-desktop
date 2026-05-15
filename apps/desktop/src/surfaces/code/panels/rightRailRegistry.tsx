@@ -4,6 +4,7 @@ import { EvidencePanel } from './EvidencePanel'
 import { ForgeAdvancedPanel } from './ForgeAdvancedPanel'
 import { ForgeHumanPanel } from './ForgeHumanPanel'
 import { ForgeWorkIntakePanel } from './ForgeWorkIntakePanel'
+import { ProviderArenaPanel } from './ProviderArenaPanel'
 import { VerifyPanel } from './VerifyPanel'
 import type { RightRailContext, RightRailPanelDefinition } from './rightRailTypes'
 
@@ -29,6 +30,12 @@ const PANELS: RightRailPanelDefinition[] = [
     label: 'Forge',
     priority: 1,
     render: (ctx: RightRailContext) => <ForgeHumanPanel {...ctx} />,
+  },
+  {
+    id: 'provider_arena',
+    label: 'Arena',
+    priority: 5,
+    render: (ctx: RightRailContext) => <ProviderArenaPanel {...ctx} />,
   },
   {
     id: 'intake',

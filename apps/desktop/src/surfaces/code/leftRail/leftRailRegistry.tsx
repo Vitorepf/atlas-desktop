@@ -1,15 +1,31 @@
 import { LeftRailSection } from './LeftRailPrimitives'
 import { ObrasSection } from './ObrasSection'
 import { SessionsSection } from './SessionsSection'
+import { WorkspaceScopeSection } from './WorkspaceScopeSection'
+import { WorkTypeLanesSection } from './WorkTypeLanesSection'
 import type { LeftRailContext, LeftRailSectionDefinition } from './leftRailTypes'
 
 const SECTIONS: LeftRailSectionDefinition[] = [
+  {
+    id: 'workspace-scope',
+    label: 'Projeto ativo',
+    priority: 5,
+    count: () => null,
+    render: (ctx: LeftRailContext) => <WorkspaceScopeSection {...ctx} />,
+  },
   {
     id: 'obras',
     label: 'Obras',
     priority: 10,
     count: (ctx) => ctx.obras.length,
     render: (ctx: LeftRailContext) => <ObrasSection {...ctx} />,
+  },
+  {
+    id: 'work-type-lanes',
+    label: 'Outros trabalhos',
+    priority: 15,
+    count: () => null,
+    render: (ctx: LeftRailContext) => <WorkTypeLanesSection {...ctx} />,
   },
   {
     id: 'active-sessions',

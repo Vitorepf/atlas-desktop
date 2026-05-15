@@ -32,6 +32,7 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
           recent={b.recent}
           loading={b.loading}
           busy={b.busy}
+          activeWorkspace={b.activeWorkspace}
           onSelectObra={b.selectObra}
           onCreateObra={b.createObra}
         />
@@ -83,6 +84,8 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             forgeProviderInvocation={b.forgeProviderInvocation}
             forgeProviderInvocationReceipt={b.forgeProviderInvocationReceipt}
             forgeUxOrchestrator={b.forgeUxOrchestrator}
+            providerArena={b.providerArena}
+            providerArenaLastResult={b.providerArenaLastResult}
             forgeRunHistoryReplay={b.forgeRunHistoryReplay}
             selfImprovementActivation={b.selfImprovementActivation}
             forgeReview={b.forgeReview}
@@ -131,6 +134,9 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             onRunForgeProviderInvocation={b.runForgeProviderInvocation}
             onRefreshForgeProviderInvocationLatest={b.refreshForgeProviderInvocationLatest}
             onRefreshForgeUxOrchestrator={b.refreshForgeUxOrchestrator}
+            onRefreshProviderArena={b.refreshProviderArena}
+            onRunProviderArena={b.runProviderArena}
+            onClearProviderArenaLastResult={b.clearProviderArenaLastResult}
             onStartForgeLiveExecutionAsync={b.startForgeLiveExecutionAsync}
             onRefreshForgeLiveExecutionAsync={b.refreshForgeLiveExecutionAsync}
             onInspectForgeRunHistory={b.inspectForgeRunHistory}

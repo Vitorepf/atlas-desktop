@@ -5,7 +5,9 @@
  * subareas `layout/`, `state/`, `viewport/`, `map/`, `search/` ou `inspector/`.
  */
 import { useCallback, useMemo, useState } from 'react'
+import type { AtlasWorkspaceProfile } from '@atlas/domain'
 import { usePublishTopBarLocationTrail } from '../../shell/topbar/useTopBarLocationTrail'
+import { CartografiaScopeBanner } from './CartografiaScopeBanner'
 import { useCartografia } from './state/useCartografia'
 import { useCartografiaShortcuts } from './state/useCartografiaShortcuts'
 import { useCartografiaViewModel } from './state/useCartografiaViewModel'
@@ -25,7 +27,22 @@ import { useLayoutShortcuts } from './state/useLayoutShortcuts'
 import { CartografiaViewportSlot } from './CartografiaViewportSlot'
 import { buildCartografiaBreadcrumb } from './floaters/breadcrumbModel'
 
-export function CartografiaSurface() {
+interface CartografiaSurfaceProps {
+  /**
+   * Active Project/Workspace, used to render the scope banner (canon:
+   * atlas-code-multi-project-workspace-os.md). Cartografia itself remains
+   * scoped to Atlas docs until a per-Project read-model exists; the banner
+   * is the honest signal when the operator is in Blackink or any non-Atlas
+   * project.
+   */
+  activeWorkspace?: AtlasWorkspaceProfile | null
+  defaultWorkspaceSlug?: string | null
+}
+
+export function CartografiaSurface({
+  activeWorkspace = null,
+  defaultWorkspaceSlug = null,
+}: CartografiaSurfaceProps = {}) {
   const c = useCartografia()
   const viewport = useCartografiaViewport({
     worldWidth: WORLD_WIDTH,
@@ -107,6 +124,10 @@ export function CartografiaSurface() {
         editMode={editMode}
         customLayout={customLayout}
         layoutPresets={layoutPresets}
+      />
+      <CartografiaScopeBanner
+        activeWorkspace={activeWorkspace}
+        defaultSlug={defaultWorkspaceSlug}
       />
       {auditOpen ? (
         <AuditPanel

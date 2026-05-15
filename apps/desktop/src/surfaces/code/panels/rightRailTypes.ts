@@ -5,6 +5,9 @@ import type {
   AtlasCodeForgeFastPathRunStatus,
   AtlasCodeForgeReviewPacket,
   AtlasCodeForgeUxOrchestrator,
+  AtlasCodeProviderArenaRunPayload,
+  AtlasCodeProviderArenaRunResult,
+  AtlasCodeProviderArenaSnapshot,
   AtlasCodeForgeWorkIntake,
   AtlasCodeForgeWorkIntakePayload,
   AtlasForgeContinuumCertificationSummary,
@@ -55,6 +58,7 @@ export type OpsTab =
   | 'advanced'
   | 'self_improvement'
   | 'construction'
+  | 'provider_arena'
 
 export interface RightRailContext {
   obra: Obra | null
@@ -88,6 +92,21 @@ export interface RightRailContext {
    * empty state honesto (NUNCA inventa estado).
   */
   forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
+  /**
+   * Atlas Code Provider Arena UI v1 snapshot.
+   *
+   * Read-only projection consumed by the Provider Arena RightRail panel.
+   * `null` when the snapshot endpoint is unreachable — the panel renders
+   * an honest empty state and the panel CTA falls back to the local
+   * smoke-only command suggestion.
+   */
+  providerArena: AtlasCodeProviderArenaSnapshot | null
+  /**
+   * Latest `run-arena` dispatch outcome (status, blockers, scorecard,
+   * winner). Reset to `null` when the operator dismisses it or starts a
+   * fresh configuration.
+   */
+  providerArenaLastResult: AtlasCodeProviderArenaRunResult | null
   selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
   selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
   selfImprovementActivationCockpit: AtlasSelfImprovementActivationCockpit | null
@@ -141,6 +160,24 @@ export interface RightRailContext {
    * the human panel honest when state evolves (prepare/execute/review/etc).
    */
   onRefreshForgeUxOrchestrator: () => Promise<void>
+  /**
+   * Re-query the Provider Arena snapshot (registry + history + safety
+   * promises). Read-only — never invokes a provider, never spawns a
+   * subprocess, never spends tokens.
+   */
+  onRefreshProviderArena: (historyLimit?: number) => Promise<void>
+  /**
+   * Dispatch the canonical `atlas:forge:rivals run-arena` action via the
+   * HTTP/Tauri bridge. Real-provider modes (`fair`/`full_power`) require
+   * the three operator confirmations in the payload; `local_fake` never
+   * spends tokens regardless. NEVER unblocks `external_rivals_certification`.
+   */
+  onRunProviderArena: (payload: AtlasCodeProviderArenaRunPayload) => Promise<AtlasCodeProviderArenaRunResult | null>
+  /**
+   * Clear the last `run-arena` result so the panel returns to the
+   * configuration state.
+   */
+  onClearProviderArenaLastResult: () => void
   onRecordSelfImprovementTrustLedgerEntry: (payload: { outcome: string; proposalId?: string; reviewer?: string; reason?: string; area?: string }) => Promise<AtlasSelfImprovementTrustLedgerEntry | null>
   onRefreshSelfImprovementGovernance: () => Promise<void>
   onRefreshSelfImprovementActivationCockpit: (filters?: AtlasSelfImprovementActivationCockpitFilters) => Promise<void>

@@ -1,4 +1,4 @@
-import type { McpStatus } from '@atlas/domain'
+import type { AtlasWorkspaceProfile, AtlasWorkspaceProfileList, McpStatus } from '@atlas/domain'
 import type { Surface } from '../../hooks/useSurface'
 import type { UseKernelStatusResult } from '../../hooks/useKernelStatus'
 import type { BridgeMode } from '../../lib/bridge'
@@ -9,8 +9,18 @@ export interface TopBarProps {
   errors: string[]
   surface: Surface
   onSurfaceChange: (surface: Surface) => void
-  terminalVisible: boolean
-  onTerminalToggle: () => void
   kernel: UseKernelStatusResult
   mcp: McpStatus | null
+  /**
+   * Atlas Code · multi-project scoping (canon:
+   * docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md).
+   *
+   * `workspaces` is the read-model returned by the backend. `null` when the
+   * server has no workspaces endpoint yet (older atlas-server). UI falls back
+   * to Atlas-only labeling.
+   */
+  workspaces?: AtlasWorkspaceProfileList | null
+  activeWorkspace?: AtlasWorkspaceProfile | null
+  activeWorkspaceSlug?: string | null
+  onSelectWorkspace?: (slug: string) => Promise<void> | void
 }

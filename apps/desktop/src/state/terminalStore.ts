@@ -22,6 +22,8 @@ interface TerminalStore {
   select: (id: string) => void
   rename: (id: string, label: string) => void
   setHeight: (px: number) => void
+  setPlacement: (placement: TerminalPlacement) => void
+  resetDock: () => void
   toggleMaximize: () => void
   togglePlacement: () => void
   hydrateInitial: (fallbackCwd: string) => void
@@ -111,6 +113,19 @@ export const useTerminalStore = create<TerminalStore>()(
       setHeight: (px) => {
         const clamped = clampHeight(px)
         set({ dockHeight: clamped, dockMaximized: false })
+      },
+
+      setPlacement: (placement) => {
+        set({ dockPlacement: placement, dockMaximized: false, dockVisible: true })
+      },
+
+      resetDock: () => {
+        set({
+          dockHeight: DEFAULT_HEIGHT,
+          dockMaximized: false,
+          dockPlacement: DEFAULT_PLACEMENT,
+          dockVisible: true,
+        })
       },
 
       toggleMaximize: () => {

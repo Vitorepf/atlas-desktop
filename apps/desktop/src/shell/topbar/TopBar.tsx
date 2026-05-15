@@ -3,39 +3,36 @@ import { SurfaceSwitcher } from './SurfaceSwitcher'
 import type { TopBarProps } from './topBarTypes'
 import { TopBarLocationTrail } from './TopBarLocationTrail'
 import { useTopBarLocationTrail } from './useTopBarLocationTrail'
+import { WorkspacePill } from './WorkspacePill'
 
 export function TopBar({
   surface,
   onSurfaceChange,
-  terminalVisible,
-  onTerminalToggle,
+  workspaces,
+  activeWorkspace,
+  activeWorkspaceSlug,
+  onSelectWorkspace,
+  loading,
 }: TopBarProps) {
   const locationTrail = useTopBarLocationTrail()
-  const terminalTitle =
-    surface === 'code' ? 'Mostrar ou ocultar terminal · ⌘J' : 'Ir para Code e abrir terminal'
+  const workspaceName = activeWorkspace?.name ?? null
 
   return (
     <header className="topbar">
       <div className="topbar-start">
-        <BrandBlock surface={surface} />
+        <BrandBlock surface={surface} workspaceName={workspaceName} />
+        {onSelectWorkspace ? (
+          <WorkspacePill
+            workspaces={workspaces ?? null}
+            active={activeWorkspace ?? null}
+            activeSlug={activeWorkspaceSlug ?? null}
+            onSelect={onSelectWorkspace}
+            disabled={loading}
+          />
+        ) : null}
         <TopBarLocationTrail items={surface === 'cartografia' ? locationTrail : []} />
       </div>
       <SurfaceSwitcher surface={surface} onSurfaceChange={onSurfaceChange} />
-      <div className="topbar-actions">
-        <button
-          type="button"
-          className={`topbar-terminal-button${terminalVisible ? ' is-active' : ''}`}
-          aria-pressed={terminalVisible}
-          onClick={onTerminalToggle}
-          title={terminalTitle}
-        >
-          <span className="topbar-terminal-icon" aria-hidden="true" />
-          <span className="topbar-terminal-label">Terminal</span>
-          <span className="topbar-terminal-shortcut" aria-hidden="true">
-            ⌘J
-          </span>
-        </button>
-      </div>
     </header>
   )
 }

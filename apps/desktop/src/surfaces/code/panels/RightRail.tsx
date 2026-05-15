@@ -7,6 +7,9 @@ import type {
   AtlasCodeForgeWorkIntake,
   AtlasCodeForgeWorkIntakePayload,
   AtlasCodeForgeUxOrchestrator,
+  AtlasCodeProviderArenaRunPayload,
+  AtlasCodeProviderArenaRunResult,
+  AtlasCodeProviderArenaSnapshot,
   AtlasForgeContinuumCertificationSummary,
   AtlasForgeProviderCapacity,
   AtlasForgeProviderDriverPlanPacket,
@@ -72,6 +75,8 @@ interface RightRailProps {
   forgeProviderInvocation: AtlasForgeProviderInvocationSnapshot | null
   forgeProviderInvocationReceipt: AtlasForgeProviderInvocationReceipt | null
   forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
+  providerArena: AtlasCodeProviderArenaSnapshot | null
+  providerArenaLastResult: AtlasCodeProviderArenaRunResult | null
   selfImprovementGovernance: AtlasSelfImprovementGovernanceState | null
   selfImprovementActivation: AtlasSelfImprovementForgeActivationState | null
   selfImprovementActivationCockpit: AtlasSelfImprovementActivationCockpit | null
@@ -111,6 +116,9 @@ interface RightRailProps {
   onRunForgeProviderInvocation: (options?: { role?: string; mode?: 'dry_run' | 'execute'; dispatchId?: string; confirmProviderCall?: boolean; confirmBudget?: boolean; confirmRuntimeDispatch?: boolean; timeoutSeconds?: number }) => Promise<void>
   onRefreshForgeProviderInvocationLatest: () => Promise<void>
   onRefreshForgeUxOrchestrator: () => Promise<void>
+  onRefreshProviderArena: (historyLimit?: number) => Promise<void>
+  onRunProviderArena: (payload: AtlasCodeProviderArenaRunPayload) => Promise<AtlasCodeProviderArenaRunResult | null>
+  onClearProviderArenaLastResult: () => void
   onRecordSelfImprovementTrustLedgerEntry: (payload: { outcome: string; proposalId?: string; reviewer?: string; reason?: string; area?: string }) => Promise<AtlasSelfImprovementTrustLedgerEntry | null>
   onRefreshSelfImprovementGovernance: () => Promise<void>
   onRefreshSelfImprovementActivationCockpit: (filters?: AtlasSelfImprovementActivationCockpitFilters) => Promise<void>

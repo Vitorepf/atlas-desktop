@@ -21,6 +21,15 @@ import type {
   AtlasCodeForgeReviewDecisionResponse,
   AtlasCodeForgeReviewPacket,
   AtlasCodeForgeUxOrchestrator,
+  AtlasCodeProviderArenaArm,
+  AtlasCodeProviderArenaArmRegistry,
+  AtlasCodeProviderArenaHistoryArm,
+  AtlasCodeProviderArenaHistoryEntry,
+  AtlasCodeProviderArenaModeEntry,
+  AtlasCodeProviderArenaPresetEntry,
+  AtlasCodeProviderArenaRunPayload,
+  AtlasCodeProviderArenaRunResult,
+  AtlasCodeProviderArenaSnapshot,
   AtlasCodeObraCommandCenter,
   AtlasCodeObraCommandCenterPhase,
   AtlasCodeObraCommandCenterMilestone,
@@ -99,6 +108,9 @@ import type {
   AtlasSelfConstructionRuntimePilotStatus,
   AtlasSelfConstructionReleaseDossierStatus,
   AtlasSelfConstructionProofHashes,
+  AtlasWorkspaceProfile,
+  AtlasWorkspaceProfileList,
+  AtlasWorkspaceProfileSafety,
   BootSnapshot,
   CartographyGraph,
   CartographyNote,
@@ -421,13 +433,15 @@ export const bridge = {
   },
 
   // 2 · list obras (V2 wrapper · normalized)
-  async listObras(): Promise<Obra[]> {
+  async listObras(opts: { workspaceSlug?: string | null } = {}): Promise<Obra[]> {
     try {
       let raw: unknown
+      const workspaceSlug = opts.workspaceSlug ?? null
       if (MODE === 'tauri') {
         raw = await invokeTauri<unknown>('bridge_list_works')
       } else if (MODE === 'http') {
-        raw = await fetchHttp<unknown>('/atlas-code/works')
+        const qs = workspaceSlug ? `?workspace=${encodeURIComponent(workspaceSlug)}` : ''
+        raw = await fetchHttp<unknown>(`/atlas-code/works${qs}`)
       } else {
         return []
       }
@@ -438,16 +452,56 @@ export const bridge = {
     }
   },
 
+  // 2b · list Project/Workspace profiles (Atlas, Blackink, …)
+  //
+  // Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
+  // Read-only · returns null when backend has not exposed the endpoint yet
+  // (older atlas-server builds). UI shows honest fallback (single default).
+  async listWorkspaces(): Promise<import('@atlas/domain').AtlasWorkspaceProfileList | null> {
+    try {
+      let raw: unknown
+      if (MODE === 'http') {
+        raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces')
+      } else if (MODE === 'tauri') {
+        // Tauri command not implemented for workspaces yet · degrade gracefully.
+        try {
+          raw = await invokeTauri<unknown>('bridge_list_workspaces')
+        } catch {
+          return null
+        }
+      } else {
+        return null
+      }
+      return adaptWorkspaceProfileList(raw)
+    } catch (e) {
+      console.warn('[bridge] listWorkspaces', e)
+      return null
+    }
+  },
+
   // 3 · create obra · V2 wrapper /atlas-code/works
-  async createObra(intent: string, objective: string, domain = 'atlas'): Promise<Obra> {
+  //
+  // `workspaceSlug` binds the new Obra to a Project/Workspace via metadata
+  // (canon: atlas-code-multi-project-workspace-os.md). Backwards-compatible:
+  // omitting it leaves the backend to resolve the default slug honestly.
+  async createObra(
+    intent: string,
+    objective: string,
+    domain = 'atlas',
+    opts: { workspaceSlug?: string | null } = {}
+  ): Promise<Obra> {
+    const workspaceSlug = opts.workspaceSlug ?? null
     if (MODE === 'tauri') {
+      // Tauri command predates multi-project scoping — degrade gracefully.
       const raw = await invokeTauri<unknown>('bridge_create_work', { intent, objective, domain })
       return normaliseObras(raw)[0] ?? offline('createObra')
     }
     if (MODE === 'http') {
+      const body: Record<string, unknown> = { intent, objective, domain }
+      if (workspaceSlug) body.workspace_slug = workspaceSlug
       const wrap = await fetchHttp<{ work?: Record<string, unknown> }>('/atlas-code/works', {
         method: 'POST',
-        body: { intent, objective, domain },
+        body,
       })
       return normaliseObras([wrap.work])[0] ?? offline('createObra')
     }
@@ -1016,6 +1070,51 @@ export const bridge = {
       offline('getForgeUxOrchestrator')
     }
     return adaptForgeUxOrchestrator(raw)
+  },
+
+  // 10b.13.6 · Atlas Code Provider Arena UI v1 · GET snapshot / POST run
+  async getProviderArenaSnapshot(historyLimit?: number): Promise<AtlasCodeProviderArenaSnapshot | null> {
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_get_provider_arena_snapshot', { historyLimit })
+    } else if (MODE === 'http') {
+      const query = typeof historyLimit === 'number' ? `?history_limit=${historyLimit}` : ''
+      raw = await fetchHttp<unknown>(`/atlas-code/forge/provider-arena/snapshot${query}`)
+    } else {
+      offline('getProviderArenaSnapshot')
+    }
+    return adaptProviderArenaSnapshot(raw)
+  },
+
+  async runProviderArena(payload: AtlasCodeProviderArenaRunPayload): Promise<AtlasCodeProviderArenaRunResult | null> {
+    const wire = {
+      arm_a: payload.armA,
+      arm_b: payload.armB,
+      arm_a_model: payload.armAModel ?? '',
+      arm_b_model: payload.armBModel ?? '',
+      task_category: payload.taskCategory,
+      mode: payload.mode,
+      preset: payload.preset ?? 'smoke',
+      source_ref: payload.sourceRef ?? 'HEAD',
+      run_id: payload.runId ?? '',
+      confirmations: {
+        runbook_reviewed: payload.confirmations?.runbookReviewed ?? false,
+        provider_cost: payload.confirmations?.providerCost ?? false,
+        real_provider_call: payload.confirmations?.realProviderCall ?? false,
+      },
+    }
+    let raw: unknown
+    if (MODE === 'tauri') {
+      raw = await invokeTauri<unknown>('bridge_run_provider_arena', { payload: wire })
+    } else if (MODE === 'http') {
+      raw = await fetchHttp<unknown>('/atlas-code/forge/provider-arena/run', {
+        method: 'POST',
+        body: wire,
+      })
+    } else {
+      offline('runProviderArena')
+    }
+    return adaptProviderArenaRunResult(raw)
   },
 
   async getForgeProviderDrivers(obraId: string): Promise<AtlasForgeProviderDriverStatus | null> {
@@ -1916,6 +2015,8 @@ function normaliseObras(raw: unknown): Obra[] {
     const o = item as Record<string, unknown>
     const id = (o.id ?? o.uuid) as string | undefined
     if (!id) continue
+    const workspaceSlug = (o.workspace_slug ?? o.workspaceSlug ?? null) as string | null
+    const workspaceName = (o.workspace_name ?? o.workspaceName ?? null) as string | null
     obras.push({
       id,
       title: (o.title ?? o.name ?? id) as string,
@@ -1923,9 +2024,94 @@ function normaliseObras(raw: unknown): Obra[] {
       status: ((o.status as Obra['status']) ?? 'active'),
       workspacePath: (o.workspace_path ?? o.workspacePath ?? '') as string,
       createdAt: (o.created_at ?? o.createdAt ?? '') as string,
+      workspaceSlug: workspaceSlug && String(workspaceSlug).trim() !== '' ? String(workspaceSlug) : null,
+      workspaceName: workspaceName && String(workspaceName).trim() !== '' ? String(workspaceName) : null,
     })
   }
   return obras
+}
+
+function adaptWorkspaceProfile(raw: unknown): AtlasWorkspaceProfile | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const slug = String(r.slug ?? r.id ?? '').trim()
+  if (slug === '') return null
+
+  const safetyRaw = (r.safety ?? {}) as Record<string, unknown>
+  const safety: AtlasWorkspaceProfileSafety = {
+    executionAllowed: Boolean(safetyRaw.execution_allowed ?? safetyRaw.executionAllowed ?? false),
+    executionBlockedReason:
+      typeof safetyRaw.execution_blocked_reason === 'string'
+        ? (safetyRaw.execution_blocked_reason as string)
+        : typeof safetyRaw.executionBlockedReason === 'string'
+          ? (safetyRaw.executionBlockedReason as string)
+          : null,
+    riskFloor: String(safetyRaw.risk_floor ?? safetyRaw.riskFloor ?? r.default_risk ?? 'medium'),
+    requiresExplicitInterventionReview: Boolean(
+      safetyRaw.requires_explicit_intervention_review ??
+        safetyRaw.requiresExplicitInterventionReview ??
+        false
+    ),
+  }
+
+  const commandsRaw = (r.commands ?? {}) as Record<string, unknown>
+  const commands: Record<string, string> = {}
+  for (const [k, v] of Object.entries(commandsRaw)) {
+    if (typeof v === 'string' && v.trim() !== '') commands[k] = v
+  }
+
+  const stringList = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '') : []
+
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.code.workspace_profile.v1'),
+    id: String(r.id ?? slug),
+    slug,
+    name: String(r.name ?? slug),
+    kind: String(r.kind ?? 'product'),
+    workspacePath: String(r.workspace_path ?? r.workspacePath ?? ''),
+    workspacePathExists: Boolean(r.workspace_path_exists ?? r.workspacePathExists ?? false),
+    repoRoot: String(r.repo_root ?? r.repoRoot ?? ''),
+    productionStatus: String(r.production_status ?? r.productionStatus ?? 'development'),
+    stackSummary: String(r.stack_summary ?? r.stackSummary ?? ''),
+    commands,
+    testCommands: stringList(r.test_commands ?? r.testCommands),
+    buildCommands: stringList(r.build_commands ?? r.buildCommands),
+    devServerCommand:
+      typeof r.dev_server_command === 'string'
+        ? (r.dev_server_command as string)
+        : typeof r.devServerCommand === 'string'
+          ? (r.devServerCommand as string)
+          : null,
+    criticalAreas: stringList(r.critical_areas ?? r.criticalAreas),
+    docsStatus: String(r.docs_status ?? r.docsStatus ?? 'unknown'),
+    defaultRisk: String(r.default_risk ?? r.defaultRisk ?? 'medium'),
+    deploymentNotes: String(r.deployment_notes ?? r.deploymentNotes ?? ''),
+    safety,
+  }
+}
+
+function adaptWorkspaceProfileList(raw: unknown): AtlasWorkspaceProfileList | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const listRaw = Array.isArray(r.data)
+    ? (r.data as unknown[])
+    : Array.isArray(r.profiles)
+      ? (r.profiles as unknown[])
+      : []
+  const profiles: AtlasWorkspaceProfile[] = []
+  for (const item of listRaw) {
+    const p = adaptWorkspaceProfile(item)
+    if (p) profiles.push(p)
+  }
+  if (profiles.length === 0) return null
+  const meta = (r.meta ?? {}) as Record<string, unknown>
+  const defaultSlug = String(meta.default_slug ?? meta.defaultSlug ?? profiles[0].slug)
+  return {
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? 'atlas.code.workspace_profile.v1'),
+    defaultSlug,
+    profiles,
+  }
 }
 
 function normaliseSessions(raw: unknown): Session[] {
@@ -5649,6 +5835,274 @@ function norm(v: unknown): string | null {
 function normList(v: unknown): string[] {
   if (!v) return []
   return Array.isArray(v) ? v.map(String) : [String(v)]
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Provider Arena adapters · snake_case wire → camelCase domain
+// Schema: atlas.code.provider_arena_snapshot.v1
+//
+// Honest empty-state contract: null/[] never invented. Schema mismatch ⇒
+// null (the panel renders an empty state, never a fake snapshot).
+
+function adaptProviderArenaSnapshot(raw: unknown): AtlasCodeProviderArenaSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = String(r.schema_version ?? r.schemaVersion ?? '')
+  if (schema !== '' && schema !== 'atlas.code.provider_arena_snapshot.v1') return null
+
+  const armRegistryRaw = (r.arm_registry ?? r.armRegistry ?? {}) as Record<string, unknown>
+  const armsRaw = Array.isArray(armRegistryRaw.arms) ? (armRegistryRaw.arms as unknown[]) : []
+  const arms = armsRaw
+    .map((a) => adaptProviderArenaArm(a))
+    .filter((x): x is AtlasCodeProviderArenaArm => x !== null)
+  const taskCategories = Array.isArray(armRegistryRaw.task_categories ?? armRegistryRaw.taskCategories)
+    ? ((armRegistryRaw.task_categories ?? armRegistryRaw.taskCategories) as unknown[]).map(String)
+    : []
+  const armRegistry: AtlasCodeProviderArenaArmRegistry = {
+    schemaVersion: String(armRegistryRaw.schema_version ?? armRegistryRaw.schemaVersion ?? ''),
+    arms,
+    armCount: Number(armRegistryRaw.arm_count ?? armRegistryRaw.armCount ?? arms.length),
+    taskCategories,
+    taskCategoryCount: Number(
+      armRegistryRaw.task_category_count ?? armRegistryRaw.taskCategoryCount ?? taskCategories.length,
+    ),
+  }
+
+  const modesRaw = Array.isArray(r.modes) ? (r.modes as unknown[]) : []
+  const modes: AtlasCodeProviderArenaModeEntry[] = modesRaw.map((m) => {
+    const mr = (m ?? {}) as Record<string, unknown>
+    return {
+      mode: String(mr.mode ?? ''),
+      requiresProvider: Boolean(mr.requires_provider ?? mr.requiresProvider ?? false),
+      allowsAtlasDecide: Boolean(mr.allows_atlas_decide ?? mr.allowsAtlasDecide ?? false),
+      allowsTopologyDeclaration: Boolean(
+        mr.allows_topology_declaration ?? mr.allowsTopologyDeclaration ?? false,
+      ),
+      claimEligible: Boolean(mr.claim_eligible ?? mr.claimEligible ?? false),
+      allowedModels: Array.isArray(mr.allowed_models ?? mr.allowedModels)
+        ? ((mr.allowed_models ?? mr.allowedModels) as unknown[]).map(String)
+        : [],
+      note: String(mr.note ?? ''),
+      usableInArena: Boolean(mr.usable_in_arena ?? mr.usableInArena ?? true),
+    }
+  })
+
+  const presetsRaw = Array.isArray(r.presets) ? (r.presets as unknown[]) : []
+  const presets: AtlasCodeProviderArenaPresetEntry[] = presetsRaw.map((p) => {
+    const pr = (p ?? {}) as Record<string, unknown>
+    return {
+      preset: String(pr.preset ?? ''),
+      caseCount: Number(pr.case_count ?? pr.caseCount ?? 0),
+      note: String(pr.note ?? ''),
+    }
+  })
+
+  const historyRaw = Array.isArray(r.history) ? (r.history as unknown[]) : []
+  const history: AtlasCodeProviderArenaHistoryEntry[] = historyRaw
+    .map((h) => adaptProviderArenaHistoryEntry(h))
+    .filter((x): x is AtlasCodeProviderArenaHistoryEntry => x !== null)
+
+  const safetyRaw = (r.safety_promises ?? r.safetyPromises ?? {}) as Record<string, unknown>
+  const safetyPromises = {
+    neverPromotesCompletionClaim: Boolean(
+      safetyRaw.never_promotes_completion_claim ?? safetyRaw.neverPromotesCompletionClaim ?? true,
+    ),
+    neverUnlocksExternalRivalsCertification: Boolean(
+      safetyRaw.never_unlocks_external_rivals_certification
+      ?? safetyRaw.neverUnlocksExternalRivalsCertification
+      ?? true,
+    ),
+    requiresThreeConfirmationsForRealProvider: Boolean(
+      safetyRaw.requires_three_confirmations_for_real_provider
+      ?? safetyRaw.requiresThreeConfirmationsForRealProvider
+      ?? true,
+    ),
+    localFakeNeverInvokesProvider: Boolean(
+      safetyRaw.local_fake_never_invokes_provider ?? safetyRaw.localFakeNeverInvokesProvider ?? true,
+    ),
+    replayRequiredBeforeWinner: Boolean(
+      safetyRaw.replay_required_before_winner ?? safetyRaw.replayRequiredBeforeWinner ?? true,
+    ),
+    evidenceRequiredBeforeWinner: Boolean(
+      safetyRaw.evidence_required_before_winner ?? safetyRaw.evidenceRequiredBeforeWinner ?? true,
+    ),
+  }
+
+  const lastRunRaw = r.last_run ?? r.lastRun
+  const lastRun = adaptProviderArenaHistoryEntry(lastRunRaw)
+
+  return {
+    schemaVersion: schema || 'atlas.code.provider_arena_snapshot.v1',
+    generatedAt: String(r.generated_at ?? r.generatedAt ?? ''),
+    armRegistry,
+    modes,
+    presets,
+    history,
+    historyCount: Number(r.history_count ?? r.historyCount ?? history.length),
+    historyLimit: Number(r.history_limit ?? r.historyLimit ?? 10),
+    lastRun,
+    safetyPromises,
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    separatedFromExternalRivalsCertification: Boolean(
+      r.separated_from_external_rivals_certification ?? r.separatedFromExternalRivalsCertification ?? true,
+    ),
+    note: String(r.note ?? ''),
+  }
+}
+
+function adaptProviderArenaArm(raw: unknown): AtlasCodeProviderArenaArm | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const safetyRaw = (r.safety_contract ?? r.safetyContract ?? {}) as Record<string, unknown>
+  return {
+    armId: String(r.arm_id ?? r.armId ?? ''),
+    runnerType: String(r.runner_type ?? r.runnerType ?? ''),
+    provider: nullableString(r.provider),
+    modelOptions: Array.isArray(r.model_options ?? r.modelOptions)
+      ? ((r.model_options ?? r.modelOptions) as unknown[]).map(String)
+      : [],
+    executionMode: String(r.execution_mode ?? r.executionMode ?? ''),
+    requiresExternalProviderCall: Boolean(
+      r.requires_external_provider_call ?? r.requiresExternalProviderCall ?? false,
+    ),
+    requiresCostConfirmation: Boolean(
+      r.requires_cost_confirmation ?? r.requiresCostConfirmation ?? false,
+    ),
+    supportsStreaming: Boolean(r.supports_streaming ?? r.supportsStreaming ?? false),
+    supportsReplay: Boolean(r.supports_replay ?? r.supportsReplay ?? false),
+    supportsPatchDiff: Boolean(r.supports_patch_diff ?? r.supportsPatchDiff ?? false),
+    supportsTestLog: Boolean(r.supports_test_log ?? r.supportsTestLog ?? false),
+    allowedTaskCategories: Array.isArray(r.allowed_task_categories ?? r.allowedTaskCategories)
+      ? ((r.allowed_task_categories ?? r.allowedTaskCategories) as unknown[]).map(String)
+      : [],
+    status: String(r.status ?? 'placeholder'),
+    notExecutableReason: nullableString(r.not_executable_reason ?? r.notExecutableReason),
+    humanLabel: String(r.human_label ?? r.humanLabel ?? r.arm_id ?? ''),
+    humanDescription: String(r.human_description ?? r.humanDescription ?? ''),
+    safetyContract: {
+      neverPromotesCompletionClaim: Boolean(
+        safetyRaw.never_promotes_completion_claim ?? safetyRaw.neverPromotesCompletionClaim ?? true,
+      ),
+      neverUnlocksExternalRivalsCertification: Boolean(
+        safetyRaw.never_unlocks_external_rivals_certification
+        ?? safetyRaw.neverUnlocksExternalRivalsCertification
+        ?? true,
+      ),
+      requiresThreeConfirmationsForRealProvider: Boolean(
+        safetyRaw.requires_three_confirmations_for_real_provider
+        ?? safetyRaw.requiresThreeConfirmationsForRealProvider
+        ?? false,
+      ),
+      maxScoreWithoutEvidence: Number(
+        safetyRaw.max_score_without_evidence ?? safetyRaw.maxScoreWithoutEvidence ?? 0,
+      ),
+      failsClosedOnMissingDriver: Boolean(
+        safetyRaw.fails_closed_on_missing_driver ?? safetyRaw.failsClosedOnMissingDriver ?? true,
+      ),
+      auditTrailRequired: Boolean(
+        safetyRaw.audit_trail_required ?? safetyRaw.auditTrailRequired ?? true,
+      ),
+      replayRequiredBeforeWinner: Boolean(
+        safetyRaw.replay_required_before_winner ?? safetyRaw.replayRequiredBeforeWinner ?? true,
+      ),
+      evidenceRequiredBeforeWinner: Boolean(
+        safetyRaw.evidence_required_before_winner ?? safetyRaw.evidenceRequiredBeforeWinner ?? true,
+      ),
+      scriptedOrManualCannotForgeScore: Boolean(
+        safetyRaw.scripted_or_manual_cannot_forge_score
+        ?? safetyRaw.scriptedOrManualCannotForgeScore
+        ?? false,
+      ),
+      placeholderBlocksRealRun: Boolean(
+        safetyRaw.placeholder_blocks_real_run ?? safetyRaw.placeholderBlocksRealRun ?? false,
+      ),
+    },
+  }
+}
+
+function adaptProviderArenaHistoryEntry(raw: unknown): AtlasCodeProviderArenaHistoryEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (!r.run_id && !r.runId) return null
+  return {
+    runId: String(r.run_id ?? r.runId ?? ''),
+    basePath: String(r.base_path ?? r.basePath ?? ''),
+    updatedAtUnix: Number(r.updated_at_unix ?? r.updatedAtUnix ?? 0),
+    mode: nullableString(r.mode),
+    preset: nullableString(r.preset),
+    taskCategory: nullableString(r.task_category ?? r.taskCategory),
+    armA: adaptProviderArenaHistoryArm(r.arm_a ?? r.armA),
+    armB: adaptProviderArenaHistoryArm(r.arm_b ?? r.armB),
+    winner: nullableString(r.winner),
+    verdict: nullableString(r.verdict),
+    claimReady: r.claim_ready == null && r.claimReady == null ? null : Boolean(r.claim_ready ?? r.claimReady),
+    comparableScore: numberOrNull(r.comparable_score ?? r.comparableScore),
+    diagnosticScore: numberOrNull(r.diagnostic_score ?? r.diagnosticScore),
+    reportMdPresent: Boolean(r.report_md_present ?? r.reportMdPresent ?? false),
+    evidenceDir: String(r.evidence_dir ?? r.evidenceDir ?? ''),
+    eventsJsonl: String(r.events_jsonl ?? r.eventsJsonl ?? ''),
+    externalProviderCall:
+      r.external_provider_call == null && r.externalProviderCall == null
+        ? null
+        : Boolean(r.external_provider_call ?? r.externalProviderCall),
+  }
+}
+
+function adaptProviderArenaHistoryArm(raw: unknown): AtlasCodeProviderArenaHistoryArm | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    armId: nullableString(r.arm_id ?? r.armId),
+    runnerType: nullableString(r.runner_type ?? r.runnerType),
+    provider: nullableString(r.provider),
+    model: nullableString(r.model),
+    legacyModelId: nullableString(r.legacy_model_id ?? r.legacyModelId),
+    status: nullableString(r.status),
+    humanLabel: nullableString(r.human_label ?? r.humanLabel),
+  }
+}
+
+function adaptProviderArenaRunResult(raw: unknown): AtlasCodeProviderArenaRunResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const blockers = Array.isArray(r.blockers) ? (r.blockers as unknown[]).map(String) : []
+  const evidencePaths = Array.isArray(r.evidence_paths ?? r.evidencePaths)
+    ? ((r.evidence_paths ?? r.evidencePaths) as unknown[]).map(String)
+    : []
+  const armAValue = r.arm_a ?? r.armA
+  const armBValue = r.arm_b ?? r.armB
+  const armA = armAValue && typeof armAValue === 'object' ? (armAValue as Record<string, unknown>) : null
+  const armB = armBValue && typeof armBValue === 'object' ? (armBValue as Record<string, unknown>) : null
+  const scorecardValue = r.scorecard
+  const scorecard = scorecardValue && typeof scorecardValue === 'object' ? (scorecardValue as Record<string, unknown>) : null
+  return {
+    status: String(r.status ?? 'blocked'),
+    action: String(r.action ?? 'run-arena'),
+    schemaVersion: String(r.schema_version ?? r.schemaVersion ?? ''),
+    arenaSchemaVersion: nullableString(r.arena_schema_version ?? r.arenaSchemaVersion),
+    generatedAt: nullableString(r.generated_at ?? r.generatedAt),
+    runId: nullableString(r.run_id ?? r.runId),
+    mode: nullableString(r.mode),
+    taskCategory: nullableString(r.task_category ?? r.taskCategory),
+    armA,
+    armB,
+    blockers,
+    nextCommand: nullableString(r.next_command ?? r.nextCommand),
+    externalProviderCall: Boolean(r.external_provider_call ?? r.externalProviderCall ?? false),
+    providerTokensSpent: Boolean(r.provider_tokens_spent ?? r.providerTokensSpent ?? false),
+    separatedFromExternalRivalsCertification: Boolean(
+      r.separated_from_external_rivals_certification ?? r.separatedFromExternalRivalsCertification ?? true,
+    ),
+    evidencePaths,
+    note: nullableString(r.note),
+    winner: nullableString(r.winner),
+    scorecard,
+    requiresExternalProviderCall: Boolean(
+      r.requires_external_provider_call ?? r.requiresExternalProviderCall ?? false,
+    ),
+    rawPayload: r,
+  }
 }
 
 // Re-export type aliases mantidos para downstream consumers; evita TS6196.

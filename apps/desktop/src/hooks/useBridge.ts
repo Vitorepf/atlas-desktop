@@ -31,6 +31,9 @@ import type {
   AtlasForgeProviderTopology,
   AtlasCodeForgeUxOrchestrator,
   AtlasCodeObraCommandCenter,
+  AtlasCodeProviderArenaRunPayload,
+  AtlasCodeProviderArenaRunResult,
+  AtlasCodeProviderArenaSnapshot,
   AtlasForgeProviderDriverPlanPacket,
   AtlasForgeProviderDriverStatus,
   AtlasForgeProviderInvocationReceipt,
@@ -56,6 +59,8 @@ import type {
   AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
   AtlasSelfConstructionSnapshot,
+  AtlasWorkspaceProfile,
+  AtlasWorkspaceProfileList,
   CoreStatus,
   DecisionReceipt,
   Message,
@@ -73,6 +78,19 @@ export interface BridgeSnapshot {
   loading: boolean
   /** Errors captured during boot/actions (latest first). Visible in UI. */
   errors: string[]
+  /**
+   * Atlas Code · multi-project state.
+   *
+   * Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
+   *
+   * `workspaces` is the read-model fetched from /atlas-code/projects/workspaces.
+   * `activeWorkspaceSlug` is the operator's current selection (persisted in
+   * localStorage). When the backend has no workspaces endpoint yet, the
+   * snapshot keeps `workspaces=null` and the UI falls back to Atlas-only.
+   */
+  workspaces: AtlasWorkspaceProfileList | null
+  activeWorkspaceSlug: string | null
+  activeWorkspace: AtlasWorkspaceProfile | null
   obra: Obra | null
   obras: Obra[]
   active: Session[]
@@ -108,6 +126,8 @@ export interface BridgeSnapshot {
   forgeProviderInvocationReceipt: AtlasForgeProviderInvocationReceipt | null
   forgeUxOrchestrator: AtlasCodeForgeUxOrchestrator | null
   obraCommandCenter: AtlasCodeObraCommandCenter | null
+  providerArena: AtlasCodeProviderArenaSnapshot | null
+  providerArenaLastResult: AtlasCodeProviderArenaRunResult | null
   forgeRunHistoryReplay: WorkStateSnapshot['forgeRunHistoryReplay']
   forgeReview: WorkStateSnapshot['forgeReview']
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
@@ -138,6 +158,13 @@ export interface BridgeSnapshot {
 
 export interface BridgeActions {
   refresh: () => Promise<void>
+  /**
+   * Switch the active Project/Workspace. Re-fetches the Obra list scoped to
+   * the new project and persists the choice in localStorage.
+   */
+  setActiveWorkspaceSlug: (slug: string) => Promise<void>
+  /** Re-query workspace profiles (Atlas, Blackink, …) from atlas-server. */
+  refreshWorkspaces: () => Promise<void>
   selectObra: (obraId: string) => Promise<void>
   createObra: (intent: string, objective: string) => Promise<Obra | null>
   sendIntent: (text: string) => Promise<void>
@@ -180,6 +207,9 @@ export interface BridgeActions {
   runForgeProviderInvocation: (options?: { role?: string; mode?: 'dry_run' | 'execute'; dispatchId?: string; confirmProviderCall?: boolean; confirmBudget?: boolean; confirmRuntimeDispatch?: boolean; timeoutSeconds?: number }) => Promise<void>
   refreshForgeProviderInvocationLatest: () => Promise<void>
   refreshForgeUxOrchestrator: () => Promise<void>
+  refreshProviderArena: (historyLimit?: number) => Promise<void>
+  runProviderArena: (payload: AtlasCodeProviderArenaRunPayload) => Promise<AtlasCodeProviderArenaRunResult | null>
+  clearProviderArenaLastResult: () => void
   startForgeLiveExecutionAsync: () => Promise<void>
   refreshForgeLiveExecutionAsync: () => Promise<void>
   inspectForgeRunHistory: (historyId: string) => Promise<void>
@@ -196,10 +226,79 @@ export interface BridgeActions {
   refreshSelfConstruction: () => Promise<void>
 }
 
+const WORKSPACE_STORAGE_KEY = 'atlas-desktop:active-workspace-slug'
+
+/**
+ * Canonical "no Obra selected" snapshot slice. Used whenever the cockpit
+ * must be cleared — e.g. switching Project/Workspace to one that has zero
+ * Obras, or boot before any Obra is loaded. Returning a `Partial` keeps
+ * `INITIAL` as the single source of default values.
+ *
+ * Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
+ * (no fake runtime — every panel falls back to honest empty state).
+ */
+function emptyObraDetail(): Partial<BridgeSnapshot> {
+  return {
+    active: noSessions,
+    messages: noMessages,
+    sdd: idlePipeline,
+    evidence: [],
+    forgeLiveExecution: null,
+    forgeLiveExecutionAsync: null,
+    forgeLiveExecutionHistory: null,
+    forgeTaskQueue: null,
+    forgeFastPath: null,
+    forgeFastPathStatus: null,
+    forgeRunHistoryReplay: null,
+    forgeReview: null,
+    forgeReviewHistory: null,
+    forgeReviewPacket: null,
+    forgeCompletionClaim: null,
+    forgeWorkIntake: null,
+    forgeProviderTopology: null,
+    forgeContinuumCertification: null,
+    forgeProviderCapacity: null,
+    forgeProviderFailureMemory: null,
+    forgeRuntimeDispatch: null,
+    forgeProviderDriverStatus: null,
+    forgeProviderInvocation: null,
+    forgeProviderInvocationReceipt: null,
+    forgeUxOrchestrator: null,
+    obraCommandCenter: null,
+    selfImprovementGovernance: null,
+    selfImprovementActivation: null,
+    checkpoint: null,
+    programmingGovernance: null,
+    receipt: null,
+    activeThreadId: null,
+  }
+}
+
+function readPersistedWorkspaceSlug(): string | null {
+  try {
+    const v = localStorage.getItem(WORKSPACE_STORAGE_KEY)
+    return typeof v === 'string' && v.trim() !== '' ? v : null
+  } catch {
+    return null
+  }
+}
+
+function persistWorkspaceSlug(slug: string | null): void {
+  try {
+    if (slug && slug.trim() !== '') localStorage.setItem(WORKSPACE_STORAGE_KEY, slug)
+    else localStorage.removeItem(WORKSPACE_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 const INITIAL: BridgeSnapshot = {
   mode: bridge.mode,
   loading: true,
   errors: [],
+  workspaces: null,
+  activeWorkspaceSlug: readPersistedWorkspaceSlug(),
+  activeWorkspace: null,
   obra: null,
   obras: [],
   active: noSessions,
@@ -235,6 +334,8 @@ const INITIAL: BridgeSnapshot = {
   forgeProviderInvocationReceipt: null,
   forgeUxOrchestrator: null,
   obraCommandCenter: null,
+  providerArena: null,
+  providerArenaLastResult: null,
   forgeRunHistoryReplay: null,
   forgeReview: null,
   forgeReviewHistory: null,
@@ -258,36 +359,44 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     setSnap((s) => ({ ...s, errors: [...errorBufRef.current] }))
   }, [])
 
-  const loadObrasAndCore = useCallback(async (): Promise<{
-    core: CoreStatus
-    obras: Obra[]
-    gates: QualityGate[]
-    certification: AtlasCodeEnterpriseCertificationReport | null
-    selfConstruction: AtlasSelfConstructionSnapshot | null
-  }> => {
-    const [core, obrasRaw, certification, selfConstruction] = await Promise.all([
-      bridge.coreStatus().catch((e: unknown) => {
-        pushError('coreStatus', e)
-        return browserCoreStatus
-      }),
-      bridge.listObras().catch((e: unknown) => {
-        pushError('listObras', e)
-        return [] as Obra[]
-      }),
-      bridge.getAtlasCodeEnterpriseCertification().catch((e: unknown) => {
-        pushError('getAtlasCodeEnterpriseCertification', e)
-        return null
-      }),
-      // Self-Construction OS · read-only diagnostic. Bridge already returns
-      // null on missing endpoint, but we keep the explicit catch so a future
-      // throwing variant cannot poison `refresh()`.
-      bridge.getAtlasSelfConstruction().catch((e: unknown) => {
-        pushError('getAtlasSelfConstruction', e)
-        return null
-      }),
-    ])
-    return { core, obras: obrasRaw, gates: noGates, certification, selfConstruction }
-  }, [pushError])
+  const loadObrasAndCore = useCallback(
+    async (workspaceSlug: string | null): Promise<{
+      core: CoreStatus
+      obras: Obra[]
+      gates: QualityGate[]
+      certification: AtlasCodeEnterpriseCertificationReport | null
+      selfConstruction: AtlasSelfConstructionSnapshot | null
+      workspaces: AtlasWorkspaceProfileList | null
+    }> => {
+      const [core, obrasRaw, certification, selfConstruction, workspaces] = await Promise.all([
+        bridge.coreStatus().catch((e: unknown) => {
+          pushError('coreStatus', e)
+          return browserCoreStatus
+        }),
+        bridge.listObras({ workspaceSlug }).catch((e: unknown) => {
+          pushError('listObras', e)
+          return [] as Obra[]
+        }),
+        bridge.getAtlasCodeEnterpriseCertification().catch((e: unknown) => {
+          pushError('getAtlasCodeEnterpriseCertification', e)
+          return null
+        }),
+        // Self-Construction OS · read-only diagnostic. Bridge already returns
+        // null on missing endpoint, but we keep the explicit catch so a future
+        // throwing variant cannot poison `refresh()`.
+        bridge.getAtlasSelfConstruction().catch((e: unknown) => {
+          pushError('getAtlasSelfConstruction', e)
+          return null
+        }),
+        bridge.listWorkspaces().catch((e: unknown) => {
+          pushError('listWorkspaces', e)
+          return null
+        }),
+      ])
+      return { core, obras: obrasRaw, gates: noGates, certification, selfConstruction, workspaces }
+    },
+    [pushError]
+  )
 
   const loadObraDetail = useCallback(
     async (obra: Obra): Promise<Partial<BridgeSnapshot>> => {
@@ -297,36 +406,8 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       })
       if (!state) {
         return {
-          active: noSessions,
-          messages: noMessages,
-          sdd: idlePipeline,
-          evidence: [],
-          forgeLiveExecution: null,
-          forgeLiveExecutionAsync: null,
-          forgeLiveExecutionHistory: null,
-          forgeTaskQueue: null,
-          forgeFastPath: null,
-          forgeRunHistoryReplay: null,
-          forgeReview: null,
-          forgeReviewHistory: null,
-          forgeReviewPacket: null,
-          forgeCompletionClaim: null,
-          forgeWorkIntake: null,
-          forgeProviderTopology: null,
-          forgeContinuumCertification: null,
-          forgeRuntimeDispatch: null,
-          forgeProviderDriverStatus: null,
-          forgeProviderInvocation: null,
-          forgeProviderInvocationReceipt: null,
-          forgeUxOrchestrator: null,
-          obraCommandCenter: null,
-          selfImprovementGovernance: null,
-          selfImprovementActivation: null,
-          checkpoint: null,
+          ...emptyObraDetail(),
           atlasCodeEnterpriseCertification: null,
-          programmingGovernance: null,
-          receipt: null,
-          activeThreadId: null,
         }
       }
       const sessions: Session[] = state.sessions.map((s) => ({
@@ -375,13 +456,44 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     [pushError, snap.gates]
   )
 
+  const resolveActiveWorkspace = useCallback(
+    (
+      list: AtlasWorkspaceProfileList | null,
+      currentSlug: string | null
+    ): { slug: string | null; profile: AtlasWorkspaceProfile | null } => {
+      if (!list || list.profiles.length === 0) {
+        return { slug: currentSlug, profile: null }
+      }
+      const slug =
+        (currentSlug && list.profiles.find((p) => p.slug === currentSlug) ? currentSlug : null) ??
+        list.defaultSlug ??
+        list.profiles[0].slug
+      const profile = list.profiles.find((p) => p.slug === slug) ?? null
+      return { slug, profile }
+    },
+    []
+  )
+
   const refresh = useCallback(async () => {
     setSnap((s) => ({ ...s, loading: true, busy: true }))
-    const { core, obras, gates, certification, selfConstruction } = await loadObrasAndCore()
+    const persistedSlug = readPersistedWorkspaceSlug()
+    const { core, obras, gates, certification, selfConstruction, workspaces } =
+      await loadObrasAndCore(persistedSlug)
+    const { slug: activeWorkspaceSlug, profile: activeWorkspace } = resolveActiveWorkspace(
+      workspaces,
+      persistedSlug
+    )
+    if (activeWorkspaceSlug && activeWorkspaceSlug !== persistedSlug) {
+      persistWorkspaceSlug(activeWorkspaceSlug)
+    }
     const obra = obras[0] ?? null
-    const detail = obra
-      ? await loadObraDetail(obra)
-      : {}
+    const detail = obra ? await loadObraDetail(obra) : emptyObraDetail()
+    const providerArena = await bridge
+      .getProviderArenaSnapshot()
+      .catch((e: unknown) => {
+        pushError('getProviderArenaSnapshot', e)
+        return null
+      })
     if (cancelRef.current) return
     setSnap((s) => ({
       ...s,
@@ -390,14 +502,87 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       busy: false,
       errors: [...errorBufRef.current],
       core,
+      workspaces,
+      activeWorkspaceSlug,
+      activeWorkspace,
       obras,
       obra,
       gates,
       ...detail,
       atlasCodeEnterpriseCertification: detail.atlasCodeEnterpriseCertification ?? certification,
       selfConstruction,
+      providerArena,
     }))
-  }, [loadObrasAndCore, loadObraDetail])
+  }, [loadObrasAndCore, loadObraDetail, pushError, resolveActiveWorkspace])
+
+  const refreshWorkspaces = useCallback(async () => {
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const next = await bridge.listWorkspaces()
+      if (cancelRef.current) return
+      setSnap((s) => {
+        const { slug, profile } = resolveActiveWorkspace(next, s.activeWorkspaceSlug)
+        if (slug && slug !== s.activeWorkspaceSlug) persistWorkspaceSlug(slug)
+        return {
+          ...s,
+          busy: false,
+          workspaces: next,
+          activeWorkspaceSlug: slug,
+          activeWorkspace: profile,
+          errors: [...errorBufRef.current],
+        }
+      })
+    } catch (e) {
+      pushError('refreshWorkspaces', e)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    }
+  }, [pushError, resolveActiveWorkspace])
+
+  const setActiveWorkspaceSlug = useCallback(
+    async (slug: string) => {
+      const target = slug.trim()
+      if (target === '') return
+      // Reject unknown slugs honestly — the canon forbids inventing a
+      // Project that does not exist in the read-model. When workspaces is
+      // null (Tauri before bridge), we accept any slug so the UI falls back
+      // to fetching whatever the backend resolves.
+      const currentWorkspaces = snap.workspaces
+      if (currentWorkspaces && !currentWorkspaces.profiles.find((p) => p.slug === target)) {
+        pushError('setActiveWorkspaceSlug', new Error(`unknown workspace_slug: ${target}`))
+        return
+      }
+      if (target === snap.activeWorkspaceSlug) return
+      persistWorkspaceSlug(target)
+      // Drop any in-flight cockpit trace — we are switching project context.
+      useExecutionStore.getState().clearTrace()
+      setSnap((s) => ({ ...s, busy: true, activeWorkspaceSlug: target }))
+      const obras = await bridge.listObras({ workspaceSlug: target }).catch((e: unknown) => {
+        pushError('listObras', e)
+        return [] as Obra[]
+      })
+      const obra = obras[0] ?? null
+      const detail = obra ? await loadObraDetail(obra) : emptyObraDetail()
+      if (cancelRef.current) return
+      setSnap((s) => {
+        const profile =
+          s.workspaces?.profiles.find((p) => p.slug === target) ?? s.activeWorkspace ?? null
+        return {
+          ...s,
+          busy: false,
+          activeWorkspaceSlug: target,
+          activeWorkspace: profile,
+          obras,
+          obra,
+          forgeRunHistoryReplay: null,
+          ...detail,
+          errors: [...errorBufRef.current],
+        }
+      })
+    },
+    [loadObraDetail, pushError, snap.workspaces, snap.activeWorkspaceSlug]
+  )
 
   const refreshSelfConstruction = useCallback(async () => {
     setSnap((s) => ({ ...s, busy: true }))
@@ -454,7 +639,12 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     async (intent: string, objective: string): Promise<Obra | null> => {
       setSnap((s) => ({ ...s, busy: true }))
       try {
-        const created = await bridge.createObra(intent, objective)
+        // Bind new Obra to the currently active Project/Workspace so the
+        // backend metadata carries workspace_slug, workspace_path, etc.
+        // Canon: docs/.../atlas-code-multi-project-workspace-os.md
+        const workspaceSlug = snap.activeWorkspaceSlug ?? snap.activeWorkspace?.slug ?? null
+        const domain = snap.activeWorkspace?.slug ?? 'atlas'
+        const created = await bridge.createObra(intent, objective, domain, { workspaceSlug })
         if (!created?.id) {
           pushError('createObra', new Error('server returned no obra'))
           setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
@@ -478,7 +668,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         return null
       }
     },
-    [loadObraDetail, pushError]
+    [loadObraDetail, pushError, snap.activeWorkspaceSlug, snap.activeWorkspace]
   )
 
   const sendIntent = useCallback(
@@ -1511,6 +1701,51 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     }
   }, [snap.obra, pushError])
 
+  const refreshProviderArena = useCallback(async (historyLimit?: number) => {
+    try {
+      const snapshot = await bridge.getProviderArenaSnapshot(historyLimit)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, providerArena: snapshot, errors: [...errorBufRef.current] }))
+      }
+    } catch (e) {
+      pushError('refreshProviderArena', e)
+    }
+  }, [pushError])
+
+  const runProviderArena = useCallback(
+    async (payload: AtlasCodeProviderArenaRunPayload): Promise<AtlasCodeProviderArenaRunResult | null> => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const result = await bridge.runProviderArena(payload)
+        if (!cancelRef.current) {
+          setSnap((s) => ({ ...s, providerArenaLastResult: result, busy: false, errors: [...errorBufRef.current] }))
+        }
+        // After every run-arena attempt, re-read the snapshot so the panel sees
+        // the freshly-written run on disk (or the unchanged history when blocked).
+        try {
+          const snapshot = await bridge.getProviderArenaSnapshot()
+          if (!cancelRef.current) {
+            setSnap((s) => ({ ...s, providerArena: snapshot, errors: [...errorBufRef.current] }))
+          }
+        } catch (e) {
+          pushError('refreshProviderArena.after_run', e)
+        }
+        return result
+      } catch (e) {
+        pushError('runProviderArena', e)
+        if (!cancelRef.current) {
+          setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        }
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const clearProviderArenaLastResult = useCallback(() => {
+    setSnap((s) => ({ ...s, providerArenaLastResult: null }))
+  }, [])
+
   const createCheckpoint = useCallback(async () => {
     if (!snap.obra?.id) {
       pushError('createCheckpoint', new Error('obra_required'))
@@ -1806,6 +2041,8 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
   return {
     ...snap,
     refresh,
+    refreshWorkspaces,
+    setActiveWorkspaceSlug,
     selectObra,
     createObra,
     sendIntent,
@@ -1848,6 +2085,9 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     runForgeProviderInvocation,
     refreshForgeProviderInvocationLatest,
     refreshForgeUxOrchestrator,
+    refreshProviderArena,
+    runProviderArena,
+    clearProviderArenaLastResult,
     startForgeLiveExecutionAsync,
     refreshForgeLiveExecutionAsync,
     inspectForgeRunHistory,

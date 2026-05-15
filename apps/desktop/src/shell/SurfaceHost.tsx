@@ -25,7 +25,10 @@ export function SurfaceHost({ surface, bridge, boot }: SurfaceHostProps) {
 
   return (
     <ErrorBoundary label="Cartografia">
-      <CartografiaSurface />
+      <CartografiaSurface
+        activeWorkspace={bridge.activeWorkspace}
+        defaultWorkspaceSlug={bridge.workspaces?.defaultSlug ?? null}
+      />
     </ErrorBoundary>
   )
 }
