@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { TopBar } from './components/TopBar'
 import { useBoot } from './hooks/useBoot'
 import { useBridge } from './hooks/useBridge'
@@ -26,6 +26,34 @@ function App() {
   const { surface, setSurface } = useSurface()
   const b = useBridge()
   const terminalPlacement = useTerminalStore((s) => s.dockPlacement)
+  const terminalVisible = useTerminalStore((s) => s.dockVisible)
+  const openTerminalDock = useTerminalStore((s) => s.openDock)
+  const toggleTerminalDock = useTerminalStore((s) => s.toggleDock)
+
+  const onTerminalToggle = useCallback(() => {
+    if (surface !== 'code') {
+      setSurface('code')
+      openTerminalDock()
+      return
+    }
+    toggleTerminalDock()
+  }, [openTerminalDock, setSurface, surface, toggleTerminalDock])
+
+  useEffect(() => {
+    if (surface === 'code') return
+
+    const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
+    function onKeyDown(e: KeyboardEvent) {
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (modifier && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault()
+        onTerminalToggle()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onTerminalToggle, surface])
 
   const onKernelReady = useCallback(() => {
     void (async () => {
@@ -52,6 +80,8 @@ function App() {
           errors={b.errors}
           surface={surface}
           onSurfaceChange={setSurface}
+          terminalVisible={surface === 'code' && terminalVisible}
+          onTerminalToggle={onTerminalToggle}
           kernel={kernel}
           mcp={mcp}
         />

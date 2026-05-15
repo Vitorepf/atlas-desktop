@@ -36,8 +36,6 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
     hydrateInitial(initialCwd ?? '')
   }, [hydrateInitial, initialCwd])
 
-  if (!dockVisible) return null
-
   const active = sessions.find((s) => s.id === activeId) ?? null
   const live = active != null && ptyMode === 'portable-pty'
 
@@ -64,11 +62,13 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
     dockHeight,
     dockMaximized,
     dockPlacement,
+    dockVisible,
     setHeight,
     toggleMaximize,
   })
 
   useTerminalShortcuts({
+    enabled: dockVisible,
     initialCwd,
     open,
     close,
@@ -82,6 +82,8 @@ export function TerminalTabs({ initialCwd, ptyMode }: TerminalTabsProps) {
     const timer = window.setTimeout(() => searchInputRef.current?.focus(), 0)
     return () => window.clearTimeout(timer)
   }, [searchOpen])
+
+  if (!dockVisible) return null
 
   return (
     <section className={`terminal-dock terminal-dock-${dockPlacement}${dockMaximized ? ' is-maximized' : ''}`}>

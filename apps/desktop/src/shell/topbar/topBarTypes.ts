@@ -9,7 +9,8 @@ export interface TopBarProps {
   errors: string[]
   surface: Surface
   onSurfaceChange: (surface: Surface) => void
+  terminalVisible: boolean
+  onTerminalToggle: () => void
   kernel: UseKernelStatusResult
   mcp: McpStatus | null
 }
-

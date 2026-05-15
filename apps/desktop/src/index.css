@@ -3586,6 +3586,117 @@
   .topbar-spacer {
     min-width: 0;
   }
+  .topbar-actions {
+    justify-self: end;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .topbar-terminal-button {
+    height: 34px;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 11px;
+    border: 1px solid var(--cc-border-soft);
+    border-radius: var(--cc-radius-sm);
+    background:
+      linear-gradient(180deg, rgba(61, 82, 96, 0.78), rgba(31, 48, 60, 0.78)),
+      var(--cc-surface-raised);
+    color: var(--cc-text-muted);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 10px 22px rgba(4, 12, 18, 0.14);
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    font-weight: var(--cc-weight-semibold);
+    letter-spacing: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      border-color 140ms var(--ease-i),
+      background 140ms var(--ease-i),
+      color 140ms var(--ease-i),
+      box-shadow 140ms var(--ease-i),
+      transform 140ms var(--ease-i);
+  }
+  .topbar-terminal-button:hover {
+    color: var(--cc-text-strong);
+    border-color: var(--cc-border);
+    background:
+      linear-gradient(180deg, rgba(70, 93, 108, 0.84), rgba(36, 56, 69, 0.82)),
+      var(--cc-surface-raised);
+    transform: translateY(-1px);
+  }
+  .topbar-terminal-button:focus-visible {
+    outline: 2px solid rgba(212, 168, 90, 0.62);
+    outline-offset: 2px;
+  }
+  .topbar-terminal-button.is-active {
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    background:
+      linear-gradient(180deg, rgba(212, 168, 90, 0.16), rgba(36, 55, 67, 0.72)),
+      var(--cc-surface-raised);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.055),
+      0 0 0 1px rgba(212, 168, 90, 0.10),
+      0 12px 28px rgba(4, 12, 18, 0.18);
+  }
+  .topbar-terminal-icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    position: relative;
+    border: 1px solid currentColor;
+    border-radius: 5px;
+    opacity: 0.94;
+  }
+  .topbar-terminal-icon::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 5px;
+    width: 5px;
+    height: 5px;
+    border-top: 1.6px solid currentColor;
+    border-right: 1.6px solid currentColor;
+    transform: rotate(45deg);
+  }
+  .topbar-terminal-icon::after {
+    content: '';
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 5px;
+    height: 1.6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .topbar-terminal-shortcut {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    font-weight: var(--cc-weight-medium);
+    letter-spacing: 0;
+  }
+  .topbar-terminal-button.is-active .topbar-terminal-shortcut {
+    color: rgba(212, 168, 90, 0.86);
+  }
+  @media (max-width: 760px) {
+    .topbar-terminal-label,
+    .topbar-terminal-shortcut {
+      display: none;
+    }
+    .topbar-terminal-button {
+      width: 34px;
+      justify-content: center;
+      padding: 0;
+    }
+  }
   .topbar-meta {
     display: flex;
     align-items: center;
@@ -5666,9 +5777,13 @@ html.code-left-collapsed .atlas-shell.surface-code .code-column-resizer-left {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 html.code-terminal-hidden {
   --terminal-dock-height: 0px;
+  --terminal-side-height: 0px;
 }
 html.code-terminal-hidden .atlas-shell.surface-code .terminal-dock {
   display: none !important;
+}
+html.code-terminal-hidden .atlas-shell.surface-code.terminal-right .right-rail {
+  padding-bottom: var(--cc-space-5);
 }
 
 /* Botão X de fechar terminal · slot direito do toolbar. */

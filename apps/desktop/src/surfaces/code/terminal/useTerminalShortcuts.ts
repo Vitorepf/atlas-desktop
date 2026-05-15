@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useTerminalStore } from '../../../state/terminalStore'
 
 interface UseTerminalShortcutsArgs {
+  enabled?: boolean
   initialCwd?: string
   open: (cwd: string, label?: string) => string
   close: (id: string) => void
@@ -11,6 +12,7 @@ interface UseTerminalShortcutsArgs {
 }
 
 export function useTerminalShortcuts({
+  enabled = true,
   initialCwd,
   open,
   close,
@@ -19,6 +21,8 @@ export function useTerminalShortcuts({
   toggleSearch,
 }: UseTerminalShortcutsArgs) {
   useEffect(() => {
+    if (!enabled) return
+
     const onKey = (e: KeyboardEvent) => {
       if (!e.metaKey || e.ctrlKey || e.altKey) return
       const { sessions: list, activeId: aid } = useTerminalStore.getState()
@@ -71,5 +75,5 @@ export function useTerminalShortcuts({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, close, select, toggleMaximize, toggleSearch, initialCwd])
+  }, [enabled, open, close, select, toggleMaximize, toggleSearch, initialCwd])
 }

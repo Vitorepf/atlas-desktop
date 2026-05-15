@@ -4,12 +4,15 @@ import type { TopBarProps } from './topBarTypes'
 import { TopBarLocationTrail } from './TopBarLocationTrail'
 import { useTopBarLocationTrail } from './useTopBarLocationTrail'
 
-/**
- * TopBar · pure product mark.
- * Operational diagnostics belong inside the right rail, not in the global brand.
- */
-export function TopBar({ surface, onSurfaceChange }: TopBarProps) {
+export function TopBar({
+  surface,
+  onSurfaceChange,
+  terminalVisible,
+  onTerminalToggle,
+}: TopBarProps) {
   const locationTrail = useTopBarLocationTrail()
+  const terminalTitle =
+    surface === 'code' ? 'Mostrar ou ocultar terminal · ⌘J' : 'Ir para Code e abrir terminal'
 
   return (
     <header className="topbar">
@@ -18,7 +21,21 @@ export function TopBar({ surface, onSurfaceChange }: TopBarProps) {
         <TopBarLocationTrail items={surface === 'cartografia' ? locationTrail : []} />
       </div>
       <SurfaceSwitcher surface={surface} onSurfaceChange={onSurfaceChange} />
-      <div className="topbar-spacer" aria-hidden="true" />
+      <div className="topbar-actions">
+        <button
+          type="button"
+          className={`topbar-terminal-button${terminalVisible ? ' is-active' : ''}`}
+          aria-pressed={terminalVisible}
+          onClick={onTerminalToggle}
+          title={terminalTitle}
+        >
+          <span className="topbar-terminal-icon" aria-hidden="true" />
+          <span className="topbar-terminal-label">Terminal</span>
+          <span className="topbar-terminal-shortcut" aria-hidden="true">
+            ⌘J
+          </span>
+        </button>
+      </div>
     </header>
   )
 }

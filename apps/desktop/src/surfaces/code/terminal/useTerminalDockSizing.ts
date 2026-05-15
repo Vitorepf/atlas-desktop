@@ -10,6 +10,7 @@ interface UseTerminalDockSizingArgs {
   dockHeight: number
   dockMaximized: boolean
   dockPlacement: 'bottom' | 'right'
+  dockVisible: boolean
   setHeight: (px: number) => void
   toggleMaximize: () => void
 }
@@ -19,11 +20,19 @@ export function useTerminalDockSizing({
   dockHeight,
   dockMaximized,
   dockPlacement,
+  dockVisible,
   setHeight,
   toggleMaximize,
 }: UseTerminalDockSizingArgs) {
   useEffect(() => {
     const root = document.documentElement
+
+    if (!dockVisible) {
+      root.style.setProperty('--terminal-dock-height', '0px')
+      root.style.setProperty('--terminal-side-height', '0px')
+      return
+    }
+
     const bottomPx = dockMaximized
       ? Math.floor(window.innerHeight * MAX_HEIGHT_RATIO)
       : dockHeight
@@ -37,7 +46,7 @@ export function useTerminalDockSizing({
       root.style.setProperty('--terminal-dock-height', '260px')
       root.style.setProperty('--terminal-side-height', '320px')
     }
-  }, [dockHeight, dockMaximized, dockPlacement])
+  }, [dockHeight, dockMaximized, dockPlacement, dockVisible])
 
   useEffect(() => {
     const node = resizeNode
