@@ -1,5 +1,5 @@
 /**
- * Atlas AI · Conversation Surface (Meta 6 v1).
+ * Atlas AI · Conversation Surface (12h premium workbench).
  *
  * Tab top-level no Atlas Desktop. Uma única inteligência (Atlas AI) com modos
  * Geral, Operacional e Programação (Atlas Dev). Histórico vem de `ai_threads`;
@@ -18,6 +18,8 @@ import { AtlasAiComposer } from './components/AtlasAiComposer'
 import { AtlasAiConversation } from './components/AtlasAiConversation'
 import { AtlasAiContextPanel } from './components/AtlasAiContextPanel'
 import { AtlasAiEmpty } from './components/AtlasAiEmpty'
+import { AtlasAiErrorBanner } from './components/AtlasAiErrorBanner'
+import { AtlasAiHero } from './components/AtlasAiHero'
 import { AtlasAiPromotionPanel } from './components/AtlasAiPromotionPanel'
 import { AtlasAiThreadList } from './components/AtlasAiThreadList'
 import { useAtlasAi } from './useAtlasAi'
@@ -43,6 +45,7 @@ export function AtlasAiSurface({
   const atlas = useAtlasAi(activeWorkspaceSlug)
   const [composerDraft, setComposerDraft] = useState<string>('')
   const [promotionOpen, setPromotionOpen] = useState<boolean>(false)
+  const [retrying, setRetrying] = useState<boolean>(false)
 
   // Sincroniza workspace selecionado quando o topbar do shell muda.
   const { workspaceSlug, setWorkspaceSlug } = atlas
@@ -72,6 +75,27 @@ export function AtlasAiSurface({
     [atlas, composerDraft],
   )
 
+  const handleUseChip = useCallback((text: string) => {
+    setComposerDraft(text)
+    // Foca o textarea logo após o set para o operador continuar digitando.
+    window.setTimeout(() => {
+      const ta = document.querySelector<HTMLTextAreaElement>('.atlas-ai-textarea')
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(ta.value.length, ta.value.length)
+      }
+    }, 60)
+  }, [])
+
+  const handleRetryThreads = useCallback(async () => {
+    setRetrying(true)
+    try {
+      await atlas.refreshThreads()
+    } finally {
+      setRetrying(false)
+    }
+  }, [atlas])
+
   if (atlas.mode === 'offline') {
     return (
       <main className="atlas-ai-surface">
@@ -83,14 +107,17 @@ export function AtlasAiSurface({
     )
   }
 
+  const isHero = atlas.selectedThreadId === null
+  const hasThreadsError = Boolean(atlas.threadsError)
+
   return (
     <main className="atlas-ai-surface">
       <header className="atlas-ai-header">
         <div className="atlas-ai-header-title">
           <h1>Atlas AI</h1>
           <p className="atlas-ai-header-sub">
-            Uma única inteligência. Geral, Operacional e Programação são modos do mesmo Atlas AI.
-            {activeWorkspaceName ? ` Workspace: ${activeWorkspaceName}.` : ''}
+            Uma única inteligência · Geral, Operacional e Programação são modos do mesmo Atlas AI.
+            {activeWorkspaceName ? ` Workspace ativo: ${activeWorkspaceName}.` : ''}
           </p>
         </div>
         <div className="atlas-ai-header-meta">
@@ -105,7 +132,7 @@ export function AtlasAiSurface({
             type="button"
             className="atlas-ai-link"
             onClick={() => onRequestSurfaceChange?.('code')}
-            title="Atlas Code: cabine para problemas ultra-hard"
+            title="Atlas Code · cabine para problemas ultra-hard"
           >
             promover para Forge →
           </button>
@@ -118,17 +145,26 @@ export function AtlasAiSurface({
             threads={atlas.threads}
             loading={atlas.threadsLoading}
             error={atlas.threadsError}
+            retrying={retrying}
             selectedId={atlas.selectedThreadId}
             modeFilter={atlas.modeFilter}
             onModeFilter={atlas.setModeFilter}
-            onRefresh={atlas.refreshThreads}
+            onRefresh={handleRetryThreads}
             onSelect={atlas.selectThread}
             onNewThread={() => atlas.selectThread(null)}
           />
         </aside>
 
-        <section className="atlas-ai-conversation-col">
-          {atlas.selectedThreadId ? (
+        <section className={`atlas-ai-conversation-col${isHero ? ' is-hero' : ''}`}>
+          {isHero ? (
+            <AtlasAiHero
+              mode={atlas.composerMode}
+              workspaceName={activeWorkspaceName}
+              threadCount={atlas.threads.length}
+              hasError={hasThreadsError}
+              onUseChip={handleUseChip}
+            />
+          ) : (
             <AtlasAiConversation
               loading={conversation.loading}
               detail={conversation.detail}
@@ -136,15 +172,6 @@ export function AtlasAiSurface({
               pendingTrace={conversation.pendingTrace}
               onArchive={atlas.archiveSelectedThread}
               onPromote={() => setPromotionOpen(true)}
-            />
-          ) : (
-            <AtlasAiEmpty
-              headline="Nenhuma conversa selecionada"
-              detail={
-                atlas.threads.length === 0
-                  ? 'Nenhuma thread Atlas AI neste workspace. Comece a digitar abaixo — o backend cria a thread no primeiro envio.'
-                  : 'Escolha uma thread na coluna esquerda ou comece uma nova com o composer.'
-              }
             />
           )}
 
@@ -184,11 +211,18 @@ export function AtlasAiSurface({
         workspaceSlug={atlas.workspaceSlug}
         onClose={() => setPromotionOpen(false)}
         onPromoted={() => {
-          // Recarrega thread detail e a lista para refletir o link com a Obra/registro.
           if (atlas.selectedThreadId) atlas.selectThread(atlas.selectedThreadId)
           void atlas.refreshThreads()
         }}
       />
+
+      {hasThreadsError && !isHero ? (
+        <AtlasAiErrorBanner
+          message={atlas.threadsError ?? ''}
+          onRetry={handleRetryThreads}
+          retrying={retrying}
+        />
+      ) : null}
     </main>
   )
 }

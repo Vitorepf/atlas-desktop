@@ -1,3 +1,14 @@
+/**
+ * Atlas AI · Conversation panel premium.
+ *
+ * Mensagens renderizadas com markdown leve + syntax highlighting (Shiki).
+ * Timestamps relativos pt-BR. Streaming indicator animado quando trace
+ * está em queued/running. ErrorBanner com retry quando algo falha.
+ */
+import { AtlasAiErrorBanner } from './AtlasAiErrorBanner'
+import { AtlasAiMessageBody } from './AtlasAiMessageBody'
+import { AtlasAiStreamingIndicator } from './AtlasAiStreamingIndicator'
+import { formatRelativeLong } from '../timeFormat'
 import type { AiThreadDetail, AiThreadMessage, AiTrace } from '../types'
 
 interface AtlasAiConversationProps {
@@ -7,18 +18,6 @@ interface AtlasAiConversationProps {
   pendingTrace: AiTrace | null
   onArchive: () => void
   onPromote?: () => void
-}
-
-function formatTimestamp(value: string | null | undefined): string {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function roleLabel(role: string): string {
@@ -36,10 +35,10 @@ function MessageBubble({ message }: { message: AiThreadMessage }) {
         <span className="atlas-ai-message-role">{roleLabel(message.role)}</span>
         <span className="atlas-ai-message-meta">
           {message.provider ? `${message.provider} · ` : ''}
-          {formatTimestamp(message.created_at)}
+          {formatRelativeLong(message.created_at) || '—'}
         </span>
       </header>
-      <pre className="atlas-ai-message-body">{message.content ?? '(sem conteúdo)'}</pre>
+      <AtlasAiMessageBody content={message.content ?? '(sem conteúdo)'} />
     </article>
   )
 }
@@ -63,7 +62,7 @@ export function AtlasAiConversation({
   if (error) {
     return (
       <section className="atlas-ai-conversation" role="alert">
-        <p className="atlas-ai-error-line">{error}</p>
+        <AtlasAiErrorBanner message={error} />
       </section>
     )
   }
@@ -79,6 +78,7 @@ export function AtlasAiConversation({
   const messages = (detail.messages ?? []).slice().sort((a, b) => a.position - b.position)
   const meta = detail.metadata ?? {}
   const mode = typeof meta.atlas_focus === 'string' ? meta.atlas_focus : 'general'
+  const isStreaming = !!pendingTrace && (pendingTrace.status === 'queued' || pendingTrace.status === 'running')
 
   return (
     <section className="atlas-ai-conversation" aria-live="polite">
@@ -115,28 +115,17 @@ export function AtlasAiConversation({
       </header>
 
       <div className="atlas-ai-messages">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !isStreaming ? (
           <p className="atlas-ai-empty-line">
             Sem mensagens ainda. Envie a primeira pergunta no composer abaixo.
           </p>
-        ) : (
-          messages.map((m) => <MessageBubble key={m.id} message={m} />)
-        )}
-
-        {pendingTrace && (pendingTrace.status === 'queued' || pendingTrace.status === 'running') ? (
-          <article className="atlas-ai-message tone-atlas atlas-ai-message-pending">
-            <header className="atlas-ai-message-header">
-              <span className="atlas-ai-message-role">Atlas AI</span>
-              <span className="atlas-ai-message-meta">
-                trace · {pendingTrace.status}
-                {pendingTrace.provider ? ` · ${pendingTrace.provider}` : ''}
-              </span>
-            </header>
-            <p className="atlas-ai-message-body atlas-ai-pending-line">
-              processando resposta… (Atlas AI não promove nada para Obra automaticamente)
-            </p>
-          </article>
         ) : null}
+
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
+
+        {isStreaming && pendingTrace ? <AtlasAiStreamingIndicator trace={pendingTrace} /> : null}
       </div>
     </section>
   )
