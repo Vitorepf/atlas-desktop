@@ -17,6 +17,7 @@ use tauri::{AppHandle, Manager, RunEvent};
 use tokio::sync::Mutex;
 
 mod commands_bridge;
+mod commands_terminal;
 mod kernel_manager;
 mod native_menu;
 
@@ -259,6 +260,7 @@ pub fn run() {
             commands_bridge::bridge_create_self_improvement_forge_activation,
             commands_bridge::bridge_accept_self_improvement_forge_activation,
             commands_bridge::bridge_reject_self_improvement_forge_activation,
+            commands_terminal::bridge_open_terminal_in_workspace,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Atlas Code");

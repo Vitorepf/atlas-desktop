@@ -2087,6 +2087,14 @@ function adaptWorkspaceProfile(raw: unknown): AtlasWorkspaceProfile | null {
     docsStatus: String(r.docs_status ?? r.docsStatus ?? 'unknown'),
     defaultRisk: String(r.default_risk ?? r.defaultRisk ?? 'medium'),
     deploymentNotes: String(r.deployment_notes ?? r.deploymentNotes ?? ''),
+    surfacesEnabled: (() => {
+      const raw = r.surfaces_enabled ?? r.surfacesEnabled
+      if (Array.isArray(raw)) {
+        const out = raw.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+        return out.length > 0 ? out : ['atlas_ai', 'cartografia', 'code', 'atencao']
+      }
+      return ['atlas_ai', 'cartografia', 'code', 'atencao']
+    })(),
     safety,
   }
 }
@@ -6111,4 +6119,74 @@ export type {
   AtlasSelfImprovementClosedLoopStageId,
   AtlasSelfImprovementLearningPacket,
   AtlasSelfImprovementDeltaGrade,
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Interactive Observed Provider Workflow bridge.
+//
+// Canon: docs/engineering-knowledge-base/atlas-code-interactive-observed-provider-workflow-v1.md
+//
+// Wired to the same HTTP transport; Tauri parity will arrive when the Rust
+// side adds bridge_observed_session_* commands. Until then, Tauri mode falls
+// back to the HTTP transport when VITE_ATLAS_SERVER_URL is configured; if
+// neither is configured the bridge returns null/[] honestly so the UI shows
+// empty states.
+import { createOperatingRoomBridge } from './operatingRoomBridge'
+
+const operatingRoomHttpFetch = HTTP_BASE
+  ? <T>(path: string, init?: { method?: string; body?: unknown }) => fetchHttp<T>(path, init)
+  : null
+
+export const operatingRoomBridge = createOperatingRoomBridge(operatingRoomHttpFetch)
+
+// Dev-to-Forge Promotion bridge (Meta 8). HTTP transport only for v1.
+import { createDevToForgeBridge } from './devToForgeBridge'
+
+export const devToForgeBridge = createDevToForgeBridge(operatingRoomHttpFetch)
+
+/**
+ * Atlas Code · terminal launcher bridge.
+ *
+ * Tauri command `bridge_open_terminal_in_workspace` opens the operator's
+ * native terminal application at `workspacePath` and seeds it with the
+ * recommended command (typed but NOT executed; the operator confirms by
+ * pressing return). In HTTP/offline mode the call returns null honestly
+ * and the UI falls back to the "copy command" affordance.
+ *
+ * Returned schema (Tauri):
+ *   { ok: boolean, platform: string, method: string,
+ *     error: string | null, commandPreview: string | null }
+ */
+export interface OpenTerminalResult {
+  ok: boolean
+  platform: string
+  method: string
+  error: string | null
+  commandPreview: string | null
+}
+
+export async function openTerminalInWorkspace(
+  workspacePath: string,
+  command?: string | null
+): Promise<OpenTerminalResult | null> {
+  if (MODE !== 'tauri') return null
+  try {
+    const tauri = await import('@tauri-apps/api/core')
+    const raw = await tauri.invoke<unknown>('bridge_open_terminal_in_workspace', {
+      workspacePath,
+      command: command ?? null,
+    })
+    if (!raw || typeof raw !== 'object') return null
+    const r = raw as Record<string, unknown>
+    return {
+      ok: Boolean(r.ok),
+      platform: typeof r.platform === 'string' ? r.platform : 'unknown',
+      method: typeof r.method === 'string' ? r.method : 'unknown',
+      error: typeof r.error === 'string' ? r.error : null,
+      commandPreview: typeof r.commandPreview === 'string' ? r.commandPreview : null,
+    }
+  } catch (e) {
+    console.warn('[bridge] openTerminalInWorkspace', e)
+    return null
+  }
 }

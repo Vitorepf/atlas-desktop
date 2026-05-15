@@ -22,9 +22,11 @@ interface WorkspacePillProps {
   onSelect: (slug: string) => Promise<void> | void
   /** Disable interaction (e.g. while busy / loading). */
   disabled?: boolean
+  /** Opens the Project Profile sheet for the active workspace. */
+  onOpenProfile?: () => void
 }
 
-export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabled }: WorkspacePillProps) {
+export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabled, onOpenProfile }: WorkspacePillProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
   const profiles = workspaces?.profiles ?? []
@@ -60,7 +62,15 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
 
   // When the backend has no workspaces endpoint yet, still render the pill so
   // the operator sees the (Atlas-default) scope label, but disable interaction.
-  const interactive = profiles.length > 1 && !disabled
+  // The dropdown is also reachable when only the active profile is known so the
+  // operator can still open the profile inspector.
+  const hasProfileInspector = typeof onOpenProfile === 'function'
+  const interactive = !disabled && (profiles.length > 1 || hasProfileInspector)
+
+  const handleOpenProfile = useCallback(() => {
+    setOpen(false)
+    onOpenProfile?.()
+  }, [onOpenProfile])
 
   return (
     <div ref={ref} className="workspace-pill" style={{ position: 'relative' }}>
@@ -136,6 +146,11 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
             gap: 2,
           }}
         >
+          {profiles.length === 0 && hasProfileInspector ? (
+            <li role="presentation" style={{ padding: '6px 8px', fontSize: 10, opacity: 0.6 }}>
+              Apenas o Projeto padrão está disponível neste ambiente.
+            </li>
+          ) : null}
           {profiles.map((profile) => {
             const selected = profile.slug === activeSlug
             const prod = profile.productionStatus === 'production'
@@ -186,6 +201,36 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
               </li>
             )
           })}
+          {hasProfileInspector ? (
+            <li
+              role="presentation"
+              style={{
+                borderTop: '1px solid var(--cc-border-soft, rgba(255,255,255,0.08))',
+                marginTop: 2,
+                paddingTop: 2,
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleOpenProfile}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  color: 'var(--cc-text-muted, rgba(255,255,255,0.7))',
+                  border: 'none',
+                  padding: '6px 8px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--cc-font-mono, ui-monospace, monospace)',
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                }}
+              >
+                ver perfil completo · ⌘⇧P
+              </button>
+            </li>
+          ) : null}
         </ul>
       ) : null}
     </div>

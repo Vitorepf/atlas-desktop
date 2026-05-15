@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react'
 import type {
+  AtlasCodeObservedSession,
+  AtlasCodeObservedSessionDecideAction,
+  AtlasCodeObservedSessionImportPayload,
+  AtlasCodeProviderGovernance,
+  AtlasCodeProviderOperatingRoom,
+  AtlasCodeWorkPacket,
+  AtlasCodeWorkPacketCreatePayload,
   AtlasCodeEnterpriseCertificationReport,
   AtlasCodeForgeCompletionClaim,
   AtlasCodeForgeFastPathRunStatus,
@@ -59,6 +66,7 @@ export type OpsTab =
   | 'self_improvement'
   | 'construction'
   | 'provider_arena'
+  | 'operating_room'
 
 export interface RightRailContext {
   obra: Obra | null
@@ -208,6 +216,35 @@ export interface RightRailContext {
    * NEVER spawn processes, NEVER advance slices.
    */
   onRefreshSelfConstruction: () => Promise<void>
+  // ─────────────────────────────────────────────────────────────────────
+  // Interactive Observed Provider Workflow (canon:
+  // docs/engineering-knowledge-base/atlas-code-interactive-observed-provider-workflow-v1.md)
+  providerGovernance: AtlasCodeProviderGovernance | null
+  providerOperatingRoom: AtlasCodeProviderOperatingRoom | null
+  onRefreshProviderOperatingRoom: () => Promise<void>
+  onCreateWorkPacket: (payload: AtlasCodeWorkPacketCreatePayload) => Promise<AtlasCodeWorkPacket | null>
+  onOpenObservedProviderSession: (
+    workPacketId: string,
+    providerId: string
+  ) => Promise<AtlasCodeObservedSession | null>
+  onTransitionObservedSession: (
+    sessionId: string,
+    nextState: 'running' | 'waiting_result_import'
+  ) => Promise<AtlasCodeObservedSession | null>
+  onImportObservedSessionResult: (
+    sessionId: string,
+    payload: AtlasCodeObservedSessionImportPayload
+  ) => Promise<AtlasCodeObservedSession | null>
+  onDecideObservedSession: (
+    sessionId: string,
+    action: AtlasCodeObservedSessionDecideAction,
+    reason?: string
+  ) => Promise<AtlasCodeObservedSession | null>
+  onRunObservedSessionGates: (sessionId: string) => Promise<AtlasCodeObservedSession | null>
+  onQuickOpenClaudeCodeObserved: (
+    payload: AtlasCodeWorkPacketCreatePayload,
+    providerId?: string
+  ) => Promise<{ session: AtlasCodeObservedSession; packet: AtlasCodeWorkPacket } | null>
 }
 
 export interface RightRailPanelDefinition {

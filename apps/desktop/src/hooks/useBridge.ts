@@ -14,7 +14,7 @@
  *   - error string captured in `errors[]`
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { bridge, type BridgeMode } from '../lib/bridge'
+import { bridge, operatingRoomBridge, type BridgeMode } from '../lib/bridge'
 import { useExecutionStore } from '../state/executionStore'
 import type {
   AtlasCodeEnterpriseCertificationReport,
@@ -58,6 +58,13 @@ import type {
   AtlasSelfImprovementNextCycleRecommendation,
   AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
+  AtlasCodeObservedSession,
+  AtlasCodeObservedSessionDecideAction,
+  AtlasCodeObservedSessionImportPayload,
+  AtlasCodeProviderGovernance,
+  AtlasCodeProviderOperatingRoom,
+  AtlasCodeWorkPacket,
+  AtlasCodeWorkPacketCreatePayload,
   AtlasSelfConstructionSnapshot,
   AtlasWorkspaceProfile,
   AtlasWorkspaceProfileList,
@@ -154,6 +161,20 @@ export interface BridgeSnapshot {
   busy: boolean
   /** Active threadId (from snapshot) so the composer/streamer knows where to send. */
   activeThreadId: string | null
+  // ────────────────────────────────────────────────────────────────────────
+  // Interactive Observed Provider Workflow (canon:
+  // atlas-code-interactive-observed-provider-workflow-v1.md).
+  /**
+   * Subscription-only contract. `null` when the backend has not exposed the
+   * endpoint yet — UI falls back to "headless blocked" defensively.
+   */
+  providerGovernance: AtlasCodeProviderGovernance | null
+  /**
+   * Aggregated read-model for the active Obra: provider board, work packets,
+   * observed sessions, attention item, safety summary, allowed actions.
+   * `null` while no Obra is selected.
+   */
+  providerOperatingRoom: AtlasCodeProviderOperatingRoom | null
 }
 
 export interface BridgeActions {
@@ -224,6 +245,39 @@ export interface BridgeActions {
    * never starts processes, never advances slices, never spends tokens.
    */
   refreshSelfConstruction: () => Promise<void>
+  // ────────────────────────────────────────────────────────────────────────
+  // Interactive Observed Provider Workflow actions.
+  //
+  // None of these call a provider. Atlas only prepares packet/prompt/state;
+  // the operator runs `claude`/`codex`/`gemini` interactively in the terminal
+  // and reports the result back.
+  refreshProviderGovernance: () => Promise<void>
+  refreshProviderOperatingRoom: () => Promise<void>
+  createWorkPacket: (payload: AtlasCodeWorkPacketCreatePayload) => Promise<AtlasCodeWorkPacket | null>
+  openObservedProviderSession: (workPacketId: string, providerId: string) => Promise<AtlasCodeObservedSession | null>
+  transitionObservedSession: (
+    sessionId: string,
+    nextState: 'running' | 'waiting_result_import'
+  ) => Promise<AtlasCodeObservedSession | null>
+  importObservedSessionResult: (
+    sessionId: string,
+    payload: AtlasCodeObservedSessionImportPayload
+  ) => Promise<AtlasCodeObservedSession | null>
+  decideObservedSession: (
+    sessionId: string,
+    action: AtlasCodeObservedSessionDecideAction,
+    reason?: string
+  ) => Promise<AtlasCodeObservedSession | null>
+  /** Run advisory gates on an imported session (scope guard + checks). */
+  runObservedSessionGates: (sessionId: string) => Promise<AtlasCodeObservedSession | null>
+  /**
+   * One-shot CTA: create packet + open observed session in a single round
+   * trip. Used by the "Abrir Claude Code observado" quick action.
+   */
+  quickOpenClaudeCodeObserved: (
+    payload: AtlasCodeWorkPacketCreatePayload,
+    providerId?: string
+  ) => Promise<{ session: AtlasCodeObservedSession; packet: AtlasCodeWorkPacket } | null>
 }
 
 const WORKSPACE_STORAGE_KEY = 'atlas-desktop:active-workspace-slug'
@@ -271,6 +325,7 @@ function emptyObraDetail(): Partial<BridgeSnapshot> {
     programmingGovernance: null,
     receipt: null,
     activeThreadId: null,
+    providerOperatingRoom: null,
   }
 }
 
@@ -346,6 +401,8 @@ const INITIAL: BridgeSnapshot = {
   core: browserCoreStatus,
   busy: false,
   activeThreadId: null,
+  providerGovernance: null,
+  providerOperatingRoom: null,
 }
 
 export function useBridge(): BridgeSnapshot & BridgeActions {
@@ -603,6 +660,256 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       }
     }
   }, [pushError])
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Interactive Observed Provider Workflow handlers.
+  //
+  // Canon: docs/engineering-knowledge-base/atlas-code-interactive-observed-provider-workflow-v1.md
+  //
+  // None of these handlers invoke a provider. Atlas only prepares packet,
+  // prompt and state; the operator runs claude / codex / gemini in the
+  // terminal opened by Atlas and reports the result back via importResult.
+
+  const refreshProviderGovernance = useCallback(async () => {
+    const governance = await operatingRoomBridge.getGovernance().catch((e: unknown) => {
+      pushError('refreshProviderGovernance', e)
+      return null
+    })
+    if (cancelRef.current) return
+    setSnap((s) => ({ ...s, providerGovernance: governance, errors: [...errorBufRef.current] }))
+  }, [pushError])
+
+  const refreshProviderOperatingRoom = useCallback(async () => {
+    const obraId = snap.obra?.id ?? null
+    if (obraId === null) {
+      if (!cancelRef.current) setSnap((s) => ({ ...s, providerOperatingRoom: null }))
+      return
+    }
+    const room = await operatingRoomBridge.getOperatingRoom(obraId).catch((e: unknown) => {
+      pushError('refreshProviderOperatingRoom', e)
+      return null
+    })
+    if (cancelRef.current) return
+    setSnap((s) => ({ ...s, providerOperatingRoom: room, errors: [...errorBufRef.current] }))
+  }, [pushError, snap.obra?.id])
+
+  const createWorkPacket = useCallback(
+    async (payload: AtlasCodeWorkPacketCreatePayload): Promise<AtlasCodeWorkPacket | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) {
+        pushError('createWorkPacket', new Error('no_active_obra'))
+        return null
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      const packet = await operatingRoomBridge.createWorkPacket(obraId, payload).catch((e: unknown) => {
+        pushError('createWorkPacket', e)
+        return null
+      })
+      // Refresh operating room so the new packet shows in the UI immediately.
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return packet
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return packet
+    },
+    [pushError, snap.obra?.id]
+  )
+
+  const openObservedProviderSession = useCallback(
+    async (workPacketId: string, providerId: string): Promise<AtlasCodeObservedSession | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) {
+        pushError('openObservedProviderSession', new Error('no_active_obra'))
+        return null
+      }
+      // Defense-in-depth: refuse to open if the policy says the system is
+      // in full block (kill switch active). Interactive observed sessions
+      // are allowed under every other policy state — we only refuse under
+      // `blocked`. This mirrors AtlasCodeObservedSessionService::open.
+      const gov = snap.providerGovernance
+      if (gov && gov.fullBlock) {
+        pushError(
+          'openObservedProviderSession',
+          new Error('refused: claude_programmatic_policy=blocked (full kill switch)')
+        )
+        return null
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      const session = await operatingRoomBridge
+        .openObservedSession(obraId, workPacketId, providerId)
+        .catch((e: unknown) => {
+          pushError('openObservedProviderSession', e)
+          return null
+        })
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return session
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return session
+    },
+    [pushError, snap.obra?.id, snap.providerGovernance]
+  )
+
+  const transitionObservedSession = useCallback(
+    async (
+      sessionId: string,
+      nextState: 'running' | 'waiting_result_import'
+    ): Promise<AtlasCodeObservedSession | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) return null
+      setSnap((s) => ({ ...s, busy: true }))
+      const session = await operatingRoomBridge
+        .transitionObservedSession(obraId, sessionId, nextState)
+        .catch((e: unknown) => {
+          pushError('transitionObservedSession', e)
+          return null
+        })
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return session
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return session
+    },
+    [pushError, snap.obra?.id]
+  )
+
+  const importObservedSessionResult = useCallback(
+    async (
+      sessionId: string,
+      payload: AtlasCodeObservedSessionImportPayload
+    ): Promise<AtlasCodeObservedSession | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) return null
+      setSnap((s) => ({ ...s, busy: true }))
+      const session = await operatingRoomBridge
+        .importObservedResult(obraId, sessionId, payload)
+        .catch((e: unknown) => {
+          pushError('importObservedSessionResult', e)
+          return null
+        })
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return session
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return session
+    },
+    [pushError, snap.obra?.id]
+  )
+
+  const decideObservedSession = useCallback(
+    async (
+      sessionId: string,
+      action: AtlasCodeObservedSessionDecideAction,
+      reason?: string
+    ): Promise<AtlasCodeObservedSession | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) return null
+      setSnap((s) => ({ ...s, busy: true }))
+      const session = await operatingRoomBridge
+        .decideObservedSession(obraId, sessionId, action, reason)
+        .catch((e: unknown) => {
+          pushError('decideObservedSession', e)
+          return null
+        })
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return session
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return session
+    },
+    [pushError, snap.obra?.id]
+  )
+
+  const runObservedSessionGates = useCallback(
+    async (sessionId: string): Promise<AtlasCodeObservedSession | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) return null
+      setSnap((s) => ({ ...s, busy: true }))
+      const session = await operatingRoomBridge
+        .runObservedSessionGates(obraId, sessionId)
+        .catch((e: unknown) => {
+          pushError('runObservedSessionGates', e)
+          return null
+        })
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return session
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return session
+    },
+    [pushError, snap.obra?.id]
+  )
+
+  const quickOpenClaudeCodeObserved = useCallback(
+    async (
+      payload: AtlasCodeWorkPacketCreatePayload,
+      providerId?: string
+    ): Promise<{ session: AtlasCodeObservedSession; packet: AtlasCodeWorkPacket } | null> => {
+      const obraId = snap.obra?.id ?? null
+      if (obraId === null) {
+        pushError('quickOpenClaudeCodeObserved', new Error('no_active_obra'))
+        return null
+      }
+      const gov = snap.providerGovernance
+      if (gov && gov.fullBlock) {
+        pushError(
+          'quickOpenClaudeCodeObserved',
+          new Error('refused: claude_programmatic_policy=blocked (full kill switch)')
+        )
+        return null
+      }
+      setSnap((s) => ({ ...s, busy: true }))
+      const result = await operatingRoomBridge
+        .quickOpenClaudeCodeObserved(obraId, payload, providerId)
+        .catch((e: unknown) => {
+          pushError('quickOpenClaudeCodeObserved', e)
+          return null
+        })
+      const room = await operatingRoomBridge.getOperatingRoom(obraId).catch(() => null)
+      if (cancelRef.current) return result
+      setSnap((s) => ({
+        ...s,
+        busy: false,
+        providerOperatingRoom: room ?? s.providerOperatingRoom,
+        errors: [...errorBufRef.current],
+      }))
+      return result
+    },
+    [pushError, snap.obra?.id, snap.providerGovernance]
+  )
+
+  // Auto-refresh provider governance once on mount and operating room when
+  // active Obra changes.
+  useEffect(() => {
+    void refreshProviderGovernance()
+  }, [refreshProviderGovernance])
+  useEffect(() => {
+    void refreshProviderOperatingRoom()
+  }, [refreshProviderOperatingRoom])
 
   const selectObra = useCallback(
     async (obraId: string) => {
@@ -2043,6 +2350,15 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     refresh,
     refreshWorkspaces,
     setActiveWorkspaceSlug,
+    refreshProviderGovernance,
+    refreshProviderOperatingRoom,
+    createWorkPacket,
+    openObservedProviderSession,
+    transitionObservedSession,
+    importObservedSessionResult,
+    decideObservedSession,
+    runObservedSessionGates,
+    quickOpenClaudeCodeObserved,
     selectObra,
     createObra,
     sendIntent,

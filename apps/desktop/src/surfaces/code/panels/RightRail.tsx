@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
 import type {
+  AtlasCodeObservedSession,
+  AtlasCodeObservedSessionDecideAction,
+  AtlasCodeObservedSessionImportPayload,
+  AtlasCodeProviderGovernance,
+  AtlasCodeProviderOperatingRoom,
+  AtlasCodeWorkPacket,
+  AtlasCodeWorkPacketCreatePayload,
   AtlasCodeEnterpriseCertificationReport,
   AtlasCodeForgeCompletionClaim,
   AtlasCodeForgeFastPathRunStatus,
@@ -144,6 +151,33 @@ interface RightRailProps {
   onCreateCheckpoint: () => Promise<void>
   onRunAtlasCodeEnterpriseCertification: () => Promise<void>
   onRefreshSelfConstruction: () => Promise<void>
+  // Interactive Observed Provider Workflow.
+  providerGovernance: AtlasCodeProviderGovernance | null
+  providerOperatingRoom: AtlasCodeProviderOperatingRoom | null
+  onRefreshProviderOperatingRoom: () => Promise<void>
+  onCreateWorkPacket: (payload: AtlasCodeWorkPacketCreatePayload) => Promise<AtlasCodeWorkPacket | null>
+  onOpenObservedProviderSession: (
+    workPacketId: string,
+    providerId: string
+  ) => Promise<AtlasCodeObservedSession | null>
+  onTransitionObservedSession: (
+    sessionId: string,
+    nextState: 'running' | 'waiting_result_import'
+  ) => Promise<AtlasCodeObservedSession | null>
+  onImportObservedSessionResult: (
+    sessionId: string,
+    payload: AtlasCodeObservedSessionImportPayload
+  ) => Promise<AtlasCodeObservedSession | null>
+  onDecideObservedSession: (
+    sessionId: string,
+    action: AtlasCodeObservedSessionDecideAction,
+    reason?: string
+  ) => Promise<AtlasCodeObservedSession | null>
+  onRunObservedSessionGates: (sessionId: string) => Promise<AtlasCodeObservedSession | null>
+  onQuickOpenClaudeCodeObserved: (
+    payload: AtlasCodeWorkPacketCreatePayload,
+    providerId?: string
+  ) => Promise<{ session: AtlasCodeObservedSession; packet: AtlasCodeWorkPacket } | null>
 }
 
 /**

@@ -12,7 +12,10 @@ export function TopBar({
   activeWorkspace,
   activeWorkspaceSlug,
   onSelectWorkspace,
+  onOpenWorkspaceProfile,
   loading,
+  attentionCount,
+  enabledSurfaces,
 }: TopBarProps) {
   const locationTrail = useTopBarLocationTrail()
   const workspaceName = activeWorkspace?.name ?? null
@@ -20,7 +23,11 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-start">
-        <BrandBlock surface={surface} workspaceName={workspaceName} />
+        <BrandBlock
+          surface={surface}
+          workspaceName={workspaceName}
+          onOpenWorkspaceProfile={onOpenWorkspaceProfile}
+        />
         {onSelectWorkspace ? (
           <WorkspacePill
             workspaces={workspaces ?? null}
@@ -28,11 +35,17 @@ export function TopBar({
             activeSlug={activeWorkspaceSlug ?? null}
             onSelect={onSelectWorkspace}
             disabled={loading}
+            onOpenProfile={onOpenWorkspaceProfile}
           />
         ) : null}
         <TopBarLocationTrail items={surface === 'cartografia' ? locationTrail : []} />
       </div>
-      <SurfaceSwitcher surface={surface} onSurfaceChange={onSurfaceChange} />
+      <SurfaceSwitcher
+        surface={surface}
+        onSurfaceChange={onSurfaceChange}
+        badges={typeof attentionCount === 'number' ? { atencao: attentionCount } : undefined}
+        enabledSurfaces={enabledSurfaces ?? null}
+      />
     </header>
   )
 }

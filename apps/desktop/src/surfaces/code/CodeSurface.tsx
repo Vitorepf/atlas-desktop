@@ -147,6 +147,16 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             onCreateCheckpoint={b.createCheckpoint}
             onRunAtlasCodeEnterpriseCertification={b.runAtlasCodeEnterpriseCertification}
             onRefreshSelfConstruction={b.refreshSelfConstruction}
+            providerGovernance={b.providerGovernance}
+            providerOperatingRoom={b.providerOperatingRoom}
+            onRefreshProviderOperatingRoom={b.refreshProviderOperatingRoom}
+            onCreateWorkPacket={b.createWorkPacket}
+            onOpenObservedProviderSession={b.openObservedProviderSession}
+            onTransitionObservedSession={b.transitionObservedSession}
+            onImportObservedSessionResult={b.importObservedSessionResult}
+            onDecideObservedSession={b.decideObservedSession}
+            onRunObservedSessionGates={b.runObservedSessionGates}
+            onQuickOpenClaudeCodeObserved={b.quickOpenClaudeCodeObserved}
           />
         </ErrorBoundary>
       }

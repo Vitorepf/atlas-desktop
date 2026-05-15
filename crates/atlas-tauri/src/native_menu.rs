@@ -3,8 +3,10 @@ use tauri::{
     AppHandle, Emitter, Runtime,
 };
 
-const ITEM_SURFACE_CARTOGRAFIA: &str = "atlas.surface.cartografia";
+const ITEM_SURFACE_ATLAS_AI: &str = "atlas.surface.atlas_ai";
 const ITEM_SURFACE_CODE: &str = "atlas.surface.code";
+const ITEM_SURFACE_ATENCAO: &str = "atlas.surface.atencao";
+const ITEM_SURFACE_CARTOGRAFIA: &str = "atlas.surface.cartografia";
 const ITEM_SETTINGS_OPEN_CODE_TERMINAL: &str = "atlas.settings.open_code_terminal";
 const ITEM_SETTINGS_TERMINAL_RIGHT: &str = "atlas.settings.terminal_right";
 const ITEM_SETTINGS_TERMINAL_BOTTOM: &str = "atlas.settings.terminal_bottom";
@@ -60,6 +62,11 @@ pub fn atlas_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         ],
     )?;
 
+    // Ordem editorial das surfaces (mesma do SurfaceSwitcher visual):
+    //   ⌘1 Atlas AI    · começar
+    //   ⌘2 Code        · aprofundar
+    //   ⌘3 Atenção     · decidir
+    //   ⌘4 Cartografia · entender/auditar
     let atlas = Submenu::with_id_and_items(
         app,
         "atlas.workspace",
@@ -68,8 +75,8 @@ pub fn atlas_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         &[
             &MenuItem::with_id(
                 app,
-                ITEM_SURFACE_CARTOGRAFIA,
-                "Abrir Cartografia",
+                ITEM_SURFACE_ATLAS_AI,
+                "Abrir Atlas AI",
                 true,
                 Some("CmdOrCtrl+1"),
             )?,
@@ -79,6 +86,20 @@ pub fn atlas_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 "Abrir Code",
                 true,
                 Some("CmdOrCtrl+2"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                ITEM_SURFACE_ATENCAO,
+                "Abrir Atenção",
+                true,
+                Some("CmdOrCtrl+3"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                ITEM_SURFACE_CARTOGRAFIA,
+                "Abrir Cartografia",
+                true,
+                Some("CmdOrCtrl+4"),
             )?,
         ],
     )?;
@@ -168,8 +189,10 @@ pub fn atlas_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
 
 pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEvent) {
     let event_name = match event.id().as_ref() {
-        ITEM_SURFACE_CARTOGRAFIA => "atlas-menu:surface-cartografia",
+        ITEM_SURFACE_ATLAS_AI => "atlas-menu:surface-atlas_ai",
         ITEM_SURFACE_CODE => "atlas-menu:surface-code",
+        ITEM_SURFACE_ATENCAO => "atlas-menu:surface-atencao",
+        ITEM_SURFACE_CARTOGRAFIA => "atlas-menu:surface-cartografia",
         ITEM_SETTINGS_OPEN_CODE_TERMINAL => "atlas-menu:settings-open-code-terminal",
         ITEM_SETTINGS_TERMINAL_RIGHT => "atlas-menu:settings-terminal-right",
         ITEM_SETTINGS_TERMINAL_BOTTOM => "atlas-menu:settings-terminal-bottom",

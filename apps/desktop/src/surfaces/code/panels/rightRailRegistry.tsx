@@ -5,6 +5,7 @@ import { ForgeAdvancedPanel } from './ForgeAdvancedPanel'
 import { ForgeHumanPanel } from './ForgeHumanPanel'
 import { ForgeWorkIntakePanel } from './ForgeWorkIntakePanel'
 import { ProviderArenaPanel } from './ProviderArenaPanel'
+import { ProviderOperatingRoomPanel } from './ProviderOperatingRoomPanel'
 import { VerifyPanel } from './VerifyPanel'
 import type { RightRailContext, RightRailPanelDefinition } from './rightRailTypes'
 
@@ -30,6 +31,27 @@ const PANELS: RightRailPanelDefinition[] = [
     label: 'Forge',
     priority: 1,
     render: (ctx: RightRailContext) => <ForgeHumanPanel {...ctx} />,
+  },
+  {
+    id: 'operating_room',
+    label: 'Operating Room',
+    priority: 3,
+    render: (ctx: RightRailContext) => (
+      <ProviderOperatingRoomPanel
+        obra={ctx.obra}
+        governance={ctx.providerGovernance}
+        operatingRoom={ctx.providerOperatingRoom}
+        busy={ctx.busy}
+        onRefreshOperatingRoom={ctx.onRefreshProviderOperatingRoom}
+        onCreateWorkPacket={ctx.onCreateWorkPacket}
+        onOpenObservedSession={ctx.onOpenObservedProviderSession}
+        onTransitionSession={ctx.onTransitionObservedSession}
+        onImportResult={ctx.onImportObservedSessionResult}
+        onDecide={ctx.onDecideObservedSession}
+        onRunGates={ctx.onRunObservedSessionGates}
+        onQuickOpenClaudeCodeObserved={ctx.onQuickOpenClaudeCodeObserved}
+      />
+    ),
   },
   {
     id: 'provider_arena',

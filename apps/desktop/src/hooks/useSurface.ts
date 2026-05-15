@@ -1,26 +1,35 @@
 /**
- * useSurface · which surface (Code | Cartografia) is active.
+ * useSurface · which surface (Atlas AI | Cartografia | Code | Atenção) is active.
  *
  * Atlas Desktop = single .app, multiple sovereign surfaces. State lives in
  * sessionStorage so reload preserves what you were looking at, but the
  * surface doesn't bleed across browser tabs (each surface is conceptually
  * a window).
+ *
+ * Canon:
+ *   - docs/engineering-knowledge-base/atlas-code-attention-control-plane-v1.md
+ *   - docs/engineering-knowledge-base/atlas-ai-conversation-surface-and-atlas-dev-v1.md
+ *
+ * Atlas AI é a surface diária de conversa/Atlas Dev. Não substitui Code; é a
+ * camada anterior à Obra. Bug pequeno, debug, review e pesquisa técnica vivem
+ * aqui sem exigir Forge.
  */
 import { useCallback, useEffect, useState } from 'react'
 
-export type Surface = 'code' | 'cartografia'
+export type Surface = 'code' | 'cartografia' | 'atencao' | 'atlas_ai'
 
 const STORAGE_KEY = 'atlas-desktop:surface'
 
 function readInitial(): Surface {
   try {
     const v = sessionStorage.getItem(STORAGE_KEY)
-    if (v === 'code' || v === 'cartografia') return v
+    if (v === 'code' || v === 'cartografia' || v === 'atencao' || v === 'atlas_ai') return v
   } catch {
     /* storage unavailable */
   }
-  // Cartografia é tela 1 (mapa da verdade canônica entra antes da cabine).
-  return 'cartografia'
+  // Atlas AI é tela 1: começar pela conversa diária. Code aprofunda,
+  // Atenção decide, Cartografia audita a verdade canônica.
+  return 'atlas_ai'
 }
 
 export function useSurface(): {
@@ -38,16 +47,23 @@ export function useSurface(): {
     }
   }, [])
 
-  // Cmd+1 / Cmd+2 keyboard shortcuts mirror macOS native conventions.
+  // Cmd+1..4 keyboard shortcuts mirror the SurfaceSwitcher reading order
+  // (Atlas AI → Code → Atenção → Cartografia).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
       if (e.key === '1') {
         e.preventDefault()
-        setSurface('cartografia')
+        setSurface('atlas_ai')
       } else if (e.key === '2') {
         e.preventDefault()
         setSurface('code')
+      } else if (e.key === '3') {
+        e.preventDefault()
+        setSurface('atencao')
+      } else if (e.key === '4') {
+        e.preventDefault()
+        setSurface('cartografia')
       }
     }
     document.addEventListener('keydown', onKey)

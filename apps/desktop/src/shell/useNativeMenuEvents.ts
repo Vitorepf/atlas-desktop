@@ -5,8 +5,10 @@ import { useTerminalStore } from '../state/terminalStore'
 type SetSurface = (surface: Surface) => void
 
 const MENU_EVENTS = {
-  surfaceCartografia: 'atlas-menu:surface-cartografia',
+  surfaceAtlasAi: 'atlas-menu:surface-atlas_ai',
   surfaceCode: 'atlas-menu:surface-code',
+  surfaceAtencao: 'atlas-menu:surface-atencao',
+  surfaceCartografia: 'atlas-menu:surface-cartografia',
   settingsOpenCodeTerminal: 'atlas-menu:settings-open-code-terminal',
   settingsTerminalRight: 'atlas-menu:settings-terminal-right',
   settingsTerminalBottom: 'atlas-menu:settings-terminal-bottom',
@@ -44,8 +46,10 @@ export function useNativeMenuEvents(surface: Surface, setSurface: SetSurface) {
           unlistenFns.push(unlisten)
         }
 
-        await add(MENU_EVENTS.surfaceCartografia, () => setSurface('cartografia'))
+        await add(MENU_EVENTS.surfaceAtlasAi, () => setSurface('atlas_ai'))
         await add(MENU_EVENTS.surfaceCode, () => setSurface('code'))
+        await add(MENU_EVENTS.surfaceAtencao, () => setSurface('atencao'))
+        await add(MENU_EVENTS.surfaceCartografia, () => setSurface('cartografia'))
         await add(MENU_EVENTS.settingsOpenCodeTerminal, () => {
           setSurface('code')
           useTerminalStore.getState().openDock()

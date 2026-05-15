@@ -131,6 +131,8 @@ export interface AtlasWorkspaceProfileSafety {
   requiresExplicitInterventionReview: boolean
 }
 
+export type AtlasWorkspaceSurfaceId = 'atlas_ai' | 'cartografia' | 'code' | 'atencao' | string
+
 export interface AtlasWorkspaceProfile {
   schemaVersion: string
   id: string
@@ -151,12 +153,432 @@ export interface AtlasWorkspaceProfile {
   defaultRisk: AtlasWorkspaceRisk
   deploymentNotes: string
   safety: AtlasWorkspaceProfileSafety
+  /**
+   * Surfaces enabled for this Project/Workspace. UI uses this to disable
+   * tabs that don't apply (e.g. Cartografia when docs_status=incomplete).
+   * Defaults to all four when the backend doesn't declare.
+   * Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
+   */
+  surfacesEnabled: AtlasWorkspaceSurfaceId[]
 }
 
 export interface AtlasWorkspaceProfileList {
   schemaVersion: string
   defaultSlug: string
   profiles: AtlasWorkspaceProfile[]
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Atlas Code · Interactive Observed Provider Workflow
+//
+// Canon:
+//   - docs/engineering-knowledge-base/atlas-code-interactive-observed-provider-workflow-v1.md
+//   - docs/engineering-knowledge-base/atlas-code-adaptive-provider-operating-room-v1.md
+//   - docs/engineering-knowledge-base/atlas-claude-code-subscription-governance-v1.md
+
+export type AtlasCodeClaudeProgrammaticPolicy =
+  | 'allowed_now'
+  | 'test_only'
+  | 'interactive_only'
+  | 'blocked'
+
+export type AtlasCodeProgrammaticLabel =
+  | 'rivals_baseline'
+  | 'provider_integration_test'
+  | 'benchmark'
+  | 'approved_experiment'
+  | 'productive_headless'
+  | string
+
+export interface AtlasCodeProgrammaticLabelDecision {
+  allowed: boolean
+  reason: string
+  nextAction: string
+  requiresOperatorOverride: boolean
+}
+
+export interface AtlasCodeProviderRegistryEntry {
+  id: string
+  name: string
+  family: string
+  invocationMode: string
+  binaryHint: string | null
+  subscriptionStatus: string
+  bootstrapRole: string | null
+  notes: string
+}
+
+export interface AtlasCodeProviderGovernance {
+  schemaVersion: string
+  claudeProgrammaticPolicy: AtlasCodeClaudeProgrammaticPolicy
+  effectivePolicy: AtlasCodeClaudeProgrammaticPolicy
+  hardBlockAfter: string | null
+  hardBlockAfterReached: boolean
+  allowRivalsProgrammatic: boolean
+  allowProgrammaticTests: boolean
+  allowProductiveHeadless: boolean
+  allowApiPayg: boolean
+  operatorOverrideRequired: boolean
+  operatorOverrideLabels: string[]
+  operatorPresenceRequired: boolean
+  allowedInvocationModes: string[]
+  allowedLabels: string[]
+  labelDecisions: Record<string, AtlasCodeProgrammaticLabelDecision>
+  programmaticInvocationAllowed: boolean
+  productiveHeadlessAllowed: boolean
+  interactiveOnly: boolean
+  fullBlock: boolean
+  providers: AtlasCodeProviderRegistryEntry[]
+  bootstrapRoleAssignments: Record<string, string>
+  apiKeyDetected: boolean
+  safetyNotes: string[]
+}
+
+export type AtlasCodeWorkPacketStatus = 'draft' | 'ready' | string
+
+export interface AtlasCodeWorkPacket {
+  schemaVersion: string
+  id: string
+  obraId: string
+  obraTitle: string
+  workspaceSlug: string | null
+  workspacePath: string | null
+  status: AtlasCodeWorkPacketStatus
+  objective: string
+  contextSummary: string
+  allowedFiles: string[]
+  forbiddenFiles: string[]
+  interfaces: string[]
+  constraints: string[]
+  acceptanceCriteria: string[]
+  verificationCommands: string[]
+  reportFormat: string
+  stopRule: string
+  roleSlot: string
+  riskBand: string
+  taskCategory: string
+  evidenceRequired: string[]
+  createdAt: string
+  updatedAt: string
+  exportedAt: string | null
+  packetMdPath: string | null
+  promptHash: string | null
+}
+
+export interface AtlasCodeWorkPacketCreatePayload {
+  objective: string
+  contextSummary?: string
+  allowedFiles?: string[]
+  forbiddenFiles?: string[]
+  interfaces?: string[]
+  constraints?: string[]
+  acceptanceCriteria: string[]
+  verificationCommands?: string[]
+  reportFormat?: string
+  stopRule?: string
+  roleSlot?: string
+  riskBand?: string
+  taskCategory?: string
+  evidenceRequired?: string[]
+}
+
+export type AtlasCodeObservedSessionState =
+  | 'waiting_operator'
+  | 'running'
+  | 'waiting_result_import'
+  | 'imported'
+  | 'review_required'
+  | 'gates_running'
+  | 'gates_passed'
+  | 'gates_failed'
+  | 'accepted'
+  | 'rejected'
+  | 'repair_required'
+  | 'blocked'
+
+export interface AtlasCodeObservedSessionStateHistoryEntry {
+  state: AtlasCodeObservedSessionState
+  at: string
+  reason: string
+}
+
+export interface AtlasCodeObservedSessionGovernance {
+  claudeProgrammaticPolicy: AtlasCodeClaudeProgrammaticPolicy
+  effectivePolicy: AtlasCodeClaudeProgrammaticPolicy
+  programmaticInvocationAllowed: boolean
+  productiveHeadlessAllowed: boolean
+  interactiveOnly: boolean
+  invocationModeAllowed: boolean
+  invocationMode: string
+}
+
+export interface AtlasCodeObservedSessionHumanDecision {
+  action: 'accept' | 'reject' | 'request_repair' | 'block'
+  reason: string | null
+  decidedAt: string
+}
+
+export interface AtlasCodeObservedSessionGatesSummary {
+  total: number
+  passed: number
+  failed: number
+  pending: number
+  unsupported?: number
+}
+
+export type AtlasCodeObservedGateStatus =
+  | 'passed'
+  | 'failed'
+  | 'commands_available_but_not_run'
+  | 'not_configured'
+  | 'unsupported'
+  | string
+
+export interface AtlasCodeObservedGateResult {
+  gateId: string
+  status: AtlasCodeObservedGateStatus
+  detail: string
+  violations?: Array<{ file: string; reason: string }>
+  commands?: string[]
+  allowedFilesDeclared?: number
+  reportFilesListed?: number
+}
+
+export interface AtlasCodeObservedScopeGuard {
+  status: 'passed' | 'failed' | 'unsupported' | 'commands_available_but_not_run' | string
+  summary: string
+  violations: Array<{ file: string; reason: string }>
+}
+
+export interface AtlasCodeObservedSession {
+  schemaVersion: string
+  id: string
+  obraId: string
+  obraTitle: string
+  workPacketId: string
+  providerId: string
+  providerName: string
+  providerFamily: string
+  invocationMode: string
+  roleSlot: string
+  workspaceSlug: string | null
+  workspacePath: string | null
+  packetMdPath: string | null
+  packetMdStatus: string
+  packetMdExcerpt: string
+  prompt: string
+  promptHash: string
+  terminalCommandHint: string | null
+  state: AtlasCodeObservedSessionState
+  stateHistory: AtlasCodeObservedSessionStateHistoryEntry[]
+  operatorOpenedTerminalAt: string | null
+  operatorMarkedRunningAt: string | null
+  resultImportedAt: string | null
+  reportText: string | null
+  reportFiles: string[]
+  diffExcerpt: string | null
+  diffHash: string | null
+  gates: AtlasCodeObservedGateResult[]
+  gatesSummary: AtlasCodeObservedSessionGatesSummary
+  gatesEvaluatedAt: string | null
+  scopeGuard: AtlasCodeObservedScopeGuard | null
+  humanDecision: AtlasCodeObservedSessionHumanDecision | null
+  blockerReason: string | null
+  createdAt: string
+  updatedAt: string
+  governance: AtlasCodeObservedSessionGovernance
+}
+
+export interface AtlasCodeObservedSessionImportPayload {
+  reportText: string
+  files?: string[]
+  diffExcerpt?: string
+}
+
+export type AtlasCodeObservedSessionDecideAction =
+  | 'accept'
+  | 'reject'
+  | 'request_repair'
+  | 'block'
+
+export interface AtlasCodeProviderOperatingRoomAttention {
+  kind: string
+  severity: 'high' | 'medium' | 'low' | 'none' | string
+  humanQuestion: string
+  whyNow: string
+  recommendedAction: string | null
+  allowedActions: string[]
+  targetSessionId: string | null
+  targetPacketId: string | null
+}
+
+export interface AtlasCodeProviderOperatingRoomBoardSlot {
+  roleSlot: string
+  providerId: string
+  providerName: string
+  invocationMode: string
+  family: string
+  binaryHint: string | null
+  assignmentSource: string
+  subscriptionStatus: string
+  confidence: string
+  latestSession: {
+    id: string
+    state: AtlasCodeObservedSessionState
+    workPacketId: string
+    updatedAt: string
+  } | null
+  activeSessionCount: number
+}
+
+export interface AtlasCodeProviderOperatingRoomLabelDecision {
+  label: string
+  allowed: boolean
+  reason: string
+  nextAction: string
+  requiresOperatorOverride: boolean
+}
+
+export interface AtlasCodeProviderOperatingRoomSafety {
+  claudeProgrammaticPolicy: AtlasCodeClaudeProgrammaticPolicy
+  effectivePolicy: AtlasCodeClaudeProgrammaticPolicy
+  hardBlockAfter: string | null
+  hardBlockAfterReached: boolean
+  programmaticInvocationAllowed: boolean
+  productiveHeadlessAllowed: boolean
+  interactiveOnly: boolean
+  fullBlock: boolean
+  allowRivalsProgrammatic: boolean
+  allowProgrammaticTests: boolean
+  allowProductiveHeadless: boolean
+  allowApiPayg: boolean
+  apiKeyDetected: boolean
+  workspacePathResolved: boolean
+  workspacePath: string | null
+  executionBlocked: boolean
+  blockers: string[]
+  labelDecisions: AtlasCodeProviderOperatingRoomLabelDecision[]
+  allowedLabels: string[]
+  completionLaw: string
+  neverSilentFallback: boolean
+  neverApiPaygWithoutExplicitAuthorization: boolean
+}
+
+export interface AtlasCodeProviderOperatingRoom {
+  schemaVersion: string
+  generatedAt: string
+  obra: {
+    id: string
+    title: string
+    workspaceSlug: string | null
+    workspacePath: string | null
+    workspacePathExists: boolean
+    status: string
+  }
+  governance: AtlasCodeProviderGovernance
+  providerBoard: AtlasCodeProviderOperatingRoomBoardSlot[]
+  workPackets: {
+    all: AtlasCodeWorkPacket[]
+    byStatus: Record<string, AtlasCodeWorkPacket[]>
+    counts: {
+      total: number
+      draft: number
+      ready: number
+      exported: number
+    }
+  }
+  observedSessions: {
+    all: AtlasCodeObservedSession[]
+    byState: Record<string, AtlasCodeObservedSession[]>
+    counts: {
+      total: number
+      waitingOperator: number
+      running: number
+      waitingResultImport: number
+      imported: number
+      reviewRequired: number
+      accepted: number
+      rejected: number
+      repairRequired: number
+      blocked: number
+    }
+  }
+  attention: AtlasCodeProviderOperatingRoomAttention
+  safetySummary: AtlasCodeProviderOperatingRoomSafety
+  allowedActions: string[]
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Atlas Code · Dev-to-Forge Promotion (Meta 8)
+//
+// Canon:
+//   - docs/engineering-knowledge-base/atlas-ai-conversation-surface-and-atlas-dev-v1.md
+//   - docs/engineering-knowledge-base/atlas-code-programming-obras-operating-system.md
+
+export type AtlasCodePromotionTarget =
+  | 'quick_intervention'
+  | 'obra_candidate'
+  | 'forge_obra'
+  | 'none'
+
+export interface AtlasCodePromotionSignalReport {
+  schemaVersion: string
+  threadId: string
+  workspaceSlug: string | null
+  messageCount: number
+  score: number
+  reasons: string[]
+  recommendedTarget: AtlasCodePromotionTarget
+  signals: Record<string, unknown>
+  detectedFiles: string[]
+  detectedAt: string
+}
+
+export interface AtlasCodePromotionPreview {
+  schemaVersion: string
+  id: string | null
+  sourceThreadId: string
+  workspaceSlug: string
+  workspaceName: string | null
+  workspaceProductionStatus: string | null
+  workspaceDefaultRisk: string | null
+  workspacePath: string | null
+  title: string
+  objective: string
+  contextSummary: string
+  knownFiles: string[]
+  risks: string[]
+  openQuestions: string[]
+  suggestedSuccessCriteria: string[]
+  suggestedNextStep: string
+  promotionTarget: AtlasCodePromotionTarget
+  signalReport: AtlasCodePromotionSignalReport
+  reasons: string[]
+  signals: Record<string, unknown>
+  messageCount: number
+  previewOnly: boolean
+  candidateStatus: 'preview' | 'pending_decision' | 'promoted' | 'dismissed' | string
+  promotedObraId: string | null
+  promotedAt: string | null
+  generatedAt: string
+}
+
+export interface AtlasCodePromotionCandidate
+  extends Omit<AtlasCodePromotionPreview, 'previewOnly' | 'candidateStatus'> {
+  candidateStatus: 'pending_decision' | 'promoted' | 'dismissed' | string
+  decidedAt?: string | null
+  decisionReason?: string | null
+}
+
+export interface AtlasCodePromotionPayloadOverrides {
+  title?: string
+  objective?: string
+  contextSummary?: string
+  knownFiles?: string[]
+  risks?: string[]
+  openQuestions?: string[]
+  suggestedSuccessCriteria?: string[]
+  suggestedNextStep?: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
