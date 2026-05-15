@@ -86,6 +86,19 @@ import type {
   AtlasSelfImprovementNextCycleRecommendation,
   AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementDeltaGrade,
+  AtlasSelfConstructionSnapshot,
+  AtlasSelfConstructionControlPlaneStatus,
+  AtlasSelfConstructionChainIntegrityStatus,
+  AtlasSelfConstructionDeterministicReplayStatus,
+  AtlasSelfConstructionReplaySnapshotStatus,
+  AtlasSelfConstructionReplaySnapshotEntry,
+  AtlasSelfConstructionReplayDiffStatus,
+  AtlasSelfConstructionPromotionGateStatus,
+  AtlasSelfConstructionCertificationWorkbenchStatus,
+  AtlasSelfConstructionObservatoryStatus,
+  AtlasSelfConstructionRuntimePilotStatus,
+  AtlasSelfConstructionReleaseDossierStatus,
+  AtlasSelfConstructionProofHashes,
   BootSnapshot,
   CartographyGraph,
   CartographyNote,
@@ -331,6 +344,53 @@ export const bridge = {
       return adaptNullableAtlasCodeEnterpriseCertification(raw)
     } catch (e) {
       console.warn('[bridge] getAtlasCodeEnterpriseCertification', e)
+      return null
+    }
+  },
+
+  /**
+   * 0d · Atlas Self-Construction OS · Agent Control Plane Certification
+   *
+   * Read-only diagnostic projection. Tolerates a backend that has not yet
+   * exposed the endpoint (404 / no route / Tauri command missing) — returns
+   * `null` and the panel renders an honest "endpoint pending" state.
+   *
+   * Probe path (atlas-server side, when shipped):
+   *   GET /atlas-code/self-construction/control-plane
+   *
+   * This call NEVER triggers runtime. The contract is explicit:
+   *   "never starts processes, never calls Codex CLI/app, never spawns
+   *    subprocesses, never invokes adapters, never dispatches work, never
+   *    spends tokens, never advances the next required slice, never marks
+   *    runtime flags true, never writes the ledger, never promotes claims."
+   */
+  async getAtlasSelfConstruction(): Promise<AtlasSelfConstructionSnapshot | null> {
+    try {
+      let raw: unknown
+      let source: 'http' | 'tauri' | 'unavailable' = 'unavailable'
+      let endpoint: string | null = null
+      if (MODE === 'tauri') {
+        try {
+          raw = await invokeTauri<unknown>('bridge_get_atlas_self_construction')
+          source = 'tauri'
+          endpoint = 'bridge_get_atlas_self_construction'
+        } catch {
+          return null
+        }
+      } else if (MODE === 'http') {
+        endpoint = '/atlas-code/self-construction/control-plane'
+        try {
+          raw = await fetchHttp<unknown>(endpoint)
+          source = 'http'
+        } catch {
+          return null
+        }
+      } else {
+        return null
+      }
+      return adaptAtlasSelfConstruction(raw, source, endpoint)
+    } catch (e) {
+      console.warn('[bridge] getAtlasSelfConstruction', e)
       return null
     }
   },
@@ -4114,6 +4174,311 @@ function adaptNullableAtlasCodeEnterpriseCertification(raw: unknown): AtlasCodeE
   const schema = (raw as Record<string, unknown>).schema_version ?? (raw as Record<string, unknown>).schemaVersion
   if (schema !== 'atlas.code.enterprise_certification.v1') return null
   return adaptAtlasCodeEnterpriseCertification(raw)
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Self-Construction OS · Agent Control Plane adapter (read-only)
+//
+// Tolerant by design: every sub-section is optional, every field is nullable.
+// The desktop renders honest empty states for whatever the backend has not
+// yet exposed. Snake_case wire keys + camelCase fallbacks both accepted.
+
+function nullableBoolean(value: unknown): boolean | null {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'boolean') return value
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return null
+}
+
+function adaptSelfConstructionSection<T extends Record<string, unknown>>(
+  raw: unknown,
+): { record: Record<string, unknown>; meta: { status: string | null; schemaVersion: string | null; generatedAt: string | null; blockers: string[]; warnings: string[]; note: string | null } } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const record = raw as T
+  return {
+    record,
+    meta: {
+      status: nullableString(record.status ?? record.result),
+      schemaVersion: nullableString(record.schema_version ?? record.schemaVersion),
+      generatedAt: nullableString(record.generated_at ?? record.generatedAt ?? record.recorded_at ?? record.recordedAt),
+      blockers: normList(record.blockers),
+      warnings: normList(record.warnings),
+      note: nullableString(record.note),
+    },
+  }
+}
+
+function adaptSelfConstructionControlPlane(raw: unknown): AtlasSelfConstructionControlPlaneStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    agentControlPlaneReady: nullableBoolean(r.agent_control_plane_ready ?? r.agentControlPlaneReady),
+    postStartLiveness: nullableBoolean(r.post_start_liveness ?? r.postStartLiveness),
+    postStartDispatchRelease: nullableBoolean(r.post_start_dispatch_release ?? r.postStartDispatchRelease),
+    signedDispatchAuthorization: nullableBoolean(r.signed_dispatch_authorization ?? r.signedDispatchAuthorization),
+    currentPointer: nullableString(r.current_pointer ?? r.currentPointer),
+    nextBuildSlices: normList(r.next_build_slices ?? r.nextBuildSlices),
+    notYetRuntimeCapable: normList(r.not_yet_runtime_capable ?? r.notYetRuntimeCapable),
+  }
+}
+
+function adaptSelfConstructionChainIntegrity(raw: unknown): AtlasSelfConstructionChainIntegrityStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    chainIntegrityHash: nullableString(r.chain_integrity_hash ?? r.chainIntegrityHash),
+    runtimeSafetyAllFalse: nullableBoolean(r.runtime_safety_all_false ?? r.runtimeSafetyAllFalse),
+    violationCount: numberOrNull(r.violation_count ?? r.violationCount),
+    warningCount: numberOrNull(r.warning_count ?? r.warningCount),
+    alignedWithPointer: nullableBoolean(r.aligned_with_pointer ?? r.alignedWithPointer),
+    schedulerInvokerCount: numberOrNull(r.scheduler_invoker_count ?? r.schedulerInvokerCount),
+  }
+}
+
+function adaptSelfConstructionDeterministicReplay(raw: unknown): AtlasSelfConstructionDeterministicReplayStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    replayHash: nullableString(r.replay_hash ?? r.replayHash),
+    deterministicReplayHash: nullableString(r.deterministic_replay_hash ?? r.deterministicReplayHash),
+    proofBundleHash: nullableString(r.proof_bundle_hash ?? r.proofBundleHash),
+    currentPointer: nullableString(r.current_pointer ?? r.currentPointer),
+    runtimeSafetyAllFalse: nullableBoolean(r.runtime_safety_all_false ?? r.runtimeSafetyAllFalse),
+    violationCount: numberOrNull(r.violation_count ?? r.violationCount),
+    warningCount: numberOrNull(r.warning_count ?? r.warningCount),
+  }
+}
+
+function adaptSelfConstructionReplaySnapshotEntry(raw: unknown): AtlasSelfConstructionReplaySnapshotEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const id = nullableString(r.snapshot_id ?? r.snapshotId)
+  if (!id) return null
+  return {
+    snapshotId: id,
+    label: nullableString(r.label),
+    createdAt: nullableString(r.created_at ?? r.createdAt),
+    replayHash: nullableString(r.replay_hash ?? r.replayHash),
+    deterministicReplayHash: nullableString(r.deterministic_replay_hash ?? r.deterministicReplayHash),
+    proofBundleHash: nullableString(r.proof_bundle_hash ?? r.proofBundleHash),
+    chainIntegrityHash: nullableString(r.chain_integrity_hash ?? r.chainIntegrityHash),
+    currentPointer: nullableString(r.current_pointer ?? r.currentPointer),
+    runtimeSafetyAllFalse: nullableBoolean(r.runtime_safety_all_false ?? r.runtimeSafetyAllFalse),
+    violationCount: numberOrNull(r.violation_count ?? r.violationCount),
+    warningCount: numberOrNull(r.warning_count ?? r.warningCount),
+  }
+}
+
+function adaptSelfConstructionReplaySnapshot(raw: unknown): AtlasSelfConstructionReplaySnapshotStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  const latestRaw = r.latest ?? r.latest_snapshot ?? r.latestSnapshot ?? null
+  return {
+    ...s.meta,
+    latest: adaptSelfConstructionReplaySnapshotEntry(latestRaw),
+    total: numberOrNull(r.total ?? r.count),
+    capacity: numberOrNull(r.capacity),
+    storagePrefix: nullableString(r.storage_prefix ?? r.storagePrefix),
+  }
+}
+
+function adaptSelfConstructionReplayDiff(raw: unknown): AtlasSelfConstructionReplayDiffStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    beforeSnapshotId: nullableString(r.before_snapshot_id ?? r.beforeSnapshotId),
+    afterSnapshotId: nullableString(r.after_snapshot_id ?? r.afterSnapshotId),
+    result: nullableString(r.result),
+    regressionCount: numberOrNull(r.regression_count ?? r.regressionCount),
+    newViolationCount: numberOrNull(r.new_violation_count ?? r.newViolationCount),
+    newWarningCount: numberOrNull(r.new_warning_count ?? r.newWarningCount),
+    diffHash: nullableString(r.diff_hash ?? r.diffHash),
+  }
+}
+
+function adaptSelfConstructionPromotionGate(raw: unknown): AtlasSelfConstructionPromotionGateStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    gateHash: nullableString(r.gate_hash ?? r.gateHash),
+    result: nullableString(r.result),
+    beforeSnapshotId: nullableString(r.before_snapshot_id ?? r.beforeSnapshotId),
+    afterSnapshotId: nullableString(r.after_snapshot_id ?? r.afterSnapshotId),
+    requireNoViolations: nullableBoolean(r.require_no_violations ?? r.requireNoViolations),
+    requireRuntimeSafetyAllFalse: nullableBoolean(r.require_runtime_safety_all_false ?? r.requireRuntimeSafetyAllFalse),
+    requireNoRegressions: nullableBoolean(r.require_no_regressions ?? r.requireNoRegressions),
+    docsHealthStatus: nullableString(r.docs_health_status ?? r.docsHealthStatus),
+    architectureValidateStatus: nullableString(r.architecture_validate_status ?? r.architectureValidateStatus),
+    commandRequired: normList(r.command_required ?? r.commandRequired),
+    nextAction: nullableString(r.next_action ?? r.nextAction),
+  }
+}
+
+function adaptSelfConstructionCertificationWorkbench(raw: unknown): AtlasSelfConstructionCertificationWorkbenchStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    workbenchHash: nullableString(r.workbench_hash ?? r.workbenchHash),
+    certificationCount: numberOrNull(r.certification_count ?? r.certificationCount),
+    passedCount: numberOrNull(r.passed_count ?? r.passedCount),
+    blockedCount: numberOrNull(r.blocked_count ?? r.blockedCount),
+    warningCount: numberOrNull(r.warning_count ?? r.warningCount),
+    coverageRatio: numberOrNull(r.coverage_ratio ?? r.coverageRatio),
+    baselineId: nullableString(r.baseline_id ?? r.baselineId),
+  }
+}
+
+function adaptSelfConstructionObservatory(raw: unknown): AtlasSelfConstructionObservatoryStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    observatoryHash: nullableString(r.observatory_hash ?? r.observatoryHash),
+    driftDetected: nullableBoolean(r.drift_detected ?? r.driftDetected),
+    mutationGuardStatus: nullableString(r.mutation_guard_status ?? r.mutationGuardStatus),
+    scenarioCorpusStatus: nullableString(r.scenario_corpus_status ?? r.scenarioCorpusStatus),
+    fuzzHarnessStatus: nullableString(r.fuzz_harness_status ?? r.fuzzHarnessStatus),
+    lastObservedAt: nullableString(r.last_observed_at ?? r.lastObservedAt),
+  }
+}
+
+function adaptSelfConstructionRuntimePilot(raw: unknown): AtlasSelfConstructionRuntimePilotStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    dryRunStatus: nullableString(r.dry_run_status ?? r.dryRunStatus),
+    pilotHash: nullableString(r.pilot_hash ?? r.pilotHash),
+    pilotMode: nullableString(r.pilot_mode ?? r.pilotMode ?? r.mode),
+    externalProviderCall: nullableBoolean(r.external_provider_call ?? r.externalProviderCall),
+    dispatchAllowed: nullableBoolean(r.dispatch_allowed ?? r.dispatchAllowed),
+    lastDryRunAt: nullableString(r.last_dry_run_at ?? r.lastDryRunAt),
+  }
+}
+
+function adaptSelfConstructionReleaseDossier(raw: unknown): AtlasSelfConstructionReleaseDossierStatus | null {
+  const s = adaptSelfConstructionSection(raw)
+  if (!s) return null
+  const r = s.record
+  return {
+    ...s.meta,
+    dossierId: nullableString(r.dossier_id ?? r.dossierId),
+    releaseDossierHash: nullableString(r.release_dossier_hash ?? r.releaseDossierHash),
+    riskLevel: nullableString(r.risk_level ?? r.riskLevel),
+    operatorSummary: nullableString(r.operator_summary ?? r.operatorSummary),
+    evidenceCount: numberOrNull(r.evidence_count ?? r.evidenceCount),
+    commandEvidenceCount: numberOrNull(r.command_evidence_count ?? r.commandEvidenceCount),
+    docEvidenceCount: numberOrNull(r.doc_evidence_count ?? r.docEvidenceCount),
+    testEvidenceCount: numberOrNull(r.test_evidence_count ?? r.testEvidenceCount),
+  }
+}
+
+function adaptSelfConstructionProofHashes(
+  raw: unknown,
+  fallback: Partial<AtlasSelfConstructionProofHashes>,
+): AtlasSelfConstructionProofHashes {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    chainIntegrity: nullableString(r.chain_integrity ?? r.chainIntegrity) ?? fallback.chainIntegrity ?? null,
+    deterministicReplay:
+      nullableString(r.deterministic_replay ?? r.deterministicReplay) ?? fallback.deterministicReplay ?? null,
+    proofBundle: nullableString(r.proof_bundle ?? r.proofBundle) ?? fallback.proofBundle ?? null,
+    promotionGate: nullableString(r.promotion_gate ?? r.promotionGate) ?? fallback.promotionGate ?? null,
+    replayDiff: nullableString(r.replay_diff ?? r.replayDiff) ?? fallback.replayDiff ?? null,
+    releaseDossier: nullableString(r.release_dossier ?? r.releaseDossier) ?? fallback.releaseDossier ?? null,
+    certificationWorkbench:
+      nullableString(r.certification_workbench ?? r.certificationWorkbench) ?? fallback.certificationWorkbench ?? null,
+    observatory: nullableString(r.observatory) ?? fallback.observatory ?? null,
+    runtimePilot: nullableString(r.runtime_pilot ?? r.runtimePilot) ?? fallback.runtimePilot ?? null,
+  }
+}
+
+function adaptAtlasSelfConstruction(
+  raw: unknown,
+  source: 'http' | 'tauri' | 'unavailable',
+  endpoint: string | null,
+): AtlasSelfConstructionSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+
+  const controlPlane = adaptSelfConstructionControlPlane(r.control_plane ?? r.controlPlane)
+  const chainIntegrity = adaptSelfConstructionChainIntegrity(r.chain_integrity ?? r.chainIntegrity)
+  const deterministicReplay = adaptSelfConstructionDeterministicReplay(
+    r.deterministic_replay ?? r.deterministicReplay,
+  )
+  const replaySnapshot = adaptSelfConstructionReplaySnapshot(r.replay_snapshot ?? r.replaySnapshot)
+  const replayDiff = adaptSelfConstructionReplayDiff(r.replay_diff ?? r.replayDiff)
+  const promotionGate = adaptSelfConstructionPromotionGate(r.promotion_gate ?? r.promotionGate)
+  const certificationWorkbench = adaptSelfConstructionCertificationWorkbench(
+    r.certification_workbench ?? r.certificationWorkbench,
+  )
+  const observatory = adaptSelfConstructionObservatory(r.observatory)
+  const runtimePilot = adaptSelfConstructionRuntimePilot(r.runtime_pilot ?? r.runtimePilot)
+  const releaseDossier = adaptSelfConstructionReleaseDossier(r.release_dossier ?? r.releaseDossier)
+
+  const fallbackHashes: Partial<AtlasSelfConstructionProofHashes> = {
+    chainIntegrity: chainIntegrity?.chainIntegrityHash ?? null,
+    deterministicReplay: deterministicReplay?.deterministicReplayHash ?? null,
+    proofBundle: deterministicReplay?.proofBundleHash ?? replaySnapshot?.latest?.proofBundleHash ?? null,
+    promotionGate: promotionGate?.gateHash ?? null,
+    replayDiff: replayDiff?.diffHash ?? null,
+    releaseDossier: releaseDossier?.releaseDossierHash ?? null,
+    certificationWorkbench: certificationWorkbench?.workbenchHash ?? null,
+    observatory: observatory?.observatoryHash ?? null,
+    runtimePilot: runtimePilot?.pilotHash ?? null,
+  }
+
+  return {
+    schemaVersion: nullableString(r.schema_version ?? r.schemaVersion),
+    generatedAt: nullableString(r.generated_at ?? r.generatedAt),
+    source,
+    endpoint,
+    status: nullableString(r.status),
+    controlPlane,
+    chainIntegrity,
+    deterministicReplay,
+    replaySnapshot,
+    replayDiff,
+    promotionGate,
+    certificationWorkbench,
+    observatory,
+    runtimePilot,
+    releaseDossier,
+    nextRequiredSlice: nullableString(r.next_required_slice ?? r.nextRequiredSlice),
+    nextSafeMacroBatch: nullableString(r.next_safe_macro_batch ?? r.nextSafeMacroBatch),
+    runtimeSafetyAllFalse: nullableBoolean(
+      r.runtime_safety_all_false ??
+        r.runtimeSafetyAllFalse ??
+        chainIntegrity?.runtimeSafetyAllFalse ??
+        null,
+    ),
+    violationCount: numberOrNull(
+      r.violation_count ?? r.violationCount ?? chainIntegrity?.violationCount ?? null,
+    ),
+    warningCount: numberOrNull(
+      r.warning_count ?? r.warningCount ?? chainIntegrity?.warningCount ?? null,
+    ),
+    proofHashes: adaptSelfConstructionProofHashes(r.proof_hashes ?? r.proofHashes, fallbackHashes),
+    blockers: normList(r.blockers),
+    warnings: normList(r.warnings),
+    note: nullableString(r.note),
+  }
 }
 
 function adaptForgeLiveExecutionAsyncEnvelope(raw: unknown): WorkStateSnapshot['forgeLiveExecutionAsync'] {

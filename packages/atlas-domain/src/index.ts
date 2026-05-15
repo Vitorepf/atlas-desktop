@@ -2563,6 +2563,210 @@ export interface ProgrammingGovernanceSnapshot {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Atlas Self-Construction OS · Agent Control Plane (read-only diagnostic)
+//
+// Mirrors the certification family declared in
+// `docs/engineering-knowledge-base/self-construction/agent-control-plane-contract.md`
+// (schemas `atlas.self_construction.agent_control_plane_*`).
+//
+// Contract for the desktop UI:
+//   - Every section is independently nullable. The backend exposes pieces as
+//     each readiness slice ships; the panel renders an honest empty state for
+//     any field/section that the backend has not yet populated.
+//   - This surface is strictly read-only. No type in this block describes an
+//     action — the diagnostic projection never starts processes, never calls a
+//     provider, never advances a slice, never mutates the ledger.
+//   - Snake_case incoming fields are normalised to camelCase by the bridge
+//     adapter; types here describe what the desktop renders.
+
+export type AtlasSelfConstructionSectionStatus =
+  | 'ready'
+  | 'available'
+  | 'passed'
+  | 'no_baseline'
+  | 'warning'
+  | 'blocked'
+  | 'not_yet_runtime_capable'
+  | 'unknown'
+  | string
+
+export type AtlasSelfConstructionRiskLevel = 'low' | 'medium' | 'high' | string
+
+export interface AtlasSelfConstructionSectionMeta {
+  status: AtlasSelfConstructionSectionStatus | null
+  schemaVersion: string | null
+  generatedAt: string | null
+  blockers: string[]
+  warnings: string[]
+  note: string | null
+}
+
+export interface AtlasSelfConstructionControlPlaneStatus extends AtlasSelfConstructionSectionMeta {
+  agentControlPlaneReady: boolean | null
+  postStartLiveness: boolean | null
+  postStartDispatchRelease: boolean | null
+  signedDispatchAuthorization: boolean | null
+  currentPointer: string | null
+  nextBuildSlices: string[]
+  notYetRuntimeCapable: string[]
+}
+
+export interface AtlasSelfConstructionChainIntegrityStatus extends AtlasSelfConstructionSectionMeta {
+  chainIntegrityHash: string | null
+  runtimeSafetyAllFalse: boolean | null
+  violationCount: number | null
+  warningCount: number | null
+  alignedWithPointer: boolean | null
+  schedulerInvokerCount: number | null
+}
+
+export interface AtlasSelfConstructionDeterministicReplayStatus extends AtlasSelfConstructionSectionMeta {
+  replayHash: string | null
+  deterministicReplayHash: string | null
+  proofBundleHash: string | null
+  currentPointer: string | null
+  runtimeSafetyAllFalse: boolean | null
+  violationCount: number | null
+  warningCount: number | null
+}
+
+export interface AtlasSelfConstructionReplaySnapshotEntry {
+  snapshotId: string
+  label: string | null
+  createdAt: string | null
+  replayHash: string | null
+  deterministicReplayHash: string | null
+  proofBundleHash: string | null
+  chainIntegrityHash: string | null
+  currentPointer: string | null
+  runtimeSafetyAllFalse: boolean | null
+  violationCount: number | null
+  warningCount: number | null
+}
+
+export interface AtlasSelfConstructionReplaySnapshotStatus extends AtlasSelfConstructionSectionMeta {
+  latest: AtlasSelfConstructionReplaySnapshotEntry | null
+  total: number | null
+  capacity: number | null
+  storagePrefix: string | null
+}
+
+export interface AtlasSelfConstructionReplayDiffStatus extends AtlasSelfConstructionSectionMeta {
+  beforeSnapshotId: string | null
+  afterSnapshotId: string | null
+  result: AtlasSelfConstructionSectionStatus | null
+  regressionCount: number | null
+  newViolationCount: number | null
+  newWarningCount: number | null
+  diffHash: string | null
+}
+
+export interface AtlasSelfConstructionPromotionGateStatus extends AtlasSelfConstructionSectionMeta {
+  gateHash: string | null
+  result: AtlasSelfConstructionSectionStatus | null
+  beforeSnapshotId: string | null
+  afterSnapshotId: string | null
+  requireNoViolations: boolean | null
+  requireRuntimeSafetyAllFalse: boolean | null
+  requireNoRegressions: boolean | null
+  docsHealthStatus: string | null
+  architectureValidateStatus: string | null
+  commandRequired: string[]
+  nextAction: string | null
+}
+
+export interface AtlasSelfConstructionCertificationWorkbenchStatus extends AtlasSelfConstructionSectionMeta {
+  workbenchHash: string | null
+  certificationCount: number | null
+  passedCount: number | null
+  blockedCount: number | null
+  warningCount: number | null
+  coverageRatio: number | null
+  baselineId: string | null
+}
+
+export interface AtlasSelfConstructionObservatoryStatus extends AtlasSelfConstructionSectionMeta {
+  observatoryHash: string | null
+  driftDetected: boolean | null
+  mutationGuardStatus: string | null
+  scenarioCorpusStatus: string | null
+  fuzzHarnessStatus: string | null
+  lastObservedAt: string | null
+}
+
+export interface AtlasSelfConstructionRuntimePilotStatus extends AtlasSelfConstructionSectionMeta {
+  dryRunStatus: AtlasSelfConstructionSectionStatus | null
+  pilotHash: string | null
+  pilotMode: string | null
+  externalProviderCall: boolean | null
+  dispatchAllowed: boolean | null
+  lastDryRunAt: string | null
+}
+
+export interface AtlasSelfConstructionReleaseDossierStatus extends AtlasSelfConstructionSectionMeta {
+  dossierId: string | null
+  releaseDossierHash: string | null
+  riskLevel: AtlasSelfConstructionRiskLevel | null
+  operatorSummary: string | null
+  evidenceCount: number | null
+  commandEvidenceCount: number | null
+  docEvidenceCount: number | null
+  testEvidenceCount: number | null
+}
+
+export interface AtlasSelfConstructionProofHashes {
+  chainIntegrity: string | null
+  deterministicReplay: string | null
+  proofBundle: string | null
+  promotionGate: string | null
+  replayDiff: string | null
+  releaseDossier: string | null
+  certificationWorkbench: string | null
+  observatory: string | null
+  runtimePilot: string | null
+}
+
+/**
+ * Atlas Self-Construction OS · Agent Control Plane Certification (umbrella).
+ *
+ * Schema family: atlas.self_construction.agent_control_plane_*
+ *
+ * The backend assembles each sub-section as the underlying readiness slice
+ * lands. The desktop renders any combination of populated / null sections —
+ * a missing section means "backend has not exposed this yet", not "ready".
+ */
+export interface AtlasSelfConstructionSnapshot {
+  schemaVersion: string | null
+  generatedAt: string | null
+  source: 'http' | 'tauri' | 'unavailable' | string
+  endpoint: string | null
+  status: AtlasSelfConstructionSectionStatus | null
+
+  controlPlane: AtlasSelfConstructionControlPlaneStatus | null
+  chainIntegrity: AtlasSelfConstructionChainIntegrityStatus | null
+  deterministicReplay: AtlasSelfConstructionDeterministicReplayStatus | null
+  replaySnapshot: AtlasSelfConstructionReplaySnapshotStatus | null
+  replayDiff: AtlasSelfConstructionReplayDiffStatus | null
+  promotionGate: AtlasSelfConstructionPromotionGateStatus | null
+  certificationWorkbench: AtlasSelfConstructionCertificationWorkbenchStatus | null
+  observatory: AtlasSelfConstructionObservatoryStatus | null
+  runtimePilot: AtlasSelfConstructionRuntimePilotStatus | null
+  releaseDossier: AtlasSelfConstructionReleaseDossierStatus | null
+
+  nextRequiredSlice: string | null
+  nextSafeMacroBatch: string | null
+  runtimeSafetyAllFalse: boolean | null
+  violationCount: number | null
+  warningCount: number | null
+
+  proofHashes: AtlasSelfConstructionProofHashes
+  blockers: string[]
+  warnings: string[]
+
+  note: string | null
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Decision Receipt v2 (Atlas Server: AiDecision)
 
 export type Confidence = 'low' | 'medium' | 'high' | 'unknown'

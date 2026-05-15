@@ -1,3 +1,4 @@
+import { AtlasConstructionPanel } from './AtlasConstructionPanel'
 import { AtlasSelfImprovementLevel7Panel } from './AtlasSelfImprovementLevel7Panel'
 import { EvidencePanel } from './EvidencePanel'
 import { ForgeAdvancedPanel } from './ForgeAdvancedPanel'
@@ -61,6 +62,18 @@ const PANELS: RightRailPanelDefinition[] = [
     label: 'Avançado',
     priority: 90,
     render: (ctx: RightRailContext) => <ForgeAdvancedPanel {...ctx} />,
+  },
+  {
+    id: 'construction',
+    label: 'Construction',
+    priority: 95,
+    render: (ctx: RightRailContext) => (
+      <AtlasConstructionPanel
+        snapshot={ctx.selfConstruction}
+        busy={ctx.busy}
+        onRefresh={ctx.onRefreshSelfConstruction}
+      />
+    ),
   },
 ]
 

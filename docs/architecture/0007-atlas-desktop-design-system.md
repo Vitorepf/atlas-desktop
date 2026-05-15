@@ -1,13 +1,83 @@
 # Atlas Desktop · Design System Canon
 
-> **Status**: canon · ativo a partir de 2026-05-14
+> **Version**: 2.0 · 2026-05-14 (sessão K-O + Edit Mode 6 features + Surface Code dark + Hooks core)
+> **Status**: canon · ativo
 > **Owners**: Vitor (visão) · Atlas Desktop surface team
 > **Predecessores**: 0001-atlas-desktop-boundaries · 0003-cartography-surface · 0006-cartography-surface-scalability-contract
-> **Memória canon relacionada**: `project_atlas_motion_principle` · `project_atlas_editorial_grid` · `project_atlas_vault_cartografia` · `project_atlas_source_authority` · `feedback_atlas_cartografia_principle`
+> **Memória canon relacionada**: `reference_atlas_desktop_design_system` · `project_atlas_motion_principle` · `project_atlas_editorial_grid` · `project_atlas_vault_cartografia` · `project_atlas_source_authority` · `project_atlas_code_codex_slate_premium` · `feedback_atlas_cartografia_principle`
 
 Esta é a referência **única e completa** que qualquer IA (ou humano) deve consultar antes de implementar qualquer surface, componente, hook ou interação no Atlas Desktop. Tudo aqui é canon — não é "sugestão". Anti-padrões estão marcados explicitamente.
 
 Use este documento como **input de contexto** ao planejar uma feature nova. Releia o capítulo 1 (DNA) antes de escrever qualquer linha de CSS.
+
+---
+
+## 0 · Onboarding IA · Primeiro contato com Atlas Desktop
+
+**Antes de fazer qualquer coisa**, siga esta sequência em ordem. Ela existe pra você convergir rápido com o canon sem inventar nada.
+
+### 0.1 · Checagem de ambiente
+
+```bash
+# Confirme que atlas-server (backend Laravel) está vivo na :8001
+curl -s -o /dev/null -w "atlas-server: %{http_code}\n" \
+  -H "X-Atlas-Token: <token-do-.env.local>" \
+  http://127.0.0.1:8001/atlas-cartography/graph
+# Esperado: 200
+
+# Confirme que Vite dev está vivo na :5173
+curl -s -o /dev/null -w "vite: %{http_code}\n" http://127.0.0.1:5173/
+# Esperado: 200
+```
+
+Se backend morto: `cd /Users/vitorepf/develop/Atlas/atlas-server && /opt/homebrew/bin/php artisan serve --port=8001 &`
+Se Vite morto: `cd /Users/vitorepf/develop/Atlas/atlas-desktop && npm run dev --workspace=@atlas/desktop`
+
+Token canon (somente leitura local): `apps/desktop/.env.local` → `VITE_ATLAS_API_TOKEN`.
+
+### 0.2 · Leitura obrigatória antes de codar
+
+| # | Arquivo | Por quê |
+|---|---|---|
+| 1 | Capítulos 1-2 deste doc (DNA + Tokens) | Você precisa SENTIR o canon antes de tocar pixel. |
+| 2 | `atlas-server/docs/atlas-vault-cartografia.md` (1022 linhas) | A bíblia da Cartografia. Anti-canon catalogado. |
+| 3 | `atlas-server/public/atlas-vault-cockpit-mockup.html` em browser | Gabarito visual canônico. Abra: `open atlas-server/public/atlas-vault-cockpit-mockup.html` |
+| 4 | Capítulo 15 deste doc (checklist pré-PR) | Sua aferição final antes do diff. |
+
+### 0.3 · Captura de estado atual antes de mexer
+
+```bash
+# Use o script Playwright canon (capítulo 19) pra capturar a tela em PNG
+cd /tmp && node atlas-tauri-size.mjs
+# Output: /tmp/atlas-tauri-size.png
+
+# Compare a captura com o que você imagina ANTES de tocar nada.
+```
+
+Se a tela atual já está "good enough" pro user no aspecto que você ia mexer — **pause e pergunte**. Não otimize o que está aprovado.
+
+### 0.4 · Princípio operacional
+
+1. **Plan mode** antes de codar quando ambíguo. AskUserQuestion no ambíguo.
+2. **Fatias finas**. Uma feature de cada vez. Build verde no fim de cada bloco.
+3. **Plan + Read + Edit + Test (Playwright)** sempre nessa ordem.
+4. **Memory canon** (`~/.claude/projects/-Users-vitorepf-develop-Atlas/memory/`) é auto-loaded. Leia entries relevantes antes de planejar.
+5. **Honestidade canon**: se você atingiu 7.5/10, diga 7.5/10. Não promete 9.5 antes de entregar.
+
+### 0.5 · Decisão · estou tocando Cartografia ou Code?
+
+| Característica | Surface Cartografia | Surface Code |
+|---|---|---|
+| Tema canônico | **cream editorial** (Don Corleone Patek) | **slate teal dark warm** (Codex-inspired) |
+| Tokens base | `--cream*`, `--ink*`, `--bronze*` | `--cc-bg`, `--cc-text*`, `--cc-accent` (atlas gold) |
+| Background | `#f3ecda` cream | `#1d2b34` slate teal |
+| Accent | bronze `#8a6a35` | atlas gold `#d4a85a` burnished |
+| Scope CSS | `.cartografia-surface` | `.atlas-shell.surface-code` |
+| Tipografia | Cormorant italic protagonista | Inter/system sans-serif protagonista |
+
+Se você não tem certeza qual surface está tocando: **pergunte ao usuário**. Não invente.
+
+Detalhes completos: capítulo 1 (Cartografia cream) e capítulo 16 (Code dark).
 
 ---
 
@@ -704,3 +774,775 @@ Antes de submeter PR que toca uma surface (Cartografia ou similar):
 
 **Última revisão**: 2026-05-14 · Vitor + sessão Atlas Code
 **Próxima revisão obrigatória**: ao adicionar surface nova ou alterar tokens canon
+
+---
+
+## 16 · Surface Code · Tema Dark Warm (Codex-inspired)
+
+A surface `code` (Atlas Code workbench) usa **tema dark warm** completamente diferente da Cartografia. Aplicado SOMENTE dentro do escopo `.atlas-shell.surface-code` — Cartografia permanece cream intocada.
+
+### 16.1 · Por quê dark · razão canon
+
+Atlas Code é workbench operacional · ledger de execução, gates, evidências, Forge runs. Uso é prolongado (12h+ por dia). Cream cansa em sessão longa — slate teal preserva atenção. Inspiração: Codex CLI editor + ledger contábil noturno.
+
+### 16.2 · Tokens canon (light + dark via overlay)
+
+Definidos em `apps/desktop/src/index.css` em duas camadas:
+
+**Base (light · default Atlas Code)** · linhas 70-200:
+```css
+--cc-bg:              #f4ede0;       /* canvas warm ivory */
+--cc-surface:         #faf5e8;       /* superfícies / cards */
+--cc-surface-raised:  #fcfaf4;       /* popovers / dialogs */
+--cc-surface-sunken:  #ece4d3;       /* sidebars / footers */
+
+--cc-text:            #1d1a16;       /* primary */
+--cc-text-strong:     #0f0e0c;       /* headlines */
+--cc-text-muted:      #5a544a;       /* secondary */
+--cc-text-faint:      #8a8275;       /* helpers */
+--cc-text-disabled:   #b3ac9e;
+
+--cc-border-soft:     rgba(26, 23, 20, 0.08);
+--cc-border:          rgba(26, 23, 20, 0.16);
+--cc-border-strong:   rgba(26, 23, 20, 0.28);
+
+/* Status saturados sem agressão */
+--cc-success:  #4a6a3c;  --cc-success-fg: #2d4525;
+--cc-warning:  #a87327;  --cc-warning-fg: #6e4818;
+--cc-danger:   #b94d44;  --cc-danger-fg:  #7d2b25;
+--cc-info:     #4a6a7c;  --cc-info-fg:    #2a4554;
+--cc-neutral:  #5a544a;
+```
+
+**Dark warm overlay** (Codex slate · linhas 218-313):
+```css
+.atlas-shell.surface-code {
+  --cc-bg:              #1d2b34;     /* slate teal Codex */
+  --cc-surface:         #243743;     /* card slate elevated */
+  --cc-surface-raised:  #2d4351;     /* popover */
+  --cc-surface-sunken:  #15212a;     /* sidebar/footer */
+
+  --cc-text-strong:     #f0f4f7;     /* cool cream high-contrast */
+  --cc-text:            #d6dde2;
+  --cc-text-muted:      #95a3ac;
+  --cc-text-faint:      #677482;
+  --cc-text-disabled:   #3d4b54;
+
+  --cc-border-soft:     rgba(233, 238, 242, 0.05);
+  --cc-border:          rgba(233, 238, 242, 0.10);
+  --cc-border-strong:   rgba(233, 238, 242, 0.20);
+
+  /* Accent · atlas gold burnished sobre slate */
+  --cc-accent:          #d4a85a;
+  --cc-accent-strong:   #e6b966;
+  --cc-accent-veil:     rgba(212, 168, 90, 0.12);
+  --cc-accent-border:   rgba(212, 168, 90, 0.34);
+
+  /* Status afinados pra slate · saturados mas low-glare */
+  --cc-success:  #82b577;  /* moss-bright */
+  --cc-warning:  #e0ad5e;  /* atlas-gold-warm */
+  --cc-danger:   #d05a52;  /* rec-red-bright */
+  --cc-info:     #7fa7c4;  /* prussian-bright */
+  --cc-neutral:  #95a3ac;
+
+  /* Status dot mapping */
+  --cc-dot-running:  var(--cc-info);
+  --cc-dot-blocked:  var(--cc-danger);
+  --cc-dot-review:   var(--cc-warning);
+  --cc-dot-passed:   var(--cc-success);
+  --cc-dot-unknown:  var(--cc-neutral);
+
+  /* Sombras profundas slate */
+  --cc-shadow-xs:  0 1px 0 rgba(0, 0, 0, 0.20);
+  --cc-shadow-sm:  0 2px 4px rgba(0, 0, 0, 0.26);
+  --cc-shadow-md:  0 6px 16px rgba(0, 0, 0, 0.32);
+  --cc-shadow-lg:  0 14px 32px rgba(0, 0, 0, 0.38);
+
+  /* Focus ring burnished gold */
+  --cc-focus-ring: 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(230, 185, 102, 0.55);
+}
+```
+
+### 16.3 · Bridge tokens · Cartografia → Code
+
+Como Atlas Code tem painéis legacy que usam tokens canon Cartografia (`--cream`, `--ink`, `--bronze`), o overlay slate REDEFINE esses tokens dentro do escopo `.atlas-shell.surface-code` pra mapear no slate. Isso é **bridge intencional** — painéis legacy ainda funcionam, só ganham tema dark sem refactor.
+
+Mapeamento canon (preservado):
+```
+--cream         → #1d2b34 (slate teal bg)
+--cream-paper   → #243743 (surface card)
+--cream-deep    → #15212a (sunken sidebar)
+--ink           → #e9eef2 (cool cream high-contrast)
+--ink2          → #cdd6dc
+--bronze        → #d4a85a (atlas gold)
+--bronze-deep   → #e6b966 (gold strong)
+```
+
+### 16.4 · Tipografia code surface
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--cc-text-display` | 22px | Headlines / hero numerals |
+| `--cc-text-title` | 17px | Painel titles |
+| `--cc-text-section` | 14px | Section headers |
+| `--cc-text-body` | 13.5px | Body operacional |
+| `--cc-text-body-sm` | 12.5px | Body denso |
+| `--cc-text-caption` | 11.5px | Legendas |
+| `--cc-text-label` | 10px | Labels uppercase |
+| `--cc-text-data` | 12px | Dados em Mono |
+
+Font canon: **Inter** (sans-serif) protagonista · **JetBrains Mono** pra dados/IDs/timestamps. **NÃO Cormorant** — esse é da Cartografia.
+
+### 16.5 · Status dots · canon (não pulsa)
+
+Atlas Code Codex Slate Premium v1 (memória `project_atlas_code_codex_slate_premium`) decidiu: **status dots NÃO pulsam**. Halo pulsando foi removido por ser "cafona SaaS".
+
+```css
+.status-dot.running  { background: var(--cc-dot-running); }
+.status-dot.blocked  { background: var(--cc-dot-blocked); }
+.status-dot.review   { background: var(--cc-dot-review); }
+.status-dot.passed   { background: var(--cc-dot-passed); }
+.status-dot.unknown  { background: var(--cc-dot-unknown); }
+/* sem animation: pulse — proibido */
+```
+
+### 16.6 · Letter-spacing canon code
+
+**`letter-spacing: 0` em corpo de texto**. Letter-spacing aplica APENAS em labels uppercase (Mono caps) com tracking ≥ 1.4px. Decisão Codex Slate v1.
+
+### 16.7 · Quando aplicar Cartografia vs Code
+
+| Caso | Use |
+|---|---|
+| Surface NOVA cuja função é **visualizar/navegar documentação canônica** | Canon Cartografia (cream) |
+| Surface NOVA cuja função é **operar/executar/auditar** (workbench, ledger, gates) | Canon Code (slate dark warm) |
+| Componente reutilizável entre as duas (button, modal genérico) | Use tokens `--cc-*` (presentes em ambas) |
+| Componente exclusivo de uma | Use scope `.cartografia-surface` ou `.atlas-shell.surface-code` |
+
+### 16.8 · Anti-canon Code surface
+
+- ❌ Cor saturada brilhante (azul Material #2196F3, verde Tailwind #10B981) → use status colors canon
+- ❌ Tipografia serif em body Code (deixa pra Cartografia) → Inter sans-serif
+- ❌ Box-shadow sem profundidade (offset 0 0 X 0) → use `--cc-shadow-*` canon
+- ❌ Border-radius >= 6px em elementos workbench → 2-3px
+- ❌ Pulse animation em status dots → estático
+
+---
+
+## 17 · Hooks Core · API Completa
+
+Cartografia tem ~15 hooks. Aqui estão os 10 mais usados, agrupados por responsabilidade. Estrutura padrão: **um hook, uma responsabilidade**.
+
+### 17.1 · Master hook · `useCartografia()`
+
+```ts
+import { useCartografia } from './state/useCartografia'
+
+const c = useCartografia()
+```
+
+Retorna `CartografiaState` (interface canônica em `state/cartografiaTypes.ts`):
+
+```ts
+interface CartografiaState {
+  // Data
+  loading: boolean
+  errors: string[]
+  graph: CartographyGraph | null
+  recentChanges: RecentChange[]
+  noteCache: Record<string, CartographyNote | null>
+  atomIndex: Record<string, CartographyAtom>
+
+  // Navigation state
+  view: CartographyView                 // 'universe' | 'system' | 'flow' | 'gear' | 'subflow'
+  continent: string                      // 'atlas-ai-kernel' | 'memoria' | 'obras' | ...
+  systemParentId: string | null
+  focusedId: string | null
+  isolatedId: string | null              // peça em isolate mode (spotlight)
+  hoverId: string | null
+  searchQuery: string
+
+  // Reading mode
+  readingMode: boolean
+  readingFocusOrder?: number | null
+  toggleReadingMode: () => void
+  setReadingMode: (next: boolean) => void
+  readingNext: () => void
+  readingPrev: () => void
+
+  // Density (atom compactness)
+  density: 'comfortable' | 'compact'
+  setDensity: (next: 'comfortable' | 'compact') => void
+
+  // Navigation actions
+  setView: (v: CartographyView) => void
+  selectContinent: (id: string) => void
+  enterNode: (graphId: string) => void
+  enterIsolate: (graphId: string) => void
+  exitIsolate: () => void
+  enterGear: (graphId: string) => void
+  exitGear: () => void
+  enterSubflow: () => void
+  setHover: (graphId: string | null) => void
+  setSearch: (q: string) => void
+
+  // Async
+  loadNoteFor: (graphId: string) => Promise<CartographyNote | null>
+  refreshRecent: () => Promise<void>
+}
+```
+
+**Regra**: este é o **único** caller de `useCartografiaData/Navigation/Notes`. Composition root chama `useCartografia()` uma vez, passa pra downstream. Nunca chame `useCartografiaData()` direto fora deste hook.
+
+### 17.2 · ViewModel · `useCartografiaViewModel(c)`
+
+```ts
+import { useCartografiaViewModel } from './state/useCartografiaViewModel'
+
+const vm = useCartografiaViewModel(c)
+// vm: { continent, focusedAtom, hoveredAtom, hereLabel, isOffline, lensStats }
+```
+
+Hook **derived state** — computa ViewModels memoized a partir do master state. Pure derivation. Sem efeitos. Use em props pra componentes child.
+
+### 17.3 · Viewport · `useCartografiaViewport(config)`
+
+```ts
+import { useCartografiaViewport } from './viewport/useCartografiaViewport'
+
+const viewport = useCartografiaViewport({
+  worldWidth: WORLD_WIDTH,         // 1880 canon
+  worldHeight: WORLD_HEIGHT,       // 1820 canon (ou 2500 com cards maiores)
+  initialScale: 0.4,               // opcional, default 0.4
+  minScale: 0.3,                   // opcional, default 0.3
+  maxScale: 2.4,                   // opcional, default 2.4
+})
+```
+
+Retorna:
+```ts
+{
+  viewportRef: RefObject<HTMLDivElement>,  // ref pra atribuir ao container
+  transform: { scale, x, y },              // estado atual
+  animating: boolean,                       // motion transition active?
+  zoomBy: (factor, focalX?, focalY?) => void,
+  fit: () => void,                          // fit-to-screen
+  fitToStage: (stage) => void,              // fit a um sub-stage
+  reset: () => void,                        // initialScale centralizado
+  setAnimating: (bool) => void,
+  didDrag: () => boolean,                   // pra distinguir pan vs click
+}
+```
+
+**Math canon** em `viewport/viewportMath.ts`:
+- `clampScale(scale, min, max)` · clamp básico
+- `zoomAroundPoint({...})` · zoom focal mantendo ponto na tela
+- `fitWorld({...})` · scale pra mundo inteiro caber + centralização
+- `fitStage({...})` · scale pra um stage específico com cap 1.05
+
+### 17.4 · Pan/zoom bindings · `useViewportPanBindings({...})`
+
+Hook interno usado pelo `useCartografiaViewport`. Adiciona mouse/wheel listeners no viewport. Respeita `NO_PAN_SELECTOR` canon:
+
+```ts
+const NO_PAN_SELECTOR = [
+  '.no-pan',         // marcador explícito
+  '.atom',           // não pan ao clicar atom
+  '.satellite',
+  '.focus-action',
+  '.floater',
+  '.canvas-controls',
+  '.breadcrumb',
+  '.back-to-map',
+].join(', ')
+```
+
+Qualquer elemento que tenha `closest(NO_PAN_SELECTOR)` truthy IGNORA mousedown pra pan. Use `.no-pan` em handlers customizados (drag de lane, resize, botão floater).
+
+### 17.5 · SceneAutoFit · `useSceneAutoFit({...})`
+
+```ts
+useSceneAutoFit({
+  viewport,                    // do useCartografiaViewport
+  view: c.view,
+  continent: c.continent,
+  systemParentId: c.systemParentId,
+  focusedId: c.focusedId,
+})
+```
+
+Dispara `viewport.reset()` (ou `viewport.fit()` legacy) quando view/continent/system/focused muda — re-centraliza após navegação. Implementação canon usa `reset()` pra honrar `initialScale` configurado.
+
+### 17.6 · Visual Lens · `useVisualLens()`
+
+```ts
+import { useVisualLens } from './state/useVisualLens'
+const { visualLens, setVisualLens } = useVisualLens()
+```
+
+Toggle de 5 lentes:
+```ts
+type VisualLens = 'flow' | 'relations' | 'risk' | 'recent' | 'evidence'
+```
+
+Persisted em localStorage `atlas.cartografia.visualLens`.
+
+Aplicado como class no `.world` (`world.lens-flow` etc.) — CSS reage com filtros/destaque por lente.
+
+### 17.7 · Search · `useCartografiaSearch(atomIndex, enterNode)`
+
+```ts
+import { useCartografiaSearch } from './search/useCartografiaSearch'
+const search = useCartografiaSearch(c.atomIndex, c.enterNode)
+```
+
+Retorna controller pra busca global (`Cmd+K`). Acopla input + results + navegação.
+
+### 17.8 · Shortcuts · `useCartografiaShortcuts({...})`
+
+```ts
+import { useCartografiaShortcuts } from './state/useCartografiaShortcuts'
+
+useCartografiaShortcuts({
+  view: c.view,
+  isolatedId: c.isolatedId,
+  search,
+  onFit: viewport.fit,
+  onSetVisualLens: setVisualLens,
+  onExitGear: c.exitGear,
+  onExitIsolate: c.exitIsolate,
+  onToggleAuditPanel: toggleAudit,
+})
+```
+
+Registra keyboard shortcuts canon (`/1..5`, `cmd+K`, `cmd+shift+A`, `0`, `Esc`). Skip when typing rule built-in.
+
+### 17.9 · Inspector column · `useInspectorColumn()`
+
+```ts
+import { useInspectorColumn } from './layout/useInspectorColumn'
+const inspector = useInspectorColumn()
+// { collapsed, toggle, width, setWidth }
+```
+
+Gerencia sidebar lateral (inspector ficha 7 campos). Width resizable, persistido em localStorage.
+
+### 17.10 · Edit Mode hooks (capítulo 7 já detalha)
+
+```ts
+import { useCustomLayout, useEditMode, useLayoutPresets, useLayoutShortcuts } from './state/...'
+
+const editMode = useEditMode()
+const customLayout = useCustomLayout(c.continent)
+const layoutPresets = useLayoutPresets(c.continent)
+useLayoutShortcuts({ isEditMode: editMode.isEditMode, undo: customLayout.undo, redo: customLayout.redo })
+```
+
+### 17.11 · Hover Insight · `useAtomNotePreview({...})`
+
+```ts
+import { useAtomNotePreview } from './map/useAtomNotePreview'
+
+const preview = useAtomNotePreview({
+  atom: hoveredAtom ? { graphId, name, deck } : null,
+  enabled: !isEditMode && !isolatedId,
+})
+```
+
+### 17.12 · Regra mestre · composição
+
+**Composition root (`<Surface>Surface.tsx`)** instancia TODOS os hooks. Passa pra child slots via props. Nunca crie hooks no meio da árvore — atalho que vira manutenção horrível.
+
+```tsx
+export function CartografiaSurface() {
+  const c = useCartografia()
+  const viewport = useCartografiaViewport({ worldWidth: WORLD_WIDTH, worldHeight: WORLD_HEIGHT })
+  const inspector = useInspectorColumn()
+  const { visualLens, setVisualLens } = useVisualLens()
+  const search = useCartografiaSearch(c.atomIndex, c.enterNode)
+  const vm = useCartografiaViewModel(c)
+  const editMode = useEditMode()
+  const customLayout = useCustomLayout(c.continent)
+  const layoutPresets = useLayoutPresets(c.continent)
+
+  useLayoutShortcuts({ isEditMode: editMode.isEditMode, undo: customLayout.undo, redo: customLayout.redo })
+  useSceneAutoFit({ viewport, view: c.view, continent: c.continent, systemParentId: c.systemParentId, focusedId: c.focusedId })
+  useCartografiaShortcuts({ view: c.view, isolatedId: c.isolatedId, search, onFit: viewport.fit, onSetVisualLens: setVisualLens, onExitGear: c.exitGear, onExitIsolate: c.exitIsolate, onToggleAuditPanel: toggleAudit })
+
+  return (
+    <CartografiaLayout inspector={inspectorPanel} inspectorColumn={inspector}>
+      <CartografiaViewportSlot cartografia={c} viewModel={vm} viewport={viewport} ... />
+    </CartografiaLayout>
+  )
+}
+```
+
+---
+
+## 18 · Performance & Memoization Rules
+
+### 18.1 · Performance budget Cartografia
+
+| Métrica | Target | Hoje (canon) |
+|---|---|---|
+| Total atoms no DOM | ≤ 60 | ~50 (17 pipeline + 26 lanes + 6 region heads) |
+| Trails SVG | ≤ 30 | 24 (auditado) |
+| Re-render por hover | ≤ 1 (componente hovered) | ✓ |
+| First paint after data load | ≤ 200ms | ✓ |
+| Pan/zoom 60fps em zoom-mid | sem stutter | ✓ |
+| Reading mode transition | < 500ms | ✓ (420ms) |
+
+### 18.2 · Memoization rules
+
+**Use `useMemo` quando**:
+- Computação O(n) ou maior sobre data props (ex: `computeStepYs(pipeline)`)
+- Building view-model objects passados como prop (evita re-render do child)
+- Derived state com múltiplas dependências
+
+**Use `useCallback` quando**:
+- Handler passado como prop pra child memoized
+- Função usada em useEffect dependency array
+- Handler que cria closures sobre state caro
+
+**NÃO use memo quando**:
+- A função recompõe rápido (< 1ms)
+- A child não é memoized (memo no callback é wasted)
+- Você não tem evidência de problema
+
+**Antipattern observado**: `useCallback` em handler de 1-linha passado pra `<button>` HTML nativo. Wasted. HTMLButtonElement não memoiza.
+
+### 18.3 · React.memo rules
+
+**Use `React.memo`** em:
+- Componentes que renderizam ≥ 30 vezes (atoms numa lista canon)
+- Componentes com props estáveis (não recriadas a cada render do parent)
+
+**NÃO use** em:
+- Top-level surface components (render só uma vez por mudança de view)
+- Componentes com `children` JSX prop (filhos sempre recriam)
+- Componentes que recebem callbacks inline (memo + inline = inútil sem useCallback)
+
+### 18.4 · Virtualization threshold
+
+| Lista | Tamanho atual | Virtualizar? |
+|---|---|---|
+| Atoms numa lane | 1-8 | ❌ Não |
+| Pipeline atoms | 17 | ❌ Não |
+| Search results | 0-50 | ❌ Não (já é limitado por query) |
+| Audit broken paths list | 0-N | ⚠️ Avaliar se passar de 100 |
+| Recent changes timeline | 0-100 | ⚠️ Avaliar paginação |
+
+**Lib canon se precisar**: `react-window` (light) sobre `react-virtualized` (heavy). Aplicar apenas com evidência de jank.
+
+### 18.5 · Subpixel rendering canon
+
+`.world` aplica `transform: scale`. Subpixel rendering causa blur em texto quando scale ≠ 1. Mitigação:
+
+```css
+.cartografia-surface .world {
+  will-change: transform;        /* GPU hint */
+  backface-visibility: hidden;
+}
+.cartografia-surface .atom .a-name {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+```
+
+### 18.6 · Performance debug
+
+```bash
+# Captura DOM count + frame rate
+node /tmp/atlas-perf-probe.mjs   # script Playwright (cap. 19)
+
+# React DevTools profiler · ative em dev mode pra ver re-renders.
+```
+
+Quando re-render explodir: olhar `flowLaneModel.buildFlowLaneViewModel` (chamado pra cada lane), considerar memoização.
+
+---
+
+## 19 · Playwright · Template Canon
+
+Atlas tem padrão Playwright canônico. Scripts vivem em `/tmp/atlas-*.mjs` e usam Playwright instalado em `/tmp/node_modules/playwright`.
+
+### 19.1 · Setup
+
+```bash
+cd /tmp && npm i playwright@1.60.0 --no-save && npx playwright install chromium
+```
+
+### 19.2 · Template canônico
+
+```javascript
+// /tmp/atlas-<feature>-test.mjs
+import { chromium } from 'playwright'
+
+const TOKEN = '2af71f11fd9904e35ede0da56c1888085fd41e7a150150f29852bafaeb3d38389297ccf1d2d067a01f1cabf60b6bb488'
+// ⚠️ Substitua pelo token canônico do seu apps/desktop/.env.local
+
+const browser = await chromium.launch({ headless: true })
+const ctx = await browser.newContext({
+  viewport: { width: 1440, height: 960 },  // Tauri window size canon
+  deviceScaleFactor: 2,                      // retina sharp
+})
+const page = await ctx.newPage()
+
+// Console + page errors capture
+const errs = []
+page.on('pageerror', e => errs.push('PAGEERR: ' + e.message.slice(0, 200)))
+page.on('console', m => { if (m.type() === 'error') errs.push('ERR: ' + m.text().slice(0, 200)) })
+
+// Load surface
+await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded' })
+await page.evaluate(`localStorage.clear()`)              // estado limpo
+// Opcional: collapse minimap pra screenshot limpo
+await page.evaluate(`localStorage.setItem('atlas.cartografia.minimapCollapsed', '1')`)
+await page.reload({ waitUntil: 'domcontentloaded' })
+
+// Aguarda root do canvas
+await page.waitForSelector('.cartografia-surface .world', { timeout: 15000 })
+
+// WARM-UP CANON · primeira fetch pode perder a race com SSE/auth.
+// 8 retries × 2s, força fetch direto até atoms aparecerem.
+for (let i = 0; i < 8; i++) {
+  const ready = await page.evaluate(`document.querySelectorAll('.atom-pipe').length`).catch(() => 0)
+  if (ready > 0) break
+  await page.evaluate(`fetch('http://127.0.0.1:8001/atlas-cartography/graph', {
+    headers: { 'X-Atlas-Token': '${TOKEN}' }
+  }).catch(() => {})`).catch(() => {})
+  await page.waitForTimeout(2000)
+}
+await page.waitForTimeout(2500)                          // settle final
+
+// === TEST AQUI ===
+const elements = await page.evaluate(() => ({
+  atoms: document.querySelectorAll('.atom-pipe').length,
+  regions: document.querySelectorAll('.region').length,
+  // ... seus selectors
+}))
+console.log('elements:', JSON.stringify(elements))
+
+// Screenshot
+await page.screenshot({ path: '/tmp/atlas-<feature>.png' })
+
+// Verifica zero erros
+console.log('errors:', errs.length ? errs.slice(0, 5).join(' | ') : 'NONE')
+await browser.close()
+```
+
+### 19.3 · Captura de seletor específico (close-up)
+
+```javascript
+const el = await page.$('#atom-atlas-decide')
+if (el) {
+  const box = await el.boundingBox()
+  if (box) {
+    const pad = 30
+    await page.screenshot({
+      path: '/tmp/atlas-decide-closeup.png',
+      clip: {
+        x: Math.max(0, box.x - pad),
+        y: Math.max(0, box.y - pad),
+        width: Math.min(1440, box.width + pad * 2),
+        height: Math.min(960, box.height + pad * 2),
+      },
+    })
+  }
+}
+```
+
+### 19.4 · Manipular transform pra teste
+
+`useViewportPanBindings` ignora pan em `.no-pan`. Pra testar drag, force transform inline + use mouse events nativos:
+
+```javascript
+// Force a known transform pra coords previsíveis
+await page.evaluate(`
+  const w = document.querySelector('.world')
+  w.style.transform = 'translate(100px, 80px) scale(1.0)'
+`)
+await page.waitForTimeout(400)
+
+// Drag via mouse (não pointer · pan binding canon usa mouse)
+await page.mouse.move(cx, cy)
+await page.mouse.down()
+await page.mouse.move(cx + 80, cy + 60, { steps: 8 })
+await page.mouse.up()
+```
+
+### 19.5 · Tamanhos viewport canon
+
+| Caso | viewport | deviceScaleFactor |
+|---|---|---|
+| Tauri default | 1440×960 | 2 |
+| Captura wide pra demo | 2200×1400 | 2 |
+| Captura close-up | 1600×1100 | 2 |
+| Mobile (Atlas App, se aplicável) | 393×852 | 3 |
+
+### 19.6 · Atalhos canon nos tests
+
+| Tecla | Disparo |
+|---|---|
+| `await page.keyboard.press('r')` | Reading mode toggle |
+| `await page.keyboard.press('ArrowRight')` | Reading next |
+| `await page.keyboard.press('0')` | Fit-to-view |
+| `await page.keyboard.press('Escape')` | Sai isolate/foco |
+| `await page.keyboard.press('Meta+z')` | Undo (em edit mode) |
+| `await page.keyboard.press('Meta+k')` | Search global |
+
+### 19.7 · Validação obrigatória
+
+Todo PR que toca surface DEVE rodar:
+
+1. Smoke test (template 19.2) → `errors: NONE`
+2. Captura screenshot pré e pós mudança
+3. Comparação visual manual (you ou usuário)
+
+---
+
+## 20 · Versioning + Changelog
+
+### 20.1 · Version scheme
+
+Major.Minor canônico:
+- **Major bump** quando: token canon muda (cor/fonte/radius), princípio DNA muda, surface root nova.
+- **Minor bump** quando: feature nova (Edit Mode, Reading Mode aprimorado), hook novo, anti-pattern catalogado.
+- **Patch** (não numera): comments, examples, typo fixes.
+
+### 20.2 · Migration path quando token muda
+
+Se canon Mover `--bronze` de `#8a6a35` pra `#8e6c34`:
+
+1. Update token em `apps/desktop/src/index.css`
+2. Sweep visual completo: capturas Playwright de 3 surfaces principais (Cartografia universo + flow + gear; Code workbench)
+3. Update este doc com changelog entry
+4. Bump version major (`2.0` → `3.0`)
+5. Documente o "por quê" na entry — futura IA precisa entender contexto
+
+### 20.3 · Changelog
+
+#### v2.0 · 2026-05-14 · Sessão Edit Mode + Doc Canon
+
+**Added**
+- Capítulo 0 · Onboarding IA passo-a-passo
+- Capítulo 7 · Edit Mode (drag/resize lanes + snap-grid + magnetism + undo/redo + presets)
+- Capítulo 8 · Trail re-routing geometry-aware com obstacle avoidance opt-in
+- Capítulo 9 · Hover Insight com preview `.md` (cache, debounce, anti-mock)
+- Capítulo 10 · Reading Mode aprimorado (Narrator editorial · phase canon)
+- Capítulo 16 · Surface Code dark warm (Codex slate teal)
+- Capítulo 17 · Hooks core completos (12 hooks documentados com APIs)
+- Capítulo 18 · Performance & memoization rules + budget
+- Capítulo 19 · Playwright template canon (warm-up 8 retries)
+- Capítulo 20 · Versioning + changelog (este)
+- 5 hooks novos: `useCustomLayout`, `useEditMode`, `useLayoutPresets`, `useLayoutShortcuts`, `useAtomNotePreview`
+- 4 floaters novos: `LayoutSaveIndicator`, `LayoutPresetsMenu`, `ReadingModeNarrator`, `AtomHoverPreview`
+- 1 CSS module novo: `19-edit-mode.css`
+
+**Changed**
+- `trailPathBuilders.smartFlowPath` agora aceita `obstacles?` array (backward-compatible)
+- `useCustomLayout` retorna `undo/redo/canUndo/canRedo/replaceOverlay/lastSavedAt`
+- Cartografia agora abre em `scale 0.4` por default (era `0.65`); `reset()` honra `initialScale`
+
+**Removed**
+- Pulse animation em status dots (cafona SaaS)
+- Letter-spacing em corpo Code surface (canon Codex)
+
+**Anti-patterns catalogados nesta versão**
+- Aumentar tudo "5×" via multiplicar coordenadas (não resolve "leitura ruim")
+- CSS `zoom: N` no surface root (zoom virtual ≠ tamanho real)
+- Atoms drag livre (quebra princípio Cartografia)
+- Setar font-size grande em ins-title (UI chrome ≠ canvas scale)
+
+#### v1.0 · 2026-05-14 · Sessão K-O + Polish micro
+
+**Added**
+- Capítulos 1-15 · DNA, tokens, motion, estrutura, componentes, interação
+- Polishes K-O · lane identity, phase rhythm, hero signature, paper texture, density default
+- 4 CSS modules: `15-lane-identity.css`, `16-phase-rhythm.css`, `17-hero-signature.css`, `18-paper-texture.css`
+
+### 20.4 · Pre-revisão guidelines
+
+Ao criar PR que tocar este doc:
+
+- [ ] Bump version se aplicável (regras 20.1)
+- [ ] Entry no changelog (regra 20.3 format)
+- [ ] Update memória `reference_atlas_desktop_design_system` se mudou estrutura
+- [ ] Update MEMORY.md index se entry foi renomeada
+
+---
+
+## 21 · Visual References · Links Canon
+
+### 21.1 · Mockup canon HTML (gabarito visual da Cartografia)
+
+```bash
+open /Users/vitorepf/develop/Atlas/atlas-server/public/atlas-vault-cockpit-mockup.html
+```
+
+Mockup standalone (HTML/CSS/JS puro, sem build) com canon visual completo. Use como referência ao implementar componente novo na Cartografia. Estrutura:
+
+- `<head>` · todas variables CSS canon (cream/ink/bronze/Cormorant/Mono)
+- `.region-head` (linha 183) · padrão lane head
+- `.atom` (linha 207+) · padrão atom card
+- `.atom-pipe` · variant pipeline
+- `.trail` · SVG paths bezier
+
+### 21.2 · Doc canon completa (1022 linhas)
+
+```bash
+open /Users/vitorepf/develop/Atlas/atlas-server/docs/atlas-vault-cartografia.md
+```
+
+Sections importantes pra implementação:
+- §3-§4 · Componentes do canvas
+- §7 · Visual lens (5 modos)
+- §10 · Anti-canon explícito
+- §15-§18 · Edit Mode (este doc consolida + estende)
+
+### 21.3 · Capturas Playwright canon (referência visual viva)
+
+Quando você precisar comparar uma implementação com canon, rode:
+
+```bash
+cd /tmp && node /tmp/atlas-tauri-size.mjs   # estado atual em viewport Tauri
+```
+
+Output: `/tmp/atlas-tauri-size.png` — abra e compare com seu trabalho.
+
+### 21.4 · Comparação Errado vs Canon
+
+| Elemento | ❌ Errado (Material/SaaS) | ✅ Canon Atlas |
+|---|---|---|
+| Card | `border-radius: 8px` + sombra fofa | `border-radius: 2-3px` + hairline bronze |
+| Título | Sans-serif bold | Cormorant italic medium 17-22px |
+| Label metadata | Inter 11px regular | Mono 9-10px caps tracking 1.4-2.4px |
+| Cor de erro | `#EF4444` red brilhante | `--rec-red #8a3025` editorial |
+| Animação hover | `transform: scale(1.1)` bouncy | translateY(-1px) + transition 180ms ease-considered |
+| Loading | Skeleton blocks pulsing | Silêncio editorial + opacity subtle |
+| Cor positiva | `#10B981` green vibrant | `--moss #4a5f3a` deliberado raro |
+| Status dot | Pulse infinito | Estático (Codex Slate v1) |
+| Empty state | Ilustração + CTA bold | Cormorant italic ink3 + 1 frase |
+| Tooltip | Dark gradient pill | Cream-paper + hairline bronze + Cormorant |
+| Modal | Backdrop opaque + bg branco + radius 12px | Vinheta radial + atom ring + ficha lateral |
+
+### 21.5 · Mapa de surfaces
+
+```
+Atlas Desktop
+├── surface-cartografia                    · cream editorial (Don Corleone Patek)
+│   ├── views: universe / system / flow / gear / subflow
+│   └── continents: atlas-ai-kernel · memoria · obras · forge · filosofia · gargalos
+├── surface-code                            · slate teal dark warm (Codex)
+│   ├── Forge workbench
+│   ├── Spec OS / SDD pipeline
+│   ├── Evidence ledger
+│   ├── Self-improvement cockpit
+│   └── Decisions / Gates / Live activity
+└── (futuro · surfaces novas)              · usar capítulo 0.5 decision tree
+```
+
+---
+
+**Última revisão**: 2026-05-14 · v2.0 · sessão Edit Mode + Doc Canon completa
+**Próxima revisão obrigatória**: ao adicionar surface nova, alterar tokens canon, ou catalogar novo anti-pattern

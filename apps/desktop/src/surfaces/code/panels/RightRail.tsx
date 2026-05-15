@@ -36,6 +36,7 @@ import type {
   AtlasSelfImprovementNextCycleRecommendation,
   AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
+  AtlasSelfConstructionSnapshot,
   BootSnapshot,
   CoreStatus,
   DecisionReceipt,
@@ -83,6 +84,7 @@ interface RightRailProps {
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
   checkpoint: WorkStateSnapshot['checkpoint']
   atlasCodeEnterpriseCertification: AtlasCodeEnterpriseCertificationReport | null
+  selfConstruction: AtlasSelfConstructionSnapshot | null
   boot: BootSnapshot | null
   busy: boolean
   programmingGovernance: ProgrammingGovernanceSnapshot | null
@@ -133,6 +135,7 @@ interface RightRailProps {
   onRollbackForgePromotion: (promotionId?: string, comment?: string) => Promise<void>
   onCreateCheckpoint: () => Promise<void>
   onRunAtlasCodeEnterpriseCertification: () => Promise<void>
+  onRefreshSelfConstruction: () => Promise<void>
 }
 
 /**

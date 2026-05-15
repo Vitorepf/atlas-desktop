@@ -36,6 +36,7 @@ import type {
   AtlasSelfImprovementNextCycleRecommendation,
   AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
+  AtlasSelfConstructionSnapshot,
   BootSnapshot,
   CoreStatus,
   DecisionReceipt,
@@ -45,7 +46,15 @@ import type {
   WorkStateSnapshot,
 } from '@atlas/domain'
 
-export type OpsTab = 'forge' | 'intake' | 'cockpit' | 'verify' | 'evidence' | 'advanced' | 'self_improvement'
+export type OpsTab =
+  | 'forge'
+  | 'intake'
+  | 'cockpit'
+  | 'verify'
+  | 'evidence'
+  | 'advanced'
+  | 'self_improvement'
+  | 'construction'
 
 export interface RightRailContext {
   obra: Obra | null
@@ -91,6 +100,12 @@ export interface RightRailContext {
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
   checkpoint: WorkStateSnapshot['checkpoint']
   atlasCodeEnterpriseCertification: AtlasCodeEnterpriseCertificationReport | null
+  /**
+   * Atlas Self-Construction OS · Agent Control Plane snapshot.
+   * Read-only diagnostic projection — `null` when the backend has not yet
+   * exposed it; the panel renders an honest empty state.
+   */
+  selfConstruction: AtlasSelfConstructionSnapshot | null
   boot: BootSnapshot | null
   busy: boolean
   /**
@@ -150,6 +165,12 @@ export interface RightRailContext {
   onRollbackForgePromotion: (promotionId?: string, comment?: string) => Promise<void>
   onCreateCheckpoint: () => Promise<void>
   onRunAtlasCodeEnterpriseCertification: () => Promise<void>
+  /**
+   * Re-query the Self-Construction Control Plane diagnostic projection.
+   * Read-only — this handler MUST NOT trigger runtime, NEVER call providers,
+   * NEVER spawn processes, NEVER advance slices.
+   */
+  onRefreshSelfConstruction: () => Promise<void>
 }
 
 export interface RightRailPanelDefinition {

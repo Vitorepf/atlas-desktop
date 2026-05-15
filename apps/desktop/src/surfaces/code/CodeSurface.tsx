@@ -89,6 +89,7 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             forgeReviewHistory={b.forgeReviewHistory}
             checkpoint={b.checkpoint}
             atlasCodeEnterpriseCertification={b.atlasCodeEnterpriseCertification}
+            selfConstruction={b.selfConstruction}
             programmingGovernance={b.programmingGovernance}
             boot={boot}
             busy={b.busy}
@@ -139,6 +140,7 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             onRollbackForgePromotion={b.rollbackForgePromotion}
             onCreateCheckpoint={b.createCheckpoint}
             onRunAtlasCodeEnterpriseCertification={b.runAtlasCodeEnterpriseCertification}
+            onRefreshSelfConstruction={b.refreshSelfConstruction}
           />
         </ErrorBoundary>
       }

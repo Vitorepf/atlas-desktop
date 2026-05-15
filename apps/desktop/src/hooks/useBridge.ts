@@ -55,6 +55,7 @@ import type {
   AtlasSelfImprovementNextCycleRecommendation,
   AtlasSelfImprovementMeasureResultPayload,
   AtlasSelfImprovementTrustLedgerEntry,
+  AtlasSelfConstructionSnapshot,
   CoreStatus,
   DecisionReceipt,
   Message,
@@ -112,6 +113,15 @@ export interface BridgeSnapshot {
   forgeReviewHistory: WorkStateSnapshot['forgeReviewHistory']
   checkpoint: WorkStateSnapshot['checkpoint']
   atlasCodeEnterpriseCertification: AtlasCodeEnterpriseCertificationReport | null
+  /**
+   * Atlas Self-Construction OS · Agent Control Plane Certification snapshot.
+   *
+   * Read-only diagnostic projection. `null` when the backend has not exposed
+   * the endpoint yet, when the fetch fails, or when offline — the panel
+   * renders an honest empty state in every case. The desktop NEVER triggers
+   * the runtime through this slot; refresh only re-queries the snapshot.
+   */
+  selfConstruction: AtlasSelfConstructionSnapshot | null
   /**
    * SCOR-1 Programming Governance snapshot (WorkItem, Spec, Plan, Tasks,
    * GateRuns, Reviews, EvidenceReceipts). `null` when the backend has not
@@ -179,6 +189,11 @@ export interface BridgeActions {
   rollbackForgePromotion: (promotionId?: string, comment?: string) => Promise<void>
   createCheckpoint: () => Promise<void>
   runAtlasCodeEnterpriseCertification: () => Promise<void>
+  /**
+   * Re-query the Self-Construction Control Plane snapshot. Read-only —
+   * never starts processes, never advances slices, never spends tokens.
+   */
+  refreshSelfConstruction: () => Promise<void>
 }
 
 const INITIAL: BridgeSnapshot = {
@@ -225,6 +240,7 @@ const INITIAL: BridgeSnapshot = {
   forgeReviewHistory: null,
   checkpoint: null,
   atlasCodeEnterpriseCertification: null,
+  selfConstruction: null,
   programmingGovernance: null,
   core: browserCoreStatus,
   busy: false,
@@ -247,8 +263,9 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     obras: Obra[]
     gates: QualityGate[]
     certification: AtlasCodeEnterpriseCertificationReport | null
+    selfConstruction: AtlasSelfConstructionSnapshot | null
   }> => {
-    const [core, obrasRaw, certification] = await Promise.all([
+    const [core, obrasRaw, certification, selfConstruction] = await Promise.all([
       bridge.coreStatus().catch((e: unknown) => {
         pushError('coreStatus', e)
         return browserCoreStatus
@@ -261,8 +278,15 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         pushError('getAtlasCodeEnterpriseCertification', e)
         return null
       }),
+      // Self-Construction OS · read-only diagnostic. Bridge already returns
+      // null on missing endpoint, but we keep the explicit catch so a future
+      // throwing variant cannot poison `refresh()`.
+      bridge.getAtlasSelfConstruction().catch((e: unknown) => {
+        pushError('getAtlasSelfConstruction', e)
+        return null
+      }),
     ])
-    return { core, obras: obrasRaw, gates: noGates, certification }
+    return { core, obras: obrasRaw, gates: noGates, certification, selfConstruction }
   }, [pushError])
 
   const loadObraDetail = useCallback(
@@ -353,7 +377,7 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
 
   const refresh = useCallback(async () => {
     setSnap((s) => ({ ...s, loading: true, busy: true }))
-    const { core, obras, gates, certification } = await loadObrasAndCore()
+    const { core, obras, gates, certification, selfConstruction } = await loadObrasAndCore()
     const obra = obras[0] ?? null
     const detail = obra
       ? await loadObraDetail(obra)
@@ -371,8 +395,29 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       gates,
       ...detail,
       atlasCodeEnterpriseCertification: detail.atlasCodeEnterpriseCertification ?? certification,
+      selfConstruction,
     }))
   }, [loadObrasAndCore, loadObraDetail])
+
+  const refreshSelfConstruction = useCallback(async () => {
+    setSnap((s) => ({ ...s, busy: true }))
+    try {
+      const next = await bridge.getAtlasSelfConstruction()
+      if (!cancelRef.current) {
+        setSnap((s) => ({
+          ...s,
+          selfConstruction: next,
+          busy: false,
+          errors: [...errorBufRef.current],
+        }))
+      }
+    } catch (e) {
+      pushError('refreshSelfConstruction', e)
+      if (!cancelRef.current) {
+        setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+      }
+    }
+  }, [pushError])
 
   const selectObra = useCallback(
     async (obraId: string) => {
@@ -1812,5 +1857,6 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     rollbackForgePromotion,
     createCheckpoint,
     runAtlasCodeEnterpriseCertification,
+    refreshSelfConstruction,
   }
 }
