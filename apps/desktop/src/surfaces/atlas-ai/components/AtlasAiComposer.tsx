@@ -435,7 +435,7 @@ export function AtlasAiComposer({
             aria-label="Anexar arquivos"
             title="Anexar arquivos (também aceita arrastar e colar)"
           >
-            <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14.2 8 8 14.2a3.6 3.6 0 0 1-5.1-5.1l6.6-6.6a2.4 2.4 0 0 1 3.4 3.4l-6.6 6.6a1.2 1.2 0 0 1-1.7-1.7L11 5" />
             </svg>
           </button>

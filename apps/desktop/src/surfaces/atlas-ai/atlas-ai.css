@@ -21,6 +21,22 @@
   }
 }
 
+/* ===== FOCUS-VISIBLE DISCIPLINE (Apple HIG canon · keyboard nav) =====
+   Todo interactive sem regra própria ganha ring gold ao foco por teclado.
+   Mouse focus suprimido (only show ring on keyboard navigation). */
+.atlas-shell.surface-atlas_ai button:focus-visible,
+.atlas-shell.surface-atlas_ai [role='button']:focus-visible,
+.atlas-shell.surface-atlas_ai a:focus-visible,
+.atlas-shell.surface-atlas_ai [role='tab']:focus-visible {
+  outline: 1px solid var(--cc-accent);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+.atlas-shell.surface-atlas_ai button:focus:not(:focus-visible),
+.atlas-shell.surface-atlas_ai a:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ===== TYPE SCALE OVERRIDES (escopado para Atlas AI · 12h-friendly) ===== */
 
 .atlas-shell.surface-atlas_ai,
@@ -131,7 +147,7 @@
   justify-content: center;
   background: var(--cc-surface);
   border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--cc-text-muted);
   cursor: pointer;
   transition: all 200ms var(--cc-ease-out);
@@ -392,14 +408,12 @@
 .atlas-ai-conversation,
 .atlas-ai-composer,
 .atlas-ai-context,
+/* Hero card · chromeless flow (Apple Books / NYT). Drop 3-shadow stack. */
 .atlas-ai-hero {
-  background: var(--cc-surface);
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 8px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 1px 0 rgba(0, 0, 0, 0.22),
-    0 18px 40px rgba(5, 12, 18, 0.18);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* ===== HISTORY (left column) ===== */
@@ -420,30 +434,34 @@
   padding: 0 4px;
 }
 
+/* "Conversas" header · eyebrow caps quiet (não h3 visualmente).
+   Linear sidebar / Notion sidebar school. */
 .atlas-ai-history-header h3 {
   font-family: var(--cc-font-sans);
   font-variation-settings: 'wght' 580;
   font-style: normal;
-  font-size: 13px;
+  font-size: 10.5px;
   margin: 0;
-  color: var(--cc-text-strong);
-  letter-spacing: 0;
-  text-transform: none;
+  color: var(--cc-text-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
+/* Filter row · Linear sidebar density (gap 2px tight + bottom hairline). */
 .atlas-ai-filter-row {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
-  padding: 0 4px;
+  margin-bottom: 8px;
+  padding: 0 4px 6px;
   align-items: center;
+  border-bottom: 1px solid rgba(233, 238, 242, 0.04);
 }
 
 .atlas-ai-filter-tab {
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 4px;
   padding: 3px 9px;
   font-family: var(--cc-font-sans);
   font-size: 11.5px;
@@ -470,6 +488,23 @@
   border-color: transparent;
   color: var(--cc-text-strong);
   font-variation-settings: 'wght' 580;
+}
+
+/* "+ nova" thread button · icon SVG + label (Linear new-issue pattern). */
+.atlas-ai-new-thread {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 500;
+  letter-spacing: 0;
+  color: var(--cc-text-muted);
+}
+.atlas-ai-new-thread:hover {
+  color: var(--cc-accent);
+}
+.atlas-ai-new-thread svg {
+  opacity: 0.85;
 }
 
 /* Refresh button · ghost icon-only (sem border), Linear/Raycast style.
@@ -527,7 +562,7 @@
   padding: 7px 10px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
   text-align: left;
   font-family: var(--cc-font-sans);
@@ -650,7 +685,7 @@
   background:
     linear-gradient(180deg, rgba(208, 90, 82, 0.10) 0%, rgba(208, 90, 82, 0.06) 100%);
   border: 1px solid var(--cc-danger-border);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 10px 12px;
   color: var(--cc-danger-fg);
   font-family: var(--cc-font-sans);
@@ -677,7 +712,7 @@
 .atlas-ai-error-retry {
   background: transparent;
   border: 1px solid var(--cc-danger-border);
-  border-radius: 5px;
+  border-radius: 4px;
   padding: 4px 10px;
   font-family: var(--cc-font-sans);
   font-size: 12px;
@@ -810,14 +845,17 @@
   color: var(--cc-text-faint);
 }
 
+/* Messages rhythm · Apple Books baseline grid (32px gap entre bolhas).
+   Mais respirado, peso ed editorial. */
 .atlas-ai-messages {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
   overflow-y: auto;
   min-height: 0;
-  padding: 4px 10px 8px 4px;
+  padding: 4px 10px 12px 4px;
   flex: 1;
+  scroll-behavior: smooth;
 }
 
 /* Mensagens · Codex/Claude.ai grade — sem card pesado, espaçamento generoso. */
@@ -897,18 +935,23 @@
    NYT/Apple Books só usam drop cap em abertura de artigos longos com
    transição claramente decorativa. Aqui o body já carrega hierarquia. */
 
-/* Reactions row (Codex/Claude.ai grade) */
+/* Reactions row · Linear/Claude.ai pattern.
+   Default invisível (opacity 0), reveal on message hover gentle 220ms. */
 .atlas-ai-msg-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-top: 14px;
   padding-top: 2px;
-  opacity: 0.55;
-  transition: opacity 200ms var(--cc-ease-out);
+  opacity: 0;
+  transition: opacity 220ms var(--cc-ease-out);
 }
 
-.atlas-ai-message:hover .atlas-ai-msg-actions {
+.atlas-ai-message:hover .atlas-ai-msg-actions,
+.atlas-ai-message:focus-within .atlas-ai-msg-actions {
   opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-msg-actions { opacity: 0.55; }
 }
 
 .atlas-ai-msg-actbtn {
@@ -1030,7 +1073,7 @@
 .atlas-ai-composer {
   background: var(--cc-surface);
   border: 1px solid var(--cc-border-soft);
-  border-radius: 9px;
+  border-radius: 8px;
   padding: 16px 20px 18px;
   display: flex;
   flex-direction: column;
@@ -1038,10 +1081,7 @@
   max-width: 1080px;
   width: 100%;
   margin-inline: auto;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 -10px 28px rgba(5, 12, 18, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .atlas-ai-composer-controls {
@@ -1075,14 +1115,14 @@
   display: inline-flex;
   background: var(--cc-surface-sunken);
   border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 3px;
   gap: 2px;
 }
 
 .atlas-ai-segment {
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
   font-family: var(--cc-font-sans);
   font-size: 12.5px;
@@ -1126,7 +1166,7 @@
   min-height: 96px;
   border: 1px solid var(--cc-border);
   background: var(--cc-bg);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 12px 14px;
   font-family: var(--cc-font-sans);
   font-size: 14px;
@@ -1308,15 +1348,17 @@
   margin-top: 6px;
 }
 
+/* Hero chip · Cursor v2 ghost button (drop pill 999, use radius 6).
+   Suggestion não é call-to-action, é hint clicável Apple HIG. */
 .atlas-ai-hero-chip {
-  background: var(--cc-surface-raised);
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 999px;
-  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  border-radius: 6px;
+  padding: 7px 13px;
   font-family: var(--cc-font-sans);
   font-size: 12.5px;
   font-variation-settings: 'wght' 480;
-  color: var(--cc-text);
+  color: var(--cc-text-muted);
   cursor: pointer;
   transition:
     background 200ms var(--cc-ease-out),
@@ -1599,14 +1641,14 @@
 .atlas-ai-promotion-close {
   background: transparent;
   border: 1px solid var(--cc-border);
-  border-radius: 5px;
+  border-radius: 4px;
   width: 30px;
   height: 30px;
   cursor: pointer;
   color: var(--cc-text-muted);
   flex-shrink: 0;
   font-size: 14px;
-  transition: color 200ms, border-color 200ms;
+  transition: color 200ms var(--cc-ease-out), border-color 200ms var(--cc-ease-out);
 }
 
 .atlas-ai-promotion-close:hover {
@@ -1697,7 +1739,7 @@
 .atlas-ai-promotion-card {
   background: var(--cc-surface-raised);
   border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 12px 14px;
   min-width: 0;
 }
@@ -1747,7 +1789,7 @@
   align-items: flex-start;
   gap: 10px;
   border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 10px 12px;
   background: var(--cc-surface-raised);
   cursor: pointer;
@@ -1800,7 +1842,7 @@
   resize: vertical;
   min-height: 64px;
   border: 1px solid var(--cc-border);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 10px 12px;
   font-family: var(--cc-font-sans);
   font-size: 13.5px;
@@ -1892,7 +1934,7 @@
   padding: 8px 12px;
   background: transparent;
   border: none;
-  border-radius: 7px;
+  border-radius: 6px;
   text-align: left;
   cursor: pointer;
   color: var(--cc-text);
@@ -1997,7 +2039,7 @@
   padding: 5px 4px;
   background: transparent;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
   color: var(--cc-text-muted);
   transition: background 160ms var(--cc-ease-out), color 160ms var(--cc-ease-out);
@@ -2266,10 +2308,17 @@
   max-width: 62ch;
 }
 
+/* hr · Apple Books gradient fade hairline (não solid 1px Bootstrap).
+   Estende toda a largura mas fade nas pontas. */
 .atlas-ai-md-rule {
   border: none;
-  border-top: 1px solid var(--cc-border-soft);
-  margin: 8px 0;
+  height: 1px;
+  margin: 22px 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(233, 238, 242, 0.08) 12%,
+    rgba(233, 238, 242, 0.08) 88%,
+    transparent 100%);
 }
 
 /* ✦ DIVIDER editorial · hairline + diamond mark + hairline (mobile parity) */
@@ -2412,16 +2461,21 @@
   white-space: nowrap;
 }
 
+/* Link · Apple Books / Stripe Press: text-decoration underline-offset gentle,
+   thickness 1px, no border-bottom div manual. Color accent gold subtle. */
 .atlas-ai-md-link {
   color: var(--cc-accent);
-  text-decoration: none;
-  border-bottom: 1px solid var(--cc-accent-border);
-  transition: color 200ms var(--cc-ease-out), border-color 200ms var(--cc-ease-out);
+  text-decoration: underline;
+  text-decoration-color: rgba(212, 168, 90, 0.32);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  border-bottom: none;
+  transition: color 200ms var(--cc-ease-out), text-decoration-color 200ms var(--cc-ease-out);
 }
 
 .atlas-ai-md-link:hover {
   color: var(--cc-accent-strong);
-  border-bottom-color: var(--cc-accent);
+  text-decoration-color: var(--cc-accent);
 }
 
 .atlas-ai-md-strong { font-variation-settings: 'wght' 620; color: var(--cc-text-strong); }
@@ -2664,7 +2718,7 @@
 .atlas-ai-plan-card {
   background: var(--cc-surface-raised);
   border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -2783,7 +2837,7 @@
   justify-content: center;
   background:
     linear-gradient(180deg, rgba(212, 168, 90, 0.10) 0%, rgba(212, 168, 90, 0.04) 100%);
-  border-radius: 9px;
+  border-radius: 8px;
   pointer-events: none;
   z-index: 10;
 }
@@ -2822,9 +2876,23 @@
   transition: border-color 200ms var(--cc-ease-out), background 200ms var(--cc-ease-out);
 }
 
-.atlas-ai-att-card:hover { border-color: var(--cc-border); }
+.atlas-ai-att-card:hover {
+  border-color: var(--cc-border);
+  background: var(--cc-surface);
+}
 .atlas-ai-att-card.is-error { border-color: var(--cc-danger-border); background: var(--cc-danger-veil); }
-.atlas-ai-att-card.is-busy { border-color: var(--cc-info-border); }
+.atlas-ai-att-card.is-busy {
+  border-color: rgba(127, 167, 196, 0.20);
+  /* Subtle pulse on busy (uploading/processing) — Apple HIG sutil. */
+  animation: atlas-ai-att-busy-pulse 1.8s ease-in-out infinite;
+}
+@keyframes atlas-ai-att-busy-pulse {
+  0%, 100% { border-color: rgba(127, 167, 196, 0.20); }
+  50% { border-color: rgba(127, 167, 196, 0.40); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-att-card.is-busy { animation: none; }
+}
 
 .atlas-ai-att-card.kind-image { min-width: 200px; }
 
@@ -2832,7 +2900,7 @@
   position: relative;
   width: 52px;
   height: 52px;
-  border-radius: 5px;
+  border-radius: 4px;
   overflow: hidden;
   background: var(--cc-surface-sunken);
   border: 1px solid var(--cc-border-soft);
@@ -2976,7 +3044,7 @@
   height: 28px;
   border: 1px solid var(--cc-border);
   background: transparent;
-  border-radius: 5px;
+  border-radius: 4px;
   color: var(--cc-text-muted);
   cursor: pointer;
 }
@@ -3134,11 +3202,16 @@
   box-shadow: none;
 }
 
+/* Placeholder · serif italic Cormorant (editorial, não generic sans).
+   Decanta o composer pra parecer espaço literário, não form input. */
 .atlas-ai-composer-v2 .atlas-ai-textarea-v2::placeholder {
   color: var(--cc-text-faint);
-  opacity: 1;
+  opacity: 0.78;
+  font-family: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
   font-style: italic;
-  font-variation-settings: 'wght' 420;
+  font-variation-settings: 'wght' 460;
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 /* FOOTER BAR */
@@ -3380,7 +3453,7 @@
   padding: 9px 12px;
   background: transparent;
   border: none;
-  border-radius: 7px;
+  border-radius: 6px;
   text-align: left;
   cursor: pointer;
   color: inherit;
@@ -3634,7 +3707,7 @@
   font-family: var(--cc-font-sans, system-ui);
   font-size: 11.5px;
   text-align: left;
-  transition: background-color 120ms ease;
+  transition: background-color 120ms var(--cc-ease-out);
 }
 .atlas-ai-tool-receipts-summary:hover {
   background: rgba(255, 255, 255, 0.025);
@@ -3748,7 +3821,7 @@
   color: var(--cc-text-muted, rgba(232, 226, 213, 0.6));
   text-transform: lowercase;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition: background-color 120ms var(--cc-ease-out);
 }
 .atlas-ai-decision-chip:hover { background: rgba(255, 255, 255, 0.045); }
 .atlas-ai-decision-chip-provider {
@@ -3819,7 +3892,7 @@
   color: var(--cc-text-muted, rgba(232, 226, 213, 0.6));
   text-transform: lowercase;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition: background-color 120ms var(--cc-ease-out);
 }
 .atlas-ai-quality-chip:hover { background: rgba(255, 255, 255, 0.045); }
 .atlas-ai-quality-chip-icon {
@@ -3918,6 +3991,31 @@
    =====================================================================
    Substitui chips/pills/box redesigns por linhas italic serif quiet,
    sem cor semafórica, sem `+` button, peso decrescente. */
+
+/* Streaming text · token-by-token render com caret blinking final.
+   Claude.ai / Cursor / ChatGPT school. */
+.atlas-ai-streaming-text {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(233, 238, 242, 0.04);
+}
+.atlas-ai-streaming-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  vertical-align: -0.18em;
+  margin-left: 2px;
+  background: var(--cc-accent);
+  animation: atlas-ai-caret-blink 1s steps(2, end) infinite;
+  opacity: 0.85;
+}
+@keyframes atlas-ai-caret-blink {
+  0%, 50% { opacity: 0.85; }
+  51%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-streaming-caret { animation: none; opacity: 0.7; }
+}
 
 /* Streaming top row · ThinkingState + cancel button alinhados.
    Cancel discreto, ink-faint, hover muda só cor (sem bg). */
@@ -4225,7 +4323,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   font-style: italic;
   font-size: 11.5px;
   letter-spacing: 0.01em;
-  transition: color 120ms ease;
+  transition: color 120ms var(--cc-ease-out);
 }
 .atlas-ai-reasoning-trigger:hover {
   color: var(--cc-accent, #d4a85a);

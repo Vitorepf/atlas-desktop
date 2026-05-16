@@ -176,11 +176,13 @@ function StreamingBubble({
   trace,
   startedAtMs,
   sending,
+  streamingText,
   onCancel,
 }: {
   trace: AiTrace | null
   startedAtMs: number
   sending: boolean
+  streamingText?: string
   onCancel?: () => void
 }) {
   const status = trace?.status ?? null
@@ -189,6 +191,7 @@ function StreamingBubble({
     !!(trace?.tool_events && trace.tool_events.length > 0) ||
     trace?.job?.status === 'awaiting_user_choice' ||
     !!(trace?.jobs && trace.jobs.some((j) => j.status === 'awaiting_user_choice'))
+  const hasStreamingText = !!streamingText && streamingText.length > 0
 
   return (
     <article
@@ -218,6 +221,14 @@ function StreamingBubble({
         ) : null}
       </div>
 
+      {/* Streaming text aparece token-by-token via SSE — Claude.ai/Cursor school. */}
+      {hasStreamingText ? (
+        <div className="atlas-ai-message-body atlas-ai-streaming-text" aria-live="polite">
+          <AtlasAiMessageBody content={streamingText} />
+          <span className="atlas-ai-streaming-caret" aria-hidden="true" />
+        </div>
+      ) : null}
+
       {hasLiveTool ? (
         <AtlasAiLiveActivity
           toolEvents={trace?.tool_events ?? null}
@@ -236,6 +247,7 @@ export function AtlasAiConversation({
   error,
   pendingTrace,
   pendingUserMessage,
+  streamingText,
   sending,
   onArchive,
   onPromote,
@@ -385,6 +397,7 @@ export function AtlasAiConversation({
             trace={pendingTrace}
             startedAtMs={streamingStartedAtMs}
             sending={sending}
+            streamingText={streamingText}
             onCancel={onCancel}
           />
         ) : null}

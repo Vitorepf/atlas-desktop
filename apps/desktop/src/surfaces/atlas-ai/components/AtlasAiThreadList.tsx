@@ -229,11 +229,16 @@ export function AtlasAiThreadList({
         <h3>Conversas</h3>
         <button
           type="button"
-          className="atlas-ai-link"
+          className="atlas-ai-link atlas-ai-new-thread"
           onClick={onNewThread}
           title="Compor sem thread ativa (cria uma nova ao enviar)"
+          aria-label="Nova conversa"
         >
-          + nova
+          <svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="5" y1="2" x2="5" y2="8" />
+            <line x1="2" y1="5" x2="8" y2="5" />
+          </svg>
+          <span>nova</span>
         </button>
       </header>
 

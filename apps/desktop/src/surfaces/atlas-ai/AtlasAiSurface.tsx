@@ -137,6 +137,7 @@ export function AtlasAiSurface({
       error: atlas.threadDetailError,
       pendingTrace: atlas.pendingTrace,
       pendingUserMessage: atlas.pendingUserMessage,
+      streamingText: atlas.streamingText,
       sending: atlas.sending,
     }),
     [
@@ -145,6 +146,7 @@ export function AtlasAiSurface({
       atlas.threadDetailError,
       atlas.pendingTrace,
       atlas.pendingUserMessage,
+      atlas.streamingText,
       atlas.sending,
     ],
   )
@@ -397,6 +399,7 @@ export function AtlasAiSurface({
               error={conversation.error}
               pendingTrace={conversation.pendingTrace}
               pendingUserMessage={conversation.pendingUserMessage}
+              streamingText={conversation.streamingText}
               sending={conversation.sending}
               onArchive={atlas.archiveSelectedThread}
               onPromote={() => setPromotionOpen(true)}

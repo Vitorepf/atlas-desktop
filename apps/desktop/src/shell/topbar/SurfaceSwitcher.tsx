@@ -74,20 +74,27 @@ export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfa
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: 18,
-                  height: 18,
-                  padding: '0 5px',
+                  gap: 4,
                   marginLeft: 6,
-                  borderRadius: 999,
-                  background: 'var(--cc-warning, #d4a85a)',
-                  color: 'var(--cc-bg, #1d2b34)',
+                  color: 'var(--cc-accent, #d4a85a)',
                   fontFamily: 'var(--cc-font-mono, monospace)',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  letterSpacing: 0.4,
+                  fontSize: 10.5,
+                  fontWeight: 540,
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: 0,
                 }}
               >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-block',
+                    width: 4,
+                    height: 4,
+                    borderRadius: '50%',
+                    background: 'var(--cc-accent, #d4a85a)',
+                    opacity: 0.7,
+                  }}
+                />
                 {badge > 99 ? '99+' : badge}
               </span>
             ) : null}
