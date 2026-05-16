@@ -463,11 +463,20 @@ export const bridge = {
       if (MODE === 'http') {
         raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces')
       } else if (MODE === 'tauri') {
-        // Tauri command not implemented for workspaces yet · degrade gracefully.
+        // Tauri command not implemented for workspaces yet. Tenta primeiro,
+        // mas se falhar (e tivermos HTTP_BASE configurado via env), faz fallback
+        // HTTP direto — Tauri WebView pode chamar 127.0.0.1:8001 sem problemas
+        // de CORS local.
         try {
           raw = await invokeTauri<unknown>('bridge_list_workspaces')
         } catch {
-          return null
+          if (!HTTP_BASE) return null
+          try {
+            raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces')
+          } catch (e) {
+            console.warn('[bridge] listWorkspaces HTTP fallback failed', e)
+            return null
+          }
         }
       } else {
         return null

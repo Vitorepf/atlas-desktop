@@ -52,7 +52,41 @@ export function AtlasAiMessageBody({ content }: AtlasAiMessageBodyProps) {
           )
         }
         if (b.kind === 'rule') {
-          return <hr key={key} className="atlas-ai-md-rule" />
+          return (
+            <div key={key} className="atlas-ai-md-rule-editorial" aria-hidden="true">
+              <span className="atlas-ai-md-rule-line" />
+              <span className="atlas-ai-md-rule-mark">✦</span>
+              <span className="atlas-ai-md-rule-line" />
+            </div>
+          )
+        }
+        if (b.kind === 'table') {
+          return (
+            <div key={key} className="atlas-ai-md-table-wrap">
+              <table className="atlas-ai-md-table">
+                <thead>
+                  <tr>
+                    {b.headers.map((h, i) => (
+                      <th key={`th-${i}`} style={{ textAlign: b.aligns[i] ?? 'left' }}>
+                        {renderInline(h, `${key}-th-${i}`)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {b.rows.map((row, r) => (
+                    <tr key={`tr-${r}`}>
+                      {row.map((cell, c) => (
+                        <td key={`td-${r}-${c}`} style={{ textAlign: b.aligns[c] ?? 'left' }}>
+                          {renderInline(cell, `${key}-td-${r}-${c}`)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         }
         if (b.kind === 'code') {
           return (

@@ -33,11 +33,24 @@ function detectMode(): AtlasAiBridgeMode {
 const MODE: AtlasAiBridgeMode = detectMode()
 const HTTP_BASE = (import.meta.env.VITE_ATLAS_SERVER_URL as string | undefined) ?? ''
 
+/**
+ * apiUrl · resolves request URL against VITE_ATLAS_SERVER_URL.
+ *
+ * Canon: o Atlas server Laravel serve as rotas Atlas AI em `/ai/*` (NÃO em
+ * `/api/ai/*`). O atlas-app mobile chama exatamente `${base}/ai/threads`.
+ * Antes o desktop forçava prefixo `/api`, causando 404. Agora:
+ *
+ *   1. Se base for vazio, fallback `/api${path}` (modo standalone via dev proxy)
+ *   2. Se base termina com `/api`, mantém compat: `${base}${path}` (legado)
+ *   3. Caso contrário, chama direto `${base}${path}` — igual mobile.
+ *
+ * Test: curl -H "X-Atlas-Token: $T" http://127.0.0.1:8001/ai/threads → 200.
+ */
 function apiUrl(path: string): string {
   const base = HTTP_BASE.replace(/\/+$/, '')
   if (!base) return `/api${path}`
   if (base.endsWith('/api')) return `${base}${path}`
-  return `${base}/api${path}`
+  return `${base}${path}`
 }
 
 function compactHttpError(status: number, body: string): string {

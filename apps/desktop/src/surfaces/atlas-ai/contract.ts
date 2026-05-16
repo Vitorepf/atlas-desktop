@@ -21,12 +21,16 @@ export const ATLAS_AI_MODE_CONTRACT_VERSION = 1
 export const ATLAS_AI_SURFACE_ID = 'atlas_desktop_ai'
 export const ATLAS_AI_APP_SURFACE = 'atlas_desktop_ai'
 
-export const PROVIDER_OPTIONS: ReadonlyArray<{ value: AtlasAiProviderChoice; label: string }> = [
-  { value: 'auto', label: 'Auto (Atlas Decide)' },
-  { value: 'claude_cli', label: 'Claude' },
-  { value: 'codex_cli', label: 'Codex' },
-  { value: 'gemini_cli', label: 'Gemini' },
-  { value: 'claude_codex', label: 'Claude+Codex council' },
+export const PROVIDER_OPTIONS: ReadonlyArray<{
+  value: AtlasAiProviderChoice
+  label: string
+  sub: string
+}> = [
+  { value: 'auto', label: 'Auto (Atlas Decide)', sub: 'Atlas escolhe o provider ideal por contexto' },
+  { value: 'claude_cli', label: 'Claude', sub: 'Anthropic via Claude CLI · vision premium' },
+  { value: 'codex_cli', label: 'Codex', sub: 'OpenAI via Codex CLI · raciocínio técnico' },
+  { value: 'gemini_cli', label: 'Gemini', sub: 'Google Gemini · multimodal' },
+  { value: 'claude_codex', label: 'Claude+Codex council', sub: 'Dois provedores em conselho · resposta consolidada' },
 ]
 
 export const MODE_OPTIONS: ReadonlyArray<{ value: AtlasAiMode; label: string; sub: string }> = [

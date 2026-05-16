@@ -25,6 +25,7 @@ export type MarkdownBlock =
   | { kind: 'quote'; text: string }
   | { kind: 'code'; lang: string | null; source: string }
   | { kind: 'rule' }
+  | { kind: 'table'; headers: string[]; rows: string[][]; aligns: Array<'left' | 'center' | 'right'> }
 
 export function parseMarkdown(input: string): MarkdownBlock[] {
   const lines = input.replace(/\r\n?/g, '\n').split('\n')
@@ -60,6 +61,41 @@ export function parseMarkdown(input: string): MarkdownBlock[] {
       blocks.push({ kind: 'rule' })
       i++
       continue
+    }
+
+    // Table (pipe-delimited GitHub-flavored markdown)
+    //
+    //   | col1 | col2 | col3 |
+    //   |------|:----:|-----:|
+    //   | a    | b    | c    |
+    //
+    // Detecta pelo header row + linha separadora com hifens/dois-pontos.
+    const tableHeaderMatch = line.match(/^\|(.+)\|\s*$/)
+    if (tableHeaderMatch && i + 1 < lines.length) {
+      const sepRaw = (lines[i + 1] ?? '').trim()
+      const sepMatch = sepRaw.match(/^\|(.+)\|\s*$/)
+      if (sepMatch && /^\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*$/.test(sepMatch[1]!)) {
+        const headers = tableHeaderMatch[1]!.split('|').map((s) => s.trim())
+        const aligns: Array<'left' | 'center' | 'right'> = sepMatch[1]!.split('|').map((cell) => {
+          const c = cell.trim()
+          const left = c.startsWith(':')
+          const right = c.endsWith(':')
+          if (left && right) return 'center'
+          if (right) return 'right'
+          return 'left'
+        })
+        const rows: string[][] = []
+        i += 2
+        while (i < lines.length) {
+          const row = (lines[i] ?? '').trim()
+          const rowMatch = row.match(/^\|(.+)\|\s*$/)
+          if (!rowMatch) break
+          rows.push(rowMatch[1]!.split('|').map((s) => s.trim()))
+          i++
+        }
+        blocks.push({ kind: 'table', headers, rows, aligns })
+        continue
+      }
     }
 
     // Heading ATX

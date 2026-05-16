@@ -3555,13 +3555,8 @@
     overflow: hidden;
   }
 
-  /* Atenção / Atlas AI surfaces · 2 rows · same shape as Cartografia.
-     We FORCE rows/columns/areas + explicit child grid-row with !important
-     so the topbar can never be pushed down by any cascade override or
-     minifier merge, and the surface main always sits on row 2. */
-  .atlas-shell.surface-atencao,
-  .atlas-shell.surface-atlas_ai,
-  .atlas-shell.surface-atlas-ai {
+  /* Atenção · 2 rows shape (Cartografia-like). */
+  .atlas-shell.surface-atencao {
     grid-template-rows: 50px minmax(0, 1fr) !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas:
@@ -3570,22 +3565,144 @@
     grid-auto-rows: 0 !important;
     grid-auto-flow: row !important;
   }
-  .atlas-shell.surface-atencao > .topbar,
-  .atlas-shell.surface-atlas_ai > .topbar,
-  .atlas-shell.surface-atlas-ai > .topbar {
-    grid-row: 1 / 2 !important;
-    grid-column: 1 / -1 !important;
+  .atlas-shell.surface-atencao > .topbar {
+    grid-area: topbar !important;
     align-self: stretch !important;
     justify-self: stretch !important;
   }
-  .atlas-shell.surface-atencao > .atencao-surface,
-  .atlas-shell.surface-atlas_ai > .atlas-ai-surface,
-  .atlas-shell.surface-atlas-ai > .atlas-ai-surface {
-    grid-row: 2 / 3 !important;
-    grid-column: 1 / -1 !important;
+  .atlas-shell.surface-atencao > .atencao-surface {
+    grid-area: main !important;
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Atlas AI · rails-based layout (mesma shape do Atlas Code).
+     row 1: topbar global (shell)
+     row 2: header-bar (3 cols)
+     row 3: left-rail │ stage │ right-rail
+     ───────────────────────────────────────────────────────────────── */
+  :root {
+    --atlas-ai-left-width: 280px;
+    --atlas-ai-right-width: 340px;
+    --atlas-ai-header-bar-height: 56px;
+  }
+  .atlas-shell.surface-atlas_ai,
+  .atlas-shell.surface-atlas-ai {
+    grid-template-rows: 50px var(--atlas-ai-header-bar-height) minmax(0, 1fr) !important;
+    grid-template-columns:
+      var(--atlas-ai-left-width)
+      minmax(0, 1fr)
+      var(--atlas-ai-right-width) !important;
+    grid-template-areas:
+      'topbar     topbar  topbar'
+      'headerbar  headerbar  headerbar'
+      'left       stage   right' !important;
+    grid-auto-rows: 0 !important;
+    grid-auto-flow: row !important;
+  }
+  .atlas-shell.surface-atlas_ai > .topbar,
+  .atlas-shell.surface-atlas-ai > .topbar {
+    grid-area: topbar !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-header-bar,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-header-bar {
+    grid-area: headerbar !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-rail-left,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-rail-left {
+    grid-area: left !important;
+    min-height: 0;
+    min-width: 0;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-stage,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-stage {
+    grid-area: stage !important;
+    min-height: 0;
+    min-width: 0;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-rail-right,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-rail-right {
+    grid-area: right !important;
+    min-height: 0;
+    min-width: 0;
+  }
+  /* Fallback offline (renderiza só <main class="atlas-ai-stage-fallback">) */
+  .atlas-shell.surface-atlas_ai > .atlas-ai-stage-fallback,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-stage-fallback {
+    grid-area: headerbar / left / stage / right !important;
+  }
+  /* Collapsed states · rail vira 0px e o stage absorve o espaço. */
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-rail-left,
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-rail-left,
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left,
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left {
+    display: none !important;
+  }
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-rail-right,
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-rail-right,
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right,
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right {
+    display: none !important;
+  }
+  /* Resizers (overlay sobre as bordas dos rails). */
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left {
+    grid-area: left;
+    justify-self: end;
+    align-self: stretch;
+    width: 12px;
+    min-width: 12px;
+    cursor: col-resize;
+    transform: translateX(6px);
+    z-index: 5;
+    pointer-events: auto;
+    position: relative;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right {
+    grid-area: right;
+    justify-self: start;
+    align-self: stretch;
+    width: 12px;
+    min-width: 12px;
+    cursor: col-resize;
+    transform: translateX(-6px);
+    z-index: 5;
+    pointer-events: auto;
+    position: relative;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 5px;
+    width: 2px;
+    background: transparent;
+    transition: background 160ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left:hover::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left.dragging::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right:hover::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right.dragging::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left:hover::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left.dragging::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right:hover::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right.dragging::before {
+    background: rgba(212, 168, 90, 0.36);
+  }
+  body.atlas-ai-column-resizing,
+  body.atlas-ai-column-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
   }
 
   .topbar {
