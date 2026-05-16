@@ -349,24 +349,45 @@
     border-radius: var(--cc-radius-sm);
   }
 
-  /* Scrollbar customizada · slate teal subtle. */
-  .atlas-shell.surface-code *::-webkit-scrollbar {
+  /* Scrollbar customizada · slate teal subtle.
+     Estendido para Atlas Code + Atenção + Atlas AI surfaces. */
+  .atlas-shell.surface-code *::-webkit-scrollbar,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  .atlas-shell.surface-code *::-webkit-scrollbar-track {
+  .atlas-shell.surface-code *::-webkit-scrollbar-track,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar-track,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-track,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-track {
     background: transparent;
   }
-  .atlas-shell.surface-code *::-webkit-scrollbar-thumb {
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb {
     background: rgba(149, 163, 172, 0.18);
     border: 2px solid transparent;
     background-clip: padding-box;
     border-radius: 999px;
     transition: background 200ms var(--cc-ease-out);
   }
-  .atlas-shell.surface-code *::-webkit-scrollbar-thumb:hover {
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb:hover {
     background: rgba(149, 163, 172, 0.32);
     background-clip: padding-box;
+  }
+  /* Firefox scrollbar-color fallback. */
+  .atlas-shell.surface-atlas_ai *,
+  .atlas-shell.surface-atlas-ai *,
+  .atlas-shell.surface-atencao *,
+  .atlas-shell.surface-code * {
+    scrollbar-color: rgba(149, 163, 172, 0.22) transparent;
+    scrollbar-width: thin;
   }
 
   /* Atlas Code -- Premium polish overrides (legacy compatibility)
@@ -1144,9 +1165,20 @@
     .atlas-shell.surface-code .conv-thread { animation: none; }
   }
 
-  /* — Selection highlight slate teal subtle. */
-  .atlas-shell.surface-code ::selection {
-    background: rgba(212, 168, 90, 0.30);
+  /* — Selection highlight slate teal subtle (Atlas Code + Atenção + Atlas AI). */
+  .atlas-shell.surface-code ::selection,
+  .atlas-shell.surface-atencao ::selection,
+  .atlas-shell.surface-atlas_ai ::selection,
+  .atlas-shell.surface-atlas-ai ::selection {
+    background: rgba(212, 168, 90, 0.28);
+    color: var(--cc-text-strong);
+  }
+  /* Selection sem cor de fundo escurecido em inputs/textareas (mantém legibilidade). */
+  .atlas-shell.surface-atlas_ai textarea::selection,
+  .atlas-shell.surface-atlas_ai input::selection,
+  .atlas-shell.surface-atlas-ai textarea::selection,
+  .atlas-shell.surface-atlas-ai input::selection {
+    background: rgba(212, 168, 90, 0.34);
     color: var(--cc-text-strong);
   }
 

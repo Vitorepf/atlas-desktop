@@ -313,10 +313,14 @@ export function AtlasAiConversation({
   const showStreamingBubble = sending || isStreaming
   const lastTrace = detail?.last_trace ?? null
 
-  // Optimistic só aparece se ainda não vimos uma mensagem real do usuário
-  // depois do startedAt (com 2s de tolerância pra clock skew).
+  // Optimistic aparece SÓ enquanto sending=true (entre Enter e API retornar
+   // o pendingTrace). Quando pendingTrace existe, o backend já gravou a
+   // mensagem real e o polling vai trazer ela rápido — mostrar optimistic
+   // junto com a real cria duplicação visual de "VOCÊ".
+   // Caso edge: se já há mensagem real do usuário >= startedAt, também esconde.
   const showOptimistic =
     pendingUserMessage !== null &&
+    pendingTrace === null &&
     !messages.some(
       (m) =>
         (m.role === 'user' || m.role === 'operator') &&

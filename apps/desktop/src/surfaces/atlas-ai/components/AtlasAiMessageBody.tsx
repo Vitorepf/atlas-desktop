@@ -8,6 +8,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { parseMarkdown, renderInline } from '../markdown'
 import { useShikiHighlighter } from '../useShikiHighlighter'
+import { AtlasAiRichArtifact } from './AtlasAiRichArtifact'
 
 interface AtlasAiMessageBodyProps {
   content: string
@@ -16,9 +17,13 @@ interface AtlasAiMessageBodyProps {
 export function AtlasAiMessageBody({ content }: AtlasAiMessageBodyProps) {
   const blocks = useMemo(() => parseMarkdown(content), [content])
   const { highlight } = useShikiHighlighter()
+  // Drop cap NYT-style apenas quando resposta é longa o suficiente para
+  // justificar o gesto editorial (>= 600 chars). Em resposta técnica curta
+  // o drop cap parece typo/glitch (vide rounds anteriores).
+  const isLongResponse = (content?.length ?? 0) >= 600
 
   return (
-    <div className="atlas-ai-md">
+    <div className={`atlas-ai-md${isLongResponse ? ' is-long' : ''}`}>
       {blocks.map((b, idx) => {
         const key = `b-${idx}`
         if (b.kind === 'paragraph') {
@@ -97,6 +102,9 @@ export function AtlasAiMessageBody({ content }: AtlasAiMessageBodyProps) {
               highlight={highlight}
             />
           )
+        }
+        if (b.kind === 'rich-artifact') {
+          return <AtlasAiRichArtifact key={key} variant={b.variant} data={b.data} />
         }
         return null
       })}

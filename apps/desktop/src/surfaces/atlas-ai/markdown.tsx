@@ -18,6 +18,8 @@
  * leve, rápido e sem superfície de bug.
  */
 
+export type RichArtifactVariant = 'diff' | 'flow' | 'tree'
+
 export type MarkdownBlock =
   | { kind: 'paragraph'; text: string }
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; text: string }
@@ -26,6 +28,7 @@ export type MarkdownBlock =
   | { kind: 'code'; lang: string | null; source: string }
   | { kind: 'rule' }
   | { kind: 'table'; headers: string[]; rows: string[][]; aligns: Array<'left' | 'center' | 'right'> }
+  | { kind: 'rich-artifact'; variant: RichArtifactVariant; data: unknown; rawSource: string }
 
 export function parseMarkdown(input: string): MarkdownBlock[] {
   const lines = input.replace(/\r\n?/g, '\n').split('\n')
@@ -41,8 +44,8 @@ export function parseMarkdown(input: string): MarkdownBlock[] {
       continue
     }
 
-    // Code fence: ``` or ```lang
-    const fenceMatch = /^```(\w[\w+.-]*)?\s*$/.exec(raw)
+    // Code fence: ``` or ```lang (lang aceita `:` pra `atlas:variant`).
+    const fenceMatch = /^```([\w:][\w:+.-]*)?\s*$/.exec(raw)
     if (fenceMatch) {
       const lang = fenceMatch[1] ?? null
       const sourceLines: string[] = []
@@ -52,7 +55,26 @@ export function parseMarkdown(input: string): MarkdownBlock[] {
         i++
       }
       if (i < lines.length) i++ // consume closing fence
-      blocks.push({ kind: 'code', lang, source: sourceLines.join('\n') })
+      const source = sourceLines.join('\n')
+
+      // Rich artifact: `atlas:diff`, `atlas:flow`, `atlas:tree` → JSON parse.
+      // Falha → fallback pra code block normal (graceful degradation).
+      if (lang && lang.startsWith('atlas:')) {
+        const variant = lang.slice('atlas:'.length) as RichArtifactVariant
+        if (variant === 'diff' || variant === 'flow' || variant === 'tree') {
+          try {
+            const data = JSON.parse(source) as unknown
+            blocks.push({ kind: 'rich-artifact', variant, data, rawSource: source })
+            continue
+          } catch {
+            // JSON inválido → fallback pra code block. Mostra source bruto.
+            blocks.push({ kind: 'code', lang, source })
+            continue
+          }
+        }
+      }
+
+      blocks.push({ kind: 'code', lang, source })
       continue
     }
 

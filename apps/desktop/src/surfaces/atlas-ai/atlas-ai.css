@@ -32,6 +32,14 @@
   outline-offset: 2px;
   border-radius: inherit;
 }
+/* Icon-only buttons (≤28px) com offset reduzido pra não estourar layout denso. */
+.atlas-shell.surface-atlas_ai .atlas-ai-msg-actbtn:focus-visible,
+.atlas-shell.surface-atlas_ai .atlas-ai-icon-btn:focus-visible,
+.atlas-shell.surface-atlas_ai .atlas-ai-md-codeblock-copy:focus-visible,
+.atlas-shell.surface-atlas_ai .atlas-ai-refresh:focus-visible,
+.atlas-shell.surface-atlas_ai .atlas-ai-rail-toggle:focus-visible {
+  outline-offset: 1px;
+}
 .atlas-shell.surface-atlas_ai button:focus:not(:focus-visible),
 .atlas-shell.surface-atlas_ai a:focus:not(:focus-visible) {
   outline: none;
@@ -354,9 +362,10 @@
 
 /* Archive não é destrutivo — não merece alarmist red.
    Apple HIG / Linear: ações benignas em ink-muted, hover quiet. */
+/* "arquivar" link · Inter sans normal quiet (italic não acrescenta, só cansa). */
 .atlas-ai-danger-link {
   color: var(--cc-text-faint);
-  font-style: italic;
+  font-style: normal;
 }
 .atlas-ai-danger-link:hover {
   color: var(--cc-text-muted);
@@ -653,12 +662,16 @@
 
 /* ===== INLINE STATE LINES ===== */
 
+/* Empty line · Inter sans quiet (não serif italic — operacional, não literário).
+   Cormorant italic 12px em dark slate fica ilegível, ortografia rebelde. */
 .atlas-ai-empty-line {
   margin: 8px 4px;
   font-size: 12.5px;
   color: var(--cc-text-faint);
-  font-style: italic;
-  font-family: var(--cc-font-serif);
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-variation-settings: 'wght' 440;
+  letter-spacing: 0;
 }
 
 .atlas-ai-warning-line {
@@ -798,8 +811,9 @@
 .atlas-ai-conversation-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 18px;
   flex-shrink: 0;
+  padding-top: 2px;
 }
 
 /* Meta line · hierarquia tipográfica entre segmentos.
@@ -819,10 +833,12 @@
   flex-wrap: wrap;
   font-variation-settings: 'wght' 440;
 }
+/* Meta separators · ultra-faint para hierarquia entre dados, não chamar atenção. */
 .atlas-ai-conversation-meta-sep {
   color: var(--cc-text-disabled);
-  margin: 0 6px;
-  opacity: 0.7;
+  margin: 0 7px;
+  opacity: 0.55;
+  user-select: none;
 }
 .atlas-ai-conversation-meta-mode {
   text-transform: lowercase;
@@ -868,9 +884,24 @@
 }
 
 /* User bubble · barra mais robusta + texto Inter peso 460 (legível mas
-   distinto da resposta Atlas que carrega prosa editorial). */
+   distinto da resposta Atlas que carrega prosa editorial).
+   border-left via box-shadow inset pra gradient fade nas pontas (Apple Books). */
 .atlas-ai-message.tone-operator {
-  border-left: 3px solid rgba(212, 168, 90, 0.55);
+  border-left: none;
+  position: relative;
+}
+.atlas-ai-message.tone-operator::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: linear-gradient(180deg,
+    rgba(212, 168, 90, 0.10) 0%,
+    rgba(212, 168, 90, 0.65) 25%,
+    rgba(212, 168, 90, 0.65) 75%,
+    rgba(212, 168, 90, 0.10) 100%);
 }
 .atlas-ai-message.tone-operator .atlas-ai-message-body {
   font-variation-settings: 'wght' 460;
@@ -878,7 +909,21 @@
 }
 
 .atlas-ai-message.tone-atlas {
-  border-left: 2px solid rgba(127, 167, 196, 0.34);
+  border-left: none;
+  position: relative;
+}
+.atlas-ai-message.tone-atlas::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: linear-gradient(180deg,
+    rgba(127, 167, 196, 0.08) 0%,
+    rgba(127, 167, 196, 0.42) 25%,
+    rgba(127, 167, 196, 0.42) 75%,
+    rgba(127, 167, 196, 0.08) 100%);
 }
 
 .atlas-ai-message-header {
@@ -891,14 +936,16 @@
 /* Role label · Apple HIG eyebrow ("Caption 2" canon).
    Caps tracking 0.06em, weight 600, ink-faint cinza tertiary.
    Cor de tom (info/gold) reservada para sutil distinção em hover. */
+/* Role label · Inter caps com small-caps feature + tracking tight 0.04em
+   + peso 540 (era 600 chiaroscuro forte). Mais discreto, menos shouty. */
 .atlas-ai-message-role {
   font-family: var(--cc-font-sans);
-  font-size: 10.5px;
-  font-variation-settings: 'wght' 600;
+  font-size: 10px;
+  font-variation-settings: 'wght' 540;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--cc-text-faint);
-  font-feature-settings: 'ss01' 1, 'cv11' 1;
+  font-feature-settings: 'ss01' 1, 'cv11' 1, 'kern' 1;
 }
 
 /* Apple HIG: role labels não precisam de cor distintiva.
@@ -921,19 +968,19 @@
 }
 
 /* Body editorial · Apple Books / NYT digital ratios.
-   14.5px @ 1.62 line-height = compact-but-readable, peso 440.
-   font-features Inter polish: cv11 (single-storey a), ss01, kern on. */
+   14.5px @ 1.65 line-height = mais ar entre linhas para sessões longas
+   (12h-workstation friendly). peso 440. font-features Inter polish. */
 .atlas-ai-message-body,
 .atlas-ai-message .atlas-ai-md {
   font-size: 14.5px;
-  line-height: 1.62;
+  line-height: 1.65;
   font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1, 'tnum' 0;
 }
 
-/* Drop cap REMOVIDO · em respostas técnicas curtas, primeira letra italic
-   gold cria leitura tropeçada — parece typo/glitch em vez de editorial.
-   NYT/Apple Books só usam drop cap em abertura de artigos longos com
-   transição claramente decorativa. Aqui o body já carrega hierarquia. */
+/* Drop cap COMPLETAMENTE REMOVIDO · usuário rejeitou Cormorant italic gold
+   first-letter em qualquer comprimento de resposta — vira typo/glitch visual
+   em vez de gesto editorial, conforme rounds 16-39. Inter Variable normal
+   no body chega lá com peso de tipografia, sem ornament gold. */
 
 /* Reactions row · Linear/Claude.ai pattern.
    Default invisível (opacity 0), reveal on message hover gentle 220ms. */
@@ -978,6 +1025,10 @@
   background: var(--cc-accent-veil);
   border-color: var(--cc-accent-border);
   color: var(--cc-accent-strong);
+  animation: atlas-ai-copy-confirm 320ms var(--cc-ease-spring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-msg-actbtn.is-active { animation: none; }
 }
 
 .atlas-ai-msg-actbtn:focus-visible {
@@ -1013,7 +1064,7 @@
    keyframes background-position. Funciona porque o texto serif italic gold
    já tem peso visual baixo — o sweep adiciona movimento sem gritar. */
 .atlas-ai-message-optimistic .atlas-ai-message-meta {
-  font-style: italic;
+  font-style: normal;
   background: linear-gradient(
     90deg,
     rgba(212, 168, 90, 0.55) 0%,
@@ -1060,8 +1111,9 @@
   margin: 6px 0 0;
   font-size: 11px;
   color: var(--cc-text-muted);
-  font-style: italic;
-  letter-spacing: 0.02em;
+  font-style: normal;
+  letter-spacing: 0;
+  font-variation-settings: 'wght' 460;
 }
 @keyframes atlas-ai-optimistic-pulse {
   0%, 100% { border-left-color: rgba(212, 168, 90, 0.65); }
@@ -1282,18 +1334,20 @@
   margin: 0;
 }
 
-/* Greeting · serif italic Cormorant editorial (Apple Home, Mercury hero).
+/* Greeting · Inter sans caps eyebrow gold (legível em 12h, não italic).
    "boa madrugada / bom dia / boa tarde / boa noite" por hora local. */
 .atlas-ai-hero-greeting {
-  font-family: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
-  font-style: italic;
-  font-variation-settings: 'wght' 460;
-  font-size: 22px;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-variation-settings: 'wght' 540;
+  font-size: 11px;
   color: var(--cc-accent);
-  margin: 0 0 -4px;
-  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   opacity: 0.92;
 }
+/* Hero hint · Inter body 14px line-height 1.6. */
 .atlas-ai-hero-hint {
   margin: 0;
   color: var(--cc-text-muted);
@@ -1301,6 +1355,7 @@
   font-size: 14px;
   line-height: 1.6;
   font-variation-settings: 'wght' 440;
+  font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1;
 }
 .atlas-ai-hero-context {
   margin: 4px 0 0;
@@ -1321,15 +1376,19 @@
   font-variation-settings: 'wght' 540;
 }
 
+/* Hero h2 · Inter sans 26px peso 540 letter-spacing tight (Apple Pro Display
+   title canon). Drop Cormorant italic 30px que era ilegível em 12h — italic
+   serif em frase longa cansa o olho ao operar muito tempo. */
 .atlas-ai-hero h2 {
-  font-family: var(--cc-font-serif);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 30px;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-variation-settings: 'wght' 560;
+  font-size: 26px;
   margin: 0;
   color: var(--cc-text-strong);
-  letter-spacing: -0.01em;
-  line-height: 1.15;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+  font-feature-settings: 'ss01' 1, 'cv11' 1, 'kern' 1;
 }
 
 .atlas-ai-hero p {
@@ -1369,15 +1428,14 @@
   line-height: 1.3;
 }
 
+/* Hero chip hover · Linear/Stripe school: cor/border shift only, sem translateY
+   (jitter axis-Y é tropo SaaS amador). */
 .atlas-ai-hero-chip:hover {
-  border-color: var(--cc-accent-border);
-  background: var(--cc-accent-veil);
-  color: var(--cc-accent-strong);
-  transform: translateY(-1px);
+  border-color: rgba(212, 168, 90, 0.32);
+  color: var(--cc-text-strong);
 }
-
 .atlas-ai-hero-chip:active {
-  transform: translateY(0);
+  background: rgba(212, 168, 90, 0.05);
 }
 
 .atlas-ai-hero-chip-icon {
@@ -1419,17 +1477,37 @@
   letter-spacing: -0.005em;
 }
 
+/* Context sections · Apple Books gradient hairline entre seções
+   (consistente com hr e conversation header). */
 .atlas-ai-context-section {
-  padding-top: 14px;
-  border-top: 1px solid var(--cc-border-soft);
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+}
+.atlas-ai-context-section::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(233, 238, 242, 0.07) 12%,
+    rgba(233, 238, 242, 0.07) 88%,
+    transparent 100%);
 }
 
 .atlas-ai-context-section:first-of-type {
   padding-top: 0;
-  border-top: none;
+  margin-top: 0;
+}
+.atlas-ai-context-section:first-of-type::before {
+  display: none;
 }
 
 .atlas-ai-kv {
@@ -1507,17 +1585,25 @@
   overflow-wrap: anywhere;
 }
 
+/* Context note · Inter sans operational (drop callout box gold-veil + italic
+   serif que cansava em 12h). Hairline + flow no panel. */
 .atlas-ai-context-note {
   margin: 0;
-  padding: 12px 14px;
-  background: rgba(212, 168, 90, 0.04);
-  border: 1px solid rgba(212, 168, 90, 0.18);
-  border-radius: 6px;
-  font-family: var(--cc-font-serif);
-  font-style: italic;
-  font-size: 13px;
+  padding: 12px 14px 0;
+  border-top: 1px solid rgba(233, 238, 242, 0.06);
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 0;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 12px;
   color: var(--cc-text-muted);
   line-height: 1.55;
+  font-variation-settings: 'wght' 440;
+  letter-spacing: 0;
+  max-width: 38ch;
 }
 
 .atlas-ai-faint {
@@ -1571,32 +1657,45 @@
 
 /* ===== PROMOTION PANEL (modal · already dark) ===== */
 
+/* Promotion sheet backdrop · Apple HIG modal canon · backdrop blur thicker. */
 .atlas-ai-promotion-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(8, 16, 22, 0.82);
+  background: rgba(15, 26, 34, 0.72);
   z-index: 1100;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 56px 24px;
   overflow: auto;
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  animation: atlas-ai-backdrop-in 220ms var(--cc-ease-out);
+}
+@keyframes atlas-ai-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .atlas-ai-promotion-sheet {
   width: min(820px, 100%);
   background: var(--cc-surface);
   color: var(--cc-text);
-  border: 1px solid var(--cc-border);
-  border-radius: 10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 22px 56px rgba(0, 0, 0, 0.46);
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 112px);
+  animation: atlas-ai-sheet-in 280ms var(--cc-ease-out);
+}
+@keyframes atlas-ai-sheet-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-promotion-backdrop,
+  .atlas-ai-promotion-sheet { animation: none; }
 }
 
 .atlas-ai-promotion-header {
@@ -1620,14 +1719,16 @@
   color: var(--cc-accent);
 }
 
+/* Promotion sheet h2 · Inter sans peso 560 (modal title, legível 12h). */
 .atlas-ai-promotion-header h2 {
   margin: 0;
-  font-family: var(--cc-font-serif);
-  font-style: italic;
-  font-size: 22px;
-  font-variation-settings: 'wght' 500;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 18px;
+  font-variation-settings: 'wght' 560;
   color: var(--cc-text-strong);
-  letter-spacing: -0.005em;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
 }
 
 .atlas-ai-promotion-sub {
@@ -1772,13 +1873,16 @@
   color: var(--cc-text);
 }
 
+/* Promotion empty states · Inter sans operacional (não serif italic 12h). */
 .atlas-ai-promotion-empty,
 .atlas-ai-promotion-empty-line {
   margin: 0;
-  font-family: var(--cc-font-serif);
-  font-style: italic;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
   color: var(--cc-text-faint);
-  font-size: 13px;
+  font-size: 12.5px;
+  font-variation-settings: 'wght' 440;
+  letter-spacing: 0;
 }
 
 .atlas-ai-promotion-target-row { display: flex; flex-direction: column; gap: 8px; }
@@ -1883,17 +1987,19 @@
 
 /* ===== CONTEXT MENU (right-click thread) ===== */
 
+/* Context menu · Apple right-click canon + Linear discipline.
+   Single drop shadow, radius 8, entry animation popover-in. */
 .atlas-ai-ctxmenu {
   position: fixed;
   z-index: 1500;
   min-width: 280px;
   background: var(--cc-surface-raised);
-  border: 1px solid var(--cc-border);
-  border-radius: 10px;
+  border: 1px solid rgba(233, 238, 242, 0.10);
+  border-radius: 8px;
   padding: 4px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 24px 56px rgba(0, 0, 0, 0.52);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.48);
+  transform-origin: top left;
+  animation: atlas-ai-popover-in 160ms var(--cc-ease-out);
 }
 
 .atlas-ai-ctxmenu-head {
@@ -2102,22 +2208,22 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Mostrar mais · italic serif quiet (Linear / Notion school).
-   Drop hover-bg accent-veil. Single color shift on hover. */
+/* Mostrar mais · Inter sans quiet (legibilidade 12h, não italic serif). */
 .atlas-ai-show-more {
   display: inline-block;
   background: transparent;
   border: none;
   margin: 2px 0 8px 22px;
   padding: 4px 0;
-  font-family: var(--cc-font-serif);
-  font-style: italic;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
   font-size: 11.5px;
   color: var(--cc-text-faint);
   cursor: pointer;
   letter-spacing: 0;
   border-radius: 0;
   transition: color 160ms var(--cc-ease-out);
+  font-variation-settings: 'wght' 500;
 }
 
 .atlas-ai-show-more:hover {
@@ -2130,7 +2236,7 @@
   padding-left: 26px;
 }
 
-/* Pin · SVG estrela 5-pontas gold sutil (Apple HIG: no system emoji in premium UI). */
+/* Pin · SVG estrela 5-pontas gold (visível mas não dominante). */
 .atlas-ai-thread-pin {
   display: inline-flex;
   align-items: center;
@@ -2138,7 +2244,7 @@
   width: 12px;
   height: 12px;
   color: var(--cc-accent);
-  opacity: 0.78;
+  opacity: 0.88;
   flex-shrink: 0;
 }
 
@@ -2291,9 +2397,8 @@
   line-height: 1.7;
 }
 
-/* Blockquote · editorial pull-quote (NYT/Stripe Press school).
-   Drop o callout SO/Bootstrap (gold veil + gold border + radius).
-   Use hairline neutra + serif italic respirável. */
+/* Blockquote · Inter sans editorial (legível 12h, italic apenas como
+   modulação curta via <em>). Hairline neutral + ink-strong + max-width. */
 .atlas-ai-md-quote {
   margin: 18px 0;
   padding: 4px 0 4px 18px;
@@ -2301,11 +2406,12 @@
   background: transparent;
   border-radius: 0;
   color: var(--cc-text);
-  font-style: italic;
-  font-family: var(--cc-font-serif);
-  font-size: 14.5px;
-  line-height: 1.55;
+  font-style: normal;
+  font-family: var(--cc-font-sans);
+  font-size: 14px;
+  line-height: 1.6;
   max-width: 62ch;
+  font-variation-settings: 'wght' 460;
 }
 
 /* hr · Apple Books gradient fade hairline (não solid 1px Bootstrap).
@@ -2479,7 +2585,13 @@
 }
 
 .atlas-ai-md-strong { font-variation-settings: 'wght' 620; color: var(--cc-text-strong); }
-.atlas-ai-md-em { font-style: italic; color: var(--cc-text-strong); }
+/* `<em>` markdown · italic Inter (não Cormorant — manter família do body
+   para evitar troca de font em pleno texto). Letter-spacing 0. */
+.atlas-ai-md-em {
+  font-style: italic;
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 460;
+}
 
 /* ===== CODE BLOCKS · Linear/Stripe school =====
    Slate sunken + radius 6 (Linear discipline 2/4/6). Header hairline, sem
@@ -2535,8 +2647,19 @@
   background: transparent;
 }
 
+/* Copied state · Apple HIG micro-confirm (scale bounce + ease-spring).
+   Comunica "ação executou com sucesso" sem toast/notification overhead. */
 .atlas-ai-md-codeblock-copy.is-copied {
   color: var(--cc-accent);
+  animation: atlas-ai-copy-confirm 320ms var(--cc-ease-spring);
+}
+@keyframes atlas-ai-copy-confirm {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-md-codeblock-copy.is-copied { animation: none; }
 }
 
 .atlas-ai-md-codeblock-copy:focus-visible {
@@ -2604,11 +2727,13 @@
   40% { opacity: 1; transform: scale(1.1); }
 }
 
+/* Streaming label · Inter sans quiet (não Cormorant — feedback operacional). */
 .atlas-ai-streaming-label {
-  font-family: var(--cc-font-serif);
-  font-style: italic;
-  font-size: 13px;
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
   color: var(--cc-text-muted);
+  font-variation-settings: 'wght' 460;
+  letter-spacing: 0;
 }
 
 /* ===== SIDE PANEL (Contexto ↔ Plano tabs) ===== */
@@ -2694,19 +2819,20 @@
   min-height: 0;
 }
 
-/* Empty state · drop dashed border anti-pattern (Bootstrap admin 2014).
-   Italic serif flutuando no flow respira melhor — sem caixa. */
+/* Empty state · Inter sans operacional (não serif italic — texto de estado). */
 .atlas-ai-plan-empty {
   margin: 0;
   padding: 4px 0;
   border: none;
   background: transparent;
   color: var(--cc-text-muted);
-  font-family: var(--cc-font-serif);
-  font-style: italic;
-  font-size: 13px;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 12.5px;
   line-height: 1.55;
   max-width: 38ch;
+  font-variation-settings: 'wght' 440;
+  letter-spacing: 0;
 }
 
 .atlas-ai-plan-stack {
@@ -2743,13 +2869,14 @@
   font-variation-settings: 'wght' 460;
 }
 
+/* Primary card · stripe esquerda 2px gold (Warp/Linear school), drop gradient. */
 .atlas-ai-plan-card.is-primary {
-  border-color: var(--cc-accent-border);
-  background:
-    linear-gradient(180deg, rgba(212, 168, 90, 0.10) 0%, rgba(212, 168, 90, 0.04) 100%);
+  border-color: rgba(233, 238, 242, 0.06);
+  background: var(--cc-surface-raised);
+  box-shadow: inset 2px 0 0 var(--cc-accent), inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
-.atlas-ai-plan-card.is-primary header { color: var(--cc-accent-strong); }
+.atlas-ai-plan-card.is-primary header { color: var(--cc-accent); }
 .atlas-ai-plan-card.is-primary p { color: var(--cc-text-strong); font-variation-settings: 'wght' 520; }
 
 .atlas-ai-plan-card.is-warning {
@@ -2759,13 +2886,14 @@
 
 .atlas-ai-plan-card.is-warning header { color: var(--cc-warning-fg); }
 
+/* Plan list · Linear/Notion list-density, gap 6 (mais ar entre itens). */
 .atlas-ai-plan-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .atlas-ai-plan-list li {
@@ -2773,17 +2901,21 @@
   position: relative;
   font-size: 13px;
   color: var(--cc-text);
-  line-height: 1.5;
+  line-height: 1.55;
   font-variation-settings: 'wght' 440;
 }
 
+/* Bullet · usa caractere middot proporcional (não chevron mono ›). */
 .atlas-ai-plan-list li::before {
-  content: '›';
+  content: '·';
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 4px;
+  top: -1px;
   color: var(--cc-accent);
-  font-variation-settings: 'wght' 600;
+  font-size: 16px;
+  line-height: 1.55;
+  font-variation-settings: 'wght' 700;
+  opacity: 0.85;
 }
 
 .atlas-ai-plan-list-mono code {
@@ -2821,12 +2953,12 @@
   position: relative;
 }
 
+/* Drag-active · Apple HIG drop zone canon (single accent ring, no shadow stack). */
 .atlas-ai-composer.is-drag-active {
-  border-color: var(--cc-accent-border);
+  border-color: var(--cc-accent);
   box-shadow:
-    inset 0 0 0 2px rgba(212, 168, 90, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 -10px 28px rgba(5, 12, 18, 0.32);
+    inset 0 0 0 1px var(--cc-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .atlas-ai-composer-dropmask {
@@ -2842,10 +2974,12 @@
   z-index: 10;
 }
 
+/* Drop mask label · Inter sans peso 580 (legível em sobreposição). */
 .atlas-ai-composer-dropmask span {
-  font-family: var(--cc-font-serif);
-  font-style: italic;
-  font-size: 22px;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-variation-settings: 'wght' 580;
+  font-size: 16px;
   color: var(--cc-accent-strong);
   letter-spacing: -0.005em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.30);
@@ -2956,11 +3090,13 @@
 .atlas-ai-att-meta {
   font-family: var(--cc-font-mono);
   font-size: 10.5px;
-  color: var(--cc-text-muted);
-  letter-spacing: 0.01em;
+  color: var(--cc-text-faint);
+  letter-spacing: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 .atlas-ai-att-status {
@@ -3182,6 +3318,8 @@
   font-variation-settings: 'wght' 440;
   letter-spacing: 0;
   color: var(--cc-text);
+  /* Caret accent gold premium (não default white = mais nítido sobre slate). */
+  caret-color: var(--cc-accent);
   resize: none;
   min-height: 88px;
   max-height: 360px;
@@ -3202,14 +3340,14 @@
   box-shadow: none;
 }
 
-/* Placeholder · serif italic Cormorant (editorial, não generic sans).
-   Decanta o composer pra parecer espaço literário, não form input. */
+/* Placeholder · Inter sans operacional (legibilidade 12h > ornament).
+   Cormorant italic em placeholder cansa o olho — operacional, não literário. */
 .atlas-ai-composer-v2 .atlas-ai-textarea-v2::placeholder {
   color: var(--cc-text-faint);
-  opacity: 0.78;
-  font-family: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
-  font-style: italic;
-  font-variation-settings: 'wght' 460;
+  opacity: 1;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-variation-settings: 'wght' 440;
   font-size: 15px;
   letter-spacing: 0;
 }
@@ -3291,12 +3429,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Counter busy ("enviando…" / "processando anexos…") · Inter sans operacional. */
 .atlas-ai-composer-counter-busy {
   color: var(--cc-accent);
-  font-style: italic;
-  font-family: var(--cc-font-serif);
-  font-size: 12.5px;
-  opacity: 0.82;
+  font-style: normal;
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  opacity: 0.92;
+  font-variation-settings: 'wght' 500;
+  letter-spacing: 0;
 }
 
 /* Send button · FLAT filled (Codex Slate Premium canon, Linear school).
@@ -3422,23 +3563,32 @@
   opacity: 1;
 }
 
-/* Sheet flutuante */
+/* Popover sheet · Raycast/Linear cmd-K school.
+   Single drop shadow, radius 8 (Linear discipline). Entry: scale + translate
+   from trigger anchor (Apple HIG popover canon). */
 .atlas-ai-cmenu-sheet {
   position: absolute;
   bottom: calc(100% + 8px);
   background: var(--cc-surface-raised);
-  border: 1px solid var(--cc-border);
-  border-radius: 10px;
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  border-radius: 8px;
   padding: 6px;
   min-width: 280px;
   max-width: 360px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 20px 48px rgba(0, 0, 0, 0.46);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
   z-index: 30;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  transform-origin: bottom center;
+  animation: atlas-ai-popover-in 180ms var(--cc-ease-out);
+}
+@keyframes atlas-ai-popover-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-cmenu-sheet { animation: none; }
 }
 
 .atlas-ai-cmenu.align-start .atlas-ai-cmenu-sheet { left: 0; }
@@ -3522,8 +3672,7 @@
   position: relative;
 }
 
-/* Slash menu · Raycast/Linear cmd-K school. Single hairline border,
-   single drop shadow (não stack), hover sutil sem accent-veil shouty. */
+/* Slash menu · Raycast/Linear cmd-K school + Apple popover entry animation. */
 .atlas-ai-slash-menu {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -3537,6 +3686,8 @@
   overflow: hidden;
   max-height: 240px;
   overflow-y: auto;
+  transform-origin: bottom left;
+  animation: atlas-ai-popover-in 180ms var(--cc-ease-out);
 }
 
 .atlas-ai-slash-item {
@@ -3572,10 +3723,14 @@
   color: var(--cc-text-strong);
 }
 
+/* Slash desc · Inter sans quiet (legibilidade 12h). */
 .atlas-ai-slash-desc {
   font-size: 11.5px;
-  color: var(--cc-text-muted);
-  font-style: italic;
+  color: var(--cc-text-faint);
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  letter-spacing: 0;
+  font-variation-settings: 'wght' 440;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -3625,13 +3780,17 @@
   display: inline-flex;
   align-items: center;
   animation: atlas-thinking-pulse 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(212, 168, 90, 0.25));
 }
+/* ThinkingState label "claude pensando há 12s" · Inter sans operacional
+   (era Cormorant italic — feedback de IA precisa ser legível, não literário). */
 .atlas-ai-thinking-label {
-  font-family: var(--cc-font-serif, Georgia, serif);
-  font-style: italic;
-  font-size: 13px;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 12.5px;
   color: var(--cc-text-muted, rgba(232, 226, 213, 0.55));
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
+  font-variation-settings: 'wght' 460;
 }
 @keyframes atlas-thinking-pulse {
   0%, 100% { opacity: 0.55; transform: scale(0.92) rotate(0deg); }
@@ -3773,6 +3932,11 @@
   font-family: var(--cc-font-mono, ui-monospace, monospace);
   letter-spacing: 0.01em;
   border-left: 2px solid transparent;
+  transition: background 140ms var(--cc-ease-out), color 140ms var(--cc-ease-out);
+}
+.atlas-ai-tool-receipts-row:hover {
+  background: rgba(233, 238, 242, 0.025);
+  color: var(--cc-text, #e8e2d5);
 }
 .atlas-ai-tool-receipts-row.has-error {
   color: var(--cc-danger, #c97f70);
@@ -3993,11 +4157,15 @@
    sem cor semafórica, sem `+` button, peso decrescente. */
 
 /* Streaming text · token-by-token render com caret blinking final.
-   Claude.ai / Cursor / ChatGPT school. */
+   Claude.ai / Cursor / ChatGPT school.
+   contain + will-change: hint GPU para SSE silky updates (cada chunk
+   recompõe APENAS o nó de texto, não toda a página). */
 .atlas-ai-streaming-text {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(233, 238, 242, 0.04);
+  contain: content;
+  will-change: contents;
 }
 .atlas-ai-streaming-caret {
   display: inline-block;
@@ -4040,7 +4208,7 @@
   font-variation-settings: 'wght' 500;
   letter-spacing: 0;
   cursor: pointer;
-  font-style: italic;
+  font-style: normal;
   transition: color 160ms var(--cc-ease-out), border-color 160ms var(--cc-ease-out);
 }
 .atlas-ai-streaming-cancel:hover {
@@ -4088,7 +4256,7 @@
   padding: 4px 0 0;
 }
 
-/* Decision line · italic serif, sem box, peso ink hierárquico */
+/* Decision line · Inter sans operacional (era italic serif amador 12h). */
 .atlas-ai-decision-line {
   margin: 2px 0 0;
 }
@@ -4097,14 +4265,15 @@
   border: none;
   padding: 0;
   display: inline;
-  font-family: var(--cc-font-serif, Georgia, serif);
-  font-style: italic;
-  font-size: 12px;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 11.5px;
   color: var(--cc-text-muted, rgba(232, 226, 213, 0.5));
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   cursor: pointer;
   text-align: left;
   line-height: 1.5;
+  font-variation-settings: 'wght' 460;
 }
 .atlas-ai-decision-text:disabled,
 .atlas-ai-decision-text[aria-disabled='true'] {
@@ -4113,6 +4282,16 @@
 .atlas-ai-decision-text.has-detail:hover {
   color: var(--cc-text, #e8e2d5);
 }
+.atlas-ai-decision-text.has-detail::after {
+  content: ' ›';
+  opacity: 0;
+  transition: opacity 160ms var(--cc-ease-out);
+  font-style: normal;
+  color: var(--cc-text-faint);
+}
+.atlas-ai-decision-text.has-detail:hover::after {
+  opacity: 1;
+}
 .atlas-ai-decision-part {
   font-style: italic;
 }
@@ -4120,26 +4299,28 @@
   color: var(--cc-text-mute, rgba(232, 226, 213, 0.28));
   font-style: normal;
 }
+/* Decision reason · Inter sans (operacional, não Cormorant amador). */
 .atlas-ai-decision-reason {
   margin: 6px 0 0;
   padding: 6px 0 0;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
-  font-family: var(--cc-font-serif, Georgia, serif);
-  font-style: italic;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
   font-size: 12px;
   line-height: 1.55;
   color: var(--cc-text, #e8e2d5);
   max-width: 65ch;
+  font-variation-settings: 'wght' 440;
 }
 
-/* Open Brain line · italic serif single line, drop refs/hash/avisos */
+/* Open Brain line · Inter sans operacional (info de canon, não literário). */
 .atlas-ai-openbrain-line {
-  margin: 4px 0 0;
-  font-family: var(--cc-font-serif, Georgia, serif);
-  font-style: italic;
-  font-size: 12px;
-  letter-spacing: 0.01em;
+  margin: 8px 0 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  letter-spacing: 0;
   color: var(--cc-text-muted, rgba(232, 226, 213, 0.45));
+  font-variation-settings: 'wght' 460;
 }
 .atlas-ai-openbrain-line.tone-good { color: var(--cc-text-muted, rgba(232, 226, 213, 0.55)); }
 .atlas-ai-openbrain-line.tone-partial { color: var(--cc-accent, #d4a85a); opacity: 0.75; }
@@ -4150,7 +4331,7 @@
 }
 .atlas-ai-openbrain-line.tone-mute { opacity: 0.4; }
 
-/* Quality line · italic serif single line */
+/* Quality line · Inter sans operacional (era italic serif amador). */
 .atlas-ai-quality-line {
   margin: 4px 0 0;
 }
@@ -4159,13 +4340,14 @@
   border: none;
   padding: 0;
   display: inline;
-  font-family: var(--cc-font-serif, Georgia, serif);
-  font-style: italic;
-  font-size: 12px;
-  letter-spacing: 0.01em;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 11.5px;
+  letter-spacing: 0;
   color: var(--cc-text-muted, rgba(232, 226, 213, 0.5));
   cursor: pointer;
   text-align: left;
+  font-variation-settings: 'wght' 460;
 }
 .atlas-ai-quality-text:disabled,
 .atlas-ai-quality-text[aria-disabled='true'] { cursor: default; }
@@ -4295,15 +4477,26 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
     rgba(212, 168, 90, 0.45) 50%,
     rgba(212, 168, 90, 0) 100%);
 }
+/* Low confidence · pontilhado bronze (dashed pattern · 4on/4off). */
 .atlas-ai-confidence-band.tone-low .atlas-ai-confidence-band-line {
   background: repeating-linear-gradient(90deg,
     rgba(212, 168, 90, 0.4) 0px,
-    rgba(212, 168, 90, 0.4) 4px,
-    transparent 4px,
-    transparent 8px);
+    rgba(212, 168, 90, 0.4) 3px,
+    transparent 3px,
+    transparent 7px);
+  mask-image: linear-gradient(90deg,
+    transparent 0%,
+    black 12%,
+    black 88%,
+    transparent 100%);
 }
+/* Unknown · hairline cinza neutro também com fade nas pontas. */
 .atlas-ai-confidence-band.tone-unknown .atlas-ai-confidence-band-line {
-  background: rgba(255, 255, 255, 0.03);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(233, 238, 242, 0.04) 12%,
+    rgba(233, 238, 242, 0.04) 88%,
+    transparent 100%);
 }
 
 /* ---------- ReasoningDrawer ---------- */
@@ -4319,10 +4512,11 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   padding: 4px 0;
   cursor: pointer;
   color: var(--cc-text-mute, rgba(232, 226, 213, 0.4));
-  font-family: var(--cc-font-serif, Georgia, serif);
-  font-style: italic;
+  font-family: var(--cc-font-sans);
+  font-style: normal;
   font-size: 11.5px;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
+  font-variation-settings: 'wght' 500;
   transition: color 120ms var(--cc-ease-out);
 }
 .atlas-ai-reasoning-trigger:hover {
@@ -4368,18 +4562,21 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   color: var(--cc-accent, #d4a85a);
   opacity: 0.9;
 }
+/* Reasoning text · Inter sans operacional (era serif — info técnica). */
 .atlas-ai-reasoning-text {
   margin: 0;
-  font-family: var(--cc-font-serif, Georgia, serif);
+  font-family: var(--cc-font-sans);
   font-size: 12.5px;
   line-height: 1.6;
   color: var(--cc-text, #e8e2d5);
+  font-variation-settings: 'wght' 440;
 }
 .atlas-ai-reasoning-candidates {
   margin: 4px 0 0;
   font-size: 11px;
   color: var(--cc-text-mute, rgba(232, 226, 213, 0.4));
-  font-style: italic;
+  font-style: normal;
+  font-family: var(--cc-font-sans);
 }
 .atlas-ai-reasoning-tools {
   margin: 0;
@@ -4431,5 +4628,298 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 .atlas-ai-reasoning-cost dd strong {
   color: var(--cc-accent, #d4a85a);
   font-weight: 600;
+}
+
+/* =====================================================================
+   RICH ARTIFACTS (diff / flow / tree)
+   ===================================================================== */
+
+/* Container canon · slate sunken, hairline border, radius 8, inset highlight. */
+.atlas-ai-rich-artifact {
+  margin: 14px 0;
+  background: var(--cc-surface-sunken);
+  border: 1px solid rgba(233, 238, 242, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.atlas-ai-rich-artifact-error {
+  padding: 10px 14px;
+  font-family: var(--cc-font-mono);
+  font-size: 11.5px;
+  color: var(--cc-danger);
+  background: rgba(208, 90, 82, 0.06);
+  border-color: rgba(208, 90, 82, 0.18);
+}
+
+/* Header · kind chip + title (file path / diagram title). */
+.atlas-ai-rich-artifact-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 7px;
+  border-bottom: 1px solid rgba(233, 238, 242, 0.04);
+}
+.atlas-ai-rich-artifact-kind {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+  color: var(--cc-accent);
+  opacity: 0.85;
+  padding: 1px 7px;
+  background: rgba(212, 168, 90, 0.06);
+  border: 1px solid rgba(212, 168, 90, 0.16);
+  border-radius: 3px;
+}
+.atlas-ai-rich-artifact-title {
+  font-family: var(--cc-font-mono);
+  font-size: 11.5px;
+  color: var(--cc-text-muted);
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ---------- DIFF (side-by-side) ---------- */
+.atlas-ai-diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(233, 238, 242, 0.04);
+}
+.atlas-ai-diff-col {
+  background: var(--cc-surface-sunken);
+  min-width: 0;
+}
+.atlas-ai-diff-col-head {
+  font-family: var(--cc-font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-variation-settings: 'wght' 540;
+  color: var(--cc-text-faint);
+  padding: 6px 14px 4px;
+  background: rgba(233, 238, 242, 0.018);
+}
+.atlas-ai-diff-col-before .atlas-ai-diff-col-head {
+  color: var(--cc-text-faint);
+}
+.atlas-ai-diff-col-after .atlas-ai-diff-col-head {
+  color: var(--cc-accent);
+}
+.atlas-ai-diff-pre {
+  margin: 0;
+  padding: 6px 0 10px;
+  font-family: var(--cc-font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--cc-text);
+  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+}
+.atlas-ai-diff-line {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+  padding: 0 14px 0 0;
+}
+.atlas-ai-diff-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-text-disabled);
+  text-align: right;
+  user-select: none;
+}
+.atlas-ai-diff-text {
+  white-space: pre;
+}
+.atlas-ai-diff-col-after .atlas-ai-diff-text {
+  color: var(--cc-text-strong);
+}
+.atlas-ai-diff-annotations {
+  padding: 8px 14px 10px;
+  border-top: 1px solid rgba(233, 238, 242, 0.04);
+}
+/* Diff annotation · Inter italic (era Cormorant — mantém família do body
+   pra não trocar font no meio de leitura). */
+.atlas-ai-diff-annotation {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-variation-settings: 'wght' 440;
+}
+.atlas-ai-diff-annotation-line {
+  font-family: var(--cc-font-mono);
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--cc-accent);
+  font-variation-settings: 'wght' 540;
+  letter-spacing: 0.04em;
+}
+
+/* Responsivo · stack em mobile. */
+@media (max-width: 720px) {
+  .atlas-ai-diff-grid { grid-template-columns: 1fr; gap: 0; }
+  .atlas-ai-diff-col + .atlas-ai-diff-col { border-top: 1px solid rgba(233, 238, 242, 0.04); }
+}
+
+/* ---------- FLOW (SVG nodes + edges) ---------- */
+.atlas-ai-flow-svg {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  padding: 18px 14px 14px;
+  color: var(--cc-text-faint);
+}
+.atlas-ai-flow-node-rect {
+  fill: var(--cc-surface-raised);
+  stroke: rgba(233, 238, 242, 0.10);
+  stroke-width: 1;
+  transition: fill 180ms var(--cc-ease-out), stroke 180ms var(--cc-ease-out);
+}
+.atlas-ai-flow-node.is-hover .atlas-ai-flow-node-rect {
+  fill: var(--cc-surface);
+  stroke: var(--cc-accent);
+}
+.atlas-ai-flow-node-label {
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  font-weight: 540;
+  fill: var(--cc-text);
+  pointer-events: none;
+}
+.atlas-ai-flow-node.is-hover .atlas-ai-flow-node-label {
+  fill: var(--cc-text-strong);
+}
+/* Flow edge label · Inter sans small (legibilidade SVG). */
+.atlas-ai-flow-edge-label {
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 460;
+  fill: var(--cc-text-faint);
+  text-anchor: middle;
+  pointer-events: none;
+}
+/* Flow info hover · Inter sans operacional (não serif italic). */
+.atlas-ai-flow-info {
+  margin: 0;
+  padding: 8px 14px 12px;
+  border-top: 1px solid rgba(233, 238, 242, 0.04);
+  font-family: var(--cc-font-sans);
+  font-style: normal;
+  font-size: 12px;
+  color: var(--cc-text);
+  line-height: 1.55;
+  font-variation-settings: 'wght' 440;
+}
+
+/* ---------- TREE (decision recursive) ---------- */
+.atlas-ai-tree-body {
+  padding: 16px 18px 18px;
+  overflow-x: auto;
+}
+.atlas-ai-tree-question {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.atlas-ai-tree-question-text {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  font-variation-settings: 'wght' 540;
+  color: var(--cc-text-strong);
+  letter-spacing: -0.005em;
+  padding: 6px 12px;
+  background: var(--cc-surface-raised);
+  border-radius: 6px;
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  text-align: center;
+  white-space: nowrap;
+}
+.atlas-ai-tree-branches {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  position: relative;
+  padding-top: 14px;
+}
+.atlas-ai-tree-branches::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 14px;
+  background: rgba(233, 238, 242, 0.10);
+}
+.atlas-ai-tree-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  padding-top: 16px;
+}
+.atlas-ai-tree-branch::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 16px;
+  background: rgba(233, 238, 242, 0.10);
+}
+.atlas-ai-tree-branch-label {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-variation-settings: 'wght' 540;
+}
+.atlas-ai-tree-branch-yes .atlas-ai-tree-branch-label {
+  color: var(--cc-accent);
+}
+.atlas-ai-tree-branch-no .atlas-ai-tree-branch-label {
+  color: var(--cc-text-faint);
+}
+.atlas-ai-tree-leaf {
+  padding: 6px 14px;
+  background: var(--cc-surface-raised);
+  border: 1px solid rgba(233, 238, 242, 0.06);
+  border-radius: 6px;
+}
+.atlas-ai-tree-leaf-yes {
+  box-shadow: inset 2px 0 0 var(--cc-accent);
+  border-color: rgba(212, 168, 90, 0.12);
+}
+.atlas-ai-tree-leaf-no {
+  opacity: 0.78;
+}
+.atlas-ai-tree-leaf-label {
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  font-variation-settings: 'wght' 480;
+  color: var(--cc-text);
+}
+.atlas-ai-tree-leaf-yes .atlas-ai-tree-leaf-label {
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 540;
+}
+@media (max-width: 720px) {
+  .atlas-ai-tree-branches { flex-direction: column; gap: 12px; }
+  .atlas-ai-tree-question-text { white-space: normal; }
 }
 
