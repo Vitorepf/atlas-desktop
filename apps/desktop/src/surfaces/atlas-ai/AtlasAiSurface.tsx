@@ -72,8 +72,10 @@ export function AtlasAiSurface({
   activeWorkspaceSlug = null,
   activeWorkspaceName = null,
   activeWorkspace = null,
+  defaultWorkspaceSlug = null,
 }: AtlasAiSurfaceProps) {
-  const atlas = useAtlasAi(activeWorkspaceSlug, activeWorkspace?.workspacePath || null)
+  const resolvedWorkspaceSlug = activeWorkspaceSlug ?? activeWorkspace?.slug ?? defaultWorkspaceSlug ?? 'atlas'
+  const atlas = useAtlasAi(resolvedWorkspaceSlug, activeWorkspace?.workspacePath || null)
   const { calmaria, toggle: toggleCalmaria } = useCalmaria()
   const composerSize = useComposerSize()
   const [composerDraft, setComposerDraft] = useState<string>('')
@@ -92,14 +94,14 @@ export function AtlasAiSurface({
   // Sincroniza workspace selecionado quando o topbar do shell muda.
   const { workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath } = atlas
   useEffect(() => {
-    if (activeWorkspaceSlug !== workspaceSlug) {
-      setWorkspaceSlug(activeWorkspaceSlug)
+    if (resolvedWorkspaceSlug !== workspaceSlug) {
+      setWorkspaceSlug(resolvedWorkspaceSlug)
     }
     const nextWorkspacePath = activeWorkspace?.workspacePath || null
     if (nextWorkspacePath !== workspacePath) {
       setWorkspacePath(nextWorkspacePath)
     }
-  }, [activeWorkspaceSlug, activeWorkspace?.workspacePath, workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath])
+  }, [resolvedWorkspaceSlug, activeWorkspace?.workspacePath, workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath])
 
   // Esc cancela streaming em curso (Codex CLI canon "esc to interrupt").
   const { cancelPending, sending, pendingTrace } = atlas

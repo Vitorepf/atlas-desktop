@@ -14,10 +14,10 @@ import type {
   AtlasAiInteractionRequest,
   AtlasAiInteractionResponse,
   AtlasDevPlanRequest,
-  AtlasDevPlanResponse,
   AtlasDevPlanResult,
 } from './types'
 import { toAtlasDevPlanHttpBody } from './atlasDevPlanHttpBody'
+import { normalisePlanResponse } from '../../components/atlasDev/apiShapes'
 
 export type AtlasAiBridgeMode = 'tauri' | 'http' | 'offline'
 
@@ -193,10 +193,12 @@ export async function getAiTrace(traceId: string): Promise<AiTrace> {
 }
 
 /**
- * Sentinel error thrown when the backend has not yet wired the Atlas Dev
- * plan-only endpoint (HTTP 404). The composer catches this and falls back to
- * the legacy `/ai/interactions` flow so the surface never regresses while
- * Claude 14/15/16 finish their slices.
+ * Sentinel error thrown when the Atlas Dev plan-only endpoint is unavailable
+ * to this Desktop surface — either because the backend hasn't deployed the
+ * route yet (404) or because the operator hasn't opted in the Desktop
+ * integration flag (503 ATLAS_DEV_DESKTOP_DISABLED / ATLAS_DEV_PLAN_DISABLED).
+ * Both cases collapse here so the composer can render the same "fallback to
+ * legacy chat" hint without leaking technical HTTP codes to the operator.
  */
 export class AtlasDevPlanUnavailableError extends Error {
   constructor(message = 'Atlas Dev plan endpoint indisponível.') {
@@ -239,82 +241,29 @@ export async function postAtlasDevPlan(
       'Atlas Dev plan endpoint não disponível no backend ativo (HTTP 404).',
     )
   }
+  // HTTP 503 + ATLAS_DEV_*_DISABLED → flag desligada no atlas-server.
+  // Mantemos a UI no estado "ainda não disponível" em vez de exibir um
+  // erro técnico genérico ao operador. (Composer já cai no chat legado.)
+  if (response.status === 503) {
+    const peek = await response.clone().text()
+    if (peek.includes('ATLAS_DEV_PLAN_DISABLED') || peek.includes('ATLAS_DEV_DESKTOP_DISABLED')) {
+      throw new AtlasDevPlanUnavailableError(
+        'Atlas Dev plan-only desabilitado por feature flag · habilite ATLAS_DEV_EFFICIENT_PLAN_ENABLED e ATLAS_DEV_EFFICIENT_DESKTOP_ENABLED.',
+      )
+    }
+  }
   if (!response.ok) {
     const body = await response.text()
     throw new Error(compactHttpError(response.status, body))
   }
 
-  const parsed = (await response.json()) as
-    | AtlasDevPlanResponse
-    | { data?: AtlasDevPlanResult & { confirmation?: { token?: string; expires_at?: number | string; task_contract_hash?: string } | null; routing?: { kind?: string } | null } }
-    | AtlasDevPlanResult
+  const parsed = (await response.json()) as unknown
 
-  // Accept `{ data: { … } }` (current Laravel controller), `{ plan: { … } }`
-  // (older draft contract), and a bare result so Desktop stays tolerant while
-  // the backend/API docs converge.
-  if ('data' in parsed && parsed.data && typeof parsed.data === 'object') {
-    return normaliseAtlasDevPlanResult(parsed.data)
+  const normalised = normalisePlanResponse(parsed)
+  if (!normalised) {
+    throw new Error('Atlas AI · resposta inesperada do plan endpoint.')
   }
-  if ('plan' in parsed && parsed.plan && typeof parsed.plan === 'object') {
-    return normaliseAtlasDevPlanResult(parsed.plan)
-  }
-  return normaliseAtlasDevPlanResult(parsed as AtlasDevPlanResult)
-}
-
-function normaliseAtlasDevPlanResult(
-  raw: AtlasDevPlanResult & {
-    confirmation?: { token?: string; expires_at?: number | string; task_contract_hash?: string } | null
-    routing?: { kind?: string } | null
-  },
-): AtlasDevPlanResult {
-  const routingDecision =
-    raw.routing_decision ??
-    raw.routing?.kind ??
-    (raw.status === 'blocked'
-      ? 'blocked'
-      : raw.status === 'forge_promotion_preview'
-        ? 'forge_promotion_preview'
-        : undefined)
-
-  const status =
-    raw.status ??
-    (routingDecision === 'blocked'
-      ? 'blocked'
-      : routingDecision === 'forge_promotion_preview'
-        ? 'forge_promotion_preview'
-        : 'ready')
-
-  const confirmationToken = raw.confirmation_token ?? raw.confirmation?.token
-  const confirmationExpiresAt =
-    raw.confirmation_expires_at ??
-    normaliseUnixOrIsoTimestamp(raw.confirmation?.expires_at)
-  const taskContractHash =
-    raw.task_contract_hash ??
-    raw.confirmation?.task_contract_hash ??
-    raw.task_contract?.task_contract_hash ??
-    (typeof raw.hashes?.task_contract === 'string' ? raw.hashes.task_contract : undefined)
-
-  return {
-    ...raw,
-    status,
-    ...(routingDecision ? { routing_decision: routingDecision } : {}),
-    ...(confirmationToken ? { confirmation_token: confirmationToken } : {}),
-    ...(confirmationExpiresAt ? { confirmation_expires_at: confirmationExpiresAt } : {}),
-    ...(taskContractHash ? { task_contract_hash: taskContractHash } : {}),
-  }
-}
-
-function normaliseUnixOrIsoTimestamp(value: number | string | undefined): string | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return new Date(value * 1000).toISOString()
-  }
-  if (typeof value === 'string' && value.trim() !== '') {
-    const numeric = Number(value)
-    if (Number.isFinite(numeric)) return new Date(numeric * 1000).toISOString()
-    const parsed = Date.parse(value)
-    if (Number.isFinite(parsed)) return new Date(parsed).toISOString()
-  }
-  return null
+  return normalised
 }
 
 // ──────────────────────────────────────────────────────────────────────────

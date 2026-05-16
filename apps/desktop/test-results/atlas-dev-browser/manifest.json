@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "url": "http://127.0.0.1:61650",
+  "artifacts": {
+    "screenshot": "/Users/vitorepf/develop/Atlas/atlas-desktop/apps/desktop/test-results/atlas-dev-browser/root.png",
+    "dom_dump": "/Users/vitorepf/develop/Atlas/atlas-desktop/apps/desktop/test-results/atlas-dev-browser/root.dom.html",
+    "chrome_stderr": "/Users/vitorepf/develop/Atlas/atlas-desktop/apps/desktop/test-results/atlas-dev-browser/root.stderr.log"
+  },
+  "sizes": {
+    "screenshot_bytes": 166942,
+    "dom_dump_bytes": 14351,
+    "shell_bytes": 833
+  },
+  "results": [
+    {
+      "name": "screenshot_written",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "dom_dump_bigger_than_shell",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "root_not_empty",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "atlas_shell_rendered",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no_console_errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no_absolute_users_path_leak",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no_persisted_paths_key_leak",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no_confirmation_token_fixture_leak",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "generated_at": "2026-05-16T20:32:28.915Z"
+}

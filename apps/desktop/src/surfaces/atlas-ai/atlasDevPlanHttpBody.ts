@@ -7,17 +7,16 @@ export function toAtlasDevPlanHttpBody(request: AtlasDevPlanRequest): Record<str
       ? (payload.surface_context as Record<string, unknown>)
       : {}),
   }
+  const policyHints: Record<string, unknown> = {
+    ...(typeof payload.policy_hints === 'object' && payload.policy_hints !== null
+      ? (payload.policy_hints as Record<string, unknown>)
+      : {}),
+  }
 
+  if (!surfaceContext.composer_mode) surfaceContext.composer_mode = 'programming'
   if (request.task) surfaceContext.composer_task = request.task
   if (request.provider) surfaceContext.provider_choice = request.provider
-  if (request.decision_mode) {
-    surfaceContext.policy_hints = {
-      ...(typeof surfaceContext.policy_hints === 'object' && surfaceContext.policy_hints !== null
-        ? (surfaceContext.policy_hints as Record<string, unknown>)
-        : {}),
-      decision_mode: request.decision_mode,
-    }
-  }
+  if (request.decision_mode) policyHints.decision_mode = request.decision_mode
 
   return {
     ...payload,
@@ -25,6 +24,7 @@ export function toAtlasDevPlanHttpBody(request: AtlasDevPlanRequest): Record<str
     workspace: request.workspace,
     raw_intent: request.input_text,
     thread_id: request.thread_id ?? null,
+    policy_hints: policyHints,
     surface_context: surfaceContext,
   }
 }

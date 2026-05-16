@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "visual-smoke": "node scripts/visualRender.mjs",
+    "browser-smoke": "node scripts/browserSmoke.mjs",
     "tauri": "cd ../../crates/atlas-tauri && tauri",
     "tauri:dev": "cd ../../crates/atlas-tauri && tauri dev",
     "tauri:build": "cd ../../crates/atlas-tauri && tauri build"

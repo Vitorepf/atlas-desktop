@@ -24,6 +24,12 @@ const RUN_BLOCKED_STATES = new Set<AtlasDevRunController['status']>([
 
 const ROUTING_RUNNABLE = new Set(['atlas_dev_fast_path'])
 
+const TERMINAL_RUN_STATES = new Set<AtlasDevRunController['status']>([
+  'completed',
+  'blocked',
+  'escalated',
+])
+
 function formatExpiry(iso: string | null | undefined): string | null {
   if (!iso) return null
   const ts = Date.parse(iso)
@@ -45,7 +51,9 @@ export function RunPanel({ plan, controller, disabled = false }: RunPanelProps) 
     return ROUTING_RUNNABLE.has(plan.routing_decision)
   }, [plan, disabled, controller.status])
 
-  const expiry = formatExpiry(plan?.confirmation_expires_at ?? null)
+  const expiry = TERMINAL_RUN_STATES.has(controller.status)
+    ? null
+    : formatExpiry(plan?.confirmation_expires_at ?? null)
   const showReplanHint =
     controller.error?.requires_replan === true ||
     (plan && !ROUTING_RUNNABLE.has(plan.routing_decision))

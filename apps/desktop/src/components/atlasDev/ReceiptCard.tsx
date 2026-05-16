@@ -16,6 +16,11 @@ function nonEmpty(list: string[] | null | undefined): string[] {
   return Array.isArray(list) ? list.filter((s) => typeof s === 'string' && s.trim() !== '') : []
 }
 
+function gateStatus(receipt: AtlasDevReceipt, gateName: string): string | null {
+  const gate = receipt.gates?.find((candidate) => candidate.name === gateName)
+  return typeof gate?.status === 'string' && gate.status.trim() !== '' ? gate.status : null
+}
+
 export function ReceiptCard({ receipt }: ReceiptCardProps) {
   if (!receipt) {
     return (
@@ -31,6 +36,8 @@ export function ReceiptCard({ receipt }: ReceiptCardProps) {
   const completion = receipt.completion?.status ?? 'failed'
   const honesty = nonEmpty(receipt.completion?.honesty_flags)
   const risks = nonEmpty(receipt.completion?.residual_risks)
+  const scopeGuardStatus = receipt.scope_guard_status ?? gateStatus(receipt, 'scope_guard_light')
+  const verificationStatus = receipt.verification_status ?? gateStatus(receipt, 'verification_gate')
 
   return (
     <section className={styles.panel} aria-label="Atlas Dev receipt">
@@ -59,10 +66,10 @@ export function ReceiptCard({ receipt }: ReceiptCardProps) {
         </dd>
 
         <dt>scope_guard_status</dt>
-        <dd>{receipt.scope_guard_status ?? '—'}</dd>
+        <dd>{scopeGuardStatus ?? '—'}</dd>
 
         <dt>verification_status</dt>
-        <dd>{receipt.verification_status ?? '—'}</dd>
+        <dd>{verificationStatus ?? '—'}</dd>
 
         <dt>honesty_flags</dt>
         <dd>{honesty.length === 0 ? <span className={styles.empty}>nenhuma</span> : honesty.join(' · ')}</dd>

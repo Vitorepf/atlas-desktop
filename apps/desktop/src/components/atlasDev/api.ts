@@ -19,10 +19,10 @@ import type {
   AtlasDevRunStatusResponse,
   AtlasDevSseEvent,
 } from './types'
-import { AtlasDevSseDecoder } from './sseParser'
-import { normalizeRunStartResponse, normalizeRunStatusResponse } from './apiShapes'
+import { AtlasDevSseDecoder } from './sseParser.ts'
+import { normalizeRunStartResponse, normalizeRunStatusResponse } from './apiShapes.ts'
 
-export { normalizeRunStartResponse, normalizeRunStatusResponse } from './apiShapes'
+export { normalizeRunStartResponse, normalizeRunStatusResponse } from './apiShapes.ts'
 
 const ENV = ((import.meta as ImportMeta & {
   env?: Record<string, string | undefined>

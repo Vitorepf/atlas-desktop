@@ -462,8 +462,14 @@ export function useAtlasAi(
             setAtlasDevPlansByRun((prev) => ({ ...prev, [planResult.run_id]: planResult }))
           }
           setAtlasDevPlanUnavailable(false)
-          // Halt the legacy flow when backend signals the operator must act.
-          if (planResult.status === 'blocked' || planResult.status === 'forge_promotion_preview') {
+          // Atlas Dev is plan-first: once the deterministic backend returns a
+          // routed plan, the operator must explicitly confirm Run in the
+          // workbench. Do not fall through to the legacy chat interaction.
+          if (
+            planResult.routing_decision === 'atlas_dev_fast_path' ||
+            planResult.status === 'blocked' ||
+            planResult.status === 'forge_promotion_preview'
+          ) {
             planOnlyDecision = 'halt'
             setPendingUserMessage(null) // free the optimistic bubble
           }
