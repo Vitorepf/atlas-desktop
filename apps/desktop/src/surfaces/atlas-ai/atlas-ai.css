@@ -1,13 +1,25 @@
 /*
  * Atlas AI Conversation Surface · 12h workstation premium DNA.
  *
- * Tipografia desenhada para sessoes longas (14px body, lh 1.6, ls 0,
+ * Tipografia desenhada para sessoes longas (14.5px body, lh 1.62, ls 0,
  * weight 440 em Inter Variable). Layout hero quando sem thread, com
  * composer integrado e prompt chips. Background com vinheta gold sutil.
  *
  * Compara com Cursor: maior espacamento operacional, accent gold contido,
  * editorial italic apenas como pontuacao (hero/quote), zero ruido visual.
+ *
+ * Apple HIG: motion respeita prefers-reduced-motion (kill switch global).
  */
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-message-optimistic,
+  .atlas-ai-thinking-diamond,
+  .atlas-ai-live-activity.tone-running .atlas-ai-live-activity-icon,
+  .atlas-ai-live-activity.tone-awaiting .atlas-ai-live-activity-icon,
+  .atlas-ai-live-activity.tone-thinking .atlas-ai-live-activity-icon,
+  .atlas-ai-streaming-dots span {
+    animation: none !important;
+  }
+}
 
 /* ===== TYPE SCALE OVERRIDES (escopado para Atlas AI · 12h-friendly) ===== */
 
@@ -40,21 +52,21 @@
 
 /* ===== HEADER BAR (full-width, grid-area: headerbar) ===== */
 
+/* Header bar · Apple Pro thin material (Agent A fix #5).
+   Era 5 efeitos compostos: gradient+inset+drop+blur+saturate. Premium = UM
+   efeito disciplinado. Mantém blur (canon Apple HIG thin material) +
+   hairline bottom. Drop o gradient vertical + insets. */
 .atlas-ai-header-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
   padding: 0 22px;
-  background:
-    linear-gradient(180deg, rgba(36, 55, 67, 0.95) 0%, rgba(28, 44, 55, 0.95) 100%),
-    var(--cc-surface);
-  border-bottom: 1px solid var(--cc-border-soft);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 1px 0 rgba(0, 0, 0, 0.30);
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  background: rgba(29, 43, 52, 0.72);
+  border-bottom: 1px solid rgba(233, 238, 242, 0.06);
+  box-shadow: none;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
 .atlas-ai-header-bar-start {
@@ -82,15 +94,24 @@
   line-height: 1.15;
 }
 
+/* Subtitle enxuto · "workspace · atlas" ou "uma única inteligência".
+   Mono small para nomes técnicos (workspace), sans para frase ocasional. */
 .atlas-ai-header-bar-sub {
   margin: 0;
-  color: var(--cc-text-muted);
-  font-size: 12px;
-  font-variation-settings: 'wght' 420;
-  line-height: 1.35;
+  color: var(--cc-text-faint);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 440;
+  line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0;
+}
+.atlas-ai-header-bar-sub-name {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  letter-spacing: 0;
 }
 
 .atlas-ai-header-bar-meta {
@@ -123,10 +144,12 @@
   color: var(--cc-text-strong);
 }
 
+/* Pressed (panel aberto) · Apple HIG: filled neutro, não accent.
+   Accent reserva-se para action gold único. Painel aberto é estado, não ação. */
 .atlas-ai-rail-toggle[aria-pressed='true'] {
-  background: var(--cc-accent-veil);
-  border-color: var(--cc-accent-border);
-  color: var(--cc-accent-strong);
+  background: var(--cc-surface-raised);
+  border-color: rgba(233, 238, 242, 0.16);
+  color: var(--cc-text-strong);
 }
 
 .atlas-ai-rail-toggle-right svg { transform: scaleX(-1); }
@@ -163,20 +186,23 @@
   padding: 14px 12px;
 }
 
+/* Side tabs no rail · Linear cmd-K school. Hairline-only, sublinhado gold
+   na active, ZERO filled rectangle box atrás (que parecia widget colado). */
 .atlas-ai-rail .atlas-ai-side-tabs {
-  margin: 0 -12px 14px;
+  margin: 0 -12px 12px;
   border-radius: 0;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.18);
-  border-bottom: 1px solid var(--cc-border-soft);
-  border-top: 1px solid var(--cc-border-soft);
+  padding: 6px 16px 0;
+  background: transparent;
+  border-top: none;
+  border-bottom: 1px solid rgba(233, 238, 242, 0.04);
+  gap: 20px;
 }
 
 .atlas-ai-rail .atlas-ai-side-tab.is-active {
-  background: var(--cc-surface);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 1px 0 rgba(0, 0, 0, 0.22);
+  background: transparent;
+  box-shadow: none;
+  color: var(--cc-text-strong);
+  border-bottom-color: var(--cc-accent);
 }
 
 .atlas-ai-rail .atlas-ai-context,
@@ -289,6 +315,8 @@
   min-width: 0;
 }
 
+/* Action link · Apple/Linear micro-motion school.
+   Drop border-bottom invisível (layout estável). Glyph `→` translada 2px no hover. */
 .atlas-ai-link {
   background: transparent;
   border: none;
@@ -298,17 +326,26 @@
   font-family: var(--cc-font-sans);
   font-variation-settings: 'wght' 520;
   padding: 4px 0;
-  border-bottom: 1px solid transparent;
-  transition: color 200ms var(--cc-ease-out), border-color 200ms var(--cc-ease-out);
+  transition: color 200ms var(--cc-ease-out);
+}
+.atlas-ai-link:hover { color: var(--cc-accent); }
+.atlas-ai-link:hover .atlas-ai-link-arrow { transform: translateX(2px); }
+.atlas-ai-link-arrow {
+  display: inline-block;
+  margin-left: 2px;
+  transition: transform 200ms var(--cc-ease-out);
 }
 
-.atlas-ai-link:hover {
-  color: var(--cc-accent);
-  border-bottom-color: var(--cc-accent-border);
+/* Archive não é destrutivo — não merece alarmist red.
+   Apple HIG / Linear: ações benignas em ink-muted, hover quiet. */
+.atlas-ai-danger-link {
+  color: var(--cc-text-faint);
+  font-style: italic;
 }
-
-.atlas-ai-danger-link { color: var(--cc-danger-fg); }
-.atlas-ai-danger-link:hover { color: var(--cc-danger); border-bottom-color: var(--cc-danger-border); }
+.atlas-ai-danger-link:hover {
+  color: var(--cc-text-muted);
+  border-bottom-color: var(--cc-border);
+}
 
 /* ===== BODY GRID ===== */
 
@@ -426,31 +463,47 @@
   background: rgba(233, 238, 242, 0.04);
 }
 
+/* Linear sidebar filter style: active = ink-strong + subtle bg neutral.
+   Sem accent veil/border ostentoso. Estado é estado, não call-to-action. */
 .atlas-ai-filter-tab.is-active {
-  background: var(--cc-accent-veil);
-  border-color: var(--cc-accent-border);
-  color: var(--cc-accent-strong);
+  background: rgba(233, 238, 242, 0.06);
+  border-color: transparent;
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 580;
 }
 
+/* Refresh button · ghost icon-only (sem border), Linear/Raycast style.
+   Gira no loading via animation. */
 .atlas-ai-refresh {
   margin-left: auto;
   background: transparent;
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 5px;
-  width: 26px;
+  border: none;
+  border-radius: 4px;
+  width: 22px;
   height: 22px;
-  font-family: var(--cc-font-sans);
-  font-size: 12px;
-  color: var(--cc-text-muted);
+  color: var(--cc-text-faint);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 200ms, border-color 200ms;
+  transition: color 180ms var(--cc-ease-out), background 180ms var(--cc-ease-out);
 }
 
-.atlas-ai-refresh:hover { color: var(--cc-text-strong); border-color: var(--cc-border); }
-.atlas-ai-refresh:disabled { opacity: 0.5; cursor: progress; }
+.atlas-ai-refresh:hover {
+  color: var(--cc-text-strong);
+  background: rgba(233, 238, 242, 0.05);
+}
+.atlas-ai-refresh:disabled { opacity: 0.55; cursor: progress; }
+.atlas-ai-refresh.is-loading svg {
+  animation: atlas-ai-refresh-spin 800ms linear infinite;
+}
+@keyframes atlas-ai-refresh-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-refresh.is-loading svg { animation: none; }
+}
 
 .atlas-ai-thread-list {
   list-style: none;
@@ -465,20 +518,21 @@
 
 .atlas-ai-thread-item { border: none; }
 
+/* Thread item · Linear density (Agent C: 10→7px padding tight). */
 .atlas-ai-thread-button {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+  gap: 3px;
   width: 100%;
-  padding: 10px 10px;
+  padding: 7px 10px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
   text-align: left;
   font-family: var(--cc-font-sans);
   color: inherit;
-  transition: background 200ms var(--cc-ease-out), border-color 200ms var(--cc-ease-out);
+  transition: background 180ms var(--cc-ease-out);
 }
 
 .atlas-ai-thread-button:hover {
@@ -486,9 +540,20 @@
   border-color: var(--cc-border-soft);
 }
 
+/* Selected · Linear/Slack/Mercury school: 3 signals simultâneos.
+   Stripe esquerda 2px gold + bg sutil + title weight 580 + time accent. */
 .atlas-ai-thread-item.is-selected .atlas-ai-thread-button {
-  background: var(--cc-accent-veil);
-  border-color: var(--cc-accent-border);
+  background: rgba(233, 238, 242, 0.04);
+  border-color: transparent;
+  box-shadow: inset 2px 0 0 var(--cc-accent);
+}
+.atlas-ai-thread-item.is-selected .atlas-ai-thread-title {
+  font-variation-settings: 'wght' 580;
+  color: var(--cc-text-strong);
+}
+.atlas-ai-thread-item.is-selected .atlas-ai-thread-time {
+  color: var(--cc-accent);
+  opacity: 0.85;
 }
 
 .atlas-ai-thread-row {
@@ -498,23 +563,27 @@
   min-width: 0;
 }
 
+/* Mode badge · Apple HIG (no shouty pill, quiet dot+label).
+   Background sutil único, cor via stripe esquerda 2px (Warp school). */
 .atlas-ai-thread-mode {
   font-family: var(--cc-font-sans);
   font-size: 9.5px;
-  font-variation-settings: 'wght' 580;
+  font-variation-settings: 'wght' 540;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 2px 6px;
+  padding: 2px 7px 2px 8px;
   border-radius: 3px;
-  background: var(--cc-surface-sunken);
-  color: var(--cc-text-muted);
+  background: transparent;
+  color: var(--cc-text-faint);
   flex-shrink: 0;
   line-height: 1;
+  position: relative;
+  border-left: 2px solid var(--cc-border);
 }
 
-.atlas-ai-thread-mode.mode-programming { background: var(--cc-accent-veil); color: var(--cc-accent-strong); }
-.atlas-ai-thread-mode.mode-operational { background: var(--cc-info-veil); color: var(--cc-info-fg); }
-.atlas-ai-thread-mode.mode-general { background: var(--cc-neutral-veil); color: var(--cc-neutral-fg); }
+.atlas-ai-thread-mode.mode-programming { border-left-color: rgba(212, 168, 90, 0.55); color: var(--cc-text-muted); }
+.atlas-ai-thread-mode.mode-operational { border-left-color: rgba(127, 167, 196, 0.55); color: var(--cc-text-muted); }
+.atlas-ai-thread-mode.mode-general { border-left-color: rgba(149, 163, 172, 0.45); color: var(--cc-text-faint); }
 
 .atlas-ai-thread-title {
   font-size: 13px;
@@ -529,11 +598,12 @@
 }
 
 .atlas-ai-thread-time {
-  font-family: var(--cc-font-sans);
-  font-size: 11px;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
   color: var(--cc-text-faint);
   flex-shrink: 0;
   font-variation-settings: 'wght' 440;
+  font-variant-numeric: tabular-nums;
 }
 
 .atlas-ai-thread-preview {
@@ -627,11 +697,14 @@
 
 /* ===== CONVERSATION ===== */
 
+/* Conversation · CHROMELESS (Agent A top fix, biggest amateur signal).
+   Era card-em-card flutuando sobre canvas gradient — Stripe Press / NYT
+   nunca embox conversa de leitura. Drop bg + border + radius + 3 shadows. */
 .atlas-ai-conversation {
-  background: var(--cc-surface);
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 9px;
-  padding: 18px 22px 18px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 22px 18px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -640,34 +713,51 @@
   width: 100%;
   margin-inline: auto;
   flex: 1;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 1px 0 rgba(0, 0, 0, 0.20),
-    0 18px 40px rgba(5, 12, 18, 0.20);
+  box-shadow: none;
 }
 
+/* Apple Books spirit · divider hairline com gradient fade nas pontas,
+   integra o header ao corpo da mensagem sem cortar bruscamente. */
 .atlas-ai-conversation-header {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--cc-border-soft);
-  margin-bottom: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: none;
+  position: relative;
+}
+.atlas-ai-conversation-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(233, 238, 242, 0.08) 12%,
+    rgba(233, 238, 242, 0.08) 88%,
+    transparent 100%);
 }
 
 .atlas-ai-conversation-header > div:first-child { min-width: 0; flex: 1; }
 
+/* Apple Books / NYT Magazine title: peso médio Inter, tracking negative,
+   font-features ss01 + cv11 (single-storey a) pra cleaner geometry. */
 .atlas-ai-conversation-header h2 {
   font-family: var(--cc-font-sans);
   font-variation-settings: 'wght' 580;
   font-style: normal;
-  font-size: 16px;
+  font-size: 17px;
   margin: 0;
   color: var(--cc-text-strong);
-  letter-spacing: -0.005em;
+  letter-spacing: -0.011em;
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-feature-settings: 'ss01' 1, 'cv11' 1, 'kern' 1, 'liga' 1;
 }
 
 .atlas-ai-conversation-actions {
@@ -677,15 +767,47 @@
   flex-shrink: 0;
 }
 
+/* Meta line · hierarquia tipográfica entre segmentos.
+   - mode (programming/general): caps eyebrow opacity 0.85
+   - workspace (basename): peso 460 ink-muted
+   - provider: mono compacto
+   - count: tabular nums
+   Separadores `·` muito leves para não competir visualmente. */
 .atlas-ai-conversation-meta {
-  margin: 4px 0 0;
+  margin: 5px 0 0;
   font-family: var(--cc-font-sans);
   font-size: 11.5px;
   color: var(--cc-text-faint);
   display: flex;
-  gap: 6px;
+  align-items: baseline;
+  gap: 0;
   flex-wrap: wrap;
   font-variation-settings: 'wght' 440;
+}
+.atlas-ai-conversation-meta-sep {
+  color: var(--cc-text-disabled);
+  margin: 0 6px;
+  opacity: 0.7;
+}
+.atlas-ai-conversation-meta-mode {
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  color: var(--cc-text-muted);
+  font-variation-settings: 'wght' 500;
+}
+.atlas-ai-conversation-meta-workspace {
+  color: var(--cc-text-muted);
+  font-variation-settings: 'wght' 460;
+}
+.atlas-ai-conversation-meta-provider {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+  letter-spacing: 0;
+}
+.atlas-ai-conversation-meta-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-text-faint);
 }
 
 .atlas-ai-messages {
@@ -707,8 +829,14 @@
   position: relative;
 }
 
+/* User bubble · barra mais robusta + texto Inter peso 460 (legível mas
+   distinto da resposta Atlas que carrega prosa editorial). */
 .atlas-ai-message.tone-operator {
-  border-left: 2px solid rgba(212, 168, 90, 0.48);
+  border-left: 3px solid rgba(212, 168, 90, 0.55);
+}
+.atlas-ai-message.tone-operator .atlas-ai-message-body {
+  font-variation-settings: 'wght' 460;
+  color: var(--cc-text-strong);
 }
 
 .atlas-ai-message.tone-atlas {
@@ -722,21 +850,25 @@
   margin-bottom: 6px;
 }
 
+/* Role label · Apple HIG eyebrow ("Caption 2" canon).
+   Caps tracking 0.06em, weight 600, ink-faint cinza tertiary.
+   Cor de tom (info/gold) reservada para sutil distinção em hover. */
 .atlas-ai-message-role {
   font-family: var(--cc-font-sans);
-  font-size: 11px;
-  font-variation-settings: 'wght' 620;
+  font-size: 10.5px;
+  font-variation-settings: 'wght' 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--cc-text-muted);
+  letter-spacing: 0.06em;
+  color: var(--cc-text-faint);
+  font-feature-settings: 'ss01' 1, 'cv11' 1;
 }
 
-.atlas-ai-message.tone-atlas .atlas-ai-message-role {
-  color: var(--cc-info);
-}
-
+/* Apple HIG: role labels não precisam de cor distintiva.
+   A barra esquerda gold (operator) vs azul (atlas) já comunica.
+   Caps ink-faint constante deixa hierarquia limpa. */
+.atlas-ai-message.tone-atlas .atlas-ai-message-role,
 .atlas-ai-message.tone-operator .atlas-ai-message-role {
-  color: var(--cc-accent);
+  color: var(--cc-text-faint);
 }
 
 .atlas-ai-message-meta {
@@ -750,11 +882,20 @@
   margin-bottom: 8px;
 }
 
+/* Body editorial · Apple Books / NYT digital ratios.
+   14.5px @ 1.62 line-height = compact-but-readable, peso 440.
+   font-features Inter polish: cv11 (single-storey a), ss01, kern on. */
 .atlas-ai-message-body,
 .atlas-ai-message .atlas-ai-md {
   font-size: 14.5px;
-  line-height: 1.7;
+  line-height: 1.62;
+  font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1, 'tnum' 0;
 }
+
+/* Drop cap REMOVIDO · em respostas técnicas curtas, primeira letra italic
+   gold cria leitura tropeçada — parece typo/glitch em vez de editorial.
+   NYT/Apple Books só usam drop cap em abertura de artigos longos com
+   transição claramente decorativa. Aqui o body já carrega hierarquia. */
 
 /* Reactions row (Codex/Claude.ai grade) */
 .atlas-ai-msg-actions {
@@ -823,15 +964,42 @@
   border-left-color: var(--cc-accent, #d4a85a);
   animation: atlas-ai-optimistic-pulse 1.6s ease-in-out infinite;
 }
+/* "enviando agora…" · Apple Notes / Loading skeleton school.
+   Sweep gradient horizontal sutil percorre o texto a cada 2.4s — comunica
+   "vivo" sem o pulse-opacity tipo discord 2014. Background-clip text +
+   keyframes background-position. Funciona porque o texto serif italic gold
+   já tem peso visual baixo — o sweep adiciona movimento sem gritar. */
 .atlas-ai-message-optimistic .atlas-ai-message-meta {
-  color: var(--cc-accent, #d4a85a);
   font-style: italic;
-  /* Shimmer suave: opacity pulsa pra deixar claro que está em curso. */
-  animation: atlas-ai-optimistic-meta-shimmer 1.4s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    rgba(212, 168, 90, 0.55) 0%,
+    rgba(212, 168, 90, 0.55) 35%,
+    rgba(240, 200, 110, 1) 50%,
+    rgba(212, 168, 90, 0.55) 65%,
+    rgba(212, 168, 90, 0.55) 100%
+  );
+  background-size: 220% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: atlas-ai-meta-sweep 2.4s ease-in-out infinite;
 }
-@keyframes atlas-ai-optimistic-meta-shimmer {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
+@keyframes atlas-ai-meta-sweep {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -120% 0; }
+}
+/* Reduced-motion users veem cor sólida (sem sweep). */
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-message-optimistic .atlas-ai-message-meta {
+    animation: none;
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: var(--cc-accent);
+    opacity: 0.78;
+  }
 }
 /* Bolha otimista usa MESMA tipografia das mensagens reais do usuário
    (sans Inter weight 440), não serif. Serif é reservado para resposta da IA. */
@@ -1072,6 +1240,45 @@
   letter-spacing: 0.1em;
   color: var(--cc-accent);
   margin: 0;
+}
+
+/* Greeting · serif italic Cormorant editorial (Apple Home, Mercury hero).
+   "boa madrugada / bom dia / boa tarde / boa noite" por hora local. */
+.atlas-ai-hero-greeting {
+  font-family: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
+  font-style: italic;
+  font-variation-settings: 'wght' 460;
+  font-size: 22px;
+  color: var(--cc-accent);
+  margin: 0 0 -4px;
+  letter-spacing: -0.01em;
+  opacity: 0.92;
+}
+.atlas-ai-hero-hint {
+  margin: 0;
+  color: var(--cc-text-muted);
+  max-width: 56ch;
+  font-size: 14px;
+  line-height: 1.6;
+  font-variation-settings: 'wght' 440;
+}
+.atlas-ai-hero-context {
+  margin: 4px 0 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  color: var(--cc-text-faint);
+  font-variation-settings: 'wght' 440;
+  font-variant-numeric: tabular-nums;
+}
+.atlas-ai-hero-context-name {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  letter-spacing: 0;
+}
+.atlas-ai-hero-context-count {
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 540;
 }
 
 .atlas-ai-hero h2 {
@@ -1802,10 +2009,23 @@
   color: var(--cc-text-strong);
 }
 
+/* Caret SVG · rotação CSS para expandir/colapsar (sem unicode inconsistente).
+   Default = expanded (rotacionado 90deg). is-collapsed = rotação 0. */
 .atlas-ai-folder-caret {
-  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--cc-text-faint);
-  line-height: 1;
+  width: 12px;
+  height: 12px;
+  transition: transform 180ms var(--cc-ease-out);
+  transform: rotate(90deg);
+}
+.atlas-ai-folder-caret.is-collapsed {
+  transform: rotate(0deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-folder-caret { transition: none; }
 }
 
 .atlas-ai-folder-icon {
@@ -1826,33 +2046,41 @@
   white-space: nowrap;
 }
 
+/* Folder count · subtle badge veil (Agent C fix). Tabular alignment. */
 .atlas-ai-folder-count {
   font-family: var(--cc-font-mono);
   font-size: 10.5px;
-  color: var(--cc-text-faint);
+  color: var(--cc-text-muted);
   letter-spacing: 0;
+  background: rgba(233, 238, 242, 0.04);
+  padding: 1px 6px;
+  border-radius: 3px;
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Mostrar mais — link discreto */
+/* Mostrar mais · italic serif quiet (Linear / Notion school).
+   Drop hover-bg accent-veil. Single color shift on hover. */
 .atlas-ai-show-more {
   display: inline-block;
   background: transparent;
   border: none;
-  margin: 2px 0 6px 22px;
-  padding: 4px 6px;
-  font-family: var(--cc-font-sans);
+  margin: 2px 0 8px 22px;
+  padding: 4px 0;
+  font-family: var(--cc-font-serif);
+  font-style: italic;
   font-size: 11.5px;
-  font-variation-settings: 'wght' 500;
   color: var(--cc-text-faint);
   cursor: pointer;
   letter-spacing: 0;
-  border-radius: 4px;
-  transition: color 160ms var(--cc-ease-out), background 160ms var(--cc-ease-out);
+  border-radius: 0;
+  transition: color 160ms var(--cc-ease-out);
 }
 
 .atlas-ai-show-more:hover {
-  color: var(--cc-accent);
-  background: rgba(212, 168, 90, 0.06);
+  color: var(--cc-text-strong);
+  background: transparent;
 }
 
 /* Thread item DENTRO de folder ganha leve indentação */
@@ -1860,10 +2088,15 @@
   padding-left: 26px;
 }
 
-/* Pin emoji menor inline */
+/* Pin · SVG estrela 5-pontas gold sutil (Apple HIG: no system emoji in premium UI). */
 .atlas-ai-thread-pin {
-  font-size: 10px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  color: var(--cc-accent);
+  opacity: 0.78;
   flex-shrink: 0;
 }
 
@@ -1919,9 +2152,10 @@
   letter-spacing: 0;
 }
 
-/* Headings editorial · peso forte, respiração antes, hairline opcional abaixo */
+/* Headings editorial · respiração premium (Stripe Press / Pentagram scale).
+   Margins generosos pra ancorar o olho, ::first-child sem margin-top. */
 .atlas-ai-md-h1 {
-  margin: 22px 0 6px;
+  margin: 32px 0 8px;
   font-family: var(--cc-font-sans);
   font-size: 19px;
   font-variation-settings: 'wght' 680;
@@ -1932,7 +2166,7 @@
 }
 
 .atlas-ai-md-h2 {
-  margin: 20px 0 6px;
+  margin: 28px 0 8px;
   font-family: var(--cc-font-sans);
   font-size: 16.5px;
   font-variation-settings: 'wght' 640;
@@ -1941,18 +2175,26 @@
   line-height: 1.3;
 }
 
-/* H3 vira label editorial (uppercase pequeno, accent gold) — igual mobile
-   "CONCEITO DO VÍDEO" / "EQUIVALENTE ATLAS" / "Implicações para o Atlas" */
+/* Primeiro heading dentro do bubble não precisa de margin-top topo. */
+.atlas-ai-md > :first-child,
+.atlas-ai-message-body > :first-child { margin-top: 0; }
+
+/* H3 · editorial premium (Apple Books / NYT digital school).
+   Title-case, NÃO uppercase. Peso médio, ink-strong (não gold).
+   Letter-spacing zero. Atlas gold reservado para accent real, não label. */
 .atlas-ai-md-h3 {
-  margin: 18px 0 4px;
+  margin: 24px 0 6px;
   font-family: var(--cc-font-sans);
-  font-size: 11px;
-  font-variation-settings: 'wght' 620;
-  color: var(--cc-accent-strong);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1.4;
+  font-size: 13.5px;
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-text-strong);
+  letter-spacing: -0.005em;
+  line-height: 1.35;
 }
+/* Drop cap H3 ::first-letter REMOVIDO · era ESTE o pintor das letras
+   "E"stado / "S"uperfícies / "C"amadas / "O" Forge em italic gold que
+   o usuário reclamou — não NYT-Magazine vibe, vira typo/glitch em
+   resposta técnica. H3 sólido title-case ink-strong basta. */
 
 .atlas-ai-md-ul,
 .atlas-ai-md-ol {
@@ -1974,16 +2216,17 @@
   font-variation-settings: 'wght' 440;
 }
 
-/* Bullet customizado tipo "·" gold (mobile parity) */
+/* Bullet · proporcional ao corpo (Apple HIG: glyph nunca pesa mais que texto). */
 .atlas-ai-md-ul li::before {
   content: '·';
   position: absolute;
   left: 8px;
-  top: 0;
-  font-size: 22px;
-  line-height: 1.4;
+  top: 1px;
+  font-size: 14px;
+  line-height: 1.7;
   color: var(--cc-accent);
   font-variation-settings: 'wght' 700;
+  opacity: 0.85;
 }
 
 .atlas-ai-md-ol {
@@ -2006,17 +2249,21 @@
   line-height: 1.7;
 }
 
+/* Blockquote · editorial pull-quote (NYT/Stripe Press school).
+   Drop o callout SO/Bootstrap (gold veil + gold border + radius).
+   Use hairline neutra + serif italic respirável. */
 .atlas-ai-md-quote {
-  margin: 0;
-  padding: 8px 14px;
-  border-left: 2px solid var(--cc-accent-border);
-  background: rgba(212, 168, 90, 0.04);
-  border-radius: 0 4px 4px 0;
-  color: var(--cc-text-muted);
+  margin: 18px 0;
+  padding: 4px 0 4px 18px;
+  border-left: 2px solid var(--cc-border);
+  background: transparent;
+  border-radius: 0;
+  color: var(--cc-text);
   font-style: italic;
   font-family: var(--cc-font-serif);
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.55;
+  max-width: 62ch;
 }
 
 .atlas-ai-md-rule {
@@ -2055,23 +2302,26 @@
   );
 }
 
+/* ✦ rule mark · NYT Magazine section break. Apple Books gradient fade
+   nas duas linhas + diamond gold com text-shadow sutil para profundidade. */
 .atlas-ai-md-rule-mark {
   font-family: var(--cc-font-serif);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--cc-accent);
   line-height: 1;
   letter-spacing: 0;
-  opacity: 0.85;
+  opacity: 0.9;
+  text-shadow: 0 0 8px rgba(212, 168, 90, 0.22);
+  font-feature-settings: 'liga' 1;
 }
 
-/* ===== TABELA premium · mobile parity adaptada pra dark ===== */
+/* ===== TABELA · enterprise editorial (Linear / Stripe / Mercury school) =====
+   Drop o boxed wrap + drop o yellow uppercase header. Use hairlines only,
+   ink discipline, density tight, headers title-case quiet. */
 .atlas-ai-md-table-wrap {
-  margin: 14px 0;
+  margin: 18px 0;
   overflow-x: auto;
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  /* sem border externa nem background — a tabela vive no flow do texto. */
 }
 
 .atlas-ai-md-table {
@@ -2079,29 +2329,47 @@
   border-collapse: collapse;
   font-family: var(--cc-font-sans);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--cc-text);
 }
 
 .atlas-ai-md-table thead th {
-  padding: 9px 14px;
+  padding: 4px 16px 8px 0;
   text-align: left;
-  font-size: 10.5px;
-  font-variation-settings: 'wght' 620;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--cc-accent-strong);
-  border-bottom: 1px solid var(--cc-accent-border);
-  background: rgba(212, 168, 90, 0.04);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 550;
+  color: var(--cc-text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  border-bottom: 1px solid var(--cc-border);
   vertical-align: bottom;
+  font-feature-settings: 'cv11' 1, 'ss03' 1;
+}
+
+.atlas-ai-md-table thead th:last-child {
+  padding-right: 0;
 }
 
 .atlas-ai-md-table tbody td {
-  padding: 10px 14px;
+  padding: 11px 16px 11px 0;
   vertical-align: top;
-  border-bottom: 1px solid var(--cc-border-soft);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   font-variation-settings: 'wght' 440;
   color: var(--cc-text);
+  font-size: 13px;
+}
+
+.atlas-ai-md-table tbody td:last-child {
+  padding-right: 0;
+}
+
+/* Primeira coluna = rótulo · peso 540 + text-strong = ancoragem visual.
+   Linear/Stripe school: tabela editorial tem hierarquia entre rótulo e dado. */
+.atlas-ai-md-table tbody td:first-child {
+  font-variation-settings: 'wght' 540;
+  color: var(--cc-text-strong);
+  width: 24%;
+  min-width: 180px;
 }
 
 .atlas-ai-md-table tbody tr:last-child td {
@@ -2109,18 +2377,19 @@
 }
 
 .atlas-ai-md-table tbody tr:hover td {
-  background: rgba(212, 168, 90, 0.025);
+  background: rgba(233, 238, 242, 0.018);
 }
 
 .atlas-ai-md-table code {
   font-family: var(--cc-font-mono);
   font-size: 11.5px;
-  background: var(--cc-accent-veil);
-  border: 1px solid var(--cc-accent-border);
+  background: rgba(233, 238, 242, 0.045);
+  border: 1px solid rgba(233, 238, 242, 0.07);
   padding: 1px 6px;
   border-radius: 3px;
-  color: var(--cc-accent-strong);
+  color: var(--cc-text-strong);
   white-space: nowrap;
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
 }
 
 .atlas-ai-md-table strong {
@@ -2128,14 +2397,19 @@
   color: var(--cc-text-strong);
 }
 
+/* Inline code · enterprise polish (Linear / Mercury / Stripe school).
+   Slate-raised quiet, ink-strong text, hairline. Sem gold-on-gold Bootstrap. */
 .atlas-ai-md-code {
   font-family: var(--cc-font-mono);
-  font-size: 12.5px;
-  background: rgba(212, 168, 90, 0.08);
-  color: var(--cc-accent-strong);
-  padding: 1.5px 5px;
+  font-size: 12px;
+  background: rgba(233, 238, 242, 0.045);
+  color: var(--cc-text-strong);
+  padding: 1px 6px;
   border-radius: 3px;
-  border: 1px solid rgba(212, 168, 90, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.07);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .atlas-ai-md-link {
@@ -2153,51 +2427,68 @@
 .atlas-ai-md-strong { font-variation-settings: 'wght' 620; color: var(--cc-text-strong); }
 .atlas-ai-md-em { font-style: italic; color: var(--cc-text-strong); }
 
-/* ===== CODE BLOCKS (Shiki + copy) ===== */
-
+/* ===== CODE BLOCKS · Linear/Stripe school =====
+   Slate sunken + radius 6 (Linear discipline 2/4/6). Header hairline, sem
+   bg distinct. Lang label title-case mono pequeno. Copy ghost discreto. */
 .atlas-ai-md-codeblock {
   background: #15212a;
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 7px;
+  border: 1px solid rgba(233, 238, 242, 0.05);
+  border-radius: 6px;
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  margin: 14px 0;
 }
 
+/* Codex-school: header divider invisible · text-only separation pelo padding.
+   Sem hairline cortando o block — tipografia carrega. */
 .atlas-ai-md-codeblock-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px 6px 14px;
-  background: rgba(0, 0, 0, 0.22);
-  border-bottom: 1px solid var(--cc-border-soft);
+  padding: 8px 10px 6px 14px;
+  background: transparent;
+  border-bottom: none;
 }
 
 .atlas-ai-md-codeblock-lang {
   font-family: var(--cc-font-mono);
   font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  letter-spacing: 0;
   color: var(--cc-text-faint);
   font-variation-settings: 'wght' 500;
 }
 
+/* Copy button · Codex CLI school: SVG icon only, sem border, sem label,
+   hover muda só a cor. Mais profissional, menos "form button". */
 .atlas-ai-md-codeblock-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   background: transparent;
-  border: 1px solid var(--cc-border-soft);
+  border: none;
   border-radius: 4px;
-  padding: 2px 8px;
-  font-family: var(--cc-font-sans);
-  font-size: 11px;
-  font-variation-settings: 'wght' 520;
-  color: var(--cc-text-muted);
+  padding: 0;
+  color: var(--cc-text-faint);
   cursor: pointer;
-  transition: color 200ms, border-color 200ms, background 200ms;
+  transition: color 180ms var(--cc-ease-out), background 180ms var(--cc-ease-out);
 }
 
+/* Codex-school: hover muda APENAS stroke color, sem pintar background. */
 .atlas-ai-md-codeblock-copy:hover {
+  color: var(--cc-text-strong);
+  background: transparent;
+}
+
+.atlas-ai-md-codeblock-copy.is-copied {
   color: var(--cc-accent);
-  border-color: var(--cc-accent-border);
-  background: var(--cc-accent-veil);
+}
+
+.atlas-ai-md-codeblock-copy:focus-visible {
+  outline: none;
+  background: rgba(233, 238, 242, 0.05);
+  box-shadow: 0 0 0 1px rgba(212, 168, 90, 0.45);
 }
 
 .atlas-ai-md-codeblock-body pre,
@@ -2268,14 +2559,13 @@
 
 /* ===== SIDE PANEL (Contexto ↔ Plano tabs) ===== */
 
+/* Side panel · Apple HIG minimal (sem caixa pesada).
+   Drop o triple-shadow stack — só hairline + inset highlight. */
 .atlas-ai-side {
-  background: var(--cc-surface);
-  border: 1px solid var(--cc-border-soft);
-  border-radius: 8px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 1px 0 rgba(0, 0, 0, 0.22),
-    0 18px 40px rgba(5, 12, 18, 0.18);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2283,41 +2573,43 @@
   flex: 1;
 }
 
+/* Tabs Linear-school · sublinhado vivo, sem pílulas, sem bg sunken. */
 .atlas-ai-side-tabs {
   display: flex;
-  gap: 2px;
-  padding: 6px;
-  background: var(--cc-surface-sunken);
-  border-bottom: 1px solid var(--cc-border-soft);
+  gap: 18px;
+  padding: 4px 18px 0;
+  background: transparent;
+  border-bottom: 1px solid rgba(233, 238, 242, 0.04);
 }
 
 .atlas-ai-side-tab {
-  flex: 1;
+  flex: 0 0 auto;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
+  border-radius: 0;
+  padding: 10px 0 11px;
   font-family: var(--cc-font-sans);
-  font-size: 12.5px;
-  font-variation-settings: 'wght' 540;
-  color: var(--cc-text-muted);
+  font-size: 12px;
+  font-variation-settings: 'wght' 520;
+  color: var(--cc-text-faint);
   cursor: pointer;
-  transition: color 200ms, background 200ms, box-shadow 200ms;
+  transition: color 180ms var(--cc-ease-out), border-color 180ms var(--cc-ease-out);
   letter-spacing: 0;
+  border-bottom: 1px solid transparent;
+  position: relative;
+  top: 1px;
 }
 
 .atlas-ai-side-tab:hover:not(.is-active) {
-  color: var(--cc-text-strong);
-  background: rgba(233, 238, 242, 0.04);
+  color: var(--cc-text-muted);
 }
 
 .atlas-ai-side-tab.is-active {
-  background: var(--cc-surface-raised);
   color: var(--cc-text-strong);
-  font-variation-settings: 'wght' 600;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 1px 0 rgba(0, 0, 0, 0.18);
+  font-variation-settings: 'wght' 580;
+  border-bottom-color: var(--cc-accent);
+  background: transparent;
+  box-shadow: none;
 }
 
 .atlas-ai-side-body {
@@ -2348,17 +2640,19 @@
   min-height: 0;
 }
 
+/* Empty state · drop dashed border anti-pattern (Bootstrap admin 2014).
+   Italic serif flutuando no flow respira melhor — sem caixa. */
 .atlas-ai-plan-empty {
   margin: 0;
-  padding: 14px 16px;
-  border: 1px dashed var(--cc-border-soft);
-  border-radius: 7px;
-  background: rgba(212, 168, 90, 0.03);
+  padding: 4px 0;
+  border: none;
+  background: transparent;
   color: var(--cc-text-muted);
   font-family: var(--cc-font-serif);
   font-style: italic;
   font-size: 13px;
   line-height: 1.55;
+  max-width: 38ch;
 }
 
 .atlas-ai-plan-stack {
@@ -2790,29 +3084,24 @@
 
 /* ===== COMPOSER V2 (Claude.ai / Codex grade · minimal premium) ===== */
 
+/* Composer · plate plana (Agent A + D top fix).
+   Drop radius 14 + gradient + 4-shadow stack — era "objeto flutuante".
+   Plate sutil sobre superfície, raise apenas focus-within. */
 .atlas-ai-composer.atlas-ai-composer-v2 {
   padding: 14px 18px 12px;
   gap: 10px;
-  background:
-    linear-gradient(180deg, rgba(45, 67, 81, 0.42) 0%, rgba(36, 55, 67, 0.62) 100%),
-    var(--cc-surface);
-  border: 1px solid rgba(233, 238, 242, 0.10);
-  border-radius: 14px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 -1px 0 rgba(0, 0, 0, 0.22),
-    0 -10px 28px rgba(5, 12, 18, 0.28),
-    0 18px 40px rgba(5, 12, 18, 0.18);
+  background: var(--cc-surface);
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: border-color 180ms var(--cc-ease-out), box-shadow 180ms var(--cc-ease-out);
 }
 
 .atlas-ai-composer-v2:focus-within {
   border-color: rgba(212, 168, 90, 0.32);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 -1px 0 rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(212, 168, 90, 0.18),
-    0 -10px 28px rgba(5, 12, 18, 0.28),
-    0 18px 40px rgba(5, 12, 18, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(212, 168, 90, 0.18);
 }
 
 .atlas-ai-composer-v2 .atlas-ai-textarea-v2 {
@@ -2905,71 +3194,66 @@
   box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.22);
 }
 
-/* Counter / token meta */
+/* Counter / token meta · tabular-nums + ink-faint discipline.
+   "att-count" não é primary, drop accent (Linear school: counter neutro). */
 .atlas-ai-composer-counter {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
   font-family: var(--cc-font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--cc-text-faint);
   font-variation-settings: 'wght' 440;
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .atlas-ai-composer-att-count {
-  color: var(--cc-accent-strong);
-  font-variation-settings: 'wght' 540;
+  color: var(--cc-text-muted);
+  font-variation-settings: 'wght' 500;
 }
 
 .atlas-ai-composer-tokens {
   color: var(--cc-text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .atlas-ai-composer-counter-busy {
-  color: var(--cc-info);
+  color: var(--cc-accent);
   font-style: italic;
   font-family: var(--cc-font-serif);
   font-size: 12.5px;
+  opacity: 0.82;
 }
 
-/* Send button — Apple Pro premium gold pill */
+/* Send button · FLAT filled (Codex Slate Premium canon, Linear school).
+   Drop gradient + transform translateY hover + 3-shadow stack (Stripe 2019 vibe).
+   Mantém peso silencioso: filled accent, inset 1px highlight, sem teatro. */
 .atlas-ai-send-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent) 100%);
+  background: var(--cc-accent);
   color: #15212a;
-  border: 1px solid var(--cc-accent-strong);
-  border-radius: 8px;
+  border: none;
+  border-radius: 6px;
   padding: 7px 14px 7px 16px;
   font-family: var(--cc-font-sans);
   font-size: 13px;
   font-variation-settings: 'wght' 620;
   letter-spacing: 0;
   cursor: pointer;
-  transition: all 180ms var(--cc-ease-out);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.20),
-    0 1px 0 rgba(0, 0, 0, 0.30),
-    0 6px 16px rgba(212, 168, 90, 0.22);
+  transition: background 180ms var(--cc-ease-out);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .atlas-ai-send-btn:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--cc-accent) 0%, var(--cc-accent-strong) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 1px 0 rgba(0, 0, 0, 0.30),
-    0 10px 24px rgba(212, 168, 90, 0.32);
-  transform: translateY(-0.5px);
+  background: var(--cc-accent-strong);
 }
 
 .atlas-ai-send-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.15),
-    0 1px 0 rgba(0, 0, 0, 0.30),
-    0 4px 10px rgba(212, 168, 90, 0.18);
+  background: var(--cc-accent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 .atlas-ai-send-btn:disabled {
@@ -3165,17 +3449,17 @@
   position: relative;
 }
 
+/* Slash menu · Raycast/Linear cmd-K school. Single hairline border,
+   single drop shadow (não stack), hover sutil sem accent-veil shouty. */
 .atlas-ai-slash-menu {
   position: absolute;
   bottom: calc(100% + 6px);
   left: 0;
   right: 0;
   background: var(--cc-surface-raised);
-  border: 1px solid var(--cc-border);
+  border: 1px solid rgba(233, 238, 242, 0.08);
   border-radius: 8px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 18px 40px rgba(0, 0, 0, 0.42);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
   z-index: 20;
   overflow: hidden;
   max-height: 240px;
@@ -3186,12 +3470,12 @@
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
   padding: 8px 14px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--cc-border-soft);
+  border-bottom: 1px solid rgba(233, 238, 242, 0.04);
   text-align: left;
   cursor: pointer;
   font-family: var(--cc-font-sans);
@@ -3200,13 +3484,13 @@
 }
 
 .atlas-ai-slash-item:last-child { border-bottom: none; }
-.atlas-ai-slash-item:hover { background: var(--cc-accent-veil); }
+.atlas-ai-slash-item:hover { background: rgba(233, 238, 242, 0.035); }
 
 .atlas-ai-slash-cmd {
   font-family: var(--cc-font-mono);
   font-size: 12px;
-  font-variation-settings: 'wght' 600;
-  color: var(--cc-accent-strong);
+  font-variation-settings: 'wght' 540;
+  color: var(--cc-accent);
 }
 
 .atlas-ai-slash-label {
@@ -3635,15 +3919,67 @@
    Substitui chips/pills/box redesigns por linhas italic serif quiet,
    sem cor semafórica, sem `+` button, peso decrescente. */
 
-/* Streaming bubble · minimal box, só ThinkingState + (opcional) LiveActivity */
+/* Streaming top row · ThinkingState + cancel button alinhados.
+   Cancel discreto, ink-faint, hover muda só cor (sem bg). */
+.atlas-ai-streaming-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.atlas-ai-streaming-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 3px 9px 3px 8px;
+  color: var(--cc-text-faint);
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  font-variation-settings: 'wght' 500;
+  letter-spacing: 0;
+  cursor: pointer;
+  font-style: italic;
+  transition: color 160ms var(--cc-ease-out), border-color 160ms var(--cc-ease-out);
+}
+.atlas-ai-streaming-cancel:hover {
+  color: var(--cc-text-strong);
+  border-color: rgba(233, 238, 242, 0.10);
+}
+.atlas-ai-streaming-cancel svg {
+  opacity: 0.85;
+}
+
+/* Streaming bubble · Apple HIG silent. Hairline gold com glow Mercury sutil
+   à esquerda — comunica "vivo" sem caixa decorativa. */
 .atlas-ai-message-streaming-quiet {
   background: transparent !important;
   border: none !important;
   border-left: 2px solid rgba(212, 168, 90, 0.55) !important;
   border-radius: 0 !important;
-  padding: 4px 0 4px 14px !important;
-  box-shadow: none !important;
+  padding: 4px 0 4px 16px !important;
+  box-shadow: -1px 0 12px -4px rgba(212, 168, 90, 0.18) !important;
   margin: 8px 0 16px !important;
+  position: relative;
+}
+/* Glow Mercury · 8px subtle bleed na barra esquerda. */
+.atlas-ai-message-streaming-quiet::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: linear-gradient(180deg,
+    rgba(212, 168, 90, 0) 0%,
+    rgba(212, 168, 90, 0.75) 50%,
+    rgba(212, 168, 90, 0) 100%);
+  filter: blur(2px);
+  opacity: 0.7;
+  pointer-events: none;
 }
 .atlas-ai-message-streaming-quiet .atlas-ai-thinking-state {
   padding: 2px 0;
@@ -3799,10 +4135,27 @@
    PHASE 2 · INNOVATION LAYER (Calmaria + Confidence + Reasoning Drawer)
    ===================================================================== */
 
-/* ---------- Calmaria global toggle ---------- */
+/* ---------- Calmaria global toggle (SVG glyph) ---------- */
+.atlas-ai-calmaria-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.atlas-ai-calmaria-glyph {
+  color: var(--cc-text-faint);
+  transition: color 200ms var(--cc-ease-out);
+}
+.atlas-ai-calmaria-toggle:hover .atlas-ai-calmaria-glyph,
+.atlas-ai-calmaria-toggle.is-active .atlas-ai-calmaria-glyph {
+  color: var(--cc-accent);
+}
 .atlas-ai-calmaria-toggle.is-active {
   color: var(--cc-accent, #d4a85a);
   font-style: italic;
+}
+.atlas-ai-calmaria-on {
+  font-style: italic;
+  opacity: 0.85;
 }
 /* Quando body.atlas-calmaria está set, esconde tudo marcado como auxiliar. */
 body.atlas-calmaria .atlas-calmaria-hide {

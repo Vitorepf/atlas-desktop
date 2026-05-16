@@ -55,18 +55,15 @@ export function AtlasAiPlanPanel({ thread, pendingTrace, mode }: AtlasAiPlanPane
 
   return (
     <section className="atlas-ai-plan" aria-label="Plano da conversa">
-      <p className="atlas-ai-context-eyebrow">Plano da conversa</p>
+      {/* Eyebrow REDUNDANTE com a tab "Plano" — drop per Agent D #2. */}
 
       {!thread ? (
         <p className="atlas-ai-plan-empty">
-          Sem thread carregada. O plano aparece quando você abre uma conversa — ele
-          é montado a partir do contexto que o Atlas registrou (objetivo, próximo
-          passo, riscos, arquivos citados).
+          o plano aparece quando você abre uma conversa
         </p>
       ) : !hasAnything ? (
         <p className="atlas-ai-plan-empty">
-          Esta thread ainda não tem plano explícito. Atlas só promove para Forge/Obra
-          quando você decide — até lá, o plano é descobrir junto.
+          ainda sem plano explícito · Atlas só promove quando você decide
         </p>
       ) : (
         <div className="atlas-ai-plan-stack">

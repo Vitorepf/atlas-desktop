@@ -252,13 +252,26 @@ export function AtlasAiThreadList({
         ))}
         <button
           type="button"
-          className="atlas-ai-refresh"
+          className={`atlas-ai-refresh${loading ? ' is-loading' : ''}`}
           onClick={() => void onRefresh()}
           disabled={loading}
           title="Recarregar histórico"
           aria-label="Recarregar histórico"
         >
-          {loading ? '…' : '↻'}
+          <svg
+            viewBox="0 0 14 14"
+            width="11"
+            height="11"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 7 a5 5 0 1 1 -1.46 -3.54" />
+            <polyline points="12 2 12 5 9 5" />
+          </svg>
         </button>
       </div>
 
@@ -307,8 +320,13 @@ export function AtlasAiThreadList({
                       onClick={() => toggleCollapsed(key)}
                       aria-expanded={!isCollapsed}
                     >
-                      <span className="atlas-ai-folder-caret" aria-hidden="true">
-                        {isCollapsed ? '▸' : '▾'}
+                      <span
+                        className={`atlas-ai-folder-caret${isCollapsed ? ' is-collapsed' : ''}`}
+                        aria-hidden="true"
+                      >
+                        <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 2 7 5 3 8" />
+                        </svg>
                       </span>
                       <span className="atlas-ai-folder-icon" aria-hidden="true">
                         <svg viewBox="0 0 16 14" width="13" height="11" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -462,7 +480,11 @@ function ThreadRow({ thread, selectedId, onSelect, onContextMenu, pinned, indent
       >
         <div className="atlas-ai-thread-row">
           {pinned ? (
-            <span className="atlas-ai-thread-pin" aria-label="fixada" title="fixada">📌</span>
+            <span className="atlas-ai-thread-pin" aria-label="fixada" title="fixada">
+              <svg viewBox="0 0 12 12" width="9" height="9" fill="currentColor" aria-hidden="true">
+                <path d="M6 0.6 L7.5 4.2 L11.4 4.2 L8.2 6.6 L9.4 10.3 L6 8 L2.6 10.3 L3.8 6.6 L0.6 4.2 L4.5 4.2 Z" />
+              </svg>
+            </span>
           ) : null}
           <span className="atlas-ai-thread-title" title={title}>{title}</span>
           {time ? <span className="atlas-ai-thread-time">{time}</span> : null}

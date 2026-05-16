@@ -8,6 +8,7 @@
  *   - postar `/ai/interactions` e fazer polling leve do trace até `completed`.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { bridge } from '../../lib/bridge'
 import {
   atlasAiBridgeMode,
   type AtlasAiBridgeMode,
@@ -60,8 +61,12 @@ export interface AtlasAiState {
     attachmentCount: number
     startedAt: number
   } | null
+  /** Texto streaming acumulado via SSE — aparece token-by-token na bolha. */
+  streamingText: string
   sending: boolean
   sendError: string | null
+  /** Soft cancel: para o polling + limpa optimistic. Backend pode continuar. */
+  cancelPending: () => void
   send: (
     text: string,
     options?: {
@@ -127,9 +132,11 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
     attachmentCount: number
     startedAt: number
   } | null>(null)
+  const [streamingText, setStreamingText] = useState<string>('')
   const [sending, setSending] = useState<boolean>(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const pollTimerRef = useRef<number | null>(null)
+  const streamUnsubRef = useRef<(() => void) | null>(null)
 
   const setComposerMode = useCallback((next: AtlasAiMode) => {
     setComposerModeRaw(next)
@@ -206,6 +213,59 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
     [loadThreadDetail],
   )
 
+  // Stream subscription · token-by-token render via SSE.
+  // Acumula content de eventos delta/text/content_block_delta no buffer.
+  const subscribeStream = useCallback(
+    (traceId: string) => {
+      // Cleanup anterior se houver
+      if (streamUnsubRef.current) {
+        streamUnsubRef.current()
+        streamUnsubRef.current = null
+      }
+      setStreamingText('')
+      let buffer = ''
+      const unsub = bridge.streamSession(traceId, (event) => {
+        if (!mountedRef.current) return
+        const type = (event.eventType || '').toLowerCase()
+        // Termina o streaming · server emitiu "done"
+        if (type === 'done' || type === 'completed' || type === 'closed') {
+          if (streamUnsubRef.current) {
+            streamUnsubRef.current()
+            streamUnsubRef.current = null
+          }
+          return
+        }
+        // Extrai content textual de tipos delta canônicos
+        const raw = event.content
+        if (typeof raw === 'string' && raw.length > 0) {
+          // Heurística: types `delta`, `text_delta`, `content_block_delta`,
+          // `chunk`, `token`, `text` carregam fragmentos de texto.
+          if (
+            type === 'delta' ||
+            type === 'text' ||
+            type === 'token' ||
+            type === 'chunk' ||
+            type.includes('delta') ||
+            type === 'message'
+          ) {
+            buffer += raw
+            setStreamingText(buffer)
+          }
+        } else if (raw && typeof raw === 'object') {
+          // Provider patterns: { text: "..." } | { delta: { text: "..." } }
+          const obj = raw as Record<string, unknown>
+          const text = (obj.text ?? (obj.delta as Record<string, unknown> | undefined)?.text)
+          if (typeof text === 'string' && text.length > 0) {
+            buffer += text
+            setStreamingText(buffer)
+          }
+        }
+      })
+      streamUnsubRef.current = unsub
+    },
+    [],
+  )
+
   const pollTrace = useCallback(
     (traceId: string, threadId: string | null) => {
       const startedAt = Date.now()
@@ -235,6 +295,14 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
           if (terminal) {
             stop()
             setPendingUserMessage(null)
+            // Cleanup SSE stream subscription quando trace finaliza.
+            if (streamUnsubRef.current) {
+              streamUnsubRef.current()
+              streamUnsubRef.current = null
+            }
+            // Streaming text fica até loadThreadDetail trazer a msg final
+            // — depois é limpo pelo selectThread/loadThreadDetail success.
+            setStreamingText('')
             if (threadId) {
               void loadThreadDetail(threadId)
             }
@@ -401,6 +469,7 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
 
         if (!mountedRef.current) return response.trace
         setPendingTrace(response.trace)
+        subscribeStream(response.trace.id)
         pollTrace(response.trace.id, threadId)
         return response.trace
       } catch (e) {
@@ -509,6 +578,10 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
         window.clearTimeout(pollTimerRef.current)
         pollTimerRef.current = null
       }
+      if (streamUnsubRef.current) {
+        streamUnsubRef.current()
+        streamUnsubRef.current = null
+      }
     }
   }, [refreshThreads, mode])
 
@@ -540,9 +613,25 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
 
     pendingTrace,
     pendingUserMessage,
+    streamingText,
     sending,
     sendError,
     send,
+    cancelPending: () => {
+      if (pollTimerRef.current !== null) {
+        window.clearTimeout(pollTimerRef.current)
+        pollTimerRef.current = null
+      }
+      if (streamUnsubRef.current) {
+        streamUnsubRef.current()
+        streamUnsubRef.current = null
+      }
+      setPendingTrace(null)
+      setPendingUserMessage(null)
+      setStreamingText('')
+      setSendError(null)
+      setSending(false)
+    },
 
     archiveSelectedThread,
     archiveThread,

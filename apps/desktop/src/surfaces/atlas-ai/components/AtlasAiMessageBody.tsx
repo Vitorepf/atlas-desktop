@@ -130,11 +130,21 @@ function CodeBlock({ source, lang, highlight }: CodeBlockProps) {
         <span className="atlas-ai-md-codeblock-lang">{lang ?? 'texto'}</span>
         <button
           type="button"
-          className="atlas-ai-md-codeblock-copy"
+          className={`atlas-ai-md-codeblock-copy${copied ? ' is-copied' : ''}`}
           onClick={handleCopy}
-          aria-label="Copiar bloco de código"
+          aria-label={copied ? 'Copiado' : 'Copiar bloco de código'}
+          title={copied ? 'Copiado' : 'Copiar'}
         >
-          {copied ? 'copiado ✓' : 'copiar'}
+          {copied ? (
+            <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="2.6 7.2 5.6 10.2 11.4 4.2" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="4.6" y="3.4" width="7.4" height="8.6" rx="1.2" />
+              <path d="M9.2 3.4 V2.6 a1.2 1.2 0 0 0 -1.2 -1.2 H3.2 a1.2 1.2 0 0 0 -1.2 1.2 V9.2" />
+            </svg>
+          )}
         </button>
       </header>
       {html ? (

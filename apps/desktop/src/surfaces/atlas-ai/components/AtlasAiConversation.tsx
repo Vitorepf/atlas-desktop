@@ -36,9 +36,12 @@ interface AtlasAiConversationProps {
   error: string | null
   pendingTrace: AiTrace | null
   pendingUserMessage: PendingUserMessage | null
+  /** Texto streaming via SSE — aparece token-by-token na bolha. */
+  streamingText?: string
   sending: boolean
   onArchive: () => void
   onPromote?: () => void
+  onCancel?: () => void
 }
 
 function roleLabel(role: string): string {
@@ -46,6 +49,14 @@ function roleLabel(role: string): string {
   if (role === 'assistant' || role === 'atlas') return 'Atlas AI'
   if (role === 'system') return 'sistema'
   return role
+}
+
+/** Apenas o último segmento de um caminho (privacy + visual quiet). */
+function basename(pathOrSlug: string): string {
+  const trimmed = pathOrSlug.trim()
+  if (trimmed === '') return trimmed
+  const segs = trimmed.split('/').filter((s) => s.length > 0)
+  return segs[segs.length - 1] ?? trimmed
 }
 
 function findTraceForMessage(message: AiThreadMessage, lastTrace: AiTrace | null): AiTrace | null {
@@ -165,10 +176,12 @@ function StreamingBubble({
   trace,
   startedAtMs,
   sending,
+  onCancel,
 }: {
   trace: AiTrace | null
   startedAtMs: number
   sending: boolean
+  onCancel?: () => void
 }) {
   const status = trace?.status ?? null
   const forcedLabel = !trace ? 'enviando para o Atlas' : null
@@ -183,11 +196,27 @@ function StreamingBubble({
       aria-live="polite"
       aria-busy={sending || status === 'running' || status === 'processing' || status === 'queued'}
     >
-      <AtlasAiThinkingState
-        startedAtMs={startedAtMs}
-        provider={trace?.provider}
-        forcedLabel={forcedLabel}
-      />
+      <div className="atlas-ai-streaming-row-top">
+        <AtlasAiThinkingState
+          startedAtMs={startedAtMs}
+          provider={trace?.provider}
+          forcedLabel={forcedLabel}
+        />
+        {onCancel ? (
+          <button
+            type="button"
+            className="atlas-ai-streaming-cancel"
+            onClick={onCancel}
+            title="Interromper · esc"
+            aria-label="Interromper resposta"
+          >
+            <svg viewBox="0 0 12 12" width="9" height="9" fill="currentColor" stroke="none" aria-hidden="true">
+              <rect x="2" y="2" width="8" height="8" rx="1" />
+            </svg>
+            <span>interromper</span>
+          </button>
+        ) : null}
+      </div>
 
       {hasLiveTool ? (
         <AtlasAiLiveActivity
@@ -210,6 +239,7 @@ export function AtlasAiConversation({
   sending,
   onArchive,
   onPromote,
+  onCancel,
 }: AtlasAiConversationProps) {
   // Auto-scroll para o fim quando mensagens chegam ou pending vira ativo.
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -232,7 +262,7 @@ export function AtlasAiConversation({
   if (loading && detail === null && !isCreatingThread) {
     return (
       <section className="atlas-ai-conversation" role="status">
-        <p className="atlas-ai-empty-line">Carregando thread…</p>
+        <p className="atlas-ai-empty-line">carregando conversa…</p>
       </section>
     )
   }
@@ -250,7 +280,7 @@ export function AtlasAiConversation({
   if (!detail && !pendingUserMessage) {
     return (
       <section className="atlas-ai-conversation">
-        <p className="atlas-ai-empty-line">Sem thread carregada.</p>
+        <p className="atlas-ai-empty-line">nenhuma conversa aberta</p>
       </section>
     )
   }
@@ -288,10 +318,25 @@ export function AtlasAiConversation({
         <div>
           <h2>{detail?.title?.trim() || (isCreatingThread ? 'Nova conversa' : '(sem título)')}</h2>
           <p className="atlas-ai-conversation-meta">
-            <span>{mode}</span>
-            {detail?.workspace ? <span> · {detail.workspace}</span> : null}
-            {detail?.last_provider ? <span> · {detail.last_provider}</span> : null}
-            <span> · {detail?.message_count ?? (showOptimistic ? 1 : 0)} msg</span>
+            <span className="atlas-ai-conversation-meta-mode">{mode}</span>
+            {detail?.workspace ? (
+              <span className="atlas-ai-conversation-meta-sep" aria-hidden="true"> · </span>
+            ) : null}
+            {detail?.workspace ? (
+              <span className="atlas-ai-conversation-meta-workspace" title={detail.workspace}>
+                {basename(detail.workspace)}
+              </span>
+            ) : null}
+            {detail?.last_provider ? (
+              <span className="atlas-ai-conversation-meta-sep" aria-hidden="true"> · </span>
+            ) : null}
+            {detail?.last_provider ? (
+              <span className="atlas-ai-conversation-meta-provider">{detail.last_provider}</span>
+            ) : null}
+            <span className="atlas-ai-conversation-meta-sep" aria-hidden="true"> · </span>
+            <span className="atlas-ai-conversation-meta-count">
+              {(detail?.message_count ?? (showOptimistic ? 1 : 0)).toLocaleString('pt-BR')} mensagens
+            </span>
           </p>
         </div>
         <div className="atlas-ai-conversation-actions">
@@ -302,7 +347,7 @@ export function AtlasAiConversation({
               onClick={onPromote}
               title="Avaliar promoção para Forge/Obra"
             >
-              promover →
+              promover <span className="atlas-ai-link-arrow" aria-hidden="true">→</span>
             </button>
           ) : null}
           {detail ? (
@@ -320,9 +365,7 @@ export function AtlasAiConversation({
 
       <div className="atlas-ai-messages">
         {messages.length === 0 && !showOptimistic && !showStreamingBubble ? (
-          <p className="atlas-ai-empty-line">
-            Sem mensagens ainda. Envie a primeira pergunta no composer abaixo.
-          </p>
+          <p className="atlas-ai-empty-line">primeira pergunta — escreva abaixo</p>
         ) : null}
 
         {messages.map((m) => (
@@ -342,6 +385,7 @@ export function AtlasAiConversation({
             trace={pendingTrace}
             startedAtMs={streamingStartedAtMs}
             sending={sending}
+            onCancel={onCancel}
           />
         ) : null}
 

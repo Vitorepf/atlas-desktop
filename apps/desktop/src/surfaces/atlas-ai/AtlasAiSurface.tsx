@@ -76,7 +76,7 @@ export function AtlasAiSurface({
   // surface ainda receber tudo via SurfaceHost, mesmo que não usemos agora.
   activeWorkspace: _activeWorkspace = null,
   defaultWorkspaceSlug: _defaultWorkspaceSlug = null,
-  onRequestSurfaceChange,
+  onRequestSurfaceChange: _onRequestSurfaceChange,
   onOpenWorkspaceProfile: _onOpenWorkspaceProfile,
 }: AtlasAiSurfaceProps) {
   const atlas = useAtlasAi(activeWorkspaceSlug)
@@ -101,6 +101,34 @@ export function AtlasAiSurface({
       setWorkspaceSlug(activeWorkspaceSlug)
     }
   }, [activeWorkspaceSlug, workspaceSlug, setWorkspaceSlug])
+
+  // Esc cancela streaming em curso (Codex CLI canon "esc to interrupt").
+  const { cancelPending, sending, pendingTrace } = atlas
+  useEffect(() => {
+    const isStreaming =
+      sending ||
+      (pendingTrace !== null &&
+        (pendingTrace.status === 'queued' ||
+          pendingTrace.status === 'running' ||
+          pendingTrace.status === 'processing'))
+    if (!isStreaming) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Não cancela se estiver focado em algum input (deixa o operador
+        // limpar texto do composer com Esc também). Cancel só quando o
+        // foco está em algo não-text-editable.
+        const ae = document.activeElement
+        const isEditable =
+          ae instanceof HTMLElement &&
+          (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)
+        if (isEditable) return
+        e.preventDefault()
+        cancelPending()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sending, pendingTrace, cancelPending])
 
   const conversation = useMemo(
     () => ({
@@ -275,10 +303,13 @@ export function AtlasAiSurface({
           </button>
           <div className="atlas-ai-header-bar-title">
             <h1>Atlas AI</h1>
-            <p className="atlas-ai-header-bar-sub">
-              Uma única inteligência · Geral, Operacional e Programação são modos do mesmo Atlas AI
-              {activeWorkspaceName ? ` · Workspace ativo: ${activeWorkspaceName}` : ''}
-            </p>
+            {activeWorkspaceName ? (
+              <p className="atlas-ai-header-bar-sub">
+                workspace · <span className="atlas-ai-header-bar-sub-name">{activeWorkspaceName}</span>
+              </p>
+            ) : (
+              <p className="atlas-ai-header-bar-sub">uma única inteligência</p>
+            )}
           </div>
         </div>
         <div className="atlas-ai-header-bar-meta">
@@ -286,19 +317,26 @@ export function AtlasAiSurface({
             type="button"
             className={`atlas-ai-link atlas-ai-calmaria-toggle${calmaria ? ' is-active' : ''}`}
             onClick={toggleCalmaria}
-            title={calmaria ? 'Calmaria ON · só texto + composer · Cmd+Shift+. para alternar' : 'Calmaria · esconde badges/receipts/decisões · Cmd+Shift+. atalho'}
+            title={calmaria ? 'Calmaria ON · só texto + composer · Cmd+Shift+. alterna' : 'Calmaria · esconde badges/receipts/decisões · Cmd+Shift+. ativa'}
             aria-pressed={calmaria}
             aria-label="Alternar Calmaria mode"
           >
-            {calmaria ? '◐ calmaria on' : '◑ calmaria'}
-          </button>
-          <button
-            type="button"
-            className="atlas-ai-link"
-            onClick={() => onRequestSurfaceChange?.('code')}
-            title="Atlas Code · cabine para problemas ultra-hard"
-          >
-            promover para Forge →
+            <svg
+              viewBox="0 0 14 14"
+              width="11"
+              height="11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="atlas-ai-calmaria-glyph"
+            >
+              <circle cx="7" cy="7" r="5.4" />
+              <path d="M9.2 3 A4.4 4.4 0 0 0 9.2 11" fill="currentColor" stroke="none" opacity="0.85" />
+            </svg>
+            calmaria{calmaria ? <span className="atlas-ai-calmaria-on"> · ativa</span> : null}
           </button>
           <button
             type="button"
@@ -362,6 +400,7 @@ export function AtlasAiSurface({
               sending={conversation.sending}
               onArchive={atlas.archiveSelectedThread}
               onPromote={() => setPromotionOpen(true)}
+              onCancel={atlas.cancelPending}
             />
           )}
         </div>

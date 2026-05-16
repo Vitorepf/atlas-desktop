@@ -19,7 +19,7 @@ export function formatRelativeShort(value: string | null | undefined): string {
   if (!d) return ''
   const diffSec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000))
   if (diffSec < 45) return 'agora'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}min`
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`
   if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`
   if (diffSec < 86400 * 7) return `${Math.floor(diffSec / 86400)}d`
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })

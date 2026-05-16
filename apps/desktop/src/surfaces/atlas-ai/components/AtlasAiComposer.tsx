@@ -279,13 +279,13 @@ export function AtlasAiComposer({
     return c
   }, [att.drafts])
 
-  // Label do modo no pill: "Programação · Dev" / "Operacional" / "Geral"
+  // Label enxuto · "dev" / "operacional" / "geral" (eyebrow já diz "Modo")
   const modePillLabel =
-    mode === 'programming' ? `Programação · ${task}` : mode === 'operational' ? 'Operacional' : 'Geral'
+    mode === 'programming' ? task : mode === 'operational' ? 'operacional' : 'geral'
 
-  // Provider label compacto
+  // Provider label compacto · "auto" / "claude" / "codex" / "gemini" / "conselho"
   const currentProvider = PROVIDER_OPTIONS.find((p) => p.value === provider)
-  const providerPillLabel = currentProvider?.label ?? 'Auto'
+  const providerPillLabel = (currentProvider?.label ?? 'auto').toLowerCase().split(' ')[0]
 
   // Combinamos Modo+Tarefa num menu único — quando programming, apresentamos as tasks dentro
   // como sub-items; para outros modos só lista os 3 modos.
@@ -391,10 +391,10 @@ export function AtlasAiComposer({
           onKeyDown={handleKey}
           placeholder={
             mode === 'programming'
-              ? 'Bug, debug, feature, review… arrasta arquivo, cola screenshot · Enter envia, Shift+Enter quebra linha.'
+              ? 'Bug, debug, feature ou review — arrasta arquivo ou cola screenshot.'
               : mode === 'operational'
-                ? 'Diagnóstico, próxima ação, risco… cola contexto se útil. Enter envia, Shift+Enter quebra linha.'
-                : 'Pesquisa, ideia, dúvida… arrasta arquivo ou cola conteúdo. Enter envia, Shift+Enter quebra linha.'
+                ? 'Diagnóstico, próxima ação ou risco — cole contexto se útil.'
+                : 'Pesquisa, ideia ou dúvida — solte arquivo ou cole conteúdo.'
           }
           rows={3}
           maxLength={50000}
@@ -450,7 +450,7 @@ export function AtlasAiComposer({
 
           <AtlasAiComposerMenu<`mode:${AtlasAiMode}` | `task:${AtlasAiTask}`>
             triggerLabel={modePillLabel}
-            triggerEyebrow="Modo"
+            triggerEyebrow={undefined}
             options={modeMenuOptions}
             value={modeMenuValue}
             onChange={handleModeMenuChange}
@@ -460,7 +460,7 @@ export function AtlasAiComposer({
 
           <AtlasAiComposerMenu<AtlasAiProviderChoice>
             triggerLabel={providerPillLabel}
-            triggerEyebrow="Provider"
+            triggerEyebrow={undefined}
             options={PROVIDER_OPTIONS.map((p) => ({
               value: p.value,
               label: p.label,

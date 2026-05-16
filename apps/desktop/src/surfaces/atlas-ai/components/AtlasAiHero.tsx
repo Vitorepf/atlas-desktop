@@ -61,6 +61,15 @@ const COPY: Record<AtlasAiMode, { eyebrow: string; title: string; hint: string }
   },
 }
 
+/** Saudação contextual por hora do dia (Apple HIG Home humano). */
+function timeOfDayGreeting(): string {
+  const h = new Date().getHours()
+  if (h < 5) return 'boa madrugada'
+  if (h < 12) return 'bom dia'
+  if (h < 18) return 'boa tarde'
+  return 'boa noite'
+}
+
 export function AtlasAiHero({
   mode,
   workspaceName,
@@ -69,17 +78,28 @@ export function AtlasAiHero({
 }: AtlasAiHeroProps) {
   const copy = COPY[mode]
   const chips = CHIPS[mode]
+  const greeting = timeOfDayGreeting()
   return (
     <section className="atlas-ai-hero" aria-label="Comece uma conversa Atlas AI">
-      <p className="atlas-ai-hero-eyebrow">{copy.eyebrow}</p>
+      <p className="atlas-ai-hero-greeting">{greeting}</p>
       <h2>{copy.title}</h2>
-      <p>
+      <p className="atlas-ai-hero-hint">
         {copy.hint}
-        {workspaceName ? ` · Workspace ativo: ${workspaceName}.` : ''}
-        {threadCount > 0
-          ? ` · ${threadCount} conversa${threadCount === 1 ? '' : 's'} ${threadCount === 1 ? 'guardada' : 'guardadas'}.`
-          : ''}
       </p>
+      {(workspaceName || threadCount > 0) && (
+        <p className="atlas-ai-hero-context">
+          {workspaceName ? (
+            <>workspace · <span className="atlas-ai-hero-context-name">{workspaceName}</span></>
+          ) : null}
+          {workspaceName && threadCount > 0 ? ' · ' : ''}
+          {threadCount > 0 ? (
+            <>
+              <span className="atlas-ai-hero-context-count">{threadCount.toLocaleString('pt-BR')}</span>
+              {' '}conversa{threadCount === 1 ? '' : 's'} guardada{threadCount === 1 ? '' : 's'}
+            </>
+          ) : null}
+        </p>
+      )}
 
       <div className="atlas-ai-hero-chips" role="list" aria-label="Sugestões de início">
         {chips.map((chip) => (
@@ -91,7 +111,11 @@ export function AtlasAiHero({
             onClick={() => onUseChip(chip.prompt)}
             title="Carrega o composer com este início — você edita antes de enviar"
           >
-            <span className="atlas-ai-hero-chip-icon" aria-hidden="true">›</span>
+            <span className="atlas-ai-hero-chip-icon" aria-hidden="true">
+              <svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3.2 1.4 7.6 5 3.2 8.6" />
+              </svg>
+            </span>
             {chip.label}
           </button>
         ))}
