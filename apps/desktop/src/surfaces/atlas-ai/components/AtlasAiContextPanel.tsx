@@ -18,6 +18,7 @@ import type {
   AtlasAiMode,
   AtlasAiProviderChoice,
   AtlasAiTask,
+  AtlasDevPlanResult,
   AtlasDevRuntime,
 } from '../types'
 
@@ -29,6 +30,10 @@ interface AtlasAiContextPanelProps {
   mode: AtlasAiMode
   task: AtlasAiTask
   provider: AtlasAiProviderChoice
+  atlasDevPlan?: AtlasDevPlanResult | null
+  atlasDevPlanLoading?: boolean
+  atlasDevPlanError?: string | null
+  atlasDevPlanUnavailable?: boolean
 }
 
 export function AtlasAiContextPanel({
@@ -39,6 +44,10 @@ export function AtlasAiContextPanel({
   mode,
   task,
   provider,
+  atlasDevPlan,
+  atlasDevPlanLoading,
+  atlasDevPlanError,
+  atlasDevPlanUnavailable,
 }: AtlasAiContextPanelProps) {
   const flowId = flowIdForMode(mode, task)
   const promotionTarget =
@@ -135,10 +144,178 @@ export function AtlasAiContextPanel({
         </div>
       ) : null}
 
+      <AtlasDevPlanContextSection
+        plan={atlasDevPlan ?? null}
+        loading={atlasDevPlanLoading ?? false}
+        error={atlasDevPlanError ?? null}
+        unavailable={atlasDevPlanUnavailable ?? false}
+      />
+
       <p className="atlas-ai-context-note">
         Atlas AI é uma única inteligência. Conversa solta vive aqui — Obra nasce só quando
         risco, escopo ou duração crescer.
       </p>
     </section>
+  )
+}
+
+interface AtlasDevPlanContextSectionProps {
+  plan: AtlasDevPlanResult | null
+  loading: boolean
+  error: string | null
+  unavailable: boolean
+}
+
+function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: AtlasDevPlanContextSectionProps) {
+  if (loading) {
+    return (
+      <div className="atlas-ai-context-section atlas-ai-context-plan">
+        <h3>Atlas Dev · Contexto</h3>
+        <p className="atlas-ai-empty-line atlas-ai-faint">consultando plano…</p>
+      </div>
+    )
+  }
+
+  if (unavailable) {
+    return (
+      <div className="atlas-ai-context-section atlas-ai-context-plan">
+        <h3>Atlas Dev · Contexto</h3>
+        <p className="atlas-ai-empty-line atlas-ai-faint">
+          plan-only endpoint ainda não disponível · usando fluxo legado
+        </p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="atlas-ai-context-section atlas-ai-context-plan">
+        <h3>Atlas Dev · Contexto</h3>
+        <p className="atlas-ai-empty-line atlas-ai-faint">erro · {error}</p>
+      </div>
+    )
+  }
+
+  if (!plan) {
+    return null
+  }
+
+  const retrieval = plan.context_retrieval_plan
+  const projection = plan.open_brain_projection
+  const truncation = projection?.truncation
+  const budget = projection?.budget
+  const selectedTiers = retrieval?.selected_tiers ?? []
+  const requiredSources = retrieval?.required_sources ?? []
+  const optionalSources = retrieval?.optional_sources ?? []
+  const missingSources = [
+    ...(retrieval?.missing_sources ?? []),
+    ...(projection?.missing_sources ?? []),
+  ]
+  const memoryRefs = projection?.memory_refs ?? []
+  const knowledgeRefs = projection?.knowledge_refs ?? []
+  const codeRefs = projection?.code_refs ?? []
+
+  return (
+    <div className="atlas-ai-context-section atlas-ai-context-plan">
+      <h3>Atlas Dev · Contexto</h3>
+      <ul className="atlas-ai-context-list">
+        <li><span>run</span><code>{plan.run_id}</code></li>
+        <li><span>status</span><code>{plan.status}</code></li>
+        {retrieval?.budget_chars !== undefined ? (
+          <li><span>orçamento</span><code>{retrieval.budget_chars} chars</code></li>
+        ) : null}
+        {budget?.chars_used !== undefined && budget?.chars_used !== null ? (
+          <li>
+            <span>usado</span>
+            <code>
+              {budget.chars_used}/{budget.chars_requested ?? '—'} chars
+            </code>
+          </li>
+        ) : null}
+        {truncation ? (
+          <li>
+            <span>truncação</span>
+            <code>{truncation.truncated ? `parcial · ${truncation.reasons?.join(', ') ?? 'sem razão'}` : 'completo'}</code>
+          </li>
+        ) : null}
+      </ul>
+
+      {selectedTiers.length > 0 ? (
+        <div className="atlas-ai-context-subblock">
+          <p className="atlas-ai-context-subblock-title">tiers selecionados</p>
+          <ul className="atlas-ai-context-chip-list">
+            {selectedTiers.map((tier) => (
+              <li key={tier}><code>{tier}</code></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {memoryRefs.length > 0 ? (
+        <div className="atlas-ai-context-subblock">
+          <p className="atlas-ai-context-subblock-title">memory · {memoryRefs.length}</p>
+          <ul className="atlas-ai-context-ref-list">
+            {memoryRefs.slice(0, 6).map((r, i) => (
+              <li key={`mr-${i}`}><code>{r.ref}</code><em>{r.reason}</em></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {knowledgeRefs.length > 0 ? (
+        <div className="atlas-ai-context-subblock">
+          <p className="atlas-ai-context-subblock-title">knowledge · {knowledgeRefs.length}</p>
+          <ul className="atlas-ai-context-ref-list">
+            {knowledgeRefs.slice(0, 6).map((r, i) => (
+              <li key={`kr-${i}`}><code>{r.ref}</code><em>{r.reason}</em></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {codeRefs.length > 0 ? (
+        <div className="atlas-ai-context-subblock">
+          <p className="atlas-ai-context-subblock-title">code · {codeRefs.length}</p>
+          <ul className="atlas-ai-context-ref-list">
+            {codeRefs.slice(0, 6).map((r, i) => (
+              <li key={`cr-${i}`}><code>{r.ref}</code><em>{r.reason}</em></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {requiredSources.length > 0 ? (
+        <div className="atlas-ai-context-subblock">
+          <p className="atlas-ai-context-subblock-title">required · {requiredSources.length}</p>
+          <ul className="atlas-ai-context-mono-list">
+            {requiredSources.slice(0, 8).map((s, i) => (
+              <li key={`req-${i}`}><code>{s}</code></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {optionalSources.length > 0 ? (
+        <div className="atlas-ai-context-subblock">
+          <p className="atlas-ai-context-subblock-title">optional · {optionalSources.length}</p>
+          <ul className="atlas-ai-context-mono-list">
+            {optionalSources.slice(0, 8).map((s, i) => (
+              <li key={`opt-${i}`}><code>{s}</code></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {missingSources.length > 0 ? (
+        <div className="atlas-ai-context-subblock atlas-ai-context-warning">
+          <p className="atlas-ai-context-subblock-title">missing · {missingSources.length}</p>
+          <ul className="atlas-ai-context-mono-list">
+            {missingSources.slice(0, 8).map((s, i) => (
+              <li key={`miss-${i}`}><code>{s}</code></li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   )
 }

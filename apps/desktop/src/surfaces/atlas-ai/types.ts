@@ -375,3 +375,204 @@ export interface AiThreadListFilters {
   limit?: number
   light?: boolean
 }
+
+/* ---------- Atlas Dev plan-only · POST /ai/interactions/atlas-dev/plan ---------- */
+
+/**
+ * Shape of the response that the Atlas Dev plan-only endpoint emits. The Desktop
+ * surface treats every nested artifact as **opcional + provider-safe**: backend
+ * may still be wiring some slices in (Claude 14/15/16 trabalham em paralelo), so
+ * we only render what is present and never crash on missing fields.
+ *
+ * Backend canonical contracts:
+ *   docs/engineering-knowledge-base/atlas-dev-efficient-programming-flow-contracts-v1.md
+ */
+export type AtlasDevPlanStatus =
+  | 'ready'
+  | 'blocked'
+  | 'forge_promotion_preview'
+  | 'unavailable'
+
+export type AtlasDevConfidenceLevel =
+  | 'confirmed_fact'
+  | 'strong_inference'
+  | 'hypothesis'
+  | 'blocking_ambiguity'
+
+export interface AtlasDevContextRef {
+  kind: string
+  ref: string
+  reason: string
+}
+
+export interface AtlasDevCodeCandidate {
+  path: string
+  reason?: string | null
+  confidence?: number | null
+  symbols?: ReadonlyArray<string> | null
+}
+
+export interface AtlasDevMissingRef {
+  what: string
+  why_missing: string
+}
+
+export interface AtlasDevTruncation {
+  truncated: boolean
+  reasons?: ReadonlyArray<string> | null
+}
+
+export interface AtlasDevBudget {
+  chars_requested?: number | null
+  chars_used?: number | null
+}
+
+export interface AtlasDevOpenBrainProjection {
+  schema_version?: string
+  mode?: string
+  objective_hash?: string
+  memory_refs?: ReadonlyArray<AtlasDevContextRef>
+  knowledge_refs?: ReadonlyArray<AtlasDevContextRef>
+  code_refs?: ReadonlyArray<AtlasDevContextRef>
+  missing_sources?: ReadonlyArray<string>
+  truncation?: AtlasDevTruncation | null
+  budget?: AtlasDevBudget | null
+  provider_safe?: boolean
+  projection_hash?: string
+}
+
+export interface AtlasDevContextRetrievalPlan {
+  schema_version?: string
+  run_id?: string
+  selected_tiers?: ReadonlyArray<string>
+  budget_chars?: number
+  required_sources?: ReadonlyArray<string>
+  optional_sources?: ReadonlyArray<string>
+  missing_sources?: ReadonlyArray<string>
+  truncation_policy?: Record<string, unknown> | null
+  provider_safe?: boolean
+  plan_hash?: string
+}
+
+export interface AtlasDevCodeDiscoveryManifest {
+  schema_version?: string
+  confidence?: AtlasDevConfidenceLevel | string
+  likely_files?: ReadonlyArray<AtlasDevCodeCandidate>
+  related_symbols?: ReadonlyArray<AtlasDevContextRef>
+  related_tests?: ReadonlyArray<AtlasDevContextRef>
+  related_commands?: ReadonlyArray<AtlasDevContextRef>
+  forbidden_files?: ReadonlyArray<string>
+  missing_refs?: ReadonlyArray<AtlasDevMissingRef>
+  provider_safe?: boolean
+  manifest_hash?: string
+}
+
+export interface AtlasDevMiniSpec {
+  goal?: string
+  non_goals?: ReadonlyArray<string>
+  allowed_files?: ReadonlyArray<string>
+  forbidden_files?: ReadonlyArray<string>
+  expected_files?: ReadonlyArray<string>
+  acceptance_criteria?: ReadonlyArray<
+    | string
+    | {
+        id?: string
+        description?: string
+        verification?: string
+        verification_ref?: string | null
+      }
+  >
+  completion_criteria?: ReadonlyArray<string>
+  mini_spec_hash?: string
+}
+
+export interface AtlasDevTaskContract {
+  allowed_files?: ReadonlyArray<string>
+  forbidden_files?: ReadonlyArray<string>
+  watched_files?: ReadonlyArray<string>
+  validation_commands?: ReadonlyArray<string>
+  escalation_on?: ReadonlyArray<string>
+  task_contract_hash?: string
+}
+
+export interface AtlasDevProviderPromptProjection {
+  schema_version?: string
+  rendered_prompt_hash?: string
+  /**
+   * Desktop never receives the raw rendered prompt; backend strips it from the
+   * UI projection (it stays internal). We only show the hash + quality.
+   */
+  rendered_prompt_text?: string | null
+  provider_safe?: boolean
+  quality_checks?: Record<string, boolean>
+  prompt_projection_hash?: string
+}
+
+/**
+ * Inline indicator hints derived backend-side. The Desktop also computes the
+ * same shape locally as fallback so we never depend on this being present.
+ */
+export interface AtlasDevUiHints {
+  open_brain_status?: 'parcial' | 'completo' | 'bloqueado' | string
+  scope_files_count?: number
+  plan_ready?: boolean
+  promotion_target?: 'intervencao_rapida' | 'obra_forge' | string | null
+  diff_preview?: string | null
+  expected_tests?: string[] | null
+  expected_files?: string[] | null
+}
+
+export interface AtlasDevForgePromotionPreview {
+  reason?: string
+  target?: string
+  recommended_action?: string
+}
+
+export interface AtlasDevBlockedReason {
+  code?: string
+  message: string
+  question?: string | null
+}
+
+export interface AtlasDevPlanResult {
+  run_id: string
+  status: AtlasDevPlanStatus
+  routing_decision?: string
+  task_contract_hash?: string
+  confirmation_token?: string
+  confirmation_expires_at?: string | null
+  surface_id?: string
+  workspace?: string | null
+  hashes?: Record<string, unknown>
+  operation_envelope?: Record<string, unknown>
+  compact_sdd?: Record<string, unknown>
+  context_retrieval_plan?: AtlasDevContextRetrievalPlan
+  code_discovery_manifest?: AtlasDevCodeDiscoveryManifest
+  open_brain_projection?: AtlasDevOpenBrainProjection
+  mini_spec?: AtlasDevMiniSpec
+  task_contract?: AtlasDevTaskContract
+  provider_prompt_projection?: AtlasDevProviderPromptProjection
+  stop_conditions?: ReadonlyArray<string>
+  escalation_conditions?: ReadonlyArray<string>
+  ui_hints?: AtlasDevUiHints
+  forge_promotion_preview?: AtlasDevForgePromotionPreview | null
+  blocked?: AtlasDevBlockedReason | null
+  /** Backend may attach the persisted thread_id this plan run is tied to. */
+  thread_id?: string | null
+}
+
+export interface AtlasDevPlanRequest {
+  /** Operator intent — raw_intent in the envelope. */
+  input_text: string
+  thread_id?: string | null
+  surface_id?: 'atlas_desktop_ai' | string
+  workspace?: string | null
+  task?: AtlasAiTask
+  provider?: AtlasAiProvider
+  decision_mode?: 'atlas_decide' | 'manual_override'
+  payload?: Record<string, unknown>
+}
+
+export interface AtlasDevPlanResponse {
+  plan: AtlasDevPlanResult
+}

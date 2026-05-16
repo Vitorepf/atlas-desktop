@@ -12,11 +12,13 @@ import { bridge } from '../../lib/bridge'
 import {
   atlasAiBridgeMode,
   type AtlasAiBridgeMode,
+  AtlasDevPlanUnavailableError,
   createAiInteraction,
   createAiThread,
   getAiThread,
   getAiTrace,
   listAiThreads,
+  postAtlasDevPlan,
   updateAiThread,
 } from './client'
 import { buildInteractionPayload, defaultTaskForMode, isTaskAllowedForMode } from './contract'
@@ -27,12 +29,15 @@ import type {
   AtlasAiMode,
   AtlasAiProviderChoice,
   AtlasAiTask,
+  AtlasDevPlanResult,
 } from './types'
 
 export interface AtlasAiState {
   mode: AtlasAiBridgeMode
   workspaceSlug: string | null
   setWorkspaceSlug: (slug: string | null) => void
+  workspacePath: string | null
+  setWorkspacePath: (path: string | null) => void
   threadsLoading: boolean
   threads: AiThreadSummary[]
   threadsError: string | null
@@ -65,6 +70,17 @@ export interface AtlasAiState {
   streamingText: string
   sending: boolean
   sendError: string | null
+
+  /**
+   * Atlas Dev plan-only state · populated when the composer fires
+   * POST /ai/interactions/atlas-dev/plan ahead of the legacy interaction call.
+   * Keyed by run_id; UI reads `currentPlan` for the active panel render.
+   */
+  atlasDevPlanLoading: boolean
+  atlasDevPlanError: string | null
+  atlasDevPlanUnavailable: boolean
+  currentAtlasDevPlan: AtlasDevPlanResult | null
+  atlasDevPlansByRun: Readonly<Record<string, AtlasDevPlanResult>>
   /** Soft cancel: para o polling + limpa optimistic. Backend pode continuar. */
   cancelPending: () => void
   send: (
@@ -107,10 +123,14 @@ export interface AtlasAiState {
 const TRACE_POLL_INTERVAL_MS = 1500
 const TRACE_POLL_TIMEOUT_MS = 120_000
 
-export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiState {
+export function useAtlasAi(
+  initialWorkspaceSlug: string | null = null,
+  initialWorkspacePath: string | null = null,
+): AtlasAiState {
   const mountedRef = useRef(true)
   const mode = atlasAiBridgeMode()
   const [workspaceSlug, setWorkspaceSlug] = useState<string | null>(initialWorkspaceSlug)
+  const [workspacePath, setWorkspacePath] = useState<string | null>(initialWorkspacePath)
   const [modeFilter, setModeFilter] = useState<AtlasAiMode | 'all'>('all')
 
   const [threads, setThreads] = useState<AiThreadSummary[]>([])
@@ -135,6 +155,13 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
   const [streamingText, setStreamingText] = useState<string>('')
   const [sending, setSending] = useState<boolean>(false)
   const [sendError, setSendError] = useState<string | null>(null)
+
+  /* Atlas Dev plan-only state */
+  const [atlasDevPlanLoading, setAtlasDevPlanLoading] = useState<boolean>(false)
+  const [atlasDevPlanError, setAtlasDevPlanError] = useState<string | null>(null)
+  const [atlasDevPlanUnavailable, setAtlasDevPlanUnavailable] = useState<boolean>(false)
+  const [currentAtlasDevPlan, setCurrentAtlasDevPlan] = useState<AtlasDevPlanResult | null>(null)
+  const [atlasDevPlansByRun, setAtlasDevPlansByRun] = useState<Record<string, AtlasDevPlanResult>>({})
   const pollTimerRef = useRef<number | null>(null)
   const streamUnsubRef = useRef<(() => void) | null>(null)
 
@@ -205,6 +232,8 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
       setThreadDetailError(null)
       setPendingTrace(null)
       setSendError(null)
+      setCurrentAtlasDevPlan(null)
+      setAtlasDevPlanError(null)
       if (id) {
         setThreadDetailLoading(true)
         void loadThreadDetail(id)
@@ -379,7 +408,9 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
         (options?.urlAttachments?.length ?? 0) > 0
       if (trimmed === '' && !hasAttachments) return null
 
-      if (composerMode === 'programming' && !workspaceSlug) {
+      const atlasDevWorkspace = workspacePath && workspacePath.trim() !== '' ? workspacePath : workspaceSlug
+
+      if (composerMode === 'programming' && !atlasDevWorkspace) {
         setSendError('Atlas Dev exige Workspace · selecione um Projeto no topbar antes de enviar.')
         return null
       }
@@ -399,6 +430,64 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
       })
       setSending(true)
       setSendError(null)
+
+      /*
+       * Atlas Dev plan-only step.
+       * Programming mode runs the plan-only endpoint FIRST, before the legacy
+       * `/ai/interactions` chat flow. Result is stored per run_id and surfaces
+       * Contexto/Plano tabs. Provider is NEVER invoked here — that is owned
+       * by the next slice (Claude 14/15/16). If the endpoint returns
+       * `blocked` or `forge_promotion_preview`, we stop the pipeline so the
+       * operator can react before any provider call.
+       */
+      const shouldRunPlanOnly =
+        composerMode === 'programming' && (composerTask === 'dev' || composerTask === 'debug')
+      let planOnlyDecision: 'continue' | 'halt' = 'continue'
+      if (shouldRunPlanOnly) {
+        setAtlasDevPlanLoading(true)
+        setAtlasDevPlanError(null)
+        try {
+          const planResult = await postAtlasDevPlan({
+            input_text: trimmed,
+            thread_id: options?.newThread ? null : selectedThreadId,
+            surface_id: 'atlas_desktop_ai',
+            workspace: atlasDevWorkspace,
+            task: composerTask,
+            provider: composerProvider === 'auto' ? undefined : composerProvider,
+            decision_mode: composerProvider === 'auto' ? 'atlas_decide' : 'manual_override',
+          })
+          if (!mountedRef.current) return null
+          setCurrentAtlasDevPlan(planResult)
+          if (planResult.run_id) {
+            setAtlasDevPlansByRun((prev) => ({ ...prev, [planResult.run_id]: planResult }))
+          }
+          setAtlasDevPlanUnavailable(false)
+          // Halt the legacy flow when backend signals the operator must act.
+          if (planResult.status === 'blocked' || planResult.status === 'forge_promotion_preview') {
+            planOnlyDecision = 'halt'
+            setPendingUserMessage(null) // free the optimistic bubble
+          }
+        } catch (e) {
+          if (!mountedRef.current) return null
+          if (e instanceof AtlasDevPlanUnavailableError) {
+            // Endpoint not deployed yet — fall back to legacy /ai/interactions
+            // so the chat does not regress. Surface a non-blocking hint.
+            setAtlasDevPlanUnavailable(true)
+            setAtlasDevPlanError(null)
+          } else {
+            setAtlasDevPlanError(e instanceof Error ? e.message : String(e))
+            // Plan failure does NOT block legacy chat — Desktop is plan-only
+            // viewer, not orchestrator. Operator still gets a chat reply.
+          }
+        } finally {
+          if (mountedRef.current) setAtlasDevPlanLoading(false)
+        }
+
+        if (planOnlyDecision === 'halt') {
+          if (mountedRef.current) setSending(false)
+          return null
+        }
+      }
 
       try {
         let threadId = options?.newThread ? null : selectedThreadId
@@ -483,7 +572,17 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
         if (mountedRef.current) setSending(false)
       }
     },
-    [mode, composerMode, composerTask, composerProvider, workspaceSlug, selectedThreadId, loadThreadDetail, pollTrace],
+    [
+      mode,
+      composerMode,
+      composerTask,
+      composerProvider,
+      workspaceSlug,
+      workspacePath,
+      selectedThreadId,
+      loadThreadDetail,
+      pollTrace,
+    ],
   )
 
   const archiveThread = useCallback(
@@ -591,6 +690,8 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
     mode,
     workspaceSlug,
     setWorkspaceSlug,
+    workspacePath,
+    setWorkspacePath,
     threadsLoading,
     threads: filteredThreads,
     threadsError,
@@ -617,6 +718,12 @@ export function useAtlasAi(initialWorkspaceSlug: string | null = null): AtlasAiS
     sending,
     sendError,
     send,
+
+    atlasDevPlanLoading,
+    atlasDevPlanError,
+    atlasDevPlanUnavailable,
+    currentAtlasDevPlan,
+    atlasDevPlansByRun,
     cancelPending: () => {
       if (pollTimerRef.current !== null) {
         window.clearTimeout(pollTimerRef.current)

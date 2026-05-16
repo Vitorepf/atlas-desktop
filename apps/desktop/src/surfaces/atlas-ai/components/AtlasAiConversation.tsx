@@ -9,7 +9,7 @@
  *   - Optimistic user bubble (entre Enter e API responder)
  *   - ErrorBanner com retry
  */
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AtlasAiConfidenceBand } from './AtlasAiConfidenceBand'
 import { AtlasAiDecisionBadge } from './AtlasAiDecisionBadge'
 import { AtlasAiErrorBanner } from './AtlasAiErrorBanner'
@@ -17,12 +17,13 @@ import { AtlasAiLiveActivity } from './AtlasAiLiveActivity'
 import { AtlasAiMessageActions } from './AtlasAiMessageActions'
 import { AtlasAiMessageBody } from './AtlasAiMessageBody'
 import { AtlasAiOpenBrainBadge } from './AtlasAiOpenBrainBadge'
+import { AtlasAiPlanIndicators } from './AtlasAiPlanIndicators'
 import { AtlasAiQualityBadge } from './AtlasAiQualityBadge'
 import { AtlasAiReasoningDrawer } from './AtlasAiReasoningDrawer'
 import { AtlasAiThinkingState } from './AtlasAiThinkingState'
 import { AtlasAiToolReceipts } from './AtlasAiToolReceipts'
 import { formatRelativeLong } from '../timeFormat'
-import type { AiThreadDetail, AiThreadMessage, AiTrace } from '../types'
+import type { AiThreadDetail, AiThreadMessage, AiTrace, AtlasDevPlanResult } from '../types'
 
 interface PendingUserMessage {
   text: string
@@ -42,6 +43,8 @@ interface AtlasAiConversationProps {
   onArchive: () => void
   onPromote?: () => void
   onCancel?: () => void
+  /** Atlas Dev plan-only result for the current run (Claude 17 slice). */
+  atlasDevPlan?: AtlasDevPlanResult | null
 }
 
 function roleLabel(role: string): string {
@@ -252,6 +255,7 @@ export function AtlasAiConversation({
   onArchive,
   onPromote,
   onCancel,
+  atlasDevPlan,
 }: AtlasAiConversationProps) {
   // Auto-scroll para o fim quando mensagens chegam ou pending vira ativo.
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -264,11 +268,12 @@ export function AtlasAiConversation({
 
   // Estamos no meio de criar uma thread nova? (sending true, sem detail ainda)
   const isCreatingThread = pendingUserMessage !== null && detail === null
+  const [fallbackStartedAtMs] = useState(() => Date.now())
 
   // Quando o sending começou — anchor para ThinkingState
   const streamingStartedAtMs = useMemo(
-    () => pendingUserMessage?.startedAt ?? Date.now(),
-    [pendingUserMessage?.startedAt],
+    () => pendingUserMessage?.startedAt ?? fallbackStartedAtMs,
+    [pendingUserMessage?.startedAt, fallbackStartedAtMs],
   )
 
   if (loading && detail === null && !isCreatingThread) {
@@ -405,6 +410,8 @@ export function AtlasAiConversation({
             onCancel={onCancel}
           />
         ) : null}
+
+        {atlasDevPlan ? <AtlasAiPlanIndicators plan={atlasDevPlan} /> : null}
 
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>

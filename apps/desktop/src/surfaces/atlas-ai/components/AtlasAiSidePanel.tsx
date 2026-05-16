@@ -9,11 +9,24 @@
  * "Contexto" — mostra rota Atlas decide / flow / decisão. Assim que uma
  * thread aparece, Plano se torna mais útil (vira tela secundária honesta,
  * sem inventar trabalho).
+ *
+ * Atlas Dev plan-only (Claude 17 slice): quando `atlasDevPlan` é fornecido,
+ * Contexto/Plano renderizam os artefatos canônicos
+ * (selected_tiers/budget/refs/missing_sources/truncation no Contexto;
+ * objective/non_goals/allowed/forbidden/acceptance/validation/stop/escalation
+ * no Plano), sem chamar provider.
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AtlasAiContextPanel } from './AtlasAiContextPanel'
 import { AtlasAiPlanPanel } from './AtlasAiPlanPanel'
-import type { AiThreadDetail, AiTrace, AtlasAiMode, AtlasAiProviderChoice, AtlasAiTask } from '../types'
+import type {
+  AiThreadDetail,
+  AiTrace,
+  AtlasAiMode,
+  AtlasAiProviderChoice,
+  AtlasAiTask,
+  AtlasDevPlanResult,
+} from '../types'
 
 type SidePanelTab = 'context' | 'plan'
 
@@ -25,20 +38,16 @@ interface AtlasAiSidePanelProps {
   mode: AtlasAiMode
   task: AtlasAiTask
   provider: AtlasAiProviderChoice
+  atlasDevPlan?: AtlasDevPlanResult | null
+  atlasDevPlanLoading?: boolean
+  atlasDevPlanError?: string | null
+  atlasDevPlanUnavailable?: boolean
 }
 
 export function AtlasAiSidePanel(props: AtlasAiSidePanelProps) {
-  const [tab, setTab] = useState<SidePanelTab>('context')
-
-  // Quando uma thread é carregada, o operador costuma querer ver o Plano
-  // primeiro (próximo passo, riscos). Sem thread, mantém Contexto.
-  useEffect(() => {
-    if (props.thread) {
-      setTab('plan')
-    } else {
-      setTab('context')
-    }
-  }, [props.thread?.id])
+  const preferredTab: SidePanelTab = props.atlasDevPlan || props.thread ? 'plan' : 'context'
+  const [manualTab, setManualTab] = useState<SidePanelTab | null>(null)
+  const tab = manualTab ?? preferredTab
 
   return (
     <div className="atlas-ai-side">
@@ -48,7 +57,7 @@ export function AtlasAiSidePanel(props: AtlasAiSidePanelProps) {
           role="tab"
           aria-selected={tab === 'context'}
           className={`atlas-ai-side-tab${tab === 'context' ? ' is-active' : ''}`}
-          onClick={() => setTab('context')}
+          onClick={() => setManualTab('context')}
         >
           Contexto
         </button>
@@ -57,7 +66,7 @@ export function AtlasAiSidePanel(props: AtlasAiSidePanelProps) {
           role="tab"
           aria-selected={tab === 'plan'}
           className={`atlas-ai-side-tab${tab === 'plan' ? ' is-active' : ''}`}
-          onClick={() => setTab('plan')}
+          onClick={() => setManualTab('plan')}
         >
           Plano
         </button>
@@ -73,12 +82,20 @@ export function AtlasAiSidePanel(props: AtlasAiSidePanelProps) {
             mode={props.mode}
             task={props.task}
             provider={props.provider}
+            atlasDevPlan={props.atlasDevPlan ?? null}
+            atlasDevPlanLoading={props.atlasDevPlanLoading ?? false}
+            atlasDevPlanError={props.atlasDevPlanError ?? null}
+            atlasDevPlanUnavailable={props.atlasDevPlanUnavailable ?? false}
           />
         ) : (
           <AtlasAiPlanPanel
             thread={props.thread}
             pendingTrace={props.pendingTrace}
             mode={props.mode}
+            atlasDevPlan={props.atlasDevPlan ?? null}
+            atlasDevPlanLoading={props.atlasDevPlanLoading ?? false}
+            atlasDevPlanError={props.atlasDevPlanError ?? null}
+            atlasDevPlanUnavailable={props.atlasDevPlanUnavailable ?? false}
           />
         )}
       </div>

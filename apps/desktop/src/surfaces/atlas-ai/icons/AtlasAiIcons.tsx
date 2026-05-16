@@ -303,6 +303,7 @@ export function IconForToolKind({
  * Plural label canônico para uma kind ("X arquivos" / "Y comandos").
  * Usado nos summaries inline tipo "Explorou 5 arquivos, executou 6 comandos".
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function pluralLabelForKind(kind: AiToolKind | string, count: number): string {
   const n = count
   const plural = (singular: string, pluralForm?: string) =>

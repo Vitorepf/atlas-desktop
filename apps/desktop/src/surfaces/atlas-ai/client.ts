@@ -13,7 +13,11 @@ import type {
   AiTrace,
   AtlasAiInteractionRequest,
   AtlasAiInteractionResponse,
+  AtlasDevPlanRequest,
+  AtlasDevPlanResponse,
+  AtlasDevPlanResult,
 } from './types'
+import { toAtlasDevPlanHttpBody } from './atlasDevPlanHttpBody'
 
 export type AtlasAiBridgeMode = 'tauri' | 'http' | 'offline'
 
@@ -65,9 +69,15 @@ function compactHttpError(status: number, body: string): string {
   }
 
   try {
-    const parsed = JSON.parse(body) as { message?: unknown }
-    if (typeof parsed.message === 'string' && parsed.message.trim() !== '') {
-      return `Atlas AI · http ${status}: ${parsed.message.trim().slice(0, 200)}`
+    const parsed = JSON.parse(body) as { message?: unknown; error?: { message?: unknown } }
+    const message =
+      typeof parsed.message === 'string'
+        ? parsed.message
+        : typeof parsed.error?.message === 'string'
+          ? parsed.error.message
+          : null
+    if (message && message.trim() !== '') {
+      return `Atlas AI · http ${status}: ${message.trim().slice(0, 200)}`
     }
   } catch {
     /* keep raw compact fallback */
@@ -180,6 +190,131 @@ export async function getAiTrace(traceId: string): Promise<AiTrace> {
   ensureOnline('getAiTrace')
   const result = await fetchJson<{ trace: AiTrace }>(`/ai/interactions/${encodeURIComponent(traceId)}`)
   return result.trace
+}
+
+/**
+ * Sentinel error thrown when the backend has not yet wired the Atlas Dev
+ * plan-only endpoint (HTTP 404). The composer catches this and falls back to
+ * the legacy `/ai/interactions` flow so the surface never regresses while
+ * Claude 14/15/16 finish their slices.
+ */
+export class AtlasDevPlanUnavailableError extends Error {
+  constructor(message = 'Atlas Dev plan endpoint indisponível.') {
+    super(message)
+    this.name = 'AtlasDevPlanUnavailableError'
+  }
+}
+
+/**
+ * POST /ai/interactions/atlas-dev/plan
+ *
+ * Plan-only: backend executes Schemas/Discovery/PromptProjection up to the
+ * provider boundary, then returns the artefacts; **NO** provider is invoked
+ * and NO patch is applied. Desktop uses this to render Contexto/Plano tabs
+ * before the operator decides to run anything.
+ *
+ * Treats 404 as "endpoint not deployed yet" and surfaces a typed error so the
+ * surface can fall back to the legacy chat flow without exploding.
+ */
+export async function postAtlasDevPlan(
+  request: AtlasDevPlanRequest,
+): Promise<AtlasDevPlanResult> {
+  ensureOnline('postAtlasDevPlan')
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  }
+  const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
+  if (token) headers['X-Atlas-Token'] = token
+
+  const response = await fetch(apiUrl('/ai/interactions/atlas-dev/plan'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(toAtlasDevPlanHttpBody(request)),
+  })
+
+  if (response.status === 404) {
+    throw new AtlasDevPlanUnavailableError(
+      'Atlas Dev plan endpoint não disponível no backend ativo (HTTP 404).',
+    )
+  }
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(compactHttpError(response.status, body))
+  }
+
+  const parsed = (await response.json()) as
+    | AtlasDevPlanResponse
+    | { data?: AtlasDevPlanResult & { confirmation?: { token?: string; expires_at?: number | string; task_contract_hash?: string } | null; routing?: { kind?: string } | null } }
+    | AtlasDevPlanResult
+
+  // Accept `{ data: { … } }` (current Laravel controller), `{ plan: { … } }`
+  // (older draft contract), and a bare result so Desktop stays tolerant while
+  // the backend/API docs converge.
+  if ('data' in parsed && parsed.data && typeof parsed.data === 'object') {
+    return normaliseAtlasDevPlanResult(parsed.data)
+  }
+  if ('plan' in parsed && parsed.plan && typeof parsed.plan === 'object') {
+    return normaliseAtlasDevPlanResult(parsed.plan)
+  }
+  return normaliseAtlasDevPlanResult(parsed as AtlasDevPlanResult)
+}
+
+function normaliseAtlasDevPlanResult(
+  raw: AtlasDevPlanResult & {
+    confirmation?: { token?: string; expires_at?: number | string; task_contract_hash?: string } | null
+    routing?: { kind?: string } | null
+  },
+): AtlasDevPlanResult {
+  const routingDecision =
+    raw.routing_decision ??
+    raw.routing?.kind ??
+    (raw.status === 'blocked'
+      ? 'blocked'
+      : raw.status === 'forge_promotion_preview'
+        ? 'forge_promotion_preview'
+        : undefined)
+
+  const status =
+    raw.status ??
+    (routingDecision === 'blocked'
+      ? 'blocked'
+      : routingDecision === 'forge_promotion_preview'
+        ? 'forge_promotion_preview'
+        : 'ready')
+
+  const confirmationToken = raw.confirmation_token ?? raw.confirmation?.token
+  const confirmationExpiresAt =
+    raw.confirmation_expires_at ??
+    normaliseUnixOrIsoTimestamp(raw.confirmation?.expires_at)
+  const taskContractHash =
+    raw.task_contract_hash ??
+    raw.confirmation?.task_contract_hash ??
+    raw.task_contract?.task_contract_hash ??
+    (typeof raw.hashes?.task_contract === 'string' ? raw.hashes.task_contract : undefined)
+
+  return {
+    ...raw,
+    status,
+    ...(routingDecision ? { routing_decision: routingDecision } : {}),
+    ...(confirmationToken ? { confirmation_token: confirmationToken } : {}),
+    ...(confirmationExpiresAt ? { confirmation_expires_at: confirmationExpiresAt } : {}),
+    ...(taskContractHash ? { task_contract_hash: taskContractHash } : {}),
+  }
+}
+
+function normaliseUnixOrIsoTimestamp(value: number | string | undefined): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value * 1000).toISOString()
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric)) return new Date(numeric * 1000).toISOString()
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString()
+  }
+  return null
 }
 
 // ──────────────────────────────────────────────────────────────────────────

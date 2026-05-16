@@ -44,10 +44,32 @@ interface AtlasAiComposerProps {
   sendError: string | null
   onSend: (extras?: { newThread?: boolean; attachments?: UploadOutput }) => Promise<void> | void
   onSendInNew: (extras?: { attachments?: UploadOutput }) => Promise<void> | void
+  /** Altura max da textarea (vinda do useComposerSize via AtlasAiSurface).
+   * Quando muda, textarea re-calcula altura imediatamente — drag responsivo. */
+  textareaMaxPx?: number
 }
 
-const MIN_TEXTAREA_PX = 88
-const MAX_TEXTAREA_PX = 360
+const MIN_TEXTAREA_PX = 32
+const MAX_TEXTAREA_PX_DEFAULT = 360
+
+/**
+ * Resolve max-height ALVO da textarea. Prioriza --composer-textarea-max
+ * (CSS var seteada pelo useComposerSize.startDrag) — assim o drag handle
+ * altera a altura tanto da resposta vazia (min-height) quanto do crescimento
+ * automático com conteúdo. Fallback: constante default 360.
+ *
+ * BÔNUS: quando user faz drag, o min-height vira o próprio max (textarea
+ * "cresce" instantaneamente, mesmo vazia), igual o user esperava.
+ */
+function readComposerTextareaMax(el: HTMLElement | null): number {
+  if (!el) return MAX_TEXTAREA_PX_DEFAULT
+  const wrap = el.closest('.atlas-ai-composer-wrap') as HTMLElement | null
+  const target = wrap ?? document.documentElement
+  const raw = getComputedStyle(target).getPropertyValue('--composer-textarea-max').trim()
+  if (!raw) return MAX_TEXTAREA_PX_DEFAULT
+  const parsed = parseFloat(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : MAX_TEXTAREA_PX_DEFAULT
+}
 
 function estimateTokens(text: string, attachments: UploadOutput | null): number {
   let tokens = text === '' ? 0 : Math.max(1, Math.round(text.length / 4))
@@ -91,17 +113,18 @@ export function AtlasAiComposer({
   sendError,
   onSend,
   onSendInNew,
+  textareaMaxPx,
 }: AtlasAiComposerProps) {
   const tasks = taskOptionsForMode(mode)
   const att = useAtlasAiAttachments()
   const [dragActive, setDragActive] = useState(false)
-  const [slashOpen, setSlashOpen] = useState(false)
   const [showWorkspaceWarning, setShowWorkspaceWarning] = useState(false)
   const taRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const composerRef = useRef<HTMLDivElement | null>(null)
 
   const programmingMissingWorkspace = mode === 'programming' && !workspaceSlug
+  const slashOpen = draft.startsWith('/') && draft.length <= 12
   const hasErroredAttachments = att.drafts.some((d) => d.status === 'error')
   const hasUnreadyAttachments = att.drafts.some(
     (d) => d.status === 'processing' || d.status === 'uploading',
@@ -120,24 +143,20 @@ export function AtlasAiComposer({
     return detectedUrls.filter((u) => !already.has(u))
   }, [detectedUrls, att.drafts])
 
-  // Auto-resize textarea
+  // Auto-resize textarea · MAX dinâmico (prop textareaMaxPx tem prioridade
+  // sobre CSS var, fallback default). Min vira o próprio max quando user
+  // arrastou pra cima, pra textarea "crescer" instantaneamente mesmo vazia.
   useEffect(() => {
     const ta = taRef.current
     if (!ta) return
+    const dynamicMax = textareaMaxPx ?? readComposerTextareaMax(ta)
+    // Quando user arrastou pra grande, min = max (textarea grande mesmo vazia).
+    // Quando default (≤360), min continua 88 (auto-grow com conteúdo).
+    const minTarget = dynamicMax > MAX_TEXTAREA_PX_DEFAULT ? dynamicMax : MIN_TEXTAREA_PX
     ta.style.height = 'auto'
-    const target = Math.min(MAX_TEXTAREA_PX, Math.max(MIN_TEXTAREA_PX, ta.scrollHeight))
+    const target = Math.min(dynamicMax, Math.max(minTarget, ta.scrollHeight))
     ta.style.height = `${target}px`
-  }, [draft])
-
-  // Slash menu auto-open
-  useEffect(() => {
-    setSlashOpen(draft.startsWith('/') && draft.length <= 12)
-  }, [draft])
-
-  // Esconde warning quando workspace OK ou modo muda
-  useEffect(() => {
-    if (!programmingMissingWorkspace) setShowWorkspaceWarning(false)
-  }, [programmingMissingWorkspace])
+  }, [draft, textareaMaxPx])
 
   // Paste handler (imagens/screenshots)
   useEffect(() => {
@@ -203,7 +222,6 @@ export function AtlasAiComposer({
 
   const applySlash = useCallback(
     (cmd: string) => {
-      setSlashOpen(false)
       if (cmd === '/dev') {
         onModeChange('programming')
         onChange('')

@@ -33,6 +33,7 @@ import { useAtlasAiColumnSizing } from './layout/useAtlasAiColumnSizing'
 import { serializeThreadAsMarkdown } from './threadExport'
 import { useAtlasAi } from './useAtlasAi'
 import { useCalmaria } from './useCalmaria'
+import { useComposerSize } from './useComposerSize'
 import type { AiThreadSummary } from './types'
 import './atlas-ai.css'
 
@@ -70,17 +71,11 @@ interface AtlasAiSurfaceProps {
 export function AtlasAiSurface({
   activeWorkspaceSlug = null,
   activeWorkspaceName = null,
-  // activeWorkspace + defaultWorkspaceSlug + onOpenWorkspaceProfile foram
-  // usados pelo ProjectScopeStrip que removemos da header bar (redundância
-  // com o WorkspacePill global do topbar). Props mantidos no contrato pra
-  // surface ainda receber tudo via SurfaceHost, mesmo que não usemos agora.
-  activeWorkspace: _activeWorkspace = null,
-  defaultWorkspaceSlug: _defaultWorkspaceSlug = null,
-  onRequestSurfaceChange: _onRequestSurfaceChange,
-  onOpenWorkspaceProfile: _onOpenWorkspaceProfile,
+  activeWorkspace = null,
 }: AtlasAiSurfaceProps) {
-  const atlas = useAtlasAi(activeWorkspaceSlug)
+  const atlas = useAtlasAi(activeWorkspaceSlug, activeWorkspace?.workspacePath || null)
   const { calmaria, toggle: toggleCalmaria } = useCalmaria()
+  const composerSize = useComposerSize()
   const [composerDraft, setComposerDraft] = useState<string>('')
   const [promotionOpen, setPromotionOpen] = useState<boolean>(false)
   const [retrying, setRetrying] = useState<boolean>(false)
@@ -95,12 +90,16 @@ export function AtlasAiSurface({
   const toggleRight = useAtlasAiLayoutStore((s) => s.toggleRightCollapsed)
 
   // Sincroniza workspace selecionado quando o topbar do shell muda.
-  const { workspaceSlug, setWorkspaceSlug } = atlas
+  const { workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath } = atlas
   useEffect(() => {
     if (activeWorkspaceSlug !== workspaceSlug) {
       setWorkspaceSlug(activeWorkspaceSlug)
     }
-  }, [activeWorkspaceSlug, workspaceSlug, setWorkspaceSlug])
+    const nextWorkspacePath = activeWorkspace?.workspacePath || null
+    if (nextWorkspacePath !== workspacePath) {
+      setWorkspacePath(nextWorkspacePath)
+    }
+  }, [activeWorkspaceSlug, activeWorkspace?.workspacePath, workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath])
 
   // Esc cancela streaming em curso (Codex CLI canon "esc to interrupt").
   const { cancelPending, sending, pendingTrace } = atlas
@@ -404,33 +403,61 @@ export function AtlasAiSurface({
               onArchive={atlas.archiveSelectedThread}
               onPromote={() => setPromotionOpen(true)}
               onCancel={atlas.cancelPending}
+              atlasDevPlan={atlas.currentAtlasDevPlan}
             />
           )}
         </div>
 
-        <div className="atlas-ai-stage-composer">
-          <AtlasAiComposer
-            draft={composerDraft}
-            onChange={setComposerDraft}
-            mode={atlas.composerMode}
-            onModeChange={atlas.setComposerMode}
-            task={atlas.composerTask}
-            onTaskChange={atlas.setComposerTask}
-            provider={atlas.composerProvider}
-            onProviderChange={atlas.setComposerProvider}
-            sending={atlas.sending}
-            sendError={atlas.sendError}
-            workspaceSlug={atlas.workspaceSlug ?? atlas.threadDetail?.workspace ?? null}
-            onSend={(extras) =>
-              handleSend({
-                newThread: extras?.newThread ?? atlas.selectedThreadId === null,
-                attachments: extras?.attachments,
-              })
-            }
-            onSendInNew={(extras) =>
-              handleSend({ newThread: true, attachments: extras?.attachments })
-            }
-          />
+        <div
+          className="atlas-ai-stage-composer"
+          style={{
+            ['--composer-width' as string]: `${composerSize.size.width}px`,
+            ['--composer-textarea-max' as string]: `${composerSize.size.height}px`,
+          }}
+        >
+          <div className="atlas-ai-composer-wrap">
+            {/* Handle LARGURA · borda esquerda, drag horizontal */}
+            <button
+              type="button"
+              className="atlas-ai-composer-resize-w"
+              onMouseDown={composerSize.startWidthDrag}
+              onDoubleClick={composerSize.reset}
+              title="Arraste lateralmente pra ajustar largura · double-click reseta"
+              aria-label="Ajustar largura do composer"
+            />
+            {/* Handle ALTURA · borda superior, drag vertical */}
+            <button
+              type="button"
+              className="atlas-ai-composer-resize-h"
+              onMouseDown={composerSize.startHeightDrag}
+              onDoubleClick={composerSize.reset}
+              title="Arraste verticalmente pra ajustar altura · double-click reseta"
+              aria-label="Ajustar altura do composer"
+            />
+            <AtlasAiComposer
+              draft={composerDraft}
+              onChange={setComposerDraft}
+              mode={atlas.composerMode}
+              onModeChange={atlas.setComposerMode}
+              task={atlas.composerTask}
+              onTaskChange={atlas.setComposerTask}
+              provider={atlas.composerProvider}
+              onProviderChange={atlas.setComposerProvider}
+              sending={atlas.sending}
+              sendError={atlas.sendError}
+              workspaceSlug={atlas.workspaceSlug ?? atlas.threadDetail?.workspace ?? null}
+              textareaMaxPx={composerSize.size.height}
+              onSend={(extras) =>
+                handleSend({
+                  newThread: extras?.newThread ?? atlas.selectedThreadId === null,
+                  attachments: extras?.attachments,
+                })
+              }
+              onSendInNew={(extras) =>
+                handleSend({ newThread: true, attachments: extras?.attachments })
+              }
+            />
+          </div>
         </div>
       </main>
 
@@ -452,6 +479,10 @@ export function AtlasAiSurface({
           mode={atlas.composerMode}
           task={atlas.composerTask}
           provider={atlas.composerProvider}
+          atlasDevPlan={atlas.currentAtlasDevPlan}
+          atlasDevPlanLoading={atlas.atlasDevPlanLoading}
+          atlasDevPlanError={atlas.atlasDevPlanError}
+          atlasDevPlanUnavailable={atlas.atlasDevPlanUnavailable}
         />
       </aside>
 

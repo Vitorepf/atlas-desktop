@@ -156,7 +156,6 @@ function CodeBlock({ source, lang, highlight }: CodeBlockProps) {
         </button>
       </header>
       {html ? (
-        // eslint-disable-next-line react/no-danger
         <div className="atlas-ai-md-codeblock-body" dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <pre className="atlas-ai-md-codeblock-fallback">

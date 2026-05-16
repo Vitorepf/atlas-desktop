@@ -279,6 +279,103 @@
     var(--cc-bg);
 }
 
+/* Composer wrap · contém o composer card + corner handle de resize.
+   margin-inline auto mantém centralizado. CSS var --composer-width
+   controlada pelo useComposerSize. */
+.atlas-ai-composer-wrap {
+  position: relative;
+  width: 100%;
+  max-width: var(--composer-width, 1080px);
+  margin-inline: auto;
+}
+
+/* Handle de LARGURA · borda esquerda, vertical bar drag-handle.
+   Position absolute, ocupa altura quase total da borda esquerda.
+   Hover do wrap revela; hover do handle pinta accent. */
+.atlas-ai-composer-resize-w {
+  position: absolute;
+  left: -6px;
+  top: 16px;
+  bottom: 16px;
+  width: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: ew-resize;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 200ms var(--cc-ease-out);
+}
+.atlas-ai-composer-resize-w::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  background: var(--cc-accent);
+  border-radius: 999px;
+  opacity: 0.55;
+  transition: opacity 160ms var(--cc-ease-out), height 160ms var(--cc-ease-out);
+}
+.atlas-ai-composer-wrap:hover .atlas-ai-composer-resize-w,
+.atlas-ai-composer-resize-w:hover,
+.atlas-ai-composer-resize-w:focus-visible {
+  opacity: 1;
+}
+.atlas-ai-composer-resize-w:hover::before,
+.atlas-ai-composer-resize-w:focus-visible::before {
+  opacity: 0.95;
+  height: 48px;
+}
+.atlas-ai-composer-resize-w:focus-visible { outline: none; }
+
+/* Handle de ALTURA · borda superior, horizontal bar drag-handle. */
+.atlas-ai-composer-resize-h {
+  position: absolute;
+  top: -6px;
+  left: 16px;
+  right: 16px;
+  height: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: ns-resize;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 200ms var(--cc-ease-out);
+}
+.atlas-ai-composer-resize-h::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 2px;
+  background: var(--cc-accent);
+  border-radius: 999px;
+  opacity: 0.55;
+  transition: opacity 160ms var(--cc-ease-out), width 160ms var(--cc-ease-out);
+}
+.atlas-ai-composer-wrap:hover .atlas-ai-composer-resize-h,
+.atlas-ai-composer-resize-h:hover,
+.atlas-ai-composer-resize-h:focus-visible {
+  opacity: 1;
+}
+.atlas-ai-composer-resize-h:hover::before,
+.atlas-ai-composer-resize-h:focus-visible::before {
+  opacity: 0.95;
+  width: 48px;
+}
+.atlas-ai-composer-resize-h:focus-visible { outline: none; }
+
+/* Override max-height da textarea via var (controlada pelo useComposerSize). */
+.atlas-ai-composer-wrap .atlas-ai-textarea-v2 {
+  max-height: var(--composer-textarea-max, 360px);
+}
+
 /* Stage fallback (offline) — main único ocupando toda área */
 .atlas-ai-stage-fallback {
   display: flex;
@@ -1130,9 +1227,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 1080px;
+  /* Width controlado pelo .atlas-ai-composer-wrap (CSS var --composer-width).
+     Inner composer ocupa 100% do wrap, sem max-width próprio. */
   width: 100%;
-  margin-inline: auto;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
@@ -3292,8 +3389,8 @@
    Drop radius 14 + gradient + 4-shadow stack — era "objeto flutuante".
    Plate sutil sobre superfície, raise apenas focus-within. */
 .atlas-ai-composer.atlas-ai-composer-v2 {
-  padding: 14px 18px 12px;
-  gap: 10px;
+  padding: 8px 18px 8px;
+  gap: 6px;
   background: var(--cc-surface);
   border: 1px solid rgba(233, 238, 242, 0.08);
   border-radius: 8px;
@@ -3311,7 +3408,7 @@
 .atlas-ai-composer-v2 .atlas-ai-textarea-v2 {
   background: transparent;
   border: none;
-  padding: 12px 8px 4px;
+  padding: 6px 8px 4px;
   font-family: var(--cc-font-sans);
   font-size: 15px;
   line-height: 1.6;
@@ -3321,7 +3418,7 @@
   /* Caret accent gold premium (não default white = mais nítido sobre slate). */
   caret-color: var(--cc-accent);
   resize: none;
-  min-height: 88px;
+  min-height: 32px;
   max-height: 360px;
   /* CRÍTICO: <textarea> default width = cols (≈20). Sem isto o texto quebra
      numa coluna estreita à esquerda e sobra área cinza inutilizada à direita

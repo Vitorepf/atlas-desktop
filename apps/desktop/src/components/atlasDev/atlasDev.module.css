@@ -1,0 +1,268 @@
+/*
+ * Atlas Dev · Run/SSE styling.
+ *
+ * Scoped via CSS modules so no global selector leaks. Tokens are read from
+ * the workbench premium layer (`--cc-*`); local fallbacks keep the panels
+ * usable when mounted outside the workbench shell (e.g. tests / storybook).
+ */
+
+.workbench {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 16px;
+  color: var(--cc-text, #2a2018);
+  font-family: var(--cc-font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.panel {
+  background: var(--cc-surface-elevated, #fbf7ef);
+  border: 1px solid var(--cc-border-quiet, rgba(36, 28, 20, 0.08));
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, rgba(36, 28, 20, 0.55));
+}
+
+.panelTitle {
+  font-weight: 600;
+  color: var(--cc-text, #2a2018);
+  font-size: 12px;
+}
+
+.runButtonRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  appearance: none;
+  border: 1px solid transparent;
+  background: var(--cc-accent, #1d2b34);
+  color: var(--cc-accent-fg, #f8efdd);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  appearance: none;
+  border: 1px solid var(--cc-border, rgba(36, 28, 20, 0.18));
+  background: transparent;
+  color: var(--cc-text, #2a2018);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.errorBanner {
+  background: rgba(177, 49, 49, 0.07);
+  border: 1px solid rgba(177, 49, 49, 0.35);
+  color: #6a1d1d;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.indicatorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cc-border-quiet, rgba(36, 28, 20, 0.12));
+  background: var(--cc-surface, #faf4ea);
+  color: var(--cc-text-muted, rgba(36, 28, 20, 0.7));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.indicator strong {
+  color: var(--cc-text, #2a2018);
+  font-weight: 600;
+}
+
+.indicator[data-tone='positive'] {
+  color: #1f4d2f;
+  border-color: rgba(31, 77, 47, 0.35);
+  background: rgba(31, 77, 47, 0.08);
+}
+
+.indicator[data-tone='warning'] {
+  color: #6e4a1a;
+  border-color: rgba(110, 74, 26, 0.35);
+  background: rgba(110, 74, 26, 0.08);
+}
+
+.indicator[data-tone='danger'] {
+  color: #6a1d1d;
+  border-color: rgba(177, 49, 49, 0.35);
+  background: rgba(177, 49, 49, 0.08);
+}
+
+.phaseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px;
+}
+
+.phaseItem {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--cc-surface, #faf4ea);
+  border: 1px solid var(--cc-border-quiet, rgba(36, 28, 20, 0.08));
+}
+
+.phaseItem[data-active='true'] {
+  background: rgba(212, 168, 90, 0.18);
+  border-color: rgba(212, 168, 90, 0.45);
+}
+
+.phaseLabel {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--cc-text, #2a2018);
+  letter-spacing: 0.02em;
+}
+
+.phaseTime {
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: var(--cc-text-muted, rgba(36, 28, 20, 0.5));
+}
+
+.diff {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--cc-surface-deep, #0f1419);
+  color: #e2dccd;
+  font-family: var(--cc-font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.45;
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diffLineAdd {
+  color: #92d692;
+}
+
+.diffLineRemove {
+  color: #e69b9b;
+}
+
+.diffLineHeader {
+  color: #d4a85a;
+  font-weight: 600;
+}
+
+.testsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.testsTable th,
+.testsTable td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--cc-border-quiet, rgba(36, 28, 20, 0.08));
+  vertical-align: top;
+}
+
+.testsTable th {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, rgba(36, 28, 20, 0.55));
+  font-weight: 600;
+}
+
+.testsCommand {
+  font-family: var(--cc-font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  word-break: break-word;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--cc-text-muted, rgba(36, 28, 20, 0.55));
+  font-style: italic;
+}
+
+.receiptGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+
+.receiptGrid dt {
+  color: var(--cc-text-muted, rgba(36, 28, 20, 0.55));
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.receiptGrid dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.fallbackTag {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: #6e4a1a;
+  background: rgba(110, 74, 26, 0.1);
+  border-radius: 999px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
