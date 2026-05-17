@@ -98,13 +98,14 @@ function makeController(status, overrides = {}) {
 
 try {
   const { RunPanel } = await vite.ssrLoadModule('/src/components/atlasDev/RunPanel.tsx')
+  const { ReadinessGate } = await vite.ssrLoadModule('/src/components/atlasDev/ReadinessGate.tsx')
   const { ReceiptCard } = await vite.ssrLoadModule('/src/components/atlasDev/ReceiptCard.tsx')
   const { AtlasAiSurface } = await vite.ssrLoadModule('/src/surfaces/atlas-ai/AtlasAiSurface.tsx')
   const { AtlasAiPlanPanel } = await vite.ssrLoadModule(
     '/src/surfaces/atlas-ai/components/AtlasAiPlanPanel.tsx',
   )
   const { postAtlasDevPlan } = await vite.ssrLoadModule('/src/surfaces/atlas-ai/client.ts')
-  const { runAtlasDev, streamAtlasDevRun, fetchAtlasDevRunStatus } = await vite.ssrLoadModule(
+  const { cancelAtlasDevRun, runAtlasDev, streamAtlasDevRun, fetchAtlasDevRunStatus } = await vite.ssrLoadModule(
     '/src/components/atlasDev/api.ts',
   )
 
@@ -172,6 +173,67 @@ try {
 
   /* --------- RunPanel --------- */
 
+  test('ReadinessGate · passed runtime unlocks operator run path', () => {
+    const html = renderToStaticMarkup(
+      createElement(ReadinessGate, {
+        initialReadiness: {
+          schema_version: 'atlas.dev.readiness.v1',
+          status: 'passed',
+          strict: true,
+          provider_safe: true,
+          summary: { passed: 9, warnings: 0, failed: 0 },
+          checks: [
+            {
+              id: 'provider.runtime',
+              status: 'passed',
+              severity: 'blocker',
+              message: 'Provider runtime is configured for Atlas Dev runs.',
+            },
+          ],
+        },
+      }),
+    )
+    writeFileSync(join(SNAPSHOT_DIR, 'readinessgate-passed.html'), html)
+    assert(html.includes('Readiness operacional'), 'readiness header missing')
+    assert(html.includes('passed · 9 ok · 0 bloqueios'), 'passed summary missing')
+    assert(html.includes('Runtime pronto'), 'ready copy missing')
+    assert(!html.includes('/Users/'), 'absolute path leaked in passed readiness')
+  })
+
+  test('ReadinessGate · blocked runtime exposes blockers before Run', () => {
+    const html = renderToStaticMarkup(
+      createElement(ReadinessGate, {
+        initialReadiness: {
+          schema_version: 'atlas.dev.readiness.v1',
+          status: 'blocked',
+          strict: true,
+          provider_safe: true,
+          summary: { passed: 7, warnings: 0, failed: 2 },
+          checks: [
+            {
+              id: 'config.desktop_enabled',
+              status: 'failed',
+              severity: 'blocker',
+              message: 'atlas_dev.efficient.desktop_enabled must be enabled for Desktop-ready Atlas Dev.',
+            },
+            {
+              id: 'security.app_key',
+              status: 'failed',
+              severity: 'blocker',
+              message: 'APP_KEY must provide at least 32 bytes for confirmation_token HMAC.',
+            },
+          ],
+        },
+      }),
+    )
+    writeFileSync(join(SNAPSHOT_DIR, 'readinessgate-blocked.html'), html)
+    assert(html.includes('blocked · 7 ok · 2 bloqueios'), 'blocked summary missing')
+    assert(html.includes('config.desktop_enabled'), 'desktop blocker missing')
+    assert(html.includes('security.app_key'), 'APP_KEY blocker missing')
+    assert(html.includes('Run fica bloqueado'), 'blocked run copy missing')
+    assert(!html.includes('/private/var/'), 'absolute path leaked in blocked readiness')
+  })
+
   test('RunPanel · awaiting_confirmation', () => {
     const html = renderToStaticMarkup(
       createElement(RunPanel, {
@@ -226,6 +288,36 @@ try {
     writeFileSync(join(SNAPSHOT_DIR, 'runpanel-expired-token.html'), html)
     assert(html.includes('Token de confirmação inválido'), 'expired-token message missing')
     assert(html.includes('Gere um novo plano'), 'replan instruction missing')
+  })
+
+  test('RunPanel · expired confirmation token disables Run before backend reject', () => {
+    const html = renderToStaticMarkup(
+      createElement(RunPanel, {
+        plan: {
+          ...validPlan,
+          confirmation_expires_at: new Date(Date.now() - 30_000).toISOString(),
+        },
+        controller: makeController('awaiting_confirmation'),
+      }),
+    )
+    writeFileSync(join(SNAPSHOT_DIR, 'runpanel-expired-client-block.html'), html)
+    assert(html.includes('expirado'), 'expired token hint missing')
+    assert(html.includes('Token de confirmação expirado'), 'client-side expired-token banner missing')
+    assert(html.includes('disabled'), 'execute button must be disabled for expired token')
+    assert(!html.includes('PLAINTEXT_TOKEN_SHOULD_NOT_LEAK'), 'token leaked into expired-token HTML')
+  })
+
+  test('RunPanel · running exposes operator cancellation', () => {
+    const html = renderToStaticMarkup(
+      createElement(RunPanel, {
+        plan: validPlan,
+        controller: makeController('running'),
+      }),
+    )
+    writeFileSync(join(SNAPSHOT_DIR, 'runpanel-running-cancel.html'), html)
+    assert(html.includes('executando…'), 'running state must show executing CTA copy')
+    assert(html.includes('cancelar'), 'running state must expose cancel action')
+    assert(!html.includes('PLAINTEXT_TOKEN_SHOULD_NOT_LEAK'), 'token leaked into running HTML')
   })
 
   /* --------- AtlasAiPlanPanel --------- */
@@ -492,6 +584,67 @@ try {
       assert(
         calls.map((call) => call.method).join(' ') === 'POST POST GET GET',
         `unexpected Desktop flow call order: ${JSON.stringify(calls)}`,
+      )
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  test('Desktop contract · cancel accepted run uses canonical endpoint', async () => {
+    const runId = 'dev-visual-cancel-001'
+    const calls = []
+    const originalFetch = globalThis.fetch
+
+    globalThis.fetch = async (input, init = {}) => {
+      const url = String(input)
+      calls.push({ url, method: init.method ?? 'GET', body: init.body ? JSON.parse(String(init.body)) : null })
+
+      if (url.endsWith(`/ai/interactions/atlas-dev/runs/${runId}/cancel`)) {
+        assert(init.method === 'POST', 'cancel must be POST')
+        assert(calls.at(-1).body.reason === 'operator_cancelled_from_desktop', 'cancel reason mismatch')
+        return jsonResponse({
+          data: {
+            ok: true,
+            run_id: runId,
+            state: 'complete',
+            completion_state: 'cancelled',
+            persisted_artifact_refs: {
+              run_cancellation: `receipts/${runId}/run_cancellation.json`,
+            },
+          },
+        })
+      }
+
+      if (url.endsWith(`/ai/interactions/atlas-dev/runs/${runId}`)) {
+        return jsonResponse({
+          data: {
+            run_id: runId,
+            state: 'complete',
+            completion_state: 'cancelled',
+            task_contract_hash: 'cancel-task-contract-hash',
+            run_execution: { status: 'cancelled' },
+            persisted_artifact_refs: {
+              run_cancellation: `receipts/${runId}/run_cancellation.json`,
+            },
+          },
+        })
+      }
+
+      throw new Error(`unexpected fetch: ${url}`)
+    }
+
+    try {
+      await cancelAtlasDevRun(runId, 'operator_cancelled_from_desktop')
+      const status = await fetchAtlasDevRunStatus(runId)
+      assert(status.state === 'complete', 'cancel REST status must be complete')
+      assert(status.receipt?.completion?.status === 'cancelled', 'cancel completion mismatch')
+      assert(
+        status.phases?.some((entry) => entry.phase === 'complete'),
+        'cancel artifact must normalise to terminal phase',
+      )
+      assert(
+        calls.map((call) => call.method).join(' ') === 'POST GET',
+        `unexpected cancel flow call order: ${JSON.stringify(calls)}`,
       )
     } finally {
       globalThis.fetch = originalFetch

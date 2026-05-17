@@ -543,6 +543,7 @@ export interface AtlasDevPlanResult {
   confirmation_expires_at?: string | null
   surface_id?: string
   workspace?: string | null
+  workspace_hash?: string | null
   hashes?: Record<string, unknown>
   operation_envelope?: Record<string, unknown>
   compact_sdd?: Record<string, unknown>

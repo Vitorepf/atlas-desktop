@@ -13,6 +13,7 @@
  * placeholder — preferimos vazio honesto. Plan-only NÃO chama provider, então
  * o painel também sinaliza explicitamente "plan · pronto" sem partir para /run.
  */
+import { useCallback, useEffect, useState } from 'react'
 import type {
   AiThreadDetail,
   AiTrace,
@@ -21,7 +22,9 @@ import type {
   AtlasDevPlanResult,
 } from '../types'
 import { AtlasDevRunWorkbench } from '../../../components/atlasDev'
+import { fetchAtlasDevReadiness } from '../../../components/atlasDev'
 import type { PlanOnlyResult } from '../../../components/atlasDev'
+import type { AtlasDevReadinessCheck, AtlasDevReadinessResponse } from '../../../components/atlasDev'
 
 interface AtlasAiPlanPanelProps {
   thread: AiThreadDetail | null
@@ -73,6 +76,8 @@ function toRunPlan(plan: AtlasDevPlanResult | null | undefined): PlanOnlyResult 
     run_id: plan.run_id,
     task_contract_hash: taskContractHash,
     confirmation_token: plan.confirmation_token,
+    workspace_hash: plan.workspace_hash ?? null,
+    thread_id: plan.thread_id ?? null,
     confirmation_expires_at: plan.confirmation_expires_at ?? null,
     routing_decision: plan.routing_decision,
     ui_hints: plan.ui_hints
@@ -155,6 +160,10 @@ export function AtlasAiPlanPanel({
         <p className="atlas-ai-plan-empty atlas-ai-faint">
           plan-only endpoint ainda não disponível · fluxo legado em uso
         </p>
+      ) : null}
+
+      {(atlasDevPlanUnavailable || atlasDevPlanError) && !atlasDevPlanLoading ? (
+        <AtlasDevReadinessPanel />
       ) : null}
 
       {atlasDevPlan?.status === 'blocked' && atlasDevPlan.blocked ? (
@@ -338,6 +347,74 @@ export function AtlasAiPlanPanel({
       ) : null}
     </section>
   )
+}
+
+function AtlasDevReadinessPanel() {
+  const [readiness, setReadiness] = useState<AtlasDevReadinessResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async (): Promise<void> => {
+    setLoading(true)
+    setError(null)
+    try {
+      setReadiness(await fetchAtlasDevReadiness({ strict: true }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'falha ao consultar readiness')
+      setReadiness(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refresh()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [refresh])
+
+  const blockers = readiness?.checks.filter(isBlockingCheck) ?? []
+
+  return (
+    <article className="atlas-ai-plan-card is-warning">
+      <header>Readiness Atlas Dev</header>
+      {loading && !readiness ? (
+        <p className="atlas-ai-plan-faint">verificando runtime...</p>
+      ) : error ? (
+        <p>{error}</p>
+      ) : readiness ? (
+        <>
+          <p>
+            status {readiness.status} · {readiness.summary.passed} ok · {readiness.summary.failed} bloqueios
+          </p>
+          {blockers.length > 0 ? (
+            <ul className="atlas-ai-plan-list">
+              {blockers.slice(0, 5).map((check) => (
+                <li key={check.id}>
+                  <strong>{check.id}</strong> · {check.message}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="atlas-ai-plan-faint">runtime pronto; gere um novo plano.</p>
+          )}
+        </>
+      ) : null}
+      <button
+        type="button"
+        className="atlas-ai-plan-action"
+        disabled={loading}
+        onClick={() => void refresh()}
+      >
+        {loading ? 'verificando' : 'verificar novamente'}
+      </button>
+    </article>
+  )
+}
+
+function isBlockingCheck(check: AtlasDevReadinessCheck): boolean {
+  return check.status === 'failed' || (check.severity === 'blocker' && check.status !== 'passed')
 }
 
 function ForgePromotionBanner({ preview }: { preview: AtlasDevForgePromotionPreview }) {

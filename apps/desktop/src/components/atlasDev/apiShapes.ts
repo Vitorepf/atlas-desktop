@@ -1,4 +1,11 @@
-import type { AtlasDevRunStatusResponse, CompletionState } from './types'
+import type {
+  AtlasDevReadinessCheck,
+  AtlasDevReadinessResponse,
+  AtlasDevRunIndexEntry,
+  AtlasDevRunIndexResponse,
+  AtlasDevRunStatusResponse,
+  CompletionState,
+} from './types'
 import type { AtlasDevPlanResult } from '../../surfaces/atlas-ai/types'
 
 /**
@@ -134,20 +141,128 @@ export function normalizeRunStatusResponse(payload: unknown): AtlasDevRunStatusR
   const completionState = typeof data.completion_state === 'string' ? data.completion_state : null
   const state = normalizeStatusPhase(data.state, completionState)
   const receipt = normalizeReceiptFromStatus(data, completionState)
+  const phases = normalizeStatusPhases(data.persisted_artifact_refs, state)
 
   return {
     run_id: runId,
     state,
     ...(receipt ? { completion: receipt.completion, receipt } : {}),
-    phases: normalizeStatusPhases(data.persisted_artifact_refs),
+    phases,
   }
+}
+
+export function normalizeRunIndexResponse(payload: unknown): AtlasDevRunIndexResponse {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  const data = record.data && typeof record.data === 'object'
+    ? record.data as Record<string, unknown>
+    : record
+
+  const rawItems = Array.isArray(data.items) ? data.items : []
+  const items = rawItems
+    .map(normalizeRunIndexEntry)
+    .filter((entry): entry is AtlasDevRunIndexEntry => entry !== null)
+
+  return {
+    items,
+    limit: typeof data.limit === 'number' && Number.isFinite(data.limit) ? data.limit : items.length,
+    workspace_hash: typeof data.workspace_hash === 'string' ? data.workspace_hash : null,
+    thread_id: typeof data.thread_id === 'string' ? data.thread_id : null,
+  }
+}
+
+export function normalizeReadinessResponse(payload: unknown): AtlasDevReadinessResponse {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  const data = record.data && typeof record.data === 'object'
+    ? record.data as Record<string, unknown>
+    : record
+
+  const rawSummary = data.summary && typeof data.summary === 'object'
+    ? data.summary as Record<string, unknown>
+    : {}
+  const rawChecks = Array.isArray(data.checks) ? data.checks : []
+  const checks = rawChecks
+    .map(normalizeReadinessCheck)
+    .filter((check): check is AtlasDevReadinessCheck => check !== null)
+
+  return {
+    schema_version: typeof data.schema_version === 'string' ? data.schema_version : 'atlas.dev.readiness.v1',
+    status: typeof data.status === 'string' ? data.status : 'blocked',
+    strict: data.strict === true,
+    provider_safe: data.provider_safe === true,
+    checks,
+    summary: {
+      passed: numberOrZero(rawSummary.passed),
+      warnings: numberOrZero(rawSummary.warnings),
+      failed: numberOrZero(rawSummary.failed),
+    },
+  }
+}
+
+function normalizeReadinessCheck(value: unknown): AtlasDevReadinessCheck | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const item = value as Record<string, unknown>
+  const id = typeof item.id === 'string' ? item.id : ''
+  const status = typeof item.status === 'string' ? item.status : ''
+  const severity = typeof item.severity === 'string' ? item.severity : ''
+  const message = typeof item.message === 'string' ? item.message : ''
+  if (!id || !status || !severity || !message) return null
+
+  return {
+    id,
+    status,
+    severity,
+    message,
+    details: item.details && typeof item.details === 'object' && !Array.isArray(item.details)
+      ? item.details as Record<string, unknown>
+      : undefined,
+  }
+}
+
+function normalizeRunIndexEntry(value: unknown): AtlasDevRunIndexEntry | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const item = value as Record<string, unknown>
+  const runId = typeof item.run_id === 'string' ? item.run_id : ''
+  const surfaceId = typeof item.surface_id === 'string' ? item.surface_id : ''
+  const workspaceHash = typeof item.workspace_hash === 'string' ? item.workspace_hash : ''
+  const routingDecision = typeof item.routing_decision === 'string' ? item.routing_decision : ''
+  const taskKind = typeof item.task_kind === 'string' ? item.task_kind : ''
+  const riskLevel = typeof item.risk_level === 'string' ? item.risk_level : ''
+
+  if (!runId || !surfaceId || !workspaceHash || !routingDecision || !taskKind || !riskLevel) {
+    return null
+  }
+
+  return {
+    run_id: runId,
+    surface_id: surfaceId,
+    workspace_hash: workspaceHash,
+    routing_decision: routingDecision,
+    task_kind: taskKind,
+    risk_level: riskLevel,
+    completion_state: typeof item.completion_state === 'string' ? item.completion_state : null,
+    last_receipt_hash: typeof item.last_receipt_hash === 'string' ? item.last_receipt_hash : null,
+    thread_id: typeof item.thread_id === 'string' ? item.thread_id : null,
+    created_at: typeof item.created_at === 'string' ? item.created_at : null,
+    updated_at: typeof item.updated_at === 'string' ? item.updated_at : null,
+  }
+}
+
+function numberOrZero(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
 function normalizeStatusPhase(state: unknown, completionState: string | null): AtlasDevRunStatusResponse['state'] {
   if (typeof state === 'string' && state !== '') {
     return state as AtlasDevRunStatusResponse['state']
   }
-  if (completionState === 'passed' || completionState === 'no_patch_needed' || completionState === 'failed' || completionState === 'blocked' || completionState === 'needs_review') {
+  if (
+    completionState === 'passed' ||
+    completionState === 'no_patch_needed' ||
+    completionState === 'failed' ||
+    completionState === 'blocked' ||
+    completionState === 'cancelled' ||
+    completionState === 'needs_review'
+  ) {
     return 'complete'
   }
   if (completionState === 'escalate_forge') return 'escalation_triggered'
@@ -176,13 +291,21 @@ function normalizeReceiptFromStatus(
 
 function normalizeStatusPhases(
   artifactRefs: unknown,
+  state: AtlasDevRunStatusResponse['state'],
 ): NonNullable<AtlasDevRunStatusResponse['phases']> {
-  if (!artifactRefs || typeof artifactRefs !== 'object') return []
+  const terminalFallback = state === 'complete' || state === 'escalation_triggered'
+    ? [{ phase: state, at: new Date().toISOString() }]
+    : []
+  if (!artifactRefs || typeof artifactRefs !== 'object') return terminalFallback
   const refs = artifactRefs as Record<string, unknown>
   const now = new Date().toISOString()
   const phaseByArtifact: Record<string, AtlasDevRunStatusResponse['state']> = {
     operation_envelope: 'queued',
     operation_envelope_json: 'queued',
+    run_execution_state: state,
+    run_execution_state_json: state,
+    run_cancellation: 'complete',
+    run_cancellation_json: 'complete',
     provider_call_result: 'executing',
     provider_call_result_json: 'executing',
     diff_parse_result: 'patch_projected',

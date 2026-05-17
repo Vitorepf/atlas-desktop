@@ -3,6 +3,7 @@
  *
  * Endpoints (locked in atlas-dev-efficient-programming-flow-v1 §26.1):
  *   POST /ai/interactions/atlas-dev/run
+ *   POST /ai/interactions/atlas-dev/runs/{run_id}/cancel
  *   GET  /ai/interactions/atlas-dev/runs/{run_id}/stream    (SSE primary)
  *   GET  /ai/interactions/atlas-dev/runs/{run_id}           (REST fallback)
  *
@@ -14,15 +15,27 @@
  */
 
 import type {
+  AtlasDevReadinessResponse,
   AtlasDevRunError,
+  AtlasDevRunIndexResponse,
   AtlasDevRunRequest,
   AtlasDevRunStatusResponse,
   AtlasDevSseEvent,
 } from './types'
 import { AtlasDevSseDecoder } from './sseParser.ts'
-import { normalizeRunStartResponse, normalizeRunStatusResponse } from './apiShapes.ts'
+import {
+  normalizeReadinessResponse,
+  normalizeRunIndexResponse,
+  normalizeRunStartResponse,
+  normalizeRunStatusResponse,
+} from './apiShapes.ts'
 
-export { normalizeRunStartResponse, normalizeRunStatusResponse } from './apiShapes.ts'
+export {
+  normalizeReadinessResponse,
+  normalizeRunIndexResponse,
+  normalizeRunStartResponse,
+  normalizeRunStatusResponse,
+} from './apiShapes.ts'
 
 const ENV = ((import.meta as ImportMeta & {
   env?: Record<string, string | undefined>
@@ -90,9 +103,12 @@ function classifyError(status: number, bodyText: string, confirmationToken: stri
 
 function parseHumanMessage(body: string): string | null {
   try {
-    const parsed = JSON.parse(body) as { message?: unknown }
+    const parsed = JSON.parse(body) as { error?: { message?: unknown }; message?: unknown }
     if (typeof parsed.message === 'string' && parsed.message.trim() !== '') {
       return parsed.message.trim().slice(0, 240)
+    }
+    if (typeof parsed.error?.message === 'string' && parsed.error.message.trim() !== '') {
+      return parsed.error.message.trim().slice(0, 240)
     }
   } catch {
     /* not JSON */
@@ -132,6 +148,28 @@ export async function runAtlasDev(input: AtlasDevRunRequest): Promise<{ ok: true
   return normalized
 }
 
+/**
+ * POST /ai/interactions/atlas-dev/runs/{run_id}/cancel.
+ *
+ * Operator cancellation is persisted by the backend. The worker checks the
+ * cancellation artifact before spending provider tokens, and the REST status
+ * endpoint then reports completion_state=cancelled.
+ */
+export async function cancelAtlasDevRun(runId: string, reason = 'operator_cancelled'): Promise<void> {
+  const response = await fetch(
+    apiUrl(`/ai/interactions/atlas-dev/runs/${encodeURIComponent(runId)}/cancel`),
+    {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+      body: JSON.stringify({ reason }),
+    },
+  )
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw classifyError(response.status, body, '')
+  }
+}
 
 export interface StreamHandlers {
   onEvent: (event: AtlasDevSseEvent) => void
@@ -244,4 +282,46 @@ export async function fetchAtlasDevRunStatus(runId: string): Promise<AtlasDevRun
     throw classifyError(response.status, body, '')
   }
   return normalizeRunStatusResponse(await response.json())
+}
+
+export async function fetchAtlasDevRunIndex(params: {
+  workspace_hash?: string | null
+  thread_id?: string | null
+  limit?: number | null
+}): Promise<AtlasDevRunIndexResponse> {
+  const search = new URLSearchParams()
+  if (params.workspace_hash) search.set('workspace_hash', params.workspace_hash)
+  if (params.thread_id) search.set('thread_id', params.thread_id)
+  if (typeof params.limit === 'number' && Number.isFinite(params.limit)) {
+    search.set('limit', String(Math.max(1, Math.floor(params.limit))))
+  }
+
+  const qs = search.toString()
+  const response = await fetch(
+    apiUrl(`/ai/interactions/atlas-dev/runs${qs ? `?${qs}` : ''}`),
+    { method: 'GET', headers: authHeaders({ Accept: 'application/json' }) },
+  )
+  if (!response.ok) {
+    const body = await response.text()
+    throw classifyError(response.status, body, '')
+  }
+  return normalizeRunIndexResponse(await response.json())
+}
+
+export async function fetchAtlasDevReadiness(params: {
+  strict?: boolean | null
+} = {}): Promise<AtlasDevReadinessResponse> {
+  const search = new URLSearchParams()
+  if (params.strict === true) search.set('strict', 'true')
+
+  const qs = search.toString()
+  const response = await fetch(
+    apiUrl(`/ai/interactions/atlas-dev/readiness${qs ? `?${qs}` : ''}`),
+    { method: 'GET', headers: authHeaders({ Accept: 'application/json' }) },
+  )
+  if (!response.ok) {
+    const body = await response.text()
+    throw classifyError(response.status, body, '')
+  }
+  return normalizeReadinessResponse(await response.json())
 }

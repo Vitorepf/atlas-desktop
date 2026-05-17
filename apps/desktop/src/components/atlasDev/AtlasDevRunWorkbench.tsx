@@ -10,9 +10,12 @@
  * via `plan`. The plan can be `null` while a new plan is being composed —
  * everything degrades to empty states, no crashes.
  */
+import { useState } from 'react'
 import { DiffViewer } from './DiffViewer'
+import { AtlasDevRunHistoryPanel } from './AtlasDevRunHistoryPanel'
 import { InlineIndicators } from './InlineIndicators'
 import { PhaseProgress } from './PhaseProgress'
+import { ReadinessGate } from './ReadinessGate'
 import { ReceiptCard } from './ReceiptCard'
 import { RunPanel } from './RunPanel'
 import { TestsPanel } from './TestsPanel'
@@ -28,14 +31,27 @@ interface AtlasDevRunWorkbenchProps {
 
 export function AtlasDevRunWorkbench({ plan, disabled = false }: AtlasDevRunWorkbenchProps) {
   const controller = useAtlasDevRun(plan)
+  const [readinessReady, setReadinessReady] = useState(false)
 
   const diffPreview =
     controller.receipt?.ui_hints?.diff_preview ?? plan?.ui_hints?.diff_preview ?? null
   const completion = controller.receipt?.completion?.status ?? null
+  const historyRefreshKey = `${controller.status}:${controller.receipt?.receipt_hash ?? ''}:${controller.currentPhase ?? ''}`
 
   return (
     <div className={styles.workbench}>
-      <RunPanel plan={plan} controller={controller} disabled={disabled} />
+      <ReadinessGate onReadyChange={setReadinessReady} />
+      <RunPanel
+        plan={plan}
+        controller={controller}
+        disabled={disabled || !readinessReady}
+        disabledReason={!readinessReady ? 'Readiness operacional ainda não passou.' : null}
+      />
+      <AtlasDevRunHistoryPanel
+        plan={plan}
+        onOpenRun={controller.loadStatus}
+        refreshKey={historyRefreshKey}
+      />
       <InlineIndicators
         status={controller.status}
         receipt={controller.receipt}

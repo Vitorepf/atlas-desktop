@@ -31,6 +31,8 @@ test('normalises canonical Laravel data envelope (confirmation + routing + hashe
     data: {
       run_id: 'dev-1',
       surface_id: 'atlas_desktop_ai',
+      workspace_hash: 'w'.repeat(64),
+      thread_id: 'desktop-thread-1',
       confirmation: {
         token: 'token-xyz-very-secret',
         expires_at: expiresAt,
@@ -49,6 +51,8 @@ test('normalises canonical Laravel data envelope (confirmation + routing + hashe
   if (!result) throw new Error('expected normalised plan, got null')
   assert.equal(result.run_id, 'dev-1')
   assert.equal(result.confirmation_token, 'token-xyz-very-secret')
+  assert.equal(result.workspace_hash, 'w'.repeat(64))
+  assert.equal(result.thread_id, 'desktop-thread-1')
   assert.equal(result.task_contract_hash, 'a'.repeat(64))
   assert.equal(result.routing_decision, 'atlas_dev_fast_path')
   assert.equal(result.status, 'ready')

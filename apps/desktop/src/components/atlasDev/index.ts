@@ -25,6 +25,9 @@ export {
 } from './sseParser'
 
 export {
+  cancelAtlasDevRun,
+  fetchAtlasDevReadiness,
+  fetchAtlasDevRunIndex,
   fetchAtlasDevRunStatus,
   runAtlasDev,
   streamAtlasDevRun,
@@ -33,6 +36,8 @@ export {
 } from './api'
 
 export type {
+  AtlasDevReadinessCheck,
+  AtlasDevReadinessResponse,
   AtlasDevCostSummary,
   AtlasDevEvidenceRef,
   AtlasDevGate,
@@ -40,6 +45,8 @@ export type {
   AtlasDevReceipt,
   AtlasDevRepairSummary,
   AtlasDevRunError,
+  AtlasDevRunIndexEntry,
+  AtlasDevRunIndexResponse,
   AtlasDevRunRequest,
   AtlasDevRunStatus,
   AtlasDevRunStatusResponse,

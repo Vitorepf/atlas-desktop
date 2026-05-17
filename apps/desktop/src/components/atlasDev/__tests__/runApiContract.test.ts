@@ -4,13 +4,22 @@
  *
  *   - runAtlasDev (POST /ai/interactions/atlas-dev/run)
  *   - fetchAtlasDevRunStatus (GET /ai/interactions/atlas-dev/runs/{id})
+ *   - fetchAtlasDevRunIndex (GET /ai/interactions/atlas-dev/runs)
+ *   - fetchAtlasDevReadiness (GET /ai/interactions/atlas-dev/readiness)
+ *   - cancelAtlasDevRun (POST /ai/interactions/atlas-dev/runs/{id}/cancel)
  *
  * Drives them with a hand-rolled fetch stub so the test never opens a real
  * socket and never exposes a confirmation token outside the test harness.
  */
 import assert from 'node:assert/strict'
 
-import { fetchAtlasDevRunStatus, runAtlasDev } from '../api.ts'
+import {
+  cancelAtlasDevRun,
+  fetchAtlasDevReadiness,
+  fetchAtlasDevRunIndex,
+  fetchAtlasDevRunStatus,
+  runAtlasDev,
+} from '../api.ts'
 
 const SECRET_TOKEN = 'plain-secret-token-must-never-leak-1234'
 
@@ -252,6 +261,160 @@ test('fetchAtlasDevRunStatus rejects with classified error on 404 (no replan)', 
     }
     const error = raised as { kind: string; requires_replan: boolean }
     assert.equal(error.kind, 'unknown')
+    assert.equal((raised as { message: string }).message, 'no plan for run_id')
+  } finally {
+    stub.restore()
+  }
+})
+
+test('runAtlasDev surfaces nested Laravel error.message without raw JSON', async () => {
+  const stub = installFetch(() => ({
+    status: 503,
+    ok: false,
+    textBody: '{"error":{"code":"ATLAS_DEV_RUN_DISABLED","message":"Atlas Dev run endpoint is disabled by feature flag."}}',
+  }))
+  try {
+    let raised: unknown = null
+    try {
+      await runAtlasDev({
+        run_id: 'dev-105',
+        task_contract_hash: 'h'.repeat(64),
+        confirmation_token: SECRET_TOKEN,
+        operator_confirmed: true,
+      })
+    } catch (cause) {
+      raised = cause
+    }
+    const error = raised as { kind: string; message: string; requires_replan: boolean }
+    assert.equal(error.kind, 'unknown')
+    assert.equal(error.requires_replan, false)
+    assert.equal(error.message, 'Atlas Dev run endpoint is disabled by feature flag.')
+    assert.equal(error.message.includes('"error"'), false)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('fetchAtlasDevRunStatus normalises cancelled completion from backend', async () => {
+  const stub = installFetch(() => ({
+    status: 200,
+    ok: true,
+    jsonBody: {
+      data: {
+        run_id: 'dev-cancelled',
+        state: 'complete',
+        completion_state: 'cancelled',
+        task_contract_hash: 'h'.repeat(64),
+        run_execution: { status: 'cancelled' },
+        persisted_artifact_refs: {
+          run_cancellation: 'receipts/dev-cancelled/run_cancellation.json',
+          run_execution_state: 'receipts/dev-cancelled/run_execution_state.v2.json',
+        },
+      },
+    },
+  }))
+  try {
+    const status = await fetchAtlasDevRunStatus('dev-cancelled')
+    assert.equal(status.run_id, 'dev-cancelled')
+    assert.equal(status.state, 'complete')
+    assert.equal(status.receipt?.completion.status, 'cancelled')
+  } finally {
+    stub.restore()
+  }
+})
+
+test('cancelAtlasDevRun posts operator cancellation to canonical endpoint', async () => {
+  const stub = installFetch(({ url, init }) => {
+    assert.ok(url.endsWith('/ai/interactions/atlas-dev/runs/dev-cancel/cancel'))
+    assert.equal(init.method, 'POST')
+    const body = JSON.parse(String(init.body))
+    assert.deepEqual(body, { reason: 'operator_cancelled_from_desktop' })
+    return {
+      status: 200,
+      ok: true,
+      jsonBody: { data: { ok: true, run_id: 'dev-cancel', completion_state: 'cancelled' } },
+    }
+  })
+  try {
+    await cancelAtlasDevRun('dev-cancel', 'operator_cancelled_from_desktop')
+    assert.equal(stub.calls.length, 1)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('fetchAtlasDevRunIndex requests workspace history with encoded filters', async () => {
+  const stub = installFetch(({ url, init }) => {
+    assert.ok(url.endsWith('/ai/interactions/atlas-dev/runs?workspace_hash=ws-123&thread_id=thread-abc&limit=3'))
+    assert.equal(init.method, 'GET')
+    return {
+      status: 200,
+      ok: true,
+      jsonBody: {
+        data: {
+          workspace_hash: 'ws-123',
+          thread_id: 'thread-abc',
+          limit: 3,
+          items: [
+            {
+              run_id: 'dev-history',
+              surface_id: 'atlas_desktop_ai',
+              workspace_hash: 'ws-123',
+              routing_decision: 'atlas_dev_fast_path',
+              task_kind: 'repair',
+              risk_level: 'R2',
+              completion_state: 'passed',
+            },
+          ],
+        },
+      },
+    }
+  })
+  try {
+    const index = await fetchAtlasDevRunIndex({
+      workspace_hash: 'ws-123',
+      thread_id: 'thread-abc',
+      limit: 3,
+    })
+    assert.equal(index.items.length, 1)
+    assert.equal(index.items[0]?.run_id, 'dev-history')
+    assert.equal(index.items[0]?.completion_state, 'passed')
+  } finally {
+    stub.restore()
+  }
+})
+
+test('fetchAtlasDevReadiness requests provider-safe readiness contract', async () => {
+  const stub = installFetch(({ url, init }) => {
+    assert.ok(url.endsWith('/ai/interactions/atlas-dev/readiness?strict=true'))
+    assert.equal(init.method, 'GET')
+    return {
+      status: 200,
+      ok: true,
+      jsonBody: {
+        data: {
+          schema_version: 'atlas.dev.readiness.v1',
+          status: 'blocked',
+          strict: true,
+          provider_safe: true,
+          checks: [
+            {
+              id: 'config.desktop_enabled',
+              status: 'failed',
+              severity: 'blocker',
+              message: 'desktop disabled',
+            },
+          ],
+          summary: { passed: 7, warnings: 0, failed: 1 },
+        },
+      },
+    }
+  })
+  try {
+    const readiness = await fetchAtlasDevReadiness({ strict: true })
+    assert.equal(readiness.status, 'blocked')
+    assert.equal(readiness.provider_safe, true)
+    assert.equal(readiness.checks[0]?.id, 'config.desktop_enabled')
   } finally {
     stub.restore()
   }

@@ -14,13 +14,14 @@
  *   running    ──(escalate_forge)──▶ escalated
  *   running    ──(passed/no_patch_needed)──▶ completed
  *
- * Cancel / discard: rejects the plan locally and resets to `idle`. We do NOT
- * call the backend — the contract has no /cancel endpoint and an in-flight run
- * is already governed by gates.
+ * Cancel / discard: before execution, discards the plan locally. Once /run was
+ * accepted, calls the backend cancellation endpoint so the worker can stop
+ * before spending provider tokens when possible.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  cancelAtlasDevRun,
   fetchAtlasDevRunStatus,
   runAtlasDev,
   streamAtlasDevRun,
@@ -51,6 +52,7 @@ export interface AtlasDevRunSnapshot {
 
 export interface AtlasDevRunController extends AtlasDevRunSnapshot {
   execute: () => Promise<void>
+  loadStatus: (runId: string) => Promise<void>
   cancel: () => void
   reset: () => void
 }
@@ -72,6 +74,7 @@ const PHASE_FROM_COMPLETION: Record<string, AtlasDevPhase> = {
   no_patch_needed: 'no_patch_needed',
   failed: 'complete',
   blocked: 'complete',
+  cancelled: 'complete',
   needs_review: 'complete',
   escalate_forge: 'escalation_triggered',
 }
@@ -105,6 +108,8 @@ export function useAtlasDevRun(plan: PlanOnlyResult | null): AtlasDevRunControll
             return 'completed'
           case 'blocked':
             return 'blocked'
+          case 'cancelled':
+            return 'cancelled'
           case 'escalate_forge':
             return 'escalated'
           case 'failed':
@@ -263,6 +268,72 @@ export function useAtlasDevRun(plan: PlanOnlyResult | null): AtlasDevRunControll
     [onSseEvent, pollOnce],
   )
 
+  const loadStatus = useCallback(
+    async (runId: string): Promise<void> => {
+      const normalizedRunId = runId.trim()
+      if (!normalizedRunId) return
+
+      finalizedRef.current = true
+      if (streamRef.current) {
+        streamRef.current.close()
+        streamRef.current = null
+      }
+      if (pollRef.current !== null) {
+        window.clearTimeout(pollRef.current)
+        pollRef.current = null
+      }
+      finalizedRef.current = false
+
+      setSnapshot({
+        ...INITIAL,
+        status: 'running',
+        currentPhase: 'queued',
+        phases: appendPhase([], 'queued'),
+        usingRestFallback: true,
+      })
+
+      try {
+        const status = await fetchAtlasDevRunStatus(normalizedRunId)
+        if (finalizedRef.current) return
+
+        setSnapshot((prev) => {
+          let nextPhases = prev.phases
+          if (Array.isArray(status.phases)) {
+            for (const entry of status.phases) {
+              nextPhases = appendPhase(nextPhases, entry.phase, entry.at ?? undefined)
+            }
+          }
+
+          return {
+            ...prev,
+            status: status.receipt ? prev.status : statusToRunStatus(status.state),
+            currentPhase: status.state ?? prev.currentPhase,
+            phases: nextPhases,
+            usingRestFallback: true,
+          }
+        })
+
+        if (status.receipt) {
+          applyReceipt(status.receipt)
+          return
+        }
+
+        if (!isTerminalPhase(status.state)) {
+          await pollOnce(normalizedRunId)
+        }
+      } catch (cause) {
+        const err = cause as AtlasDevRunError
+        finalize({
+          status: 'failed',
+          error: err.kind
+            ? err
+            : { kind: 'network', message: 'falha ao reabrir run', requires_replan: false },
+        })
+      }
+    },
+    [applyReceipt, finalize, pollOnce],
+  )
+
   const execute = useCallback(async (): Promise<void> => {
     if (!plan) return
     if (snapshot.status !== 'awaiting_confirmation' && snapshot.status !== 'failed') return
@@ -277,6 +348,7 @@ export function useAtlasDevRun(plan: PlanOnlyResult | null): AtlasDevRunControll
         operator_confirmed: true,
       })
     } catch (cause) {
+      if (finalizedRef.current) return
       const err = cause as AtlasDevRunError
       setSnapshot({
         ...INITIAL,
@@ -285,6 +357,8 @@ export function useAtlasDevRun(plan: PlanOnlyResult | null): AtlasDevRunControll
       })
       return
     }
+
+    if (finalizedRef.current) return
 
     setSnapshot((prev) => ({
       ...prev,
@@ -296,8 +370,35 @@ export function useAtlasDevRun(plan: PlanOnlyResult | null): AtlasDevRunControll
   }, [plan, snapshot.status, startStream])
 
   const cancel = useCallback((): void => {
-    finalize({ status: 'idle' })
-  }, [finalize])
+    if (!plan) {
+      finalize({ status: 'idle' })
+      return
+    }
+
+    if (snapshot.status !== 'submitting' && snapshot.status !== 'running') {
+      finalize({ status: 'idle' })
+      return
+    }
+
+    void (async (): Promise<void> => {
+      try {
+        await cancelAtlasDevRun(plan.run_id, 'operator_cancelled_from_desktop')
+        finalize({
+          status: 'cancelled',
+          currentPhase: 'complete',
+          phases: appendPhase(snapshot.phases, 'complete'),
+        })
+      } catch (cause) {
+        const err = cause as AtlasDevRunError
+        finalize({
+          status: 'failed',
+          error: err.kind
+            ? err
+            : { kind: 'network', message: 'falha ao cancelar run', requires_replan: false },
+        })
+      }
+    })()
+  }, [finalize, plan, snapshot.phases, snapshot.status])
 
   const reset = useCallback((): void => {
     finalizedRef.current = false
@@ -328,9 +429,19 @@ export function useAtlasDevRun(plan: PlanOnlyResult | null): AtlasDevRunControll
   }, [])
 
   return useMemo<AtlasDevRunController>(
-    () => ({ ...snapshot, execute, cancel, reset }),
-    [snapshot, execute, cancel, reset],
+    () => ({ ...snapshot, execute, loadStatus, cancel, reset }),
+    [snapshot, execute, loadStatus, cancel, reset],
   )
+}
+
+function isTerminalPhase(phase: AtlasDevPhase | null | undefined): boolean {
+  return phase === 'complete' || phase === 'no_patch_needed' || phase === 'escalation_triggered'
+}
+
+function statusToRunStatus(phase: AtlasDevPhase | null | undefined): AtlasDevRunStatus {
+  if (phase === 'complete' || phase === 'no_patch_needed') return 'completed'
+  if (phase === 'escalation_triggered') return 'escalated'
+  return 'running'
 }
 
 function appendPhase(

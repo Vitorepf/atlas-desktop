@@ -1,6 +1,12 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict'
-import { normalisePlanResponse, normalizeRunStartResponse, normalizeRunStatusResponse } from '../apiShapes.ts'
+import {
+  normalisePlanResponse,
+  normalizeReadinessResponse,
+  normalizeRunIndexResponse,
+  normalizeRunStartResponse,
+  normalizeRunStatusResponse,
+} from '../apiShapes.ts'
 
 const cases: Array<{ name: string; run: () => void }> = []
 function test(name: string, run: () => void): void {
@@ -122,6 +128,88 @@ test('normalizes show data wrapper preserving full receipt with tests', () => {
     'scope_guarding',
     'complete',
   ])
+})
+
+test('normalizes cancelled show state as terminal completion', () => {
+  const status = normalizeRunStatusResponse({
+    data: {
+      run_id: 'dev-cancelled',
+      state: 'complete',
+      completion_state: 'cancelled',
+      task_contract_hash: 'hash-cancelled',
+      persisted_artifact_refs: {
+        run_cancellation: 'receipts/dev-cancelled/run_cancellation.json',
+      },
+    },
+  })
+
+  assert.equal(status.run_id, 'dev-cancelled')
+  assert.equal(status.state, 'complete')
+  assert.equal(status.receipt?.completion.status, 'cancelled')
+  assert.deepEqual(status.phases?.map((entry) => entry.phase), ['complete'])
+})
+
+test('normalizes run index response and drops malformed rows', () => {
+  const index = normalizeRunIndexResponse({
+    data: {
+      workspace_hash: 'ws-hash',
+      thread_id: 'thread-1',
+      limit: 25,
+      items: [
+        {
+          run_id: 'dev-1',
+          surface_id: 'atlas_desktop_ai',
+          workspace_hash: 'ws-hash',
+          routing_decision: 'atlas_dev_fast_path',
+          task_kind: 'repair',
+          risk_level: 'R2',
+          completion_state: 'passed',
+          last_receipt_hash: 'r'.repeat(64),
+          thread_id: 'thread-1',
+          created_at: '2026-05-16T20:00:00.000Z',
+          updated_at: '2026-05-16T20:01:00.000Z',
+        },
+        { run_id: 'broken' },
+      ],
+    },
+  })
+
+  assert.equal(index.workspace_hash, 'ws-hash')
+  assert.equal(index.thread_id, 'thread-1')
+  assert.equal(index.limit, 25)
+  assert.equal(index.items.length, 1)
+  assert.equal(index.items[0]?.run_id, 'dev-1')
+  assert.equal(index.items[0]?.completion_state, 'passed')
+})
+
+test('normalizes provider-safe readiness response', () => {
+  const readiness = normalizeReadinessResponse({
+    data: {
+      schema_version: 'atlas.dev.readiness.v1',
+      status: 'blocked',
+      strict: true,
+      provider_safe: true,
+      summary: { passed: 7, warnings: 0, failed: 2 },
+      checks: [
+        {
+          id: 'config.desktop_enabled',
+          status: 'failed',
+          severity: 'blocker',
+          message: 'desktop disabled',
+          details: { path_label: 'receipts' },
+        },
+        { broken: true },
+      ],
+    },
+  })
+
+  assert.equal(readiness.schema_version, 'atlas.dev.readiness.v1')
+  assert.equal(readiness.status, 'blocked')
+  assert.equal(readiness.strict, true)
+  assert.equal(readiness.provider_safe, true)
+  assert.equal(readiness.summary.failed, 2)
+  assert.equal(readiness.checks.length, 1)
+  assert.equal(readiness.checks[0]?.id, 'config.desktop_enabled')
 })
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ export type CompletionState =
   | 'needs_review'
   | 'failed'
   | 'blocked'
+  | 'cancelled'
   | 'escalate_forge'
   | 'no_patch_needed'
 
@@ -45,6 +46,10 @@ export interface PlanOnlyResult {
   run_id: string
   task_contract_hash: string
   confirmation_token: string
+  /** Provider-safe workspace identifier used to load recent runs. */
+  workspace_hash?: string | null
+  /** Optional Atlas AI conversation thread identifier for run history. */
+  thread_id?: string | null
   /** ISO 8601 ts when the confirmation_token expires (default 5min). */
   confirmation_expires_at?: string | null
   routing_decision: 'atlas_dev_fast_path' | 'read_only_answer' | 'forge_promotion_preview' | string
@@ -137,6 +142,48 @@ export interface AtlasDevRunStatusResponse {
   phases?: Array<{ phase: AtlasDevPhase; at?: string | null }>
 }
 
+export interface AtlasDevRunIndexEntry {
+  completion_state?: CompletionState | 'queued' | 'running' | string | null
+  created_at?: string | null
+  last_receipt_hash?: string | null
+  risk_level: string
+  routing_decision: string
+  run_id: string
+  surface_id: string
+  task_kind: string
+  thread_id?: string | null
+  updated_at?: string | null
+  workspace_hash: string
+}
+
+export interface AtlasDevRunIndexResponse {
+  items: AtlasDevRunIndexEntry[]
+  limit: number
+  workspace_hash?: string | null
+  thread_id?: string | null
+}
+
+export interface AtlasDevReadinessCheck {
+  id: string
+  status: 'passed' | 'warning' | 'failed' | string
+  severity: 'info' | 'warning' | 'blocker' | string
+  message: string
+  details?: Record<string, unknown>
+}
+
+export interface AtlasDevReadinessResponse {
+  schema_version: 'atlas.dev.readiness.v1' | string
+  status: 'passed' | 'blocked' | string
+  strict: boolean
+  provider_safe: boolean
+  checks: AtlasDevReadinessCheck[]
+  summary: {
+    passed: number
+    warnings: number
+    failed: number
+  }
+}
+
 /** Canonical SSE event shapes per contract §26.1. */
 export interface AtlasDevSsePhaseEvent {
   kind: 'phase'
@@ -201,6 +248,7 @@ export type AtlasDevRunStatus =
   | 'completed'
   | 'failed'
   | 'blocked'
+  | 'cancelled'
   | 'escalated'
 
 export interface AtlasDevRunError {

@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "atlas-dev:test": "npx tsx src/components/atlasDev/__tests__/apiShapes.test.ts && npx tsx src/components/atlasDev/__tests__/planResponseNormaliser.test.ts && npx tsx src/components/atlasDev/__tests__/runApiContract.test.ts && npx tsx src/components/atlasDev/__tests__/sseParser.test.ts && npx tsx src/components/atlasDev/__tests__/useAtlasDevRunRaceGuard.test.ts && npx tsx src/components/atlasDev/__tests__/readinessGateSource.test.ts",
+    "atlas-dev:certify": "npm run atlas-dev:test && npm run visual-smoke && npm run build",
     "visual-smoke": "node scripts/visualRender.mjs",
     "browser-smoke": "node scripts/browserSmoke.mjs",
     "tauri": "cd ../../crates/atlas-tauri && tauri",

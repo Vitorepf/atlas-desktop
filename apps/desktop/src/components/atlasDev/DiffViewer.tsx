@@ -48,7 +48,9 @@ export function DiffViewer({ diff, completionState }: DiffViewerProps) {
             ? 'Sem patch — Atlas considerou o trabalho concluído sem escrita.'
             : completionState === 'blocked'
               ? 'Run bloqueado antes do patch. Veja o receipt.'
-              : 'Sem diff disponível ainda.'}
+              : completionState === 'cancelled'
+                ? 'Run cancelado pelo operador antes do diff final.'
+                : 'Sem diff disponível ainda.'}
         </p>
       )}
 

@@ -11,6 +11,8 @@
     "dev": "npm run dev --workspace=@atlas/desktop",
     "build": "npm run build --workspace=@atlas/desktop",
     "lint": "npm run lint --workspaces --if-present",
+    "atlas-dev:test": "npm run atlas-dev:test --workspace=@atlas/desktop",
+    "atlas-dev:certify": "npm run atlas-dev:test && npm run visual-smoke --workspace=@atlas/desktop && npm run build --workspace=@atlas/desktop",
     "tauri": "npm run tauri --workspace=@atlas/desktop",
     "tauri:dev": "npm run tauri:dev --workspace=@atlas/desktop",
     "tauri:build": "npm run tauri:build --workspace=@atlas/desktop"
