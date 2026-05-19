@@ -1,0 +1,203 @@
+{
+  "schema": "atlas.vox.visual_smoke.v1",
+  "status": "pass",
+  "generated_at": "2026-05-19T11:33:20.804Z",
+  "totals": {
+    "total": 14,
+    "pass": 14,
+    "warn": 0,
+    "fail": 0
+  },
+  "checks": [
+    {
+      "id": "overlay_closed_button_renders",
+      "status": "pass",
+      "summary": "VoxButton renderiza em estado closed",
+      "detail": {
+        "artifact": "vox-button-closed.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_listening_shows_atlas_ouvindo",
+      "status": "pass",
+      "summary": "Estado listening exibe \"Atlas ouvindo\"",
+      "detail": {
+        "artifact": "overlay-listening.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_transcribing_shows_label",
+      "status": "pass",
+      "summary": "Estado transcribing exibe \"Transcrevendo\"",
+      "detail": {
+        "artifact": "overlay-transcribing.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_transcript_ready_shows_ouvi",
+      "status": "pass",
+      "summary": "Transcript pronto mostra \"Ouvi\" + transcript",
+      "detail": {
+        "artifact": "overlay-transcript-ready.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_prompt_polish_shows_compiled",
+      "status": "pass",
+      "summary": "Prompt Polish exibe \"Prompt polido\" com compiled_prompt",
+      "detail": {
+        "artifact": "overlay-prompt-polish.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_intent_compile_shows_rich_packet",
+      "status": "pass",
+      "summary": "Criar prompt exibe objetivo, restrições e prompt poderoso",
+      "detail": {
+        "artifact": "overlay-intent-compile.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_r4_requires_literal_confirmation",
+      "status": "pass",
+      "summary": "R4 exige confirmação literal e botão Executar bloqueado sem texto",
+      "detail": {
+        "artifact": "overlay-r4-awaiting.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "gate_panel_renders_open",
+      "status": "pass",
+      "summary": "VoxGatePanel renderiza com open=true (loading inicial honesto)",
+      "detail": {
+        "artifact": "gate-panel-open.html",
+        "detail": {
+          "bytes": 704
+        }
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "gate_panel_closed_returns_null",
+      "status": "pass",
+      "summary": "VoxGatePanel fechado não renderiza nada",
+      "detail": null,
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "readiness_panel_renders",
+      "status": "pass",
+      "summary": "VoxReadinessPanel renderiza com open=true",
+      "detail": {
+        "artifact": "readiness-panel-open.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "dogfood_panel_renders",
+      "status": "pass",
+      "summary": "VoxDogfoodPanel renderiza isolado (open=true)",
+      "detail": {
+        "artifact": "dogfood-panel.html",
+        "detail": {
+          "bytes": 851
+        }
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "readiness_panel_honest_when_no_backend",
+      "status": "pass",
+      "summary": "Readiness é honesto quando backend não responde",
+      "detail": null,
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_closed_returns_empty",
+      "status": "pass",
+      "summary": "VoxOverlay com state=closed não renderiza HTML",
+      "detail": null,
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "global_no_token_leak_across_artifacts",
+      "status": "pass",
+      "summary": "Nenhum artefato gerado contém o canary de confirmation_token",
+      "detail": null,
+      "next_action": null,
+      "artifact": null
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "vox-button-closed",
+      "path": "test-results/vox-visual-smoke/vox-button-closed.html",
+      "bytes": 501
+    },
+    {
+      "name": "overlay-listening",
+      "path": "test-results/vox-visual-smoke/overlay-listening.html",
+      "bytes": 1219
+    },
+    {
+      "name": "overlay-transcribing",
+      "path": "test-results/vox-visual-smoke/overlay-transcribing.html",
+      "bytes": 993
+    },
+    {
+      "name": "overlay-transcript-ready",
+      "path": "test-results/vox-visual-smoke/overlay-transcript-ready.html",
+      "bytes": 1428
+    },
+    {
+      "name": "overlay-prompt-polish",
+      "path": "test-results/vox-visual-smoke/overlay-prompt-polish.html",
+      "bytes": 3234
+    },
+    {
+      "name": "overlay-intent-compile",
+      "path": "test-results/vox-visual-smoke/overlay-intent-compile.html",
+      "bytes": 3686
+    },
+    {
+      "name": "overlay-r4-awaiting",
+      "path": "test-results/vox-visual-smoke/overlay-r4-awaiting.html",
+      "bytes": 3241
+    },
+    {
+      "name": "gate-panel-open",
+      "path": "test-results/vox-visual-smoke/gate-panel-open.html",
+      "bytes": 704
+    },
+    {
+      "name": "readiness-panel-open",
+      "path": "test-results/vox-visual-smoke/readiness-panel-open.html",
+      "bytes": 342
+    },
+    {
+      "name": "dogfood-panel",
+      "path": "test-results/vox-visual-smoke/dogfood-panel.html",
+      "bytes": 851
+    }
+  ]
+}

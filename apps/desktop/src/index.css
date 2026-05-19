@@ -215,10 +215,28 @@
      Aplicado APENAS dentro do shell Atlas Code para preservar Cartografia
      (que continua warm cream legacy).
      ──────────────────────────────────────────────────────────────────── */
+  /* ════════════════════════════════════════════════════════════════════
+     SURFACE OPT-IN SLATE DARK · ADICIONE SUA SURFACE NOVA AQUI ↓
+     ────────────────────────────────────────────────────────────────────
+     Atlas Desktop é slate teal dark POR DEFAULT. Só Cartografia é cream.
+     Os tokens `--cc-*` declarados no `:root` acima são cream warm — é
+     ESTE bloco que redefine eles para slate. Surface que não entra aqui
+     herda CREAM e fica visualmente quebrada (ver Control Plane violation
+     em `docs/anti-patterns/control-plane-cream-violation.png`).
+
+     Antes de criar uma surface nova LEIA:
+       docs/IMPLEMENTING-NEW-SURFACE.md   (atalho 200 linhas + checklist)
+       docs/architecture/0007-atlas-desktop-design-system.md  cap. 22
+
+     Adicione sua surface AQUI e também nos seletores de scrollbar/font
+     mais abaixo nesta mesma camada @layer enterprise. Grep:
+       grep -n "surface-code," apps/desktop/src/index.css
+     ════════════════════════════════════════════════════════════════════ */
   .atlas-shell.surface-code,
   .atlas-shell.surface-atencao,
   .atlas-shell.surface-atlas_ai,
-  .atlas-shell.surface-atlas-ai {
+  .atlas-shell.surface-atlas-ai,
+  .atlas-shell.surface-control_plane {
     /* Legacy token bridge · Atlas Code roda em slate teal (Codex-inspired).
        Redefinir cream/ink/bronze/hair propaga o tema para painels legacy
        que ainda nao migraram para cc-*. Cartografia intocada. */
@@ -354,20 +372,23 @@
   .atlas-shell.surface-code *::-webkit-scrollbar,
   .atlas-shell.surface-atencao *::-webkit-scrollbar,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar,
-  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar {
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   .atlas-shell.surface-code *::-webkit-scrollbar-track,
   .atlas-shell.surface-atencao *::-webkit-scrollbar-track,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-track,
-  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-track {
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-track,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-track {
     background: transparent;
   }
   .atlas-shell.surface-code *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb,
-  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb {
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb {
     background: rgba(149, 163, 172, 0.18);
     border: 2px solid transparent;
     background-clip: padding-box;
@@ -377,7 +398,8 @@
   .atlas-shell.surface-code *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb:hover,
-  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb:hover {
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb:hover {
     background: rgba(149, 163, 172, 0.32);
     background-clip: padding-box;
   }
@@ -385,7 +407,8 @@
   .atlas-shell.surface-atlas_ai *,
   .atlas-shell.surface-atlas-ai *,
   .atlas-shell.surface-atencao *,
-  .atlas-shell.surface-code * {
+  .atlas-shell.surface-code *,
+  .atlas-shell.surface-control_plane * {
     scrollbar-color: rgba(149, 163, 172, 0.22) transparent;
     scrollbar-width: thin;
   }

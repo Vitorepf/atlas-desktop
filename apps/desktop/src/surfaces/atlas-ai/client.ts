@@ -13,6 +13,8 @@ import type {
   AiTrace,
   AtlasAiInteractionRequest,
   AtlasAiInteractionResponse,
+  AtlasAiRouterBootstrap,
+  AtlasAiRouterReadiness,
   AtlasDevPlanRequest,
   AtlasDevPlanResult,
 } from './types'
@@ -190,6 +192,66 @@ export async function getAiTrace(traceId: string): Promise<AiTrace> {
   ensureOnline('getAiTrace')
   const result = await fetchJson<{ trace: AiTrace }>(`/ai/interactions/${encodeURIComponent(traceId)}`)
   return result.trace
+}
+
+/**
+ * GET /ai/router-runtime/bootstrap — opcional. O Desktop chama no boot para
+ * pre-warm domain/flow/policy hints. **404 e qualquer erro são silenciosos**:
+ * a surface continua funcionando sem o payload (front nunca depende dele
+ * como fonte de verdade).
+ */
+export async function getAtlasAiRouterBootstrap(): Promise<AtlasAiRouterBootstrap | null> {
+  if (MODE === 'offline') return null
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    }
+    const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
+    if (token) headers['X-Atlas-Token'] = token
+    const response = await fetch(apiUrl('/ai/router-runtime/bootstrap'), {
+      method: 'GET',
+      headers,
+    })
+    if (!response.ok) {
+      return null // endpoint não deployado (404) ou serviço quente: ignora silenciosamente
+    }
+    const body = (await response.json()) as { bootstrap?: AtlasAiRouterBootstrap } | AtlasAiRouterBootstrap
+    if (body && typeof body === 'object' && 'bootstrap' in body && body.bootstrap) {
+      return body.bootstrap
+    }
+    return body as AtlasAiRouterBootstrap
+  } catch {
+    return null
+  }
+}
+
+/**
+ * GET /ai/router-runtime/readiness — opcional. Mesma filosofia do bootstrap:
+ * 404/erro = null, Desktop ignora.
+ */
+export async function getAtlasAiRouterReadiness(): Promise<AtlasAiRouterReadiness | null> {
+  if (MODE === 'offline') return null
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    }
+    const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
+    if (token) headers['X-Atlas-Token'] = token
+    const response = await fetch(apiUrl('/ai/router-runtime/readiness'), {
+      method: 'GET',
+      headers,
+    })
+    if (!response.ok) return null
+    const body = (await response.json()) as { readiness?: AtlasAiRouterReadiness } | AtlasAiRouterReadiness
+    if (body && typeof body === 'object' && 'readiness' in body && body.readiness) {
+      return body.readiness
+    }
+    return body as AtlasAiRouterReadiness
+  } catch {
+    return null
+  }
 }
 
 /**

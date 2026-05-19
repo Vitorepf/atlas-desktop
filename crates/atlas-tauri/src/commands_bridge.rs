@@ -665,6 +665,7 @@ pub async fn bridge_send_intent_v2(
     body: String,
     channel: Option<String>,
     obra_id: Option<String>,
+    composer_hints: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     bridge_of(&state)
         .await
@@ -673,6 +674,7 @@ pub async fn bridge_send_intent_v2(
             &body,
             channel.as_deref(),
             obra_id.as_deref(),
+            composer_hints,
         )
         .await
         .map_err(into_str_err)

@@ -6,6 +6,7 @@ import { AtencaoSurface } from '../surfaces/atencao/AtencaoSurface'
 import { AtlasAiSurface } from '../surfaces/atlas-ai/AtlasAiSurface'
 import { CartografiaSurface } from '../surfaces/cartografia/CartografiaSurface'
 import { CodeSurface } from '../surfaces/code/CodeSurface'
+import { ControlPlaneSurface } from '../surfaces/control-plane/ControlPlaneSurface'
 
 interface SurfaceHostProps {
   surface: Surface
@@ -66,6 +67,14 @@ export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWork
           onRequestSurfaceChange={onSurfaceChange}
           onOpenWorkspaceProfile={onOpenWorkspaceProfile}
         />
+      </ErrorBoundary>
+    )
+  }
+
+  if (surface === 'control_plane') {
+    return (
+      <ErrorBoundary label="Control Plane">
+        <ControlPlaneSurface />
       </ErrorBoundary>
     )
   }

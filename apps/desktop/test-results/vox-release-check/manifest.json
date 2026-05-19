@@ -1,0 +1,233 @@
+{
+  "schema": "atlas.vox.desktop_release_check.v1",
+  "status": "pass",
+  "generated_at": "2026-05-19T02:26:34.397Z",
+  "duration_ms": 9463,
+  "totals": {
+    "total": 11,
+    "pass": 11,
+    "warn": 0,
+    "fail": 0
+  },
+  "checks": [
+    {
+      "id": "vox_smoke",
+      "title": "vox:smoke · first-use surface",
+      "status": "pass",
+      "summary": "5 pass · 0 warn · 0 fail",
+      "duration_ms": 254,
+      "detail": {
+        "exit": 0,
+        "manifest_path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-first-use-smoke/manifest.json",
+        "categories": []
+      },
+      "next_action": null
+    },
+    {
+      "id": "vox_visual_smoke",
+      "title": "vox:visual-smoke · SSR render + leak scan",
+      "status": "pass",
+      "summary": "14/14 pass · 0 warn · 0 fail",
+      "duration_ms": 488,
+      "detail": {
+        "exit": 0,
+        "manifest_path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/manifest.json"
+      },
+      "next_action": null
+    },
+    {
+      "id": "leak_rescan",
+      "title": "leak rescan · visual fragments",
+      "status": "pass",
+      "summary": "10 fragmentos limpos · 0 leaks.",
+      "duration_ms": 0,
+      "detail": null,
+      "next_action": null
+    },
+    {
+      "id": "vox_readiness_tests",
+      "title": "unit · src/lib/__tests__/voxReadiness.test.ts",
+      "status": "pass",
+      "summary": "todos os testes passaram",
+      "duration_ms": 660,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "ok  · adaptVoxKernelHealth defaults to false rather than assuming green\n\nall 10 tests passed.\n"
+      },
+      "next_action": null
+    },
+    {
+      "id": "vox_setup_tests",
+      "title": "unit · src/lib/__tests__/voxSetupAssistant.test.ts",
+      "status": "pass",
+      "summary": "todos os testes passaram",
+      "duration_ms": 512,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "ok  · only hotkey missing keeps first-use ready\n\nall 20 tests passed.\n"
+      },
+      "next_action": null
+    },
+    {
+      "id": "cargo_platform_vox",
+      "title": "cargo test · atlas-platform (filter=vox)",
+      "status": "pass",
+      "summary": "todos os vox tests verdes",
+      "duration_ms": 281,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "test vox_stt::post_correction::tests::does_not_rewrite_inside_longer_words ... ok\ntest vox_stt::benchmark::tests::aggregate_collects_means_per_engine ... ok\n\ntest result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.02s\n\n",
+        "stderr_tail": "   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `atlas-platform` (lib test) generated 1 warning\n    Finished `test` profile [optimized + debuginfo] target(s) in 0.22s\n     Running unittests src/lib.rs (target/debug/deps/atlas_platform-9ae5079c032bcedf)\n"
+      },
+      "next_action": null
+    },
+    {
+      "id": "cargo_tauri_vox",
+      "title": "cargo test · atlas-tauri (filter=vox)",
+      "status": "pass",
+      "summary": "todos os vox tests verdes",
+      "duration_ms": 2568,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "test commands_vox::transcribe_audio_tests::voxedge_consume_audio_snapshot_returns_none_after_first_consume ... ok\ntest commands_vox::transcribe_audio_tests::voxedge_consume_audio_snapshot_after_cancel_returns_none ... ok\n\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s\n\n",
+        "stderr_tail": "\nwarning: `atlas-platform` (lib) generated 9 warnings\nwarning: `atlas-bridge` (lib) generated 3 warnings\n    Finished `test` profile [optimized + debuginfo] target(s) in 2.13s\n     Running unittests src/lib.rs (target/debug/deps/atlas_tauri-bfc398c109057a90)\n"
+      },
+      "next_action": null
+    },
+    {
+      "id": "tauri_feature_wired",
+      "title": "runtime · whisper-cpp feature in atlas-tauri",
+      "status": "pass",
+      "summary": "feature `whisper-cpp` declarada e encaminhada para atlas-platform.",
+      "duration_ms": 0,
+      "detail": {
+        "cargo_toml": "~/develop/Atlas/atlas-desktop/crates/atlas-tauri/Cargo.toml",
+        "forwards_to": "atlas-platform/whisper-cpp"
+      },
+      "next_action": null
+    },
+    {
+      "id": "vox_dev_orchestrator",
+      "title": "runtime · npm run vox:dev orchestrator",
+      "status": "pass",
+      "summary": "scripts `vox:dev` + `tauri:dev:vox` wired in package.json.",
+      "duration_ms": 0,
+      "detail": {
+        "orchestrator": "~/develop/Atlas/atlas-desktop/apps/desktop/scripts/voxDev.mjs",
+        "scripts": [
+          "vox:dev",
+          "tauri:dev:vox",
+          "tauri:build:vox"
+        ]
+      },
+      "next_action": null
+    },
+    {
+      "id": "cargo_check_whisper_cpp",
+      "title": "runtime · cargo check -p atlas-tauri --features whisper-cpp",
+      "status": "pass",
+      "summary": "whisper-cpp compila — runtime nativo Vox pronto pra linkar.",
+      "duration_ms": 1274,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": ""
+      },
+      "next_action": null
+    },
+    {
+      "id": "desktop_build",
+      "title": "npm run build · production build",
+      "status": "pass",
+      "summary": "tsc -b && vite build verdes",
+      "duration_ms": 3408,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "dist/assets/cpp-DwZb0QE1.js                           626.12 kB │ gzip:  48.09 kB\ndist/assets/emacs-lisp-DFyMFAZA.js                    779.87 kB │ gzip: 197.55 kB\ndist/assets/index-BVCM8TPP.js                       1,185.55 kB │ gzip: 297.53 kB\n\n✓ built in 314ms\n",
+        "stderr_tail": "[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n"
+      },
+      "next_action": null
+    }
+  ],
+  "next_actions": [],
+  "artifacts": [
+    {
+      "name": "vox-first-use-smoke-manifest",
+      "kind": "manifest",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-first-use-smoke/manifest.json",
+      "bytes": 3357
+    },
+    {
+      "name": "vox-visual-smoke-manifest",
+      "kind": "manifest",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/manifest.json",
+      "bytes": 5454
+    },
+    {
+      "name": "vox-visual-vox-button-closed",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/vox-button-closed.html",
+      "bytes": 503
+    },
+    {
+      "name": "vox-visual-overlay-listening",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/overlay-listening.html",
+      "bytes": 2809
+    },
+    {
+      "name": "vox-visual-overlay-transcribing",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/overlay-transcribing.html",
+      "bytes": 2958
+    },
+    {
+      "name": "vox-visual-overlay-transcript-ready",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/overlay-transcript-ready.html",
+      "bytes": 3276
+    },
+    {
+      "name": "vox-visual-overlay-prompt-polish",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/overlay-prompt-polish.html",
+      "bytes": 4594
+    },
+    {
+      "name": "vox-visual-overlay-intent-compile",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/overlay-intent-compile.html",
+      "bytes": 5046
+    },
+    {
+      "name": "vox-visual-overlay-r4-awaiting",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/overlay-r4-awaiting.html",
+      "bytes": 6455
+    },
+    {
+      "name": "vox-visual-gate-panel-open",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/gate-panel-open.html",
+      "bytes": 719
+    },
+    {
+      "name": "vox-visual-readiness-panel-open",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/readiness-panel-open.html",
+      "bytes": 344
+    },
+    {
+      "name": "vox-visual-dogfood-panel",
+      "kind": "html_fragment",
+      "path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/dogfood-panel.html",
+      "bytes": 861
+    }
+  ],
+  "environment": {
+    "node": "v24.15.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cwd": "~/develop/Atlas/atlas-desktop/apps/desktop",
+    "cargo_available": true
+  }
+}

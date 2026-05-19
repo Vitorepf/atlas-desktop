@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use atlas_bridge::{AtlasBridge, AtlasServerConfig};
+use atlas_platform::vox::{VoxEdge, VoxEdgeConfig};
 use atlas_platform::PtyManager;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, RunEvent};
@@ -18,6 +19,11 @@ use tokio::sync::Mutex;
 
 mod commands_bridge;
 mod commands_terminal;
+mod commands_vox;
+mod commands_vox_benchmark;
+mod commands_vox_edge;
+mod commands_vox_hotkey;
+mod commands_vox_setup;
 mod kernel_manager;
 mod native_menu;
 
@@ -145,6 +151,7 @@ pub fn run() {
 
     let kernel_state: Arc<KernelManagerState> = Arc::new(KernelManagerState::default());
     let pty_manager: Arc<PtyManager> = PtyManager::new();
+    let vox_edge: Arc<VoxEdge> = Arc::new(VoxEdge::new(VoxEdgeConfig::production()));
 
     let app = tauri::Builder::default()
         .menu(native_menu::atlas_menu)
@@ -161,6 +168,15 @@ pub fn run() {
                 });
                 app.manage(Arc::clone(&kernel_state));
                 app.manage(Arc::clone(&pty_manager));
+                app.manage(Arc::clone(&vox_edge));
+
+                // Wave 6.5: install the Vox global-hotkey runtime
+                // (Option+Space toggle + Cmd+Shift+Space open overlay)
+                // and spawn the dispatcher that forwards hotkey events
+                // into VoxEdge + Tauri vox://* events. If macOS denies
+                // registration we still manage the runtime so the
+                // status command works honestly.
+                commands_vox_hotkey::install(&app.handle().clone(), Arc::clone(&vox_edge));
 
                 // Boot the Kernel sidecar in the background; the UI polls
                 // atlas_kernel_status until status=ready, then re-reads
@@ -261,6 +277,23 @@ pub fn run() {
             commands_bridge::bridge_accept_self_improvement_forge_activation,
             commands_bridge::bridge_reject_self_improvement_forge_activation,
             commands_terminal::bridge_open_terminal_in_workspace,
+            commands_vox::vox_stt_status,
+            commands_vox::vox_dictionary_get,
+            commands_vox::vox_dictionary_update,
+            commands_vox::vox_stt_transcribe_debug_text,
+            commands_vox::vox_stt_transcribe_audio,
+            commands_vox_edge::vox_edge_status,
+            commands_vox_edge::vox_edge_start_session,
+            commands_vox_edge::vox_edge_finish_session,
+            commands_vox_edge::vox_edge_cancel_session,
+            commands_vox_edge::vox_edge_eclipse,
+            commands_vox_hotkey::vox_hotkey_status,
+            commands_vox_hotkey::vox_hotkey_record_escape,
+            commands_vox_benchmark::vox_stt_benchmark_status,
+            commands_vox_benchmark::vox_stt_benchmark_record_sample,
+            commands_vox_benchmark::vox_stt_benchmark_run,
+            commands_vox_benchmark::vox_stt_benchmark_report_latest,
+            commands_vox_setup::vox_open_system_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Atlas Code");

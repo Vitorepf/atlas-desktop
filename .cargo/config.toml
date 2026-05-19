@@ -1,0 +1,8 @@
+[env]
+# whisper.cpp/ggml uses C++17 std::filesystem, which Apple exposes from
+# macOS 10.15 onward. Keep the deployment target explicit for both cargo
+# checks and Tauri release builds.
+MACOSX_DEPLOYMENT_TARGET = "11.0"
+CMAKE_OSX_DEPLOYMENT_TARGET = "11.0"
+CFLAGS = "-mmacosx-version-min=11.0"
+CXXFLAGS = "-mmacosx-version-min=11.0"

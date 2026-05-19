@@ -330,6 +330,7 @@ impl AtlasBridge {
         body: &str,
         _channel: Option<&str>,
         obra_id: Option<&str>,
+        composer_hints: Option<serde_json::Value>,
     ) -> BridgeResult<serde_json::Value> {
         let mut payload = serde_json::json!({
             "input_text": body,
@@ -358,6 +359,53 @@ impl AtlasBridge {
                 }
             }
         });
+
+        let hints = composer_hints
+            .and_then(|value| value.as_object().cloned())
+            .unwrap_or_default();
+        let hint_mode = hints
+            .get("mode")
+            .and_then(|value| value.as_str())
+            .unwrap_or("auto");
+        let hint_task = hints
+            .get("task")
+            .and_then(|value| value.as_str())
+            .unwrap_or("auto");
+        let hint_provider = hints
+            .get("provider")
+            .and_then(|value| value.as_str())
+            .unwrap_or("auto");
+        let hinted_provider = if hint_provider.trim().is_empty() || hint_provider == "auto" {
+            None
+        } else {
+            Some(hint_provider.to_string())
+        };
+
+        payload["payload"]["operator_composer_hints"] = serde_json::json!({
+            "schema_version": "atlas.unified_composer.hints.v1",
+            "mode": hint_mode,
+            "task": hint_task,
+            "provider": hint_provider,
+            "preserves_surface_flow": true,
+            "surface_flow": "programming.forge",
+            "provider_selection_effect": if hinted_provider.is_some() {
+                "operator_hint_requires_backend_policy"
+            } else {
+                "atlas_decide"
+            }
+        });
+        payload["payload"]["decision_mode"] = serde_json::Value::String(
+            if hinted_provider.is_some() {
+                "manual_override"
+            } else {
+                "atlas_decide"
+            }
+            .to_string(),
+        );
+        if let Some(provider) = hinted_provider {
+            payload["payload"]["requested_provider"] = serde_json::Value::String(provider.clone());
+            payload["payload"]["operator_requested_provider"] = serde_json::Value::String(provider);
+        }
 
         match thread_id.map(str::trim).filter(|id| !id.is_empty()) {
             Some(id) => payload["thread_id"] = serde_json::Value::String(id.to_string()),

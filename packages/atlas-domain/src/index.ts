@@ -131,7 +131,13 @@ export interface AtlasWorkspaceProfileSafety {
   requiresExplicitInterventionReview: boolean
 }
 
-export type AtlasWorkspaceSurfaceId = 'atlas_ai' | 'cartografia' | 'code' | 'atencao' | string
+export type AtlasWorkspaceSurfaceId =
+  | 'atlas_ai'
+  | 'cartografia'
+  | 'code'
+  | 'atencao'
+  | 'control_plane'
+  | string
 
 export interface AtlasWorkspaceProfile {
   schemaVersion: string

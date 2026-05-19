@@ -1,23 +1,31 @@
 import { useMemo, useState } from 'react'
+import {
+  AtlasUnifiedComposer,
+  type AtlasUnifiedComposerSendPayload,
+} from '../../../components/composer/AtlasUnifiedComposer'
+import type { AtlasRichInputAttachmentsApi } from '../../../lib/rich-input'
+import { defaultTaskForMode, isTaskAllowedForMode } from '../../atlas-ai/contract'
+import type { AtlasAiMode, AtlasAiProviderChoice, AtlasAiTask } from '../../atlas-ai/types'
+
+export interface CodeComposerHints {
+  mode: AtlasAiMode
+  task: AtlasAiTask
+  provider: AtlasAiProviderChoice
+}
 
 interface ComposerPanelProps {
   busy: boolean
   hasObra: boolean
-  onSend: (text: string) => Promise<void>
+  onSend: (
+    text: string,
+    opts: {
+      richInput: AtlasUnifiedComposerSendPayload['richInput']
+      composerHints: CodeComposerHints
+    },
+  ) => Promise<void>
+  attachments: AtlasRichInputAttachmentsApi
 }
 
-/**
- * Atlas Code Obra Command Center v1 · Chat com papel (7 kinds).
- *
- * Amplia a classificação v2 com `restriction` (regra que NÃO pode quebrar) e
- * `acceptance_criterion` (critério de aceite). Mostra ao operador qual será o
- * efeito esperado *antes* de enviar.
- *
- * A classificação é heurística e local; a fonte de verdade continua sendo o
- * backend quando ele processar o envio. O chip aqui é honestidade pré-envio:
- * o operador nunca envia mensagem solta sem saber se vira Definição/Comando/
- * Pergunta/Decisão/Restrição/Critério/Nota.
- */
 type ChatMessageKind =
   | 'definition'
   | 'command'
@@ -39,7 +47,6 @@ function classifyChatKind(text: string): ChatMessageKind {
   if (/^(aprov|reject|rejeit|rollback|aprovar|bloquear|autoriz|decis)/.test(t)) {
     return 'decision'
   }
-  // Acceptance criterion BEFORE restriction so "deve passar" não cai em restriction.
   if (/(criterio de aceite|criterio:|acceptance|definition of done|dod[:\s]|deve passar|tem que (passar|funcionar))/.test(t)) {
     return 'acceptance_criterion'
   }
@@ -73,77 +80,103 @@ const KIND_EFFECT: Record<ChatMessageKind, string> = {
   acceptance_criterion: 'registrada como critério de aceite da Obra',
 }
 
-export function ComposerPanel({ busy, hasObra, onSend }: ComposerPanelProps) {
-  const [draft, setDraft] = useState('')
-  const kind: ChatMessageKind = useMemo(() => classifyChatKind(draft), [draft])
+const OBRA_ALLOWED_MODES: readonly AtlasAiMode[] = [
+  'auto',
+  'programming',
+  'operational',
+  'research',
+]
 
-  async function handleSend() {
-    const text = draft.trim()
-    if (!text || busy || !hasObra) return
-    setDraft('')
-    await onSend(text)
+const OBRA_ALLOWED_PROGRAMMING_TASKS: readonly AtlasAiTask[] = [
+  'dev',
+  'debug',
+  'review',
+  'plan',
+]
+
+export function ComposerPanel({
+  busy,
+  hasObra,
+  onSend,
+  attachments,
+}: ComposerPanelProps) {
+  const [draft, setDraft] = useState('')
+  const [mode, setModeRaw] = useState<AtlasAiMode>('auto')
+  const [task, setTask] = useState<AtlasAiTask>('auto')
+  const [provider, setProvider] = useState<AtlasAiProviderChoice>('auto')
+  const kind = useMemo(() => classifyChatKind(draft), [draft])
+
+  function setMode(next: AtlasAiMode) {
+    setModeRaw(next)
+    setTask((curr) => (isTaskAllowedForMode(curr, next) ? curr : defaultTaskForMode(next)))
+  }
+
+  async function handleSend(payload: AtlasUnifiedComposerSendPayload) {
+    await onSend(payload.text, {
+      richInput: payload.richInput,
+      composerHints: {
+        mode: payload.mode,
+        task: payload.task,
+        provider: payload.provider,
+      },
+    })
   }
 
   return (
-    <div className="composer">
-      <div className="composer-row">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              void handleSend()
-            }
-          }}
-          placeholder={
-            hasObra
-              ? 'conversa com o Atlas… cmd+enter envia'
-              : 'cria uma obra acima primeiro · composer ativa quando obra existe'
-          }
-          disabled={!hasObra || busy}
-        />
-        <button
-          className="send-btn"
-          type="button"
-          title="enviar (cmd+enter)"
-          onClick={() => void handleSend()}
-          disabled={!hasObra || busy || !draft.trim()}
-        >
-          ✦
-        </button>
-      </div>
-      <div className="composer-meta">
-        <div>
-          {hasObra && draft.trim() !== '' ? (
-            <span>
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '1px 6px',
-                  marginRight: 6,
-                  fontFamily: 'var(--cc-font-mono)',
-                  fontSize: 8.5,
-                  letterSpacing: 0,
-                  textTransform: 'none',
-                  color: 'var(--bronze)',
-                  border: '1px solid var(--bronze-soft)',
-                  borderRadius: 2,
-                }}
-                title={`Papel detectado: ${KIND_LABEL[kind]} · ${KIND_EFFECT[kind]}`}
-              >
-                {KIND_LABEL[kind]}
-              </span>
-              <span style={{ color: 'var(--ink3)', fontStyle: 'normal' }}>{KIND_EFFECT[kind]}</span>
+    <AtlasUnifiedComposer
+      draft={draft}
+      onChange={setDraft}
+      mode={mode}
+      onModeChange={setMode}
+      task={task}
+      onTaskChange={setTask}
+      provider={provider}
+      onProviderChange={setProvider}
+      attachments={attachments}
+      sending={busy}
+      disabled={!hasObra}
+      disabledReason="cria uma obra acima primeiro · composer ativa quando obra existe"
+      allowedModes={OBRA_ALLOWED_MODES}
+      allowedProgrammingTasks={OBRA_ALLOWED_PROGRAMMING_TASKS}
+      modeOptionOverrides={{
+        auto: {
+          label: 'Auto (Obra/Forge)',
+          description: 'mantém o fluxo da Obra; Atlas decide contexto e provider',
+        },
+        operational: {
+          label: 'Operacional da Obra',
+          description: 'diagnóstico, risco e próxima ação dentro do Forge',
+        },
+        research: {
+          label: 'Pesquisa da Obra',
+          description: 'investigação e evidência técnica sem trocar o flow',
+        },
+      }}
+      onSend={handleSend}
+      statusSlot={
+        hasObra && draft.trim() !== '' ? (
+          <span>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '1px 6px',
+                marginRight: 6,
+                fontFamily: 'var(--cc-font-mono)',
+                fontSize: 8.5,
+                letterSpacing: 0,
+                textTransform: 'none',
+                color: 'var(--bronze)',
+                border: '1px solid var(--bronze-soft)',
+                borderRadius: 2,
+              }}
+              title={`Papel detectado: ${KIND_LABEL[kind]} · ${KIND_EFFECT[kind]}`}
+            >
+              {KIND_LABEL[kind]}
             </span>
-          ) : (
-            <span>∴ {busy ? 'enviando…' : hasObra ? 'composer ativo · cmd+enter envia' : 'aguardando obra'}</span>
-          )}
-        </div>
-        <div>
-          <kbd>cmd</kbd>+<kbd>enter</kbd> · <kbd>esc</kbd>
-        </div>
-      </div>
-    </div>
+            <span style={{ color: 'var(--ink3)', fontStyle: 'normal' }}>{KIND_EFFECT[kind]}</span>
+          </span>
+        ) : null
+      }
+    />
   )
 }

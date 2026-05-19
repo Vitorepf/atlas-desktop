@@ -64,20 +64,24 @@ Se a tela atual já está "good enough" pro user no aspecto que você ia mexer �
 4. **Memory canon** (`~/.claude/projects/-Users-vitorepf-develop-Atlas/memory/`) é auto-loaded. Leia entries relevantes antes de planejar.
 5. **Honestidade canon**: se você atingiu 7.5/10, diga 7.5/10. Não promete 9.5 antes de entregar.
 
-### 0.5 · Decisão · estou tocando Cartografia ou Code?
+### 0.5 · Decisão · qual surface estou tocando?
 
-| Característica | Surface Cartografia | Surface Code |
+> **REGRA ABSOLUTA**: cream warm é EXCLUSIVO da Cartografia. Todas as outras surfaces (existentes e futuras) são **slate teal dark**. Se você criar uma surface nova e ela renderizar cream, você violou o canon — refatore.
+
+| Característica | Surface Cartografia | Atlas Code / Atlas AI / Atenção / **nova surface** |
 |---|---|---|
 | Tema canônico | **cream editorial** (Don Corleone Patek) | **slate teal dark warm** (Codex-inspired) |
 | Tokens base | `--cream*`, `--ink*`, `--bronze*` | `--cc-bg`, `--cc-text*`, `--cc-accent` (atlas gold) |
 | Background | `#f3ecda` cream | `#1d2b34` slate teal |
 | Accent | bronze `#8a6a35` | atlas gold `#d4a85a` burnished |
-| Scope CSS | `.cartografia-surface` | `.atlas-shell.surface-code` |
-| Tipografia | Cormorant italic protagonista | Inter/system sans-serif protagonista |
+| Scope CSS | `.cartografia-surface` | `.atlas-shell.surface-{nome}` |
+| Tipografia | Cormorant italic protagonista | Inter sans protagonista, Cormorant só em ✦ glyph + numerais romanos |
+
+**Se você está criando uma surface NOVA**: leia `docs/IMPLEMENTING-NEW-SURFACE.md` (atalho de 200 linhas com template copy-paste) + capítulo 22 deste doc. Não invente — siga o template.
 
 Se você não tem certeza qual surface está tocando: **pergunte ao usuário**. Não invente.
 
-Detalhes completos: capítulo 1 (Cartografia cream) e capítulo 16 (Code dark).
+Detalhes completos: capítulo 1 (Cartografia cream), capítulo 16 (Code dark), capítulo 22 (surface nova).
 
 ---
 
@@ -1544,5 +1548,156 @@ Atlas Desktop
 
 ---
 
-**Última revisão**: 2026-05-14 · v2.0 · sessão Edit Mode + Doc Canon completa
+---
+
+## 22 · NEW SURFACE BLUEPRINT · template obrigatório
+
+Capítulo criado em 2026-05-18 após violação no `surface-control_plane` (anti-pattern catalogado em `docs/anti-patterns/control-plane-cream-violation.png`). Qualquer IA criando surface nova **DEVE** seguir os 3 passos abaixo. Para a versão curta com checklist veja `docs/IMPLEMENTING-NEW-SURFACE.md`.
+
+### 22.0 · Regra absoluta + a armadilha técnica
+
+> **Cream warm é EXCEÇÃO** (apenas Cartografia). **Slate teal dark é DEFAULT** para qualquer surface nova.
+
+A armadilha que derrubou Control Plane: os tokens `--cc-*` declarados no `:root` em `apps/desktop/src/index.css` (procure por `--cc-bg: #f4ede0`) são **cream warm**. A slate dark só aparece porque o mesmo arquivo, abaixo do comentário-âncora `SURFACE OPT-IN SLATE DARK`, **REDEFINE todos os tokens dentro de um seletor multi-classe**:
+
+```css
+.atlas-shell.surface-code,
+.atlas-shell.surface-atencao,
+.atlas-shell.surface-atlas_ai,
+.atlas-shell.surface-atlas-ai {
+  --cc-bg: #1d2b34;            /* slate teal */
+  --cc-text: #d6dde2;
+  --cc-accent: #d4a85a;        /* atlas gold */
+  /* + 50 tokens adicionais redefinidos */
+}
+```
+
+**Se sua surface nova não aparece nesse seletor, ela herda os tokens cream do `:root` mesmo que você scope seu CSS sob `.atlas-shell.surface-{nome}`.** Foi exatamente o que aconteceu com Control Plane: o CSS dela existia, mas a surface não foi inscrita no opt-in slate, e tudo virou cream.
+
+### 22.1 · Os 3 passos obrigatórios
+
+**Passo 1 — Inscrever a surface no opt-in slate (index.css).**
+
+Localize em `apps/desktop/src/index.css` o comentário-âncora `SURFACE OPT-IN SLATE DARK · ADICIONE SUA SURFACE NOVA AQUI` e o bloco `.atlas-shell.surface-code, ...` logo abaixo. Adicione sua surface:
+
+```css
+.atlas-shell.surface-code,
+.atlas-shell.surface-atencao,
+.atlas-shell.surface-atlas_ai,
+.atlas-shell.surface-atlas-ai,
+.atlas-shell.surface-{nome} {    /* ← adicione aqui */
+  /* tokens slate redefinidos */
+}
+```
+
+Repita em **todos** os blocos agregados que listam essas mesmas surfaces no mesmo arquivo (hoje são 6 multi-class total: opt-in tokens + 4 scrollbar selectors + 1 font-feature global). Use `grep -n "surface-code," apps/desktop/src/index.css` para encontrar todos.
+
+**Passo 2 — Registrar no enum TypeScript.**
+
+Em `apps/desktop/src/hooks/useSurface.ts`, adicione `'{nome}'` à union `Surface` e ao validador `isValidSurface`. O nome do enum deve casar exatamente com o classname `surface-{nome}` usado no CSS.
+
+**Passo 3 — CSS específico da surface.**
+
+Em `apps/desktop/src/surfaces/{nome}/{nome}.css`, use APENAS tokens `var(--cc-*)`. Nunca declare cores hex direto, nunca use tokens legados `--cream*`/`--ink*`/`--bronze*`. Com os Passos 1 e 2 feitos, os tokens `--cc-*` resolvem automaticamente para slate dentro da sua surface.
+
+### 22.2 · Tokens permitidos
+
+Use APENAS os tokens slate `--cc-*` (resolvem automaticamente quando a surface está no opt-in do Passo 1):
+
+```
+Background      var(--cc-bg)         #1d2b34
+Surface card    var(--cc-surface)    #243743
+Raised          var(--cc-surface-raised)  #2d4351
+Sunken          var(--cc-surface-sunken)  #15212a
+Text strong     var(--cc-text-strong)     #f0f4f7
+Text body       var(--cc-text)            #d6dde2
+Text muted      var(--cc-text-muted)      #95a3ac
+Text faint      var(--cc-text-faint)      #677482
+Text disabled   var(--cc-text-disabled)   #3d4b54
+Border          var(--cc-border) / --cc-border-soft / --cc-border-strong
+Accent gold     var(--cc-accent)          #d4a85a  · PARCIMÔNIA (1-2 elementos accent/view)
+Status          var(--cc-success|warning|danger|info|neutral)  + *-fg / *-veil / *-border
+Font            var(--cc-font-sans|serif|mono|display)
+Text scale      var(--cc-text-display|title|section|body|body-sm|caption|label|data)
+Easing          var(--cc-ease-out|in-out|spring)
+Shadows         var(--cc-shadow-xs|sm|md|lg)
+Focus           var(--cc-focus-ring)
+```
+
+**PROIBIDO** em surface nova: `--cream*`, `--ink*`, `--bronze*` (são tokens legacy bridge — também são redefinidos pra slate no Passo 1, mas use sempre os `--cc-*` canônicos). Hex direto também é proibido — quebra Cartografia se algum dia o canon for unificado.
+
+### 22.3 · Typography canon
+
+- **Body** · Inter Variable sans, weight 440, line-height 1.6-1.65, letter-spacing 0
+- **H1/H2 títulos** · Inter sans, weight 560-680, letter-spacing negativo `-0.012em` a `-0.018em`
+- **Eyebrow caps** · Inter sans 10-11px, weight 540, uppercase, letter-spacing 0.06-0.1em, color `var(--cc-text-faint)`
+- **Mono identifiers** · `var(--cc-font-mono)` para code/file paths/IDs
+- **Cormorant italic** · APENAS para `✦` glyph e numerais romanos editoriais. Nunca em texto operacional, state, label, meta, placeholder.
+
+Font-features obrigatórias em texto longo: `font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1`
+
+### 22.4 · Discipline canon
+
+| Aspecto | Regra |
+|---|---|
+| Border-radius | 4 / 6 / 8 (Linear scale). Sem 5/7/9/10/14. Pill 999 só pra chip filtro/status quando justificado. |
+| Box-shadow stack | ≤2 layers. Single inset highlight + opcional 1 drop shadow. NUNCA 3+ stack. |
+| Cores semafóricas | Apenas em erro REAL (rec-red) e success de ação confirmada (moss). NUNCA em estado neutro tipo "arquivar" (use ink-muted). |
+| Transition | `var(--cc-ease-out)` único. Drop ease genérico. Reduced-motion guard obrigatório em todo `@keyframes`. |
+| Focus | `outline: 1px solid var(--cc-accent); outline-offset: 2px` em interactive. `:focus:not(:focus-visible) { outline: none }` pra suprimir mouse. |
+| Scrollbar | Slate thin 8px alpha 0.18 → 0.32 on hover. Token canon (já está em `index.css` pra surfaces conhecidas — adicione sua surface no seletor). |
+| Selection | `::selection` accent gold alpha 0.28. Token canon (já está — estenda pra sua surface). |
+| Hairlines | Use linear-gradient fade-edges (12% transparent → opaque → 12% transparent) para divisores horizontais quando largura conhecida. |
+
+### 22.5 · Anti-patterns observados (gallery)
+
+- **Cream fallback** (Control Plane 2026-05-18) — `docs/anti-patterns/control-plane-cream-violation.png`
+  - **Sintoma**: surface aparece em cream warm/bege em vez de slate dark
+  - **Causa raiz**: surface nova criada mas NÃO inscrita no seletor agregado `index.css:218-221` que redefine os tokens `--cc-*` para slate. CSS escopado isoladamente não resolve — herda cream do `:root`.
+  - **Fix**: aplicar Passo 1 do capítulo 22.1 (inscrever no opt-in slate em todos os seletores agregados de `index.css`)
+
+- **Drop cap gold first-letter** (rounds 16-39, killed 2026-05-16) — Cormorant italic em first-letter de resposta vira typo/glitch
+  - **Fix**: nunca aplicar `::first-letter` com Cormorant em texto técnico curto
+
+- **Italic Cormorant em body operacional** — cansa olho em 12h dark mode
+  - **Fix**: Cormorant SÓ em `✦` glyph + numerais romanos editoriais
+
+- **Pílulas yellow chrome em inline code** — vira SEO blog 2018
+  - **Fix**: inline code = mono sans-bg color text-strong com hairline border alpha 0.07
+
+### 22.5.5 · Smoke test obrigatório · prove que está slate
+
+Type-check + build limpos **não provam** que sua surface ficou visualmente correta. Control Plane foi exatamente esse caso: compilou, mas faltou o Passo 1 do 22.1 e a surface herdou cream do `:root`.
+
+Antes do PR, três validações ao vivo:
+
+1. **DevTools computed style** — inspecione qualquer elemento da sua surface no painel "Computed":
+   - ✅ `--cc-bg` resolve para `#1d2b34` → canon
+   - ❌ `--cc-bg` resolve para `#f4ede0` → falhou Passo 1, surface não inscrita no opt-in slate
+2. **Screenshot side-by-side** com Atlas Code/Atlas AI — backgrounds devem ser visualmente idênticos.
+3. **Grep duplo** — `grep -c "surface-{nome}" apps/desktop/src/index.css` deve retornar **≥6** (opt-in slate + 4 scrollbar selectors + 1 font-feature global).
+
+Qualquer um dos 3 falha → não merge.
+
+### 22.6 · Checklist obrigatório antes do primeiro PR
+
+- [ ] **Passo 1 · Opt-in slate** · surface adicionada ao seletor agregado abaixo do comentário-âncora `SURFACE OPT-IN SLATE DARK` em `index.css`
+- [ ] **Passo 1 · Cosméticos** · surface adicionada aos 5 outros seletores agregados (scrollbar + font-feature) — use `grep -n "surface-code," apps/desktop/src/index.css` para listar os 6 lugares totais
+- [ ] **Passo 2 · Enum** · surface adicionada em `useSurface.ts` (union `Surface` + `isValidSurface`)
+- [ ] **Passo 3 · CSS específico** · usa APENAS `var(--cc-*)` tokens, zero hex direto fora dos tokens
+- [ ] Zero `--cream*` / `--ink*` / `--bronze*` no arquivo da surface (use sempre os `--cc-*` canônicos)
+- [ ] Inter Variable como família principal, Cormorant apenas em `✦` glyph + numerais romanos
+- [ ] Border-radius 4/6/8/10 only (via `--cc-radius-*`)
+- [ ] Box-shadow ≤2 layers (via `--cc-shadow-*`)
+- [ ] Focus-visible: `box-shadow: var(--cc-focus-ring); outline: none;`
+- [ ] Reduced-motion guard em todo `@keyframes`
+- [ ] Screenshot Playwright comparado com Atlas AI / Atlas Code (mesmo tom slate?)
+- [ ] Anti-pattern catalogado + lido (capítulo 22.5)
+- [ ] Build limpo: `npm run build` (não confiar em `pnpm tauri build` exit 0 — ver `feedback_atlas_tauri_build_pipeline`)
+
+Se algum item falha: **NÃO MERGE**. Refatore antes.
+
+---
+
+**Última revisão**: 2026-05-18 · v2.1 · capítulo 22 NEW SURFACE BLUEPRINT após Control Plane violation
 **Próxima revisão obrigatória**: ao adicionar surface nova, alterar tokens canon, ou catalogar novo anti-pattern

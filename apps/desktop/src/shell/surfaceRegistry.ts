@@ -51,6 +51,14 @@ export const ATLAS_SURFACES: AtlasSurfaceDefinition[] = [
     authority: 'repo',
     requiresKernel: true,
   },
+  {
+    id: 'control_plane',
+    label: 'Control Plane',
+    shortcut: '⌘5',
+    sub: 'observar · estado vivo do Kernel novo',
+    authority: 'kernel',
+    requiresKernel: true,
+  },
 ]
 
 export function getSurfaceDefinition(surface: Surface): AtlasSurfaceDefinition {

@@ -50,9 +50,18 @@ interface AtlasAiThreadListProps {
 
 const MODE_TAG: Record<AtlasAiMode | 'all', string> = {
   all: 'todas',
+  auto: 'auto',
   general: 'geral',
+  conversation: 'conversa',
   operational: 'ops',
   programming: 'dev',
+  research: 'pesquisa',
+  finance: 'finanças',
+  marketing: 'marketing',
+  strategy: 'estratégia',
+  personal_development: 'pessoal',
+  cyber: 'cyber',
+  automation: 'automação',
 }
 
 const COLLAPSED_STORAGE = 'atlas-desktop:atlas-ai-projects-collapsed'
@@ -68,6 +77,21 @@ function inferThreadMode(thread: AiThreadSummary): AtlasAiMode {
     return 'programming'
   }
   if (focus === 'operational' || modeMeta === 'operational') return 'operational'
+  const candidates: AtlasAiMode[] = [
+    'auto',
+    'general',
+    'conversation',
+    'research',
+    'finance',
+    'marketing',
+    'strategy',
+    'personal_development',
+    'cyber',
+    'automation',
+  ]
+  for (const c of candidates) {
+    if (focus === c || modeMeta === c) return c
+  }
   return 'general'
 }
 

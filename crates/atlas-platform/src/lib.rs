@@ -14,6 +14,9 @@
 
 pub mod fswatch;
 pub mod pty;
+pub mod vox;
+pub mod vox_stt;
 
 pub use fswatch::{FsEvent, FsWatchHandle, watch_path};
 pub use pty::{PtyHandle, PtyManager, PtyOpenRequest, PtySpawnedEvent};
+pub use vox::{VoxEdge, VoxEdgeConfig, VoxEdgeError, VoxEdgeSession, VoxEdgeStatus};

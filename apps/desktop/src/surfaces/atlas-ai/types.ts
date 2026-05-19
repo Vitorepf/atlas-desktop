@@ -13,10 +13,87 @@
  * Modos / tarefas / providers mirror atlas-app/lib/atlasAiModeContract.ts.
  */
 
-export type AtlasAiMode = 'general' | 'operational' | 'programming'
+/**
+ * Atlas AI composer mode (UX hint sent to the backend Router Runtime).
+ *
+ * `auto` is the default: the Desktop does NOT assert a domain — it asks the
+ * Hyperflow / Atlas Decide / Router Runtime to choose. Explicit values are
+ * available so the operator can override when they know the domain (e.g.
+ * "I want this to go through the cyber playbook").
+ *
+ * Backend ground truth (atlas-server `domain_id` enum):
+ *   programming · research · finance · marketing · strategy ·
+ *   personal_development · cyber · automation · conversation · general ·
+ *   operational
+ *
+ * The Desktop sends this as `atlas_mode` and `routing_domain` hints; the
+ * canonical decision lives in the trace returned by the backend.
+ */
+export type AtlasAiMode =
+  | 'auto'
+  | 'general'
+  | 'operational'
+  | 'programming'
+  | 'research'
+  | 'finance'
+  | 'marketing'
+  | 'strategy'
+  | 'personal_development'
+  | 'cyber'
+  | 'automation'
+  | 'conversation'
 
-/** `dev`/`debug` válidos apenas em mode=programming. */
-export type AtlasAiTask = 'direct' | 'plan' | 'review' | 'dev' | 'debug'
+/** `dev`/`debug` válidos apenas em mode=programming. `auto` é o default neutro. */
+export type AtlasAiTask = 'auto' | 'direct' | 'plan' | 'review' | 'dev' | 'debug'
+
+/**
+ * Slice atlas.ai.hyperflow.trace.v1 — projection that the backend Router
+ * Runtime / Atlas Decide returns inside the trace metadata so the Desktop
+ * can SHOW the real decision instead of inferring one locally. Every field
+ * is optional because the projection is rolled out gradually across the
+ * backend stack; the Desktop renders only what is present.
+ */
+export interface AtlasAiHyperflowTrace {
+  schema_version?: string
+  intent?: string | null
+  domain_id?: string | null
+  flow_id?: string | null
+  runtime_mode?: string | null
+  confidence?: number | null
+  policy_refs?: ReadonlyArray<string> | null
+  evidence_refs?: ReadonlyArray<string> | null
+  decision_receipt_id?: string | null
+  decision_receipt_hash?: string | null
+  dispatch_status?: string | null
+  handoff_target?: string | null
+  handoff_reason?: string | null
+  router_was_overridden?: boolean | null
+  reasons?: ReadonlyArray<string> | null
+}
+
+/**
+ * Backend bootstrap projection from GET /ai/router-runtime/bootstrap. Used
+ * by the Desktop to pre-warm domain/flow/policy hints without making the
+ * front assume any of them. Every field optional + back-compat with absent
+ * endpoint (Desktop renders the same UI either way).
+ */
+export interface AtlasAiRouterBootstrap {
+  schema_version?: string
+  default_domain?: string | null
+  default_flow?: string | null
+  available_domains?: ReadonlyArray<string> | null
+  available_flows?: ReadonlyArray<string> | null
+  decision_mode?: string | null
+  notes?: ReadonlyArray<string> | null
+}
+
+/** GET /ai/router-runtime/readiness projection. */
+export interface AtlasAiRouterReadiness {
+  schema_version?: string
+  status?: 'green' | 'partial' | 'blocked' | string
+  reasons?: ReadonlyArray<string> | null
+  blockers?: ReadonlyArray<{ code: string; message: string }> | null
+}
 
 /** Mantido em sync com `provider` enum em StoreAiInteractionRequest. */
 export type AtlasAiProvider =
@@ -28,7 +105,7 @@ export type AtlasAiProvider =
 /** UX label "auto" → omitir `provider` e enviar decision_mode=atlas_decide. */
 export type AtlasAiProviderChoice = AtlasAiProvider | 'auto'
 
-export type AtlasAiFocus = 'general' | 'operational' | 'programming'
+export type AtlasAiFocus = AtlasAiMode
 
 export interface AiThreadSummary {
   id: string
@@ -332,6 +409,12 @@ export interface AiTrace {
   completed_at: string | null
   metadata: Record<string, unknown> | null
   atlas_dev_runtime?: AtlasDevRuntime | null
+  /**
+   * Hyperflow projection — backend dictates the canonical routing/handoff
+   * decision. Desktop renders this when present; absent => front shows the
+   * legacy `inferred` view derived from policy hints.
+   */
+  hyperflow?: AtlasAiHyperflowTrace | null
   /** Eager-loaded relations (presentes em GET /ai/interactions/{id}). */
   job?: AiJob | null
   jobs?: AiJob[] | null
@@ -358,10 +441,19 @@ export interface AtlasAiInteractionRequest {
   include_semantic_context?: boolean
   context_note_limit?: number
   payload?: Record<string, unknown>
-  /** IDs retornados pelo chunked-upload /ai/uploads/chunks (imagens) */
+  /** IDs retornados pelo chunked-upload /ai/uploads/chunks (imagens) — legado, mantido por compat */
   uploaded_images?: string[]
-  /** IDs retornados pelo chunked-upload /ai/uploads/chunks (PDFs/docs) */
+  /** IDs retornados pelo chunked-upload /ai/uploads/chunks (PDFs/docs) — legado, mantido por compat */
   uploaded_documents?: string[]
+  /**
+   * Universal Rich Input Payload canon (`atlas.rich_input.payload.v1`). Quando
+   * presente, o backend Hyperflow + Forge intake preserva o payload completo
+   * (source_manifest + hashes incluso) para auditoria e re-projeção. Convive
+   * com `uploaded_images`/`uploaded_documents` legados — `StoreAiInteractionRequest`
+   * aceita ambos. Mobile já envia este campo desde 2026-05-19; Desktop alinhou
+   * em paralelo.
+   */
+  rich_input_payload?: import('../../lib/rich-input').AtlasRichInputPayload
 }
 
 export interface AtlasAiInteractionResponse {

@@ -14,7 +14,13 @@
  *   - error string captured in `errors[]`
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { bridge, operatingRoomBridge, type BridgeMode } from '../lib/bridge'
+import {
+  bridge,
+  operatingRoomBridge,
+  type AtlasComposerHints,
+  type BridgeMode,
+} from '../lib/bridge'
+import type { AtlasRichInputPayload } from '../lib/rich-input'
 import { useExecutionStore } from '../state/executionStore'
 import type {
   AtlasCodeEnterpriseCertificationReport,
@@ -187,8 +193,15 @@ export interface BridgeActions {
   /** Re-query workspace profiles (Atlas, Blackink, …) from atlas-server. */
   refreshWorkspaces: () => Promise<void>
   selectObra: (obraId: string) => Promise<void>
-  createObra: (intent: string, objective: string) => Promise<Obra | null>
-  sendIntent: (text: string) => Promise<void>
+  createObra: (
+    intent: string,
+    objective: string,
+    opts?: { richInput?: AtlasRichInputPayload | null },
+  ) => Promise<Obra | null>
+  sendIntent: (
+    text: string,
+    opts?: { richInput?: AtlasRichInputPayload | null; composerHints?: AtlasComposerHints | null },
+  ) => Promise<void>
   runGate: (gateId: string) => Promise<void>
   signReceipt: () => Promise<void>
   applyDiff: (patchId: string) => Promise<void>
@@ -943,7 +956,11 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
   )
 
   const createObra = useCallback(
-    async (intent: string, objective: string): Promise<Obra | null> => {
+    async (
+      intent: string,
+      objective: string,
+      opts: { richInput?: AtlasRichInputPayload | null } = {},
+    ): Promise<Obra | null> => {
       setSnap((s) => ({ ...s, busy: true }))
       try {
         // Bind new Obra to the currently active Project/Workspace so the
@@ -951,7 +968,10 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
         // Canon: docs/.../atlas-code-multi-project-workspace-os.md
         const workspaceSlug = snap.activeWorkspaceSlug ?? snap.activeWorkspace?.slug ?? null
         const domain = snap.activeWorkspace?.slug ?? 'atlas'
-        const created = await bridge.createObra(intent, objective, domain, { workspaceSlug })
+        const created = await bridge.createObra(intent, objective, domain, {
+          workspaceSlug,
+          richInput: opts.richInput ?? null,
+        })
         if (!created?.id) {
           pushError('createObra', new Error('server returned no obra'))
           setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
@@ -979,7 +999,10 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
   )
 
   const sendIntent = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      opts: { richInput?: AtlasRichInputPayload | null; composerHints?: AtlasComposerHints | null } = {},
+    ) => {
       const threadId = snap.activeThreadId ?? snap.active[0]?.threadId ?? null
       const obraId = snap.obra?.id
       setSnap((s) => ({ ...s, busy: true }))
@@ -1000,7 +1023,10 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       setSnap((s) => ({ ...s, messages: [...s.messages, optimistic] }))
 
       try {
-        const res = await bridge.sendIntent(threadId, text, 'text', obraId)
+        const res = await bridge.sendIntent(threadId, text, 'text', obraId, {
+          richInput: opts.richInput ?? null,
+          composerHints: opts.composerHints ?? null,
+        })
         const newThreadId = res.threadId
         if (!newThreadId) {
           setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))

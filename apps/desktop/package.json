@@ -10,12 +10,19 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "atlas-dev:test": "npx tsx src/components/atlasDev/__tests__/apiShapes.test.ts && npx tsx src/components/atlasDev/__tests__/planResponseNormaliser.test.ts && npx tsx src/components/atlasDev/__tests__/runApiContract.test.ts && npx tsx src/components/atlasDev/__tests__/sseParser.test.ts && npx tsx src/components/atlasDev/__tests__/useAtlasDevRunRaceGuard.test.ts && npx tsx src/components/atlasDev/__tests__/readinessGateSource.test.ts",
+    "atlas-ai:test": "npx tsx --test src/surfaces/atlas-ai/__tests__/atlasAiHyperflowContract.test.ts src/surfaces/atlas-ai/__tests__/atlasAiPromptScenarios.test.ts src/surfaces/atlas-ai/__tests__/atlasAiRichInputRuntime.test.ts src/surfaces/atlas-ai/__tests__/atlasDevPlanHttpBody.test.ts src/surfaces/atlas-ai/__tests__/hyperflowPayload.test.ts src/surfaces/atlas-ai/__tests__/hyperflowTraceConsumption.test.ts src/surfaces/atlas-ai/__tests__/hyperflowRuntime.test.ts src/surfaces/atlas-ai/__tests__/useHyperflowRuntime.test.ts src/surfaces/atlas-ai/__tests__/richInputPayloadIntegration.test.ts",
     "atlas-dev:certify": "npm run atlas-dev:test && npm run visual-smoke && npm run build",
     "visual-smoke": "node scripts/visualRender.mjs",
     "browser-smoke": "node scripts/browserSmoke.mjs",
+    "vox:smoke": "node scripts/voxFirstUseSmoke.mjs",
+    "vox:visual-smoke": "node scripts/voxVisualSmoke.mjs",
+    "vox:release-check": "node scripts/voxReleaseCheck.mjs",
     "tauri": "cd ../../crates/atlas-tauri && tauri",
     "tauri:dev": "cd ../../crates/atlas-tauri && tauri dev",
-    "tauri:build": "cd ../../crates/atlas-tauri && tauri build"
+    "tauri:build": "cd ../../crates/atlas-tauri && tauri build",
+    "tauri:dev:vox": "cd ../../crates/atlas-tauri && MACOSX_DEPLOYMENT_TARGET=11.0 CMAKE_OSX_DEPLOYMENT_TARGET=11.0 CFLAGS='-mmacosx-version-min=11.0' CXXFLAGS='-mmacosx-version-min=11.0' tauri dev --features whisper-cpp",
+    "tauri:build:vox": "cd ../../crates/atlas-tauri && MACOSX_DEPLOYMENT_TARGET=11.0 CMAKE_OSX_DEPLOYMENT_TARGET=11.0 CFLAGS='-mmacosx-version-min=11.0' CXXFLAGS='-mmacosx-version-min=11.0' tauri build --features whisper-cpp",
+    "vox:dev": "node scripts/voxDev.mjs"
   },
   "dependencies": {
     "@atlas/domain": "*",

@@ -21,6 +21,12 @@ import type { Surface } from '../../hooks/useSurface'
 // no WorkspacePill do topbar). Para abrir Project Profile, mantemos um
 // link compacto "ver perfil" se necessário no futuro.
 import { useAtlasAiLayoutStore } from '../../state/atlasAiLayoutStore'
+import { useVoxOverlay } from '../../components/vox/useVoxOverlay'
+import { VoxOverlay } from '../../components/vox/VoxOverlay'
+import { useVoxContextSnapshot } from '../../components/vox/useVoxContextSnapshot'
+import { isVoxContextSnapshotEmpty } from '../../components/vox/voxContextSnapshot'
+import type { VoxContextRef } from '../../lib/bridge'
+import '../../components/vox/vox.css'
 import { AtlasAiComposer } from './components/AtlasAiComposer'
 import { AtlasAiConversation } from './components/AtlasAiConversation'
 import { AtlasAiEmpty } from './components/AtlasAiEmpty'
@@ -153,29 +159,7 @@ export function AtlasAiSurface({
   )
 
   const handleSend = useCallback(
-    async (options?: {
-      newThread?: boolean
-      attachments?: {
-        uploaded_image_ids: string[]
-        uploaded_document_ids: string[]
-        text_blocks: Array<{
-          file_name: string
-          mime_type: string
-          language: string | null
-          content: string
-          page_count?: number
-        }>
-        url_attachments: Array<{
-          url: string
-          kind: string
-          title: string | null
-          author: string | null
-          duration_sec: number | null
-          thumbnail_url: string | null
-          ref_id: string | null
-        }>
-      }
-    }) => {
+    async (options?: AtlasAiComposerSendExtras) => {
       // Clear sincrônico: a textarea esvazia IMEDIATAMENTE para o operador
       // ver que o gesto foi capturado. Se a chamada falhar restauramos o
       // texto pra ele poder editar e tentar de novo sem retypear.
@@ -187,6 +171,7 @@ export function AtlasAiSurface({
         uploadedDocumentIds: options?.attachments?.uploaded_document_ids,
         textBlocks: options?.attachments?.text_blocks,
         urlAttachments: options?.attachments?.url_attachments,
+        richInputPayload: options?.richInputCanonical,
       })
       if (!trace && sendingText.trim() !== '') {
         setComposerDraft(sendingText)
@@ -205,6 +190,66 @@ export function AtlasAiSurface({
       }
     }, 60)
   }, [])
+
+  // Vox Overlay V1 · controller compartilhado entre o botão no composer e
+  // o painel renderizado logo acima do composer-wrap.
+  const handleVoxInsert = useCallback((text: string) => {
+    setComposerDraft((prev) => {
+      const sep = prev.length > 0 && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : ''
+      return `${prev}${sep}${text}`
+    })
+    window.setTimeout(() => {
+      const ta = document.querySelector<HTMLTextAreaElement>('.atlas-ai-textarea')
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(ta.value.length, ta.value.length)
+      }
+    }, 60)
+  }, [])
+  // Light context_refs · só o que o Desktop pode provar honestamente sem
+  // acessar tela, accessibility ou app focado. Workspace slug ativo +
+  // surface atual já bastam para o Kernel desambiguar intenções genéricas.
+  const voxContextRefsProvider = useCallback((): VoxContextRef[] => {
+    const refs: VoxContextRef[] = []
+    if (resolvedWorkspaceSlug) {
+      refs.push({ kind: 'workspace', ref: resolvedWorkspaceSlug, resolved: true })
+    }
+    refs.push({ kind: 'surface', ref: 'atlas_ai', resolved: true })
+    return refs
+  }, [resolvedWorkspaceSlug])
+  // V4 · structured snapshot resolver. Reads workspace + active surface +
+  // selected thread + live text selection. NÃO toca clipboard, screenshot,
+  // AppleScript ou Full Disk Access — apenas dados que o WKWebView já tem.
+  const threadIdForSnapshot = atlas.selectedThreadId
+  const threadTitleForSnapshot = atlas.threadDetail?.title ?? null
+  const { getSnapshot: getVoxContextSnapshot } = useVoxContextSnapshot({
+    surface: 'atlas_ai',
+    workspace: {
+      root: activeWorkspace?.workspacePath ?? null,
+      name: activeWorkspaceName ?? activeWorkspace?.name ?? resolvedWorkspaceSlug,
+    },
+    thread: {
+      id: threadIdForSnapshot,
+      title: threadTitleForSnapshot,
+    },
+    // Atlas AI não tem obra/terminal — fica null honesto.
+    obra: null,
+    terminal: null,
+    activeViewLabel: threadTitleForSnapshot ?? 'Atlas AI',
+  })
+  const voxContextSnapshotProvider = useCallback((): Record<string, unknown> | null => {
+    const snap = getVoxContextSnapshot()
+    return isVoxContextSnapshotEmpty(snap) ? null : (snap as unknown as Record<string, unknown>)
+  }, [getVoxContextSnapshot])
+  const vox = useVoxOverlay({
+    onInsertIntoComposer: handleVoxInsert,
+    contextRefsProvider: voxContextRefsProvider,
+    contextSnapshotProvider: voxContextSnapshotProvider,
+  })
+  const handleVoxToggle = useCallback(() => {
+    if (vox.state === 'closed') vox.open()
+    else vox.close()
+  }, [vox])
 
   const handleRetryThreads = useCallback(async () => {
     setRetrying(true)
@@ -458,7 +503,10 @@ export function AtlasAiSurface({
               onSendInNew={(extras) =>
                 handleSend({ newThread: true, attachments: extras?.attachments })
               }
+              onVoxClick={handleVoxToggle}
+              voxState={vox.state}
             />
+            <VoxOverlay controller={vox} />
           </div>
         </div>
       </main>

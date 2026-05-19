@@ -43,7 +43,7 @@ atlas-desktop/
 │     ├─ src/components/    layout-first React components
 │     ├─ src/data/empty.ts  honest empty states (no invented records)
 │     ├─ src/hooks/         atlas-tauri command bridge
-│     └─ src/index.css      editorial DNA tokens (cream + bronze + Cormorant)
+│     └─ src/index.css      editorial DNA tokens · slate teal dark (`--cc-*`) DEFAULT, cream only Cartografia
 ├─ crates/
 │  ├─ atlas-tauri           Tauri bin · commands + lifecycle
 │  ├─ atlas-platform        PTY + notify-rs + objc2 (native boundary)
@@ -94,10 +94,22 @@ npm run tauri:build         # production .app + .dmg
 3. **After (passo 3)** — `atlas-code-mvp-endpoints` branch on atlas-server
    adding the 3 new controllers + 3 wraps the audit identified.
 
+## Implementando uma surface nova
+
+> **PARE. Antes de criar uma surface nova, leia `docs/IMPLEMENTING-NEW-SURFACE.md`.**
+>
+> Atlas Desktop é **slate teal dark por DEFAULT** (`#1d2b34` + atlas gold `#d4a85a`). Cream warm é exceção EXCLUSIVA da Cartografia. Se a sua surface aparece cream/bege, você violou o canon — refatore.
+>
+> O documento curto tem template CSS copy-paste pronto + os 4 mandamentos (scope, tokens, tipografia, discipline) + checklist pré-PR. Doc completo (1700+ linhas): `docs/architecture/0007-atlas-desktop-design-system.md`.
+
 ## Architecture Docs
 
 | Doc | Purpose |
 | --- | --- |
+| `docs/IMPLEMENTING-NEW-SURFACE.md` | **Atalho obrigatório · LEIA ANTES de criar surface nova** |
+| `docs/architecture/0007-atlas-desktop-design-system.md` | Canon completo · DNA, tokens, tipografia, motion, componentes, cookbook |
 | `docs/architecture/0001-atlas-desktop-boundaries.md` | Desktop vs Server ownership boundaries |
 | `docs/architecture/0002-code-cartography-production-readiness.md` | Full readiness plan for Code + Cartography |
 | `docs/architecture/0003-cartography-surface.md` | Cartography screen contract, API, states and roadmap |
+| `docs/atlas-ai-ultra-premium-polish-spec.md` | ~80 polish fixes aplicados em Atlas AI (referência prática) |
+| `docs/anti-patterns/` | Galeria visual de violações canon (cream em surface não-Cartografia, etc.) |

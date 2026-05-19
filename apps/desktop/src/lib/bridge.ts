@@ -216,7 +216,41 @@ function offline(method: string): never {
   throw new Error(`offline · ${method} · neither Tauri nor VITE_ATLAS_SERVER_URL configured`)
 }
 
-function atlasCodeForgePayload(obraId?: string): Record<string, unknown> {
+function requireHttpRichInputBridge(method: string, richInput: AtlasRichInputPayload | null): void {
+  if (!richInput || MODE !== 'tauri' || HTTP_BASE !== '') return
+  throw new Error(
+    `${method} · atlas.rich_input.payload.v1 requires VITE_ATLAS_SERVER_URL until the Tauri command accepts rich input`,
+  )
+}
+
+/**
+ * Atlas Unified Rich Input — `atlas.rich_input.payload.v1` is the canonical
+ * outbound shape every Atlas surface emits when forwarding attachments + URLs
+ * to the backend. We re-export the type from the canonical home so callers can
+ * import everything they need from `@/lib/bridge` without learning a second
+ * module path; the schema itself lives in `lib/rich-input/types.ts` to keep a
+ * single source of truth.
+ */
+export type { AtlasRichInputPayload } from './rich-input/types'
+import type { AtlasRichInputPayload } from './rich-input/types'
+import { compactRichInput } from './rich-input/compactRichInput'
+
+// Re-export so the rest of the file (and external callers) can keep
+// importing `compactRichInput` from '@/lib/bridge' unchanged. The actual
+// implementation lives in a side-effect-free module so unit tests can
+// import it without booting Vite's `import.meta.env`.
+export { compactRichInput }
+
+export interface AtlasComposerHints {
+  mode?: string | null
+  task?: string | null
+  provider?: string | null
+}
+
+function atlasCodeForgePayload(
+  obraId?: string,
+  composerHints: AtlasComposerHints | null = null,
+): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     app_surface: 'atlas_code',
     surface_id: 'atlas_code',
@@ -238,6 +272,24 @@ function atlasCodeForgePayload(obraId?: string): Record<string, unknown> {
         auto_test: true,
       },
     },
+  }
+
+  const hintedProvider = composerHints?.provider && composerHints.provider !== 'auto'
+    ? composerHints.provider
+    : null
+  payload.operator_composer_hints = {
+    schema_version: 'atlas.unified_composer.hints.v1',
+    mode: composerHints?.mode ?? 'auto',
+    task: composerHints?.task ?? 'auto',
+    provider: composerHints?.provider ?? 'auto',
+    preserves_surface_flow: true,
+    surface_flow: 'programming.forge',
+    provider_selection_effect: hintedProvider ? 'operator_hint_requires_backend_policy' : 'atlas_decide',
+  }
+  payload.decision_mode = hintedProvider ? 'manual_override' : 'atlas_decide'
+  if (hintedProvider) {
+    payload.requested_provider = hintedProvider
+    payload.operator_requested_provider = hintedProvider
   }
 
   if (obraId) {
@@ -497,17 +549,19 @@ export const bridge = {
     intent: string,
     objective: string,
     domain = 'atlas',
-    opts: { workspaceSlug?: string | null } = {}
+    opts: { workspaceSlug?: string | null; richInput?: AtlasRichInputPayload | null } = {}
   ): Promise<Obra> {
     const workspaceSlug = opts.workspaceSlug ?? null
-    if (MODE === 'tauri') {
-      // Tauri command predates multi-project scoping — degrade gracefully.
+    const richInput = compactRichInput(opts.richInput)
+    requireHttpRichInputBridge('createObra', richInput)
+    if (MODE === 'tauri' && !richInput) {
       const raw = await invokeTauri<unknown>('bridge_create_work', { intent, objective, domain })
       return normaliseObras(raw)[0] ?? offline('createObra')
     }
-    if (MODE === 'http') {
+    if (MODE === 'http' || (MODE === 'tauri' && richInput)) {
       const body: Record<string, unknown> = { intent, objective, domain }
       if (workspaceSlug) body.workspace_slug = workspaceSlug
+      if (richInput) body.rich_input = richInput
       const wrap = await fetchHttp<{ work?: Record<string, unknown> }>('/atlas-code/works', {
         method: 'POST',
         body,
@@ -633,27 +687,50 @@ export const bridge = {
     threadId: string | null,
     body: string,
     channel = 'text',
-    obraId?: string
+    obraId?: string,
+    opts: { richInput?: AtlasRichInputPayload | null; composerHints?: AtlasComposerHints | null } = {}
   ): Promise<{ traceId: string; threadId?: string }> {
-    if (MODE === 'tauri') {
+    const richInput = compactRichInput(opts.richInput)
+    const composerHints = opts.composerHints ?? null
+    requireHttpRichInputBridge('sendIntent', richInput)
+    if (MODE === 'tauri' && !richInput) {
       const res = await invokeTauri<{ trace?: { id?: string; thread_id?: string; threadId?: string } }>('bridge_send_intent_v2', {
         threadId: threadId ?? null,
         body,
         channel,
         obraId: obraId ?? null,
+        composerHints,
       })
       return normaliseTraceEnvelope(res, threadId)
     }
-    if (MODE === 'http') {
+    if (MODE === 'http' || (MODE === 'tauri' && richInput)) {
+      const forgePayload = atlasCodeForgePayload(obraId, composerHints)
+      if (richInput) {
+        // Stash the full structured payload inside the routing payload so
+        // Forge/Programming flows can audit attachment provenance + read
+        // URL/text_block metadata that the legacy AiInteractionController
+        // does not natively validate.
+        forgePayload.rich_input = richInput
+      }
       const payload: Record<string, unknown> = {
         input_text: body,
         source_type: 'app',
         kind: 'interaction',
-        payload: atlasCodeForgePayload(obraId),
+        payload: forgePayload,
       }
       if (threadId) payload.thread_id = threadId
       else payload.new_thread = true
       if (obraId) payload.source_id = obraId
+      // Top-level uploaded_images / uploaded_documents are already accepted by
+      // StoreAiInteractionRequest — propagate them so the existing chunked
+      // attachment pipeline picks the assets up unchanged. The canonical
+      // payload exposes them as `_ids`; we just re-key for the legacy slot.
+      if (richInput && richInput.uploaded_image_ids.length > 0) {
+        payload.uploaded_images = richInput.uploaded_image_ids
+      }
+      if (richInput && richInput.uploaded_document_ids.length > 0) {
+        payload.uploaded_documents = richInput.uploaded_document_ids
+      }
       const res = await fetchHttp<{ trace?: { id?: string; thread_id?: string } }>('/ai/interactions', {
         method: 'POST',
         body: payload,
@@ -6197,5 +6274,1963 @@ export async function openTerminalInWorkspace(
   } catch (e) {
     console.warn('[bridge] openTerminalInWorkspace', e)
     return null
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox Mac Edge (Onda 1 / Claude A)
+//
+// Capture-side bridge only: push-to-talk lifecycle, eclipse, status.
+// STT / dictionary / transcript are owned by Claude B (see `vox_stt_*`
+// Tauri commands).
+//
+// Events emitted by the Rust side (subscribe via @tauri-apps/api/event):
+//   vox://session-started, vox://audio-capture-started,
+//   vox://audio-capture-stopped, vox://session-ready-for-stt,
+//   vox://session-cancelled, vox://eclipse-activated, vox://error
+
+export type VoxSource =
+  | 'desktop_overlay'
+  | 'mac_edge_hotkey'
+  | 'desktop_inbox_button'
+  | 'desktop_workbench_button'
+
+export type VoxMode =
+  | 'dictation'
+  | 'prompt_polish'
+  | 'intent_compile'
+  | 'governed_execute'
+
+export type VoxSessionState =
+  | 'idle'
+  | 'recording'
+  | 'ready_for_stt'
+  | 'cancelled'
+  | 'failed'
+
+export interface VoxConsent {
+  audioCapture: boolean
+  contextShare: boolean
+  debugKeepAudio: boolean
+}
+
+export interface VoxStartSessionRequest {
+  source: VoxSource
+  modeRequested: VoxMode
+  language: string
+  consent: VoxConsent
+}
+
+export interface VoxEdgeSession {
+  sessionId: string
+  startedAt: string
+  source: VoxSource
+  modeRequested: VoxMode
+  language: string
+  audioHandle: string
+  rawPcmPersisted: boolean
+  state: VoxSessionState
+  durationMs: number
+  sampleRate: number
+  channels: number
+}
+
+export interface VoxEdgePermissions {
+  microphone: string
+  accessibility: string
+  inputMonitoring: string
+}
+
+export interface VoxEdgeStatus {
+  available: boolean
+  captureAvailable: boolean
+  hotkeyAvailable: boolean
+  activeSessionId: string | null
+  lastError: string | null
+  permissions: VoxEdgePermissions
+  eclipseActive: boolean
+  defaultHotkey: string
+  pendingCapabilities: string[]
+}
+
+export interface VoxEclipseReport {
+  touchedSessions: number
+}
+
+export class VoxBridgeUnavailable extends Error {
+  constructor() {
+    super('Vox Mac Edge requires the desktop binary (Tauri runtime)')
+    this.name = 'VoxBridgeUnavailable'
+  }
+}
+
+async function voxInvoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>
+): Promise<T> {
+  if (MODE !== 'tauri') throw new VoxBridgeUnavailable()
+  const tauri = await import('@tauri-apps/api/core')
+  return tauri.invoke<T>(cmd, args)
+}
+
+export async function voxEdgeStatus(): Promise<VoxEdgeStatus | null> {
+  if (MODE !== 'tauri') return null
+  try {
+    return await voxInvoke<VoxEdgeStatus>('vox_edge_status')
+  } catch (e) {
+    console.warn('[bridge] voxEdgeStatus', e)
+    return null
+  }
+}
+
+export async function voxEdgeStartSession(
+  request: VoxStartSessionRequest
+): Promise<VoxEdgeSession> {
+  return voxInvoke<VoxEdgeSession>('vox_edge_start_session', { request })
+}
+
+export async function voxEdgeFinishSession(
+  sessionId: string
+): Promise<VoxEdgeSession> {
+  return voxInvoke<VoxEdgeSession>('vox_edge_finish_session', { sessionId })
+}
+
+export async function voxEdgeCancelSession(
+  sessionId: string
+): Promise<VoxEdgeSession> {
+  return voxInvoke<VoxEdgeSession>('vox_edge_cancel_session', { sessionId })
+}
+
+export async function voxEdgeEclipse(): Promise<VoxEclipseReport> {
+  return voxInvoke<VoxEclipseReport>('vox_edge_eclipse')
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · STT + personal dictionary (Onda 1 / Claude B)
+//
+// Tauri commands registered by atlas-tauri:
+//   vox_stt_status, vox_dictionary_get, vox_dictionary_update,
+//   vox_stt_transcribe_debug_text.
+// Engine is whisper.cpp@large-v3 as the default; the real binding lands in a
+// follow-up wave. Until then, status is honest: engineAvailable=false and a
+// structured nextAction tells the operator what to do.
+
+export interface VoxModelNextAction {
+  code: string
+  message: string
+}
+
+export interface VoxModelStatus {
+  modelId: string
+  modelFilename: string
+  modelsDir: string
+  modelPath: string
+  modelFound: boolean
+  engineAvailable: boolean
+  nextAction: VoxModelNextAction | null
+}
+
+export interface VoxDictionaryEntry {
+  phrase: string
+  variants: string[]
+  preferred: string
+}
+
+export interface VoxPersonalDictionary {
+  schema_version: string
+  version: number
+  language: string
+  accent_hint: string
+  entries: VoxDictionaryEntry[]
+  updated_at: string
+}
+
+export interface VoxWordToken {
+  w: string
+  tStart: number
+  tEnd: number
+  conf: number
+}
+
+export interface VoxPostCorrection {
+  from: string
+  to: string
+  rule: string
+}
+
+export interface VoxLatencyMs {
+  captureToSttStart: number
+  sttProcessing: number
+  correctionPass: number
+  total: number
+}
+
+export type VoxEclipseCheck = 'passed' | 'aborted_mid_capture'
+
+export interface VoxTranscript {
+  schema: string
+  sessionId: string
+  transcriptId: string
+  audioHandle: string
+  language: string
+  engine: string
+  engineInvocationId: string
+  text: string
+  textRaw: string
+  confidence: number
+  words: VoxWordToken[]
+  personalDictionaryApplied: string[]
+  postCorrections: VoxPostCorrection[]
+  latencyMs: VoxLatencyMs
+  rawPcmPersisted: boolean
+  eclipseCheck: VoxEclipseCheck
+  noiseSignals?: {
+    silenceRatio: number
+    snrEstimateDb: number
+    vadSegments: number
+  } | null
+  createdAt: string
+}
+
+export interface VoxDebugTranscribeResponse {
+  transcript: VoxTranscript
+  note: string
+}
+
+export async function voxSttStatus(): Promise<VoxModelStatus | null> {
+  if (MODE !== 'tauri') return null
+  try {
+    return await voxInvoke<VoxModelStatus>('vox_stt_status')
+  } catch (e) {
+    console.warn('[bridge] voxSttStatus', e)
+    return null
+  }
+}
+
+// Wave 6.5 / Wave 7.8 — global hotkey runtime status. Tauri-only.
+// Returns `null` when the command isn't registered or the runtime hasn't
+// been installed yet (honest non-signal; readiness panel decides how to
+// surface that).
+//
+// The richer runtime shape lives in `voxReadiness.ts` as
+// `VoxHotkeyRuntimeStatus` so it doesn't collide with the existing
+// banner-level `VoxHotkeyStatus` type used by VoxOverlay below.
+
+import type {
+  VoxHotkeyRuntimeStatus,
+  VoxKernelHealthOutcome,
+  VoxReadinessProbes,
+  VoxReadinessSummary,
+} from './voxReadiness'
+import { adaptVoxKernelHealth, aggregate as aggregateReadiness } from './voxReadiness'
+
+export type { VoxHotkeyRuntimeStatus } from './voxReadiness'
+
+export async function voxHotkeyRuntimeStatus(): Promise<{
+  status: VoxHotkeyRuntimeStatus | null
+  probeFailed: boolean
+}> {
+  if (MODE !== 'tauri') return { status: null, probeFailed: false }
+  try {
+    const status = await voxInvoke<VoxHotkeyRuntimeStatus>('vox_hotkey_status')
+    return { status, probeFailed: false }
+  } catch (e) {
+    // Distinguish "command not registered" (older Tauri build) from a
+    // real probe failure — both end up `null` but only the latter sets
+    // `probeFailed=true` so the panel can show an `unavailable` item
+    // honestly.
+    console.warn('[bridge] voxHotkeyRuntimeStatus', e)
+    return { status: null, probeFailed: true }
+  }
+}
+
+// Wave 7.8 — read-only health probe for `/ai/vox/health`. Falls back to a
+// structured `kernel_url_missing` outcome when the http base is empty;
+// never throws to the readiness aggregator.
+
+export async function voxKernelHealth(): Promise<VoxKernelHealthOutcome> {
+  if (!HTTP_BASE && MODE !== 'http') {
+    return {
+      ok: false,
+      reason: 'kernel_url_missing',
+      detail: 'VITE_ATLAS_SERVER_URL não configurado.',
+    }
+  }
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/health')
+    const health = adaptVoxKernelHealth(raw)
+    if (!health) {
+      return {
+        ok: false,
+        reason: 'shape_invalid',
+        detail: 'Resposta de /ai/vox/health vazia ou em formato inesperado.',
+      }
+    }
+    return { ok: true, health }
+  } catch (e) {
+    return {
+      ok: false,
+      reason: 'fetch_failed',
+      detail: e instanceof Error ? e.message : String(e),
+    }
+  }
+}
+
+/**
+ * Wave 7.9 · Setup Assistant — opens a specific macOS System Settings
+ * pane via the allowlisted Tauri command. The allowlist lives in Rust;
+ * here we just expose a thin typed wrapper. Honest non-signal when
+ * running outside Tauri or outside macOS.
+ */
+export type VoxSystemSettingsTarget = 'microphone' | 'accessibility' | 'input_monitoring'
+
+export interface VoxSystemSettingsResult {
+  ok: boolean
+  target: string
+  url: string | null
+  platform: string
+  reason: string | null
+}
+
+export async function voxOpenSystemSettings(
+  target: VoxSystemSettingsTarget,
+): Promise<VoxSystemSettingsResult> {
+  if (MODE !== 'tauri') {
+    return {
+      ok: false,
+      target,
+      url: null,
+      platform: 'browser',
+      reason: 'tauri_required',
+    }
+  }
+  try {
+    return await voxInvoke<VoxSystemSettingsResult>('vox_open_system_settings', {
+      target,
+    })
+  } catch (e) {
+    return {
+      ok: false,
+      target,
+      url: null,
+      platform: 'unknown',
+      reason: e instanceof Error ? e.message : String(e),
+    }
+  }
+}
+
+/**
+ * Wave 7.8 · First-run readiness aggregator. Composes the existing Vox
+ * probes (edge + STT + hotkey + kernel health) into a single deterministic
+ * snapshot for the overlay's Readiness panel. Never invokes audio, never
+ * runs a session, never persists anything.
+ */
+export async function voxReadinessGet(): Promise<VoxReadinessSummary> {
+  const [edge, stt, hotkey, kernel] = await Promise.all([
+    voxEdgeStatus(),
+    voxSttStatus(),
+    voxHotkeyRuntimeStatus(),
+    voxKernelHealth(),
+  ])
+  const probes: VoxReadinessProbes = {
+    bridgeMode: MODE as 'tauri' | 'http' | 'offline',
+    edge,
+    stt,
+    hotkey: hotkey.status,
+    hotkeyProbeFailed: hotkey.probeFailed,
+    kernel,
+  }
+  return aggregateReadiness(probes)
+}
+
+export async function voxDictionaryGet(): Promise<VoxPersonalDictionary | null> {
+  if (MODE !== 'tauri') return null
+  try {
+    return await voxInvoke<VoxPersonalDictionary>('vox_dictionary_get')
+  } catch (e) {
+    console.warn('[bridge] voxDictionaryGet', e)
+    return null
+  }
+}
+
+export async function voxDictionaryUpdate(
+  next: VoxPersonalDictionary
+): Promise<VoxPersonalDictionary> {
+  return voxInvoke<VoxPersonalDictionary>('vox_dictionary_update', { next })
+}
+
+export async function voxSttTranscribeDebugText(request: {
+  rawText: string
+  sessionId?: string
+  audioHandle?: string
+}): Promise<VoxDebugTranscribeResponse> {
+  return voxInvoke<VoxDebugTranscribeResponse>('vox_stt_transcribe_debug_text', {
+    request,
+  })
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · STT real audio (Onda 6.6 / Claude M backend, Claude N UI)
+//
+// Tauri command: `vox_stt_transcribe_audio` (provided by Claude M's wave).
+//
+// Input:  { sessionId, audioHandle }
+// Output: { transcript: VoxTranscript, modelStatus?, timings? }
+//
+// Honesty: if the model is missing or the engine binding is not compiled
+// in, the Rust side surfaces a structured error string. We re-shape that
+// into a typed `VoxAudioTranscribeError` so the overlay can render the
+// "Modelo Whisper large-v3 ausente" hint without inventing a transcript.
+
+export interface VoxAudioTranscribeTimings {
+  capturedAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  durationMs?: number | null
+  captureToSttStartMs?: number | null
+  sttProcessingMs?: number | null
+  correctionPassMs?: number | null
+  totalMs?: number | null
+}
+
+export interface VoxAudioTranscribeResponse {
+  transcript: VoxTranscript
+  /** May echo back the engine status snapshot. The overlay uses it to
+   * refresh modelStatus after a successful transcription so the UI stays
+   * in sync (e.g. modelFound flips when the operator drops a file in). */
+  modelStatus: VoxModelStatus | null
+  timings: VoxAudioTranscribeTimings
+  /** Free-form `note` field for non-blocking diagnostics (e.g. "engine
+   * ran in fallback warm-cache mode"). UI shows it discreetly when set. */
+  note: string | null
+}
+
+/** Structured error raised when `vox_stt_transcribe_audio` fails. Code
+ * matches what the Rust side emits (see `vox_stt::engine::SttError`). */
+export class VoxAudioTranscribeError extends Error {
+  readonly code: string
+  readonly modelStatus: VoxModelStatus | null
+
+  constructor(message: string, code: string, modelStatus: VoxModelStatus | null) {
+    super(message)
+    this.name = 'VoxAudioTranscribeError'
+    this.code = code
+    this.modelStatus = modelStatus
+  }
+}
+
+function normalizeSttErrorPayload(payload: {
+  code: string
+  message: string
+  modelStatus: VoxModelStatus | null
+}): {
+  code: string
+  message: string
+  modelStatus: VoxModelStatus | null
+} {
+  const text = payload.message || ''
+  const zeroSignal =
+    /AudioInputInvalid/i.test(text)
+    || /não ouvi fala suficiente/i.test(text)
+    || /rms=0(?:\.0+)?/i.test(text)
+    || /peak=0(?:\.0+)?/i.test(text)
+    || /active_ratio=0(?:\.0+)?/i.test(text)
+
+  if (zeroSignal) {
+    return {
+      code: 'audio_input_invalid',
+      message:
+        'O Atlas não recebeu sinal do microfone. Verifique a permissão do microfone para Atlas Code e grave de novo.',
+      modelStatus: payload.modelStatus,
+    }
+  }
+
+  return payload
+}
+
+function tryParseSttError(raw: unknown): {
+  code: string
+  message: string
+  modelStatus: VoxModelStatus | null
+} | null {
+  // The Rust side surfaces SttError as a JSON-encoded string Tauri then
+  // wraps in an `invoke`-style rejection. Tauri's invoke rejects with a
+  // string in many configurations, but we tolerate {code,message,status}
+  // object payloads too.
+  if (typeof raw === 'string') {
+    try {
+      const obj = JSON.parse(raw) as Record<string, unknown>
+      if (obj && typeof obj === 'object') {
+        return normalizeSttErrorPayload({
+          code: typeof obj.code === 'string' ? obj.code : 'model_missing_or_engine_unavailable',
+          message: typeof obj.message === 'string' ? obj.message : raw,
+          modelStatus: (obj.status as VoxModelStatus | null) ?? null,
+        })
+      }
+    } catch {
+      /* fall through */
+    }
+    return normalizeSttErrorPayload({
+      code: 'model_missing_or_engine_unavailable',
+      message: raw,
+      modelStatus: null,
+    })
+  }
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>
+    return normalizeSttErrorPayload({
+      code: typeof obj.code === 'string' ? obj.code : 'model_missing_or_engine_unavailable',
+      message: typeof obj.message === 'string' ? obj.message : 'STT engine unavailable',
+      modelStatus: (obj.status as VoxModelStatus | null) ?? null,
+    })
+  }
+  return null
+}
+
+function normalizeAudioTranscribeResponse(raw: unknown): VoxAudioTranscribeResponse {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  // `transcript` may live at the root (when the Rust side returns the
+  // VoxTranscript directly) OR nested under `transcript` (when wrapped in a
+  // richer envelope). Support both.
+  const transcript = (r.transcript ?? raw) as VoxTranscript
+  const modelStatus = (r.modelStatus ?? r.model_status ?? null) as VoxModelStatus | null
+  const timingsRaw = (r.timings ?? r.latencyMs ?? r.latency_ms ?? {}) as Record<string, unknown>
+  const num = (k1: string, k2?: string): number | null => {
+    const v = (timingsRaw[k1] ?? (k2 ? timingsRaw[k2] : undefined)) as unknown
+    return typeof v === 'number' ? v : null
+  }
+  const str = (k1: string, k2?: string): string | null => {
+    const v = (timingsRaw[k1] ?? (k2 ? timingsRaw[k2] : undefined)) as unknown
+    return typeof v === 'string' ? v : null
+  }
+  const timings: VoxAudioTranscribeTimings = {
+    capturedAt: str('capturedAt', 'captured_at'),
+    startedAt: str('startedAt', 'started_at'),
+    completedAt: str('completedAt', 'completed_at'),
+    durationMs: num('durationMs', 'duration_ms'),
+    captureToSttStartMs: num('captureToSttStartMs', 'capture_to_stt_start'),
+    sttProcessingMs: num('sttProcessingMs', 'stt_processing'),
+    correctionPassMs: num('correctionPassMs', 'correction_pass'),
+    totalMs: num('totalMs', 'total'),
+  }
+  const note = typeof r.note === 'string' ? r.note : null
+  return { transcript, modelStatus, timings, note }
+}
+
+export async function voxSttTranscribeAudio(request: {
+  sessionId: string
+  audioHandle: string
+}): Promise<VoxAudioTranscribeResponse> {
+  try {
+    const raw = await voxInvoke<unknown>('vox_stt_transcribe_audio', { request })
+    return normalizeAudioTranscribeResponse(raw)
+  } catch (e) {
+    if (e instanceof VoxBridgeUnavailable) {
+      throw new VoxAudioTranscribeError(
+        e.message,
+        'tauri_runtime_required',
+        null,
+      )
+    }
+    const parsed = tryParseSttError(e)
+    if (parsed) {
+      throw new VoxAudioTranscribeError(parsed.message, parsed.code, parsed.modelStatus)
+    }
+    throw new VoxAudioTranscribeError(
+      e instanceof Error ? e.message : String(e),
+      'stt_unknown_error',
+      null,
+    )
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · Kernel Vox V0 HTTP (Onda 2 / Claude C)
+//
+// /ai/vox/intent compiles a VoxTranscript into a VoxIntentPacket and may
+// issue a Decision Receipt (R0 for V0 dictation). When the endpoint isn't
+// deployed yet, this returns `unavailable` instead of inventing a receipt.
+
+/** Provider biasing for `intent_compile`. Kernel may ignore. */
+export type VoxProviderHint = 'auto' | 'codex_cli' | 'claude_cli' | 'local'
+
+/** Output format hint from VoxIntentPacket canon (extended with `auto`
+ * sentinel that the frontend uses to mean "let Kernel pick"). */
+export type VoxOutputFormat =
+  | 'auto'
+  | 'text'
+  | 'plan'
+  | 'diff'
+  | 'notes'
+  | 'command_proposal'
+  | 'diagnostic'
+  | 'none'
+
+/** Canonical risk band as returned by `VoxRiskClassifier`. */
+export type VoxRiskClass = 'R0' | 'R1' | 'R2' | 'R3' | 'R4'
+
+/** Lightweight context reference. The Desktop emits only kinds it can prove
+ * (workspace slug, active surface). Anything richer needs Accessibility and
+ * is out of V2 scope. */
+export interface VoxContextRef {
+  kind: 'workspace' | 'surface' | 'file' | 'selection' | 'active_window' | 'none'
+  ref: string | null
+  resolved: boolean
+}
+
+export interface VoxKernelIntentRequest {
+  transcript: VoxTranscript
+  /** Optional source hint propagated into VoxIntentPacket. */
+  source?: VoxSource
+  /** Optional mode override; defaults to `dictation` for V0. */
+  modeRequested?: VoxMode
+  /** Operator-selected provider bias for `intent_compile`. */
+  providerHint?: VoxProviderHint
+  /** Operator-selected output format for `intent_compile`. */
+  outputFormat?: VoxOutputFormat
+  /** Optional lightweight context refs collected by the surface. */
+  contextRefs?: VoxContextRef[]
+  /** V4 · structured snapshot of the operator's current desktop context
+   * (workspace, active surface, selection, thread, obra, terminal). Built
+   * by `buildVoxContextSnapshot` and forwarded to the Kernel as
+   * `context_snapshot` so it can resolve dêixis ("isso aqui", "esse arquivo")
+   * without screen capture or clipboard. Stored as `unknown` to keep
+   * bridge.ts decoupled from the snapshot type — the canonical shape lives
+   * in components/vox/voxContextSnapshot.ts. */
+  contextSnapshot?: Record<string, unknown> | null
+}
+
+/** V3 Governed Executor · confirmation request returned by /ai/vox/intent
+ * when the Kernel decided the intent requires explicit human confirmation
+ * before any execution. The Desktop renders this verbatim and never invents
+ * a confirmation. `confirmationToken` exists only so the next /ai/vox/execute
+ * call can be authorized — it MUST NOT be rendered, logged, or persisted. */
+export interface VoxConfirmationRequest {
+  /** Stable id of this confirmation prompt (one per intent compile cycle). */
+  requestId: string | null
+  /** Receipt id the execute call will reference. */
+  receiptId: string | null
+  /** Intent packet id (links UI state to receipt). */
+  intentId: string | null
+  /** Canonical risk band the operator is being asked to confirm. */
+  riskClass: VoxRiskClass | null
+  /** Short human-readable summary of what will happen. */
+  preview: string | null
+  /** Actions the operator may take (`execute`, `cancel`, `edit_intent`, …). */
+  actionsAvailable: string[]
+  /** True when the operator must type a literal phrase to unlock execute (R4). */
+  requiresLiteralConfirmation: boolean
+  /** Exact phrase the operator must type when literal confirmation is required. */
+  literalConfirmationText: string | null
+  /** Opaque token the backend issued for the /ai/vox/execute call. NEVER
+   * render, log, or persist this value. */
+  confirmationToken: string | null
+  /** ISO timestamp when the confirmation token expires (5min default). */
+  expiresAt: string | null
+}
+
+export interface VoxKernelIntentResponse {
+  /** "ok" when the kernel produced a receipt; "unavailable" when the
+   * endpoint or backend isn't ready and the UI must fall back to local-only.
+   * Frontend MUST NOT render receipts for any value other than "ok". */
+  status: 'ok' | 'unavailable' | 'error'
+  receiptId: string | null
+  decisionId: string | null
+  ledgerEventId: string | null
+  /** Human-readable intent line (e.g. compiled prompt summary in
+   * `prompt_polish`/`intent_compile`, or the cleaned transcript in
+   * `dictation`). */
+  intentText: string | null
+  /** Risk band (R0/R1/R2/R3). For V0 dictation the Kernel pins this to R0. */
+  risk: string | null
+  /** Suggested next action (e.g. "copy", "insert", "send_to_executor"). */
+  nextAction: string | null
+  /** Free-form error/diagnostic when status is "error" or "unavailable". */
+  message: string | null
+  /** Polished prompt produced by the VoxCompiler in `prompt_polish` /
+   * `intent_compile` modes. `null` in `dictation` (canon). */
+  compiledPrompt: string | null
+  /** Template id used to generate `compiledPrompt`, e.g. `codex.md@v3`. */
+  compiledPromptTemplate: string | null
+  /** Optional preview/summary block from the Kernel — short paragraph the
+   * operator sees before acting on a receipt. */
+  preview: string | null
+  // ── V2 Intent Compile · rich packet fields (all nullable so V0/V1 still fit)
+  /** Short imperative phrase declaring what Vitor wants. Empty in `dictation`. */
+  goal: string | null
+  /** Explicit constraints extracted from the transcript ("não mexa em X"). */
+  constraints: string[]
+  /** Provider bias from the Kernel (may equal or override the request hint). */
+  providerHint: VoxProviderHint | null
+  /** Executor hint (V2 surfaces this so V3 can pick up; V2 never executes). */
+  executorHint: string | null
+  /** Output format the Kernel chose for this intent. */
+  outputFormat: VoxOutputFormat | null
+  /** Final risk classification — Kernel may have uplifted from `dictation` R0. */
+  riskClass: VoxRiskClass | null
+  /** Human-readable justification of the risk class. */
+  riskReasoning: string | null
+  /** Evidence the Kernel commits to producing if the intent is later executed. */
+  evidencePromise: string | null
+  /** Operator-facing preview triplet from the Vox canon. */
+  previewWhatIHeard: string | null
+  previewWhatIUnderstood: string | null
+  previewWhatIWillDo: string | null
+  /** Suggested action vocabulary (subset of `copy_compiled_prompt`,
+   * `insert_compiled_prompt`, `copy_original`, `cancel`, etc). */
+  actionsAvailable: string[]
+  // ── V3 Governed Executor · confirmation handshake
+  /** True when the Kernel asks the operator to explicitly confirm before any
+   * execution. UI must not enable an Execute action unless this is true AND
+   * `confirmationRequest` is non-null. */
+  confirmationRequired: boolean
+  /** Full confirmation payload — `null` for V0/V1/V2 modes that don't execute. */
+  confirmationRequest: VoxConfirmationRequest | null
+  // ── V4 · Auto Mode Router (paper-only; null until backend ships)
+  /** Mode the Kernel suggests for this transcript, when the Auto Mode Router
+   * is online. `null` means: backend não devolveu sugestão — UI mostra "modo
+   * sugerido indisponível" e não inventa decisão. */
+  suggestedMode: VoxMode | null
+  /** Short human-readable reason the Kernel chose `suggestedMode`. Optional,
+   * only used to enrich the V4 confirmation card. */
+  suggestedModeReason: string | null
+}
+
+export async function voxKernelIntent(
+  request: VoxKernelIntentRequest
+): Promise<VoxKernelIntentResponse> {
+  // Pure HTTP — there is no Tauri command wrapping this in V0. Both Tauri
+  // and HTTP modes hit the Kernel directly. In offline mode we return an
+  // honest unavailable response so the overlay can render "Kernel Vox ainda
+  // indisponível" without inventing data.
+  const emptyResponse = (
+    status: VoxKernelIntentResponse['status'],
+    message: string | null,
+  ): VoxKernelIntentResponse => ({
+    status,
+    receiptId: null,
+    decisionId: null,
+    ledgerEventId: null,
+    intentText: null,
+    risk: null,
+    nextAction: null,
+    message,
+    compiledPrompt: null,
+    compiledPromptTemplate: null,
+    preview: null,
+    goal: null,
+    constraints: [],
+    providerHint: null,
+    executorHint: null,
+    outputFormat: null,
+    riskClass: null,
+    riskReasoning: null,
+    evidencePromise: null,
+    previewWhatIHeard: null,
+    previewWhatIUnderstood: null,
+    previewWhatIWillDo: null,
+    actionsAvailable: [],
+    confirmationRequired: false,
+    confirmationRequest: null,
+    suggestedMode: null,
+    suggestedModeReason: null,
+  })
+
+  if (!HTTP_BASE && MODE !== 'http') {
+    return emptyResponse(
+      'unavailable',
+      'Kernel Vox HTTP endpoint não configurado (VITE_ATLAS_SERVER_URL ausente).',
+    )
+  }
+  // Body uses snake_case for the canonical fields so the Kernel doesn't have
+  // to translate. The `transcript` is forwarded as-is (it already follows the
+  // VoxTranscript.v1 wire shape).
+  const body: Record<string, unknown> = {
+    transcript: request.transcript,
+    source: request.source,
+    mode_requested: request.modeRequested,
+  }
+  if (request.providerHint && request.providerHint !== 'auto') {
+    body.provider_hint = request.providerHint
+  }
+  if (request.outputFormat && request.outputFormat !== 'auto') {
+    body.output_format = request.outputFormat
+  }
+  if (request.contextRefs && request.contextRefs.length > 0) {
+    body.context_refs = request.contextRefs.map((c) => ({
+      kind: c.kind,
+      ref: c.ref,
+      resolved: c.resolved,
+    }))
+  }
+  // V4 · forward the structured context snapshot when the surface produced one.
+  // The Kernel uses it to resolve dêixis. We forward as-is so the snapshot
+  // schema stays owned by the canonical builder, not by the bridge.
+  if (request.contextSnapshot && typeof request.contextSnapshot === 'object') {
+    body.context_snapshot = request.contextSnapshot
+  }
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/intent', {
+      method: 'POST',
+      body,
+    })
+    if (!raw || typeof raw !== 'object') {
+      return emptyResponse('error', 'Resposta vazia do Kernel Vox')
+    }
+    const r = raw as Record<string, unknown>
+    const intentPacketRaw = (r.intent_packet ?? r.intentPacket) as
+      | Record<string, unknown>
+      | undefined
+    const receiptRaw = (r.receipt ?? r.receipt_payload) as
+      | Record<string, unknown>
+      | undefined
+    const previewObj = (r.preview ?? r.previewPayload) as
+      | Record<string, unknown>
+      | undefined
+
+    // Pick a string from up to two source keys across the root, intent_packet,
+    // receipt, and preview sub-objects · backend may emit snake_case or
+    // camelCase and may nest fields differently across modes.
+    const sources: Array<Record<string, unknown>> = [r]
+    if (intentPacketRaw) sources.push(intentPacketRaw)
+    if (receiptRaw) sources.push(receiptRaw)
+    if (previewObj && typeof previewObj === 'object') sources.push(previewObj)
+
+    const pickStr = (...keys: Array<[string, string?]>): string | null => {
+      for (const src of sources) {
+        for (const [a, b] of keys) {
+          const v = src[a] ?? (b ? src[b] : undefined)
+          if (typeof v === 'string') return v
+          if (v === null) return null
+        }
+      }
+      return null
+    }
+    const pickList = (...keys: Array<[string, string?]>): string[] => {
+      for (const src of sources) {
+        for (const [a, b] of keys) {
+          const v = src[a] ?? (b ? src[b] : undefined)
+          if (Array.isArray(v)) {
+            return v.filter((x): x is string => typeof x === 'string')
+          }
+        }
+      }
+      return []
+    }
+    const pickEnum = <T extends string>(
+      allowed: readonly T[],
+      ...keys: Array<[string, string?]>
+    ): T | null => {
+      const raw = pickStr(...keys)
+      if (raw && (allowed as readonly string[]).includes(raw)) return raw as T
+      return null
+    }
+    const providerAllowed: VoxProviderHint[] = ['auto', 'codex_cli', 'claude_cli', 'local']
+    const outputAllowed: VoxOutputFormat[] = [
+      'auto',
+      'text',
+      'plan',
+      'diff',
+      'notes',
+      'command_proposal',
+      'diagnostic',
+      'none',
+    ]
+    const riskAllowed: VoxRiskClass[] = ['R0', 'R1', 'R2', 'R3', 'R4']
+
+    // `preview` is either a short string OR a structured object. When string,
+    // we keep it on `preview`. When object, the structured fields below pick
+    // it up and the legacy `preview` falls back to the most useful summary.
+    const previewIsString = typeof r.preview === 'string'
+
+    const preview = previewIsString
+      ? (r.preview as string)
+      : pickStr(['previewSummary', 'preview_summary'])
+
+    // V3 Governed Executor · the backend may attach a confirmation_request to
+    // ask Vitor for explicit confirmation. We parse it tolerantly (snake/camel)
+    // and surface confirmationRequired so the overlay can render a real
+    // confirmation panel. We deliberately do NOT pull confirmation_token via
+    // any logging path — the value lives in memory only, sent back on execute.
+    const confirmationRaw = (r.confirmation_request ?? r.confirmationRequest) as
+      | Record<string, unknown>
+      | undefined
+    let confirmationRequest: VoxConfirmationRequest | null = null
+    if (confirmationRaw && typeof confirmationRaw === 'object') {
+      const cr = confirmationRaw
+      const crStr = (...keys: Array<[string, string?]>): string | null => {
+        for (const [a, b] of keys) {
+          const v = cr[a] ?? (b ? cr[b] : undefined)
+          if (typeof v === 'string') return v
+        }
+        return null
+      }
+      const crBool = (...keys: Array<[string, string?]>): boolean => {
+        for (const [a, b] of keys) {
+          const v = cr[a] ?? (b ? cr[b] : undefined)
+          if (typeof v === 'boolean') return v
+        }
+        return false
+      }
+      const crListField = (...keys: Array<[string, string?]>): string[] => {
+        for (const [a, b] of keys) {
+          const v = cr[a] ?? (b ? cr[b] : undefined)
+          if (Array.isArray(v)) {
+            return v.filter((x): x is string => typeof x === 'string')
+          }
+        }
+        return []
+      }
+      const crRiskRaw = crStr(['riskClass', 'risk_class'], ['risk'])
+      const crRisk: VoxRiskClass | null =
+        crRiskRaw && (riskAllowed as readonly string[]).includes(crRiskRaw)
+          ? (crRiskRaw as VoxRiskClass)
+          : null
+      confirmationRequest = {
+        requestId: crStr(['requestId', 'request_id']),
+        receiptId: crStr(['receiptId', 'receipt_id']),
+        intentId: crStr(['intentId', 'intent_id']),
+        riskClass: crRisk,
+        preview: crStr(['preview'], ['summary']),
+        actionsAvailable: crListField(['actionsAvailable', 'actions_available']),
+        requiresLiteralConfirmation: crBool(
+          ['requiresLiteralConfirmation', 'requires_literal_confirmation'],
+        ),
+        literalConfirmationText: crStr([
+          'literalConfirmationText',
+          'literal_confirmation_text',
+        ]),
+        confirmationToken: crStr(['confirmationToken', 'confirmation_token']),
+        expiresAt: crStr(['expiresAt', 'expires_at']),
+      }
+    }
+    const confirmationRequired = Boolean(
+      (r.confirmation_required ?? r.confirmationRequired) === true
+        || (confirmationRequest && confirmationRequest.confirmationToken),
+    )
+
+    return {
+      status: (r.status as VoxKernelIntentResponse['status']) ?? 'ok',
+      receiptId: pickStr(['receiptId', 'receipt_id']),
+      decisionId: pickStr(['decisionId', 'decision_id']),
+      ledgerEventId: pickStr(['ledgerEventId', 'ledger_event_id']),
+      // Canon: VoxIntentPacket.human_input_text is the cleaned transcript line.
+      intentText: pickStr(
+        ['intentText', 'intent_text'],
+        ['humanInputText', 'human_input_text'],
+        ['goal'],
+      ),
+      risk: pickStr(['risk'], ['riskClass', 'risk_class']),
+      nextAction: pickStr(['nextAction', 'next_action']),
+      message: pickStr(['message']),
+      compiledPrompt: pickStr(['compiledPrompt', 'compiled_prompt']),
+      compiledPromptTemplate: pickStr([
+        'compiledPromptTemplate',
+        'compiled_prompt_template',
+      ]),
+      preview,
+      goal: pickStr(['goal']),
+      constraints: pickList(['constraints']),
+      providerHint: pickEnum(providerAllowed, ['providerHint', 'provider_hint']),
+      executorHint: pickStr(['executorHint', 'executor_hint']),
+      outputFormat: pickEnum(outputAllowed, ['outputFormat', 'output_format']),
+      riskClass: pickEnum(riskAllowed, ['riskClass', 'risk_class']),
+      riskReasoning: pickStr(['riskReasoning', 'risk_reasoning']),
+      evidencePromise: pickStr(['evidencePromise', 'evidence_promise']),
+      previewWhatIHeard: pickStr(['whatIHeard', 'what_i_heard']),
+      previewWhatIUnderstood: pickStr(['whatIUnderstood', 'what_i_understood']),
+      previewWhatIWillDo: pickStr(['whatIWillDo', 'what_i_will_do']),
+      actionsAvailable: pickList(['actionsAvailable', 'actions_available']),
+      confirmationRequired,
+      confirmationRequest,
+      suggestedMode: pickEnum<VoxMode>(
+        ['dictation', 'prompt_polish', 'intent_compile', 'governed_execute'] as const,
+        ['suggestedMode', 'suggested_mode'],
+        ['autoMode', 'auto_mode'],
+      ),
+      suggestedModeReason: pickStr(
+        ['suggestedModeReason', 'suggested_mode_reason'],
+        ['autoModeReason', 'auto_mode_reason'],
+      ),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    // 404 means the endpoint isn't deployed yet — surface as "unavailable"
+    // (honest) rather than "error" (something broke).
+    if (/\b404\b/.test(msg)) {
+      return emptyResponse(
+        'unavailable',
+        'Kernel Vox V0 ainda não publicou /ai/vox/intent (Onda 2 / Claude C).',
+      )
+    }
+    return emptyResponse('error', msg)
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · V3 Governed Executor HTTP (Onda 6 / Claude I+J)
+//
+// /ai/vox/execute is the only path that Desktop calls to act on a confirmed
+// intent. Desktop NEVER executes provider/terminal/filesystem locally — this
+// function only forwards the operator's decision to the Kernel and renders
+// whatever the Kernel reports back.
+//
+// Honesty contract:
+//   - When backend is missing or returns 404, we surface `unavailable` (not
+//     a fake `completed` outcome).
+//   - `confirmation_token` must not leak into renderable strings. We redact
+//     it from any error body before returning it for display.
+//   - A `terminal_proposal` desktop_action is rendered as a copy-only block;
+//     the function never touches a shell.
+
+/** Operator-driven decision sent to the Kernel for V3 execute. */
+export type VoxExecuteDecision = 'execute' | 'cancel' | 'edit_intent'
+
+export interface VoxExecuteRequest {
+  /** Intent packet id, surfaced by the confirmation_request. */
+  intentId: string
+  /** Receipt id, surfaced by the confirmation_request. */
+  receiptId: string
+  /** Operator decision (`execute` confirms; `cancel` aborts; `edit_intent`
+   * tells the Kernel the operator wants to rephrase and recompile). */
+  decision: VoxExecuteDecision
+  /** Opaque token from the confirmation_request — never rendered/logged. */
+  confirmationToken: string
+  /** Literal confirmation phrase the operator typed (R4 only). */
+  literalConfirmationText?: string
+  /** Optional rephrased intent text (`edit_intent` decision). */
+  editedIntent?: string
+}
+
+/** Terminal proposal · Vox NEVER executes shells. The Desktop renders this
+ * as a copy-only block with explicit copy. `commandExecuted` is always false. */
+export interface VoxTerminalProposal {
+  kind: 'terminal_proposal'
+  proposedCommand: string
+  explanation: string | null
+  commandExecuted: false
+}
+
+/** Generic desktop action — open-ended so backend can add new kinds later.
+ *  `kind` is intentionally a free string here; type narrowing happens through
+ *  the `isVoxTerminalProposal` guard below. */
+export interface VoxDesktopActionOther {
+  kind: string
+  data: Record<string, unknown>
+}
+
+export type VoxDesktopAction = VoxTerminalProposal | VoxDesktopActionOther
+
+export function isVoxTerminalProposal(
+  action: VoxDesktopAction | null | undefined,
+): action is VoxTerminalProposal {
+  return Boolean(action) && action!.kind === 'terminal_proposal'
+}
+
+export interface VoxExecuteEvent {
+  /** Free-form id from the Kernel for ordering. */
+  id: string | null
+  /** Event kind, e.g. `executor_started`, `executor_completed`, `blocker`. */
+  kind: string
+  /** Human-readable label safe for rendering. */
+  message: string | null
+  /** ISO timestamp when the Kernel produced the event. */
+  ts: string | null
+}
+
+export interface VoxExecuteResponse {
+  /** "ok" when the Kernel processed the decision (regardless of outcome).
+   *  "unavailable" when /ai/vox/execute isn't deployed yet.
+   *  "error" when the Kernel rejected the request (token expired, replay…). */
+  status: 'ok' | 'unavailable' | 'error'
+  /** Final outcome for `execute` decisions. `cancelled` / `aborted` for
+   *  cancel paths. Frontend renders this verbatim. */
+  actionOutcome:
+    | 'completed'
+    | 'blocked'
+    | 'failed'
+    | 'aborted'
+    | 'cancelled'
+    | 'pending'
+    | 'unavailable'
+    | null
+  /** Desktop action the Kernel asks the UI to render (terminal proposal, etc). */
+  desktopAction: VoxDesktopAction | null
+  /** Streamed-style event list flattened into the response. */
+  events: VoxExecuteEvent[]
+  /** Operator-facing message (already redacted of confirmation_token). */
+  message: string | null
+  /** Combined provider output, when the Kernel actually ran something. */
+  output: string | null
+  /** Raw stdout when available. */
+  stdout: string | null
+  /** Raw stderr when available. */
+  stderr: string | null
+  /** Proposed command (mirrored from `desktopAction` for ergonomic access). */
+  proposedCommand: string | null
+  /** Receipt id confirming the action chain. */
+  receiptId: string | null
+  /** Evidence pointer (file:// or pack id). */
+  evidence: string | null
+}
+
+/** Redact a known token value from any text before it crosses a render boundary. */
+function redactVoxToken(input: string | null | undefined, token: string): string | null {
+  if (input == null) return null
+  if (!token) return input
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return input.replace(new RegExp(escaped, 'g'), '«redacted»')
+}
+
+export async function voxKernelExecute(
+  request: VoxExecuteRequest,
+): Promise<VoxExecuteResponse> {
+  const emptyResponse = (
+    status: VoxExecuteResponse['status'],
+    message: string | null,
+    actionOutcome: VoxExecuteResponse['actionOutcome'] = null,
+  ): VoxExecuteResponse => ({
+    status,
+    actionOutcome,
+    desktopAction: null,
+    events: [],
+    message,
+    output: null,
+    stdout: null,
+    stderr: null,
+    proposedCommand: null,
+    receiptId: null,
+    evidence: null,
+  })
+
+  if (!HTTP_BASE && MODE !== 'http') {
+    return emptyResponse(
+      'unavailable',
+      'Kernel Vox V3 indisponível: VITE_ATLAS_SERVER_URL ausente.',
+    )
+  }
+
+  const body: Record<string, unknown> = {
+    intent_id: request.intentId,
+    receipt_id: request.receiptId,
+    decision: request.decision,
+    // Token lives only in the request body; never logged.
+    confirmation_token: request.confirmationToken,
+  }
+  if (request.literalConfirmationText !== undefined) {
+    body.literal_confirmation_text = request.literalConfirmationText
+  }
+  if (request.editedIntent !== undefined) {
+    body.edited_intent = request.editedIntent
+  }
+
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/execute', {
+      method: 'POST',
+      body,
+    })
+    if (!raw || typeof raw !== 'object') {
+      return emptyResponse('error', 'Resposta vazia do Kernel Vox V3.')
+    }
+    const r = raw as Record<string, unknown>
+
+    const pickStr = (...keys: Array<[string, string?]>): string | null => {
+      for (const [a, b] of keys) {
+        const v = r[a] ?? (b ? r[b] : undefined)
+        if (typeof v === 'string') return redactVoxToken(v, request.confirmationToken)
+        if (v === null) return null
+      }
+      return null
+    }
+
+    // desktop_action normalisation · only `terminal_proposal` has a strict
+    // schema; other kinds get parked in a generic `data` bag for forward compat.
+    const desktopRaw = (r.desktop_action ?? r.desktopAction) as
+      | Record<string, unknown>
+      | null
+      | undefined
+    let desktopAction: VoxDesktopAction | null = null
+    let proposedCommand: string | null = null
+    if (desktopRaw && typeof desktopRaw === 'object') {
+      const kindVal = desktopRaw.kind
+      if (kindVal === 'terminal_proposal') {
+        const propRaw = desktopRaw.proposed_command ?? desktopRaw.proposedCommand
+        const explRaw = desktopRaw.explanation
+        const proposed = typeof propRaw === 'string'
+          ? redactVoxToken(propRaw, request.confirmationToken) ?? ''
+          : ''
+        const explanation = typeof explRaw === 'string'
+          ? redactVoxToken(explRaw, request.confirmationToken)
+          : null
+        desktopAction = {
+          kind: 'terminal_proposal',
+          proposedCommand: proposed,
+          explanation,
+          commandExecuted: false,
+        }
+        proposedCommand = proposed || null
+      } else if (typeof kindVal === 'string') {
+        // Forward-compat: keep raw fields, but defensively strip the token
+        // from any nested string before stashing.
+        const data: Record<string, unknown> = {}
+        for (const [k, v] of Object.entries(desktopRaw)) {
+          if (k === 'kind') continue
+          data[k] = typeof v === 'string'
+            ? redactVoxToken(v, request.confirmationToken)
+            : v
+        }
+        desktopAction = { kind: kindVal, data }
+      }
+    }
+    // Surface a top-level proposed_command field too, when present.
+    if (proposedCommand === null) {
+      const top = r.proposed_command ?? r.proposedCommand
+      if (typeof top === 'string') {
+        proposedCommand = redactVoxToken(top, request.confirmationToken)
+      }
+    }
+
+    const eventsRaw = r.events
+    const events: VoxExecuteEvent[] = Array.isArray(eventsRaw)
+      ? eventsRaw
+          .filter((e): e is Record<string, unknown> => e !== null && typeof e === 'object')
+          .map((e) => {
+            const kind = typeof e.kind === 'string' ? e.kind : 'event'
+            const msg = typeof e.message === 'string'
+              ? redactVoxToken(e.message, request.confirmationToken)
+              : null
+            return {
+              id: typeof e.id === 'string' ? e.id : null,
+              kind,
+              message: msg,
+              ts: typeof e.ts === 'string' ? e.ts : null,
+            }
+          })
+      : []
+
+    const allowedOutcomes: NonNullable<VoxExecuteResponse['actionOutcome']>[] = [
+      'completed',
+      'blocked',
+      'failed',
+      'aborted',
+      'cancelled',
+      'pending',
+      'unavailable',
+    ]
+    const outcomeRaw = (r.action_outcome ?? r.actionOutcome) as unknown
+    const actionOutcome =
+      typeof outcomeRaw === 'string'
+        && (allowedOutcomes as readonly string[]).includes(outcomeRaw)
+        ? (outcomeRaw as VoxExecuteResponse['actionOutcome'])
+        : null
+
+    const statusRaw = r.status
+    const status: VoxExecuteResponse['status'] =
+      statusRaw === 'unavailable' || statusRaw === 'error' || statusRaw === 'ok'
+        ? statusRaw
+        : 'ok'
+
+    return {
+      status,
+      actionOutcome,
+      desktopAction,
+      events,
+      message: pickStr(['message']),
+      output: pickStr(['output']),
+      stdout: pickStr(['stdout']),
+      stderr: pickStr(['stderr']),
+      proposedCommand,
+      receiptId: pickStr(['receipt_id'], ['receiptId']),
+      evidence: pickStr(['evidence'], ['evidence_promise', 'evidencePromise']),
+    }
+  } catch (e) {
+    const rawMsg = e instanceof Error ? e.message : String(e)
+    const msg = redactVoxToken(rawMsg, request.confirmationToken) ?? 'erro'
+    if (/\b404\b/.test(msg)) {
+      return emptyResponse(
+        'unavailable',
+        'Kernel Vox V3 ainda não publicou /ai/vox/execute.',
+      )
+    }
+    return emptyResponse('error', msg)
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · Tauri event subscription helper
+//
+// The Rust side emits vox://* events when sessions transition. UI listens to
+// these to drive the overlay state machine without polling. When Tauri isn't
+// available the subscription is a no-op and returns a cleanup function the
+// caller can still call safely.
+
+export type VoxEdgeEventName =
+  | 'vox://session-started'
+  | 'vox://audio-capture-started'
+  | 'vox://audio-capture-stopped'
+  | 'vox://session-ready-for-stt'
+  | 'vox://session-cancelled'
+  | 'vox://eclipse-activated'
+  | 'vox://error'
+  // V6.5 · global hotkey events emitted by the Rust Edge runtime
+  | 'vox://hotkey-toggle-recording'
+  | 'vox://hotkey-open-overlay'
+  | 'vox://hotkey-eclipse'
+  | 'vox://hotkey-status-changed'
+
+/** V6.5 · status of the global hotkey runtime. The Rust side emits a
+ * `vox://hotkey-status-changed` event with this shape so the UI can show
+ * an honest banner when the OS hasn't granted Accessibility / Input
+ * Monitoring yet. We never call into the OS from JS — we only display
+ * what Rust reports. */
+export interface VoxHotkeyStatus {
+  /** True when at least one global hotkey is actually registered and live. */
+  registered: boolean
+  /** OS permissions Rust is still waiting on, e.g. ["accessibility"] or
+   * ["input_monitoring"]. Empty when nothing is missing. */
+  missingPermissions: string[]
+  /** Optional human-readable message from Rust. UI keeps its own fallback. */
+  message: string | null
+}
+
+/** Defensive parse so unexpected payload shapes don't crash the UI. */
+export function normalizeVoxHotkeyStatus(raw: unknown): VoxHotkeyStatus {
+  if (!raw || typeof raw !== 'object') {
+    return { registered: false, missingPermissions: [], message: null }
+  }
+  const r = raw as Record<string, unknown>
+  const missingRaw = r.missing_permissions ?? r.missingPermissions
+  const missing = Array.isArray(missingRaw)
+    ? missingRaw.filter((x): x is string => typeof x === 'string')
+    : []
+  return {
+    registered: r.registered === true,
+    missingPermissions: missing,
+    message: typeof r.message === 'string' ? r.message : null,
+  }
+}
+
+export async function subscribeVoxEdgeEvent<T = unknown>(
+  name: VoxEdgeEventName,
+  handler: (payload: T) => void
+): Promise<() => void> {
+  if (MODE !== 'tauri') return () => {}
+  try {
+    const ev = await import('@tauri-apps/api/event')
+    const unlisten = await ev.listen<T>(name, (e) => handler(e.payload))
+    return () => {
+      try {
+        unlisten()
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch (e) {
+    console.warn('[bridge] subscribeVoxEdgeEvent', name, e)
+    return () => {}
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · GATE V3 + Metrics + Rivals (Onda 7 / Claude O backend)
+//
+// Pure HTTP. When the Kernel doesn't expose these endpoints yet (404 / no
+// HTTP_BASE configured), the bridge returns `{ status: 'unavailable', ... }`
+// so the UI can render "métricas ainda indisponíveis" honestly instead of
+// inventing numbers.
+
+export type VoxResponseStatus = 'ok' | 'unavailable' | 'error'
+
+export type VoxGateV3Status = 'blocked' | 'warming_up' | 'ready_for_vitor_review'
+
+export interface VoxGateV3Blocker {
+  /** Stable code · UI may decide to translate; the Kernel hands us a
+   * canonical id like `not_enough_real_sessions`, `eclipse_tests_missing`. */
+  code: string
+  /** Human-readable explanation in PT-BR. The Kernel is responsible for
+   * localisation here — the Desktop does NOT translate codes. */
+  message: string
+}
+
+export interface VoxGateV3Response {
+  status: VoxResponseStatus
+  /** "blocked" until the gate logic flips. NEVER `ready` in this wave
+   * unless Claude O actually opened it; we don't synthesise readiness. */
+  gateStatus: VoxGateV3Status | null
+  blockers: VoxGateV3Blocker[]
+  /** Free-form short message from the Kernel (e.g. error reason when
+   * status='error', or null when ok). */
+  message: string | null
+}
+
+export interface VoxMetricsHardGates {
+  rawAudioPersistedCount: number
+  confirmationBypassCount: number
+  destructiveActionWithoutReceipt: number
+  eclipseTestSuccessCount: number
+  eclipseTestRequiredCount: number
+}
+
+export interface VoxMetricsResponse {
+  status: VoxResponseStatus
+  realSessions: number
+  realSessionsTarget: number
+  daysOfRealUse: number
+  daysOfRealUseTarget: number
+  promptQualityDelta: number | null
+  actionRegretScore: number | null
+  rivalsVoiceMultiplier: number | null
+  hardGates: VoxMetricsHardGates
+  message: string | null
+}
+
+export interface VoxRivalsCaseSummary {
+  totalCases: number
+  voxWins: number
+  baselineWins: number
+  draws: number
+  regrets: number
+}
+
+export interface VoxRivalsReportResponse {
+  status: VoxResponseStatus
+  summary: VoxRivalsCaseSummary
+  recentCases: Array<{
+    caseId: string
+    createdAt: string
+    baselineKind: 'wispr' | 'provider_direct' | 'manual' | string
+    preference: 'vox' | 'baseline' | 'draw' | string
+    promptQualityVote: number
+    regret: boolean
+    note: string | null
+  }>
+  message: string | null
+}
+
+export type VoxRivalsBaselineKind = 'wispr' | 'provider_direct' | 'manual'
+export type VoxRivalsPreference = 'vox' | 'baseline' | 'draw'
+
+export interface VoxRivalsCaseCreateRequest {
+  /** Optional · ties the case to the Vox session/intent the operator just
+   * compared. Backend uses it for joins; UI may omit it. */
+  sessionId?: string | null
+  intentId?: string | null
+  receiptId?: string | null
+  baselineKind: VoxRivalsBaselineKind
+  preference: VoxRivalsPreference
+  /** -1 / 0 / +1. UI converts radio buttons to these literals. */
+  promptQualityVote: -1 | 0 | 1
+  regret: boolean
+  /** ≤ 280 chars by convention — the UI enforces a maxLength to keep
+   * payloads tiny. Backend can truncate. */
+  note?: string | null
+}
+
+export interface VoxRivalsCaseCreateResponse {
+  status: VoxResponseStatus
+  caseId: string | null
+  message: string | null
+}
+
+function voxV3Unavailable<T extends { status: VoxResponseStatus; message: string | null }>(
+  base: Omit<T, 'status' | 'message'>,
+  message: string,
+): T {
+  return { ...base, status: 'unavailable', message } as T
+}
+
+function asNumber(v: unknown, fallback: number): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const parsed = parseFloat(v)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return fallback
+}
+
+function asNullableNumber(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const parsed = parseFloat(v)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+function asString(v: unknown, fallback = ''): string {
+  return typeof v === 'string' ? v : fallback
+}
+
+function asNullableString(v: unknown): string | null {
+  return typeof v === 'string' ? v : null
+}
+
+function pickAny(src: Record<string, unknown>, keys: string[]): unknown {
+  for (const k of keys) {
+    if (src[k] !== undefined) return src[k]
+  }
+  return undefined
+}
+
+/** GET /ai/vox/gate-v3 — short gate-status snapshot for the overlay. */
+export async function voxGateV3Get(): Promise<VoxGateV3Response> {
+  const emptyBase = { gateStatus: null as VoxGateV3Status | null, blockers: [] as VoxGateV3Blocker[] }
+  if (!HTTP_BASE && MODE !== 'http') {
+    return voxV3Unavailable<VoxGateV3Response>(emptyBase, 'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).')
+  }
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/gate-v3')
+    if (!raw || typeof raw !== 'object') {
+      return { ...emptyBase, status: 'error', message: 'Resposta vazia do Kernel para /ai/vox/gate-v3' }
+    }
+    const r = raw as Record<string, unknown>
+    const gateRaw = asString(pickAny(r, ['gateStatus', 'gate_status', 'status']))
+    const allowed: VoxGateV3Status[] = ['blocked', 'warming_up', 'ready_for_vitor_review']
+    const gateStatus = (allowed as string[]).includes(gateRaw) ? (gateRaw as VoxGateV3Status) : null
+    const blockersRaw = (r.blockers ?? r.blocker_list) as unknown
+    const blockers: VoxGateV3Blocker[] = Array.isArray(blockersRaw)
+      ? blockersRaw
+          .filter((b): b is Record<string, unknown> => !!b && typeof b === 'object')
+          .map((b) => ({
+            code: asString(pickAny(b, ['code', 'id']), 'unknown'),
+            message: asString(pickAny(b, ['message', 'reason', 'detail']), ''),
+          }))
+      : []
+    return {
+      status: 'ok',
+      gateStatus,
+      blockers,
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return voxV3Unavailable<VoxGateV3Response>(emptyBase, 'Kernel ainda não publicou /ai/vox/gate-v3.')
+    }
+    return { ...emptyBase, status: 'error', message: msg }
+  }
+}
+
+/** GET /ai/vox/metrics — hard gates + qualitative deltas. */
+export async function voxMetricsGet(): Promise<VoxMetricsResponse> {
+  const emptyBase = {
+    realSessions: 0,
+    realSessionsTarget: 0,
+    daysOfRealUse: 0,
+    daysOfRealUseTarget: 0,
+    promptQualityDelta: null as number | null,
+    actionRegretScore: null as number | null,
+    rivalsVoiceMultiplier: null as number | null,
+    hardGates: {
+      rawAudioPersistedCount: 0,
+      confirmationBypassCount: 0,
+      destructiveActionWithoutReceipt: 0,
+      eclipseTestSuccessCount: 0,
+      eclipseTestRequiredCount: 0,
+    } satisfies VoxMetricsHardGates,
+  }
+  if (!HTTP_BASE && MODE !== 'http') {
+    return voxV3Unavailable<VoxMetricsResponse>(emptyBase, 'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).')
+  }
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/metrics')
+    if (!raw || typeof raw !== 'object') {
+      return { ...emptyBase, status: 'error', message: 'Resposta vazia do Kernel para /ai/vox/metrics' }
+    }
+    const r = raw as Record<string, unknown>
+    const hg = (r.hardGates ?? r.hard_gates ?? {}) as Record<string, unknown>
+    const hardGates: VoxMetricsHardGates = {
+      rawAudioPersistedCount: asNumber(
+        pickAny(hg, ['rawAudioPersistedCount', 'raw_audio_persisted_count']),
+        0,
+      ),
+      confirmationBypassCount: asNumber(
+        pickAny(hg, ['confirmationBypassCount', 'confirmation_bypass_count']),
+        0,
+      ),
+      destructiveActionWithoutReceipt: asNumber(
+        pickAny(hg, [
+          'destructiveActionWithoutReceipt',
+          'destructive_action_without_receipt',
+        ]),
+        0,
+      ),
+      eclipseTestSuccessCount: asNumber(
+        pickAny(hg, ['eclipseTestSuccessCount', 'eclipse_test_success_count']),
+        0,
+      ),
+      eclipseTestRequiredCount: asNumber(
+        pickAny(hg, [
+          'eclipseTestRequiredCount',
+          'eclipse_test_required_count',
+        ]),
+        3,
+      ),
+    }
+    return {
+      status: 'ok',
+      realSessions: asNumber(pickAny(r, ['realSessions', 'real_sessions']), 0),
+      realSessionsTarget: asNumber(
+        pickAny(r, ['realSessionsTarget', 'real_sessions_target']),
+        0,
+      ),
+      daysOfRealUse: asNumber(pickAny(r, ['daysOfRealUse', 'days_of_real_use']), 0),
+      daysOfRealUseTarget: asNumber(
+        pickAny(r, ['daysOfRealUseTarget', 'days_of_real_use_target']),
+        0,
+      ),
+      promptQualityDelta: asNullableNumber(
+        pickAny(r, ['promptQualityDelta', 'prompt_quality_delta']),
+      ),
+      actionRegretScore: asNullableNumber(
+        pickAny(r, ['actionRegretScore', 'action_regret_score']),
+      ),
+      rivalsVoiceMultiplier: asNullableNumber(
+        pickAny(r, ['rivalsVoiceMultiplier', 'rivals_voice_multiplier']),
+      ),
+      hardGates,
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return voxV3Unavailable<VoxMetricsResponse>(emptyBase, 'Kernel ainda não publicou /ai/vox/metrics.')
+    }
+    return { ...emptyBase, status: 'error', message: msg }
+  }
+}
+
+/** GET /ai/vox/rivals/report — aggregate + recent rivals cases. */
+export async function voxRivalsReportGet(): Promise<VoxRivalsReportResponse> {
+  const emptyBase = {
+    summary: {
+      totalCases: 0,
+      voxWins: 0,
+      baselineWins: 0,
+      draws: 0,
+      regrets: 0,
+    } satisfies VoxRivalsCaseSummary,
+    recentCases: [] as VoxRivalsReportResponse['recentCases'],
+  }
+  if (!HTTP_BASE && MODE !== 'http') {
+    return voxV3Unavailable<VoxRivalsReportResponse>(emptyBase, 'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).')
+  }
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/rivals/report')
+    if (!raw || typeof raw !== 'object') {
+      return { ...emptyBase, status: 'error', message: 'Resposta vazia do Kernel para /ai/vox/rivals/report' }
+    }
+    const r = raw as Record<string, unknown>
+    const sumRaw = (r.summary ?? r.aggregate ?? {}) as Record<string, unknown>
+    const summary: VoxRivalsCaseSummary = {
+      totalCases: asNumber(pickAny(sumRaw, ['totalCases', 'total_cases']), 0),
+      voxWins: asNumber(pickAny(sumRaw, ['voxWins', 'vox_wins']), 0),
+      baselineWins: asNumber(pickAny(sumRaw, ['baselineWins', 'baseline_wins']), 0),
+      draws: asNumber(pickAny(sumRaw, ['draws']), 0),
+      regrets: asNumber(pickAny(sumRaw, ['regrets']), 0),
+    }
+    const casesRaw = (r.recentCases ?? r.recent_cases ?? r.cases) as unknown
+    const recentCases = Array.isArray(casesRaw)
+      ? casesRaw
+          .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+          .map((c) => ({
+            caseId: asString(pickAny(c, ['caseId', 'case_id', 'id']), ''),
+            createdAt: asString(pickAny(c, ['createdAt', 'created_at']), ''),
+            baselineKind: asString(pickAny(c, ['baselineKind', 'baseline_kind']), 'manual'),
+            preference: asString(pickAny(c, ['preference']), 'draw'),
+            promptQualityVote: asNumber(
+              pickAny(c, ['promptQualityVote', 'prompt_quality_vote']),
+              0,
+            ),
+            regret: Boolean(pickAny(c, ['regret'])),
+            note: asNullableString(pickAny(c, ['note'])),
+          }))
+      : []
+    return {
+      status: 'ok',
+      summary,
+      recentCases,
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return voxV3Unavailable<VoxRivalsReportResponse>(emptyBase, 'Kernel ainda não publicou /ai/vox/rivals/report.')
+    }
+    return { ...emptyBase, status: 'error', message: msg }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Atlas Vox · V3.9 dogfood session evidence (Wave V3.9 / Claude AD)
+//
+// Distinct from rivals: dogfood = Vitor's diary of REAL Vox usage ("eu
+// usei hoje, foi assim"); rivals = head-to-head comparison.
+//
+// Endpoints:
+//   POST /ai/vox/dogfood/session  — record one real Vox session
+//   GET  /ai/vox/dogfood/report   — aggregate dogfood report
+//
+// Honesty contract:
+//   - Never sends transcript text, prompt body, audio bytes, or
+//     confirmation_token. Only structured signals + an optional ≤1000 char
+//     `notes` field of operator-typed context.
+//   - When the Kernel returns 404 (not deployed yet) the wrappers report
+//     `unavailable` instead of inventing a successful record.
+
+export type VoxDogfoodOutcome = 'success' | 'partial' | 'failed' | 'cancelled'
+
+export interface VoxDogfoodSessionCreateRequest {
+  /** Canonical Vox mode used in the session. */
+  mode: VoxMode
+  outcome: VoxDogfoodOutcome
+  /** Optional link to the real edge session id. */
+  voxSessionId?: string | null
+  /** Optional ISO 8601 timestamp; defaults to created_at on the backend. */
+  startedAt?: string | null
+  /** Duration of the session in ms. Optional. */
+  durationMs?: number | null
+  /** Auto-inferred where possible by the overlay; operator may override. */
+  usedHotkey?: boolean
+  usedRealStt?: boolean
+  usedGovernedExecute?: boolean
+  regretFlag?: boolean
+  eclipseUsed?: boolean
+  /** Operator-typed note. Backend caps at 1000 chars — UI enforces matching. */
+  note?: string | null
+}
+
+export interface VoxDogfoodSessionPayload {
+  dogfoodSessionId: string | null
+  voxSessionId: string | null
+  mode: VoxMode | null
+  outcome: VoxDogfoodOutcome | null
+  usedHotkey: boolean
+  usedRealStt: boolean
+  usedGovernedExecute: boolean
+  regretFlag: boolean
+  eclipseUsed: boolean
+  durationMs: number | null
+  startedAt: string | null
+  createdAt: string | null
+}
+
+export interface VoxDogfoodSessionCreateResponse {
+  status: VoxResponseStatus
+  session: VoxDogfoodSessionPayload | null
+  message: string | null
+}
+
+export interface VoxDogfoodReportResponse {
+  status: VoxResponseStatus
+  sessionsTotal: number
+  sessionsLast7Days: number
+  successRate: number
+  partialRate: number
+  failedRate: number
+  cancelledRate: number
+  regretRate: number
+  hotkeyUsageRate: number
+  realSttUsageRate: number
+  governedExecuteUsageCount: number
+  eclipseUsedCount: number
+  realUsageDays: number
+  recommendation: string | null
+  message: string | null
+}
+
+/** Backend cap is 1000 chars; we mirror it here so the UI can enforce it
+ * without an extra round-trip. */
+export const VOX_DOGFOOD_NOTE_MAX_CHARS = 1000
+
+/** Canonical dogfood outcomes for select/radio inputs. */
+export const VOX_DOGFOOD_OUTCOMES: readonly VoxDogfoodOutcome[] = [
+  'success',
+  'partial',
+  'failed',
+  'cancelled',
+]
+
+/** POST /ai/vox/dogfood/session — Vitor records one real Vox session. */
+export async function voxDogfoodSessionCreate(
+  request: VoxDogfoodSessionCreateRequest,
+): Promise<VoxDogfoodSessionCreateResponse> {
+  if (!HTTP_BASE && MODE !== 'http') {
+    return {
+      status: 'unavailable',
+      session: null,
+      message: 'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).',
+    }
+  }
+  // Backend uses snake_case + booleans default false; we only forward keys
+  // the operator actually set so the backend's defaults stay authoritative.
+  const body: Record<string, unknown> = {
+    mode: request.mode,
+    outcome: request.outcome,
+  }
+  if (request.voxSessionId) body.vox_session_id = request.voxSessionId
+  if (request.startedAt) body.started_at = request.startedAt
+  if (typeof request.durationMs === 'number' && request.durationMs >= 0) {
+    body.duration_ms = Math.floor(request.durationMs)
+  }
+  if (typeof request.usedHotkey === 'boolean') body.used_hotkey = request.usedHotkey
+  if (typeof request.usedRealStt === 'boolean') body.used_real_stt = request.usedRealStt
+  if (typeof request.usedGovernedExecute === 'boolean') {
+    body.used_governed_execute = request.usedGovernedExecute
+  }
+  if (typeof request.regretFlag === 'boolean') body.regret_flag = request.regretFlag
+  if (typeof request.eclipseUsed === 'boolean') body.eclipse_used = request.eclipseUsed
+  if (request.note !== undefined && request.note !== null && request.note !== '') {
+    // UI also enforces this — keep the bridge belt-and-braces.
+    body.notes = request.note.slice(0, VOX_DOGFOOD_NOTE_MAX_CHARS)
+  }
+
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/dogfood/session', { method: 'POST', body })
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    const sessionRaw = (r.session ?? r) as Record<string, unknown>
+    const allowedOutcomes = VOX_DOGFOOD_OUTCOMES as readonly string[]
+    const outcomeRaw = asNullableString(pickAny(sessionRaw, ['outcome']))
+    const outcome: VoxDogfoodOutcome | null =
+      outcomeRaw && allowedOutcomes.includes(outcomeRaw)
+        ? (outcomeRaw as VoxDogfoodOutcome)
+        : null
+    const modeRaw = asNullableString(pickAny(sessionRaw, ['mode']))
+    const allowedModes: readonly string[] = [
+      'dictation',
+      'prompt_polish',
+      'intent_compile',
+      'governed_execute',
+    ]
+    const mode: VoxMode | null =
+      modeRaw && allowedModes.includes(modeRaw) ? (modeRaw as VoxMode) : null
+    return {
+      status: 'ok',
+      session: {
+        dogfoodSessionId: asNullableString(pickAny(sessionRaw, ['dogfoodSessionId', 'dogfood_session_id', 'id'])),
+        voxSessionId: asNullableString(pickAny(sessionRaw, ['voxSessionId', 'vox_session_id'])),
+        mode,
+        outcome,
+        usedHotkey: pickAny(sessionRaw, ['usedHotkey', 'used_hotkey']) === true,
+        usedRealStt: pickAny(sessionRaw, ['usedRealStt', 'used_real_stt']) === true,
+        usedGovernedExecute: pickAny(sessionRaw, ['usedGovernedExecute', 'used_governed_execute']) === true,
+        regretFlag: pickAny(sessionRaw, ['regretFlag', 'regret_flag']) === true,
+        eclipseUsed: pickAny(sessionRaw, ['eclipseUsed', 'eclipse_used']) === true,
+        durationMs: asNullableNumber(pickAny(sessionRaw, ['durationMs', 'duration_ms'])),
+        startedAt: asNullableString(pickAny(sessionRaw, ['startedAt', 'started_at'])),
+        createdAt: asNullableString(pickAny(sessionRaw, ['createdAt', 'created_at'])),
+      },
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return {
+        status: 'unavailable',
+        session: null,
+        message: 'Kernel ainda não publicou /ai/vox/dogfood/session.',
+      }
+    }
+    return { status: 'error', session: null, message: msg }
+  }
+}
+
+/** GET /ai/vox/dogfood/report — aggregate dogfood report. */
+export async function voxDogfoodReportGet(): Promise<VoxDogfoodReportResponse> {
+  const emptyBase = {
+    sessionsTotal: 0,
+    sessionsLast7Days: 0,
+    successRate: 0,
+    partialRate: 0,
+    failedRate: 0,
+    cancelledRate: 0,
+    regretRate: 0,
+    hotkeyUsageRate: 0,
+    realSttUsageRate: 0,
+    governedExecuteUsageCount: 0,
+    eclipseUsedCount: 0,
+    realUsageDays: 0,
+    recommendation: null as string | null,
+  }
+  if (!HTTP_BASE && MODE !== 'http') {
+    return voxV3Unavailable<VoxDogfoodReportResponse>(
+      emptyBase,
+      'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).',
+    )
+  }
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/dogfood/report')
+    if (!raw || typeof raw !== 'object') {
+      return { ...emptyBase, status: 'error', message: 'Resposta vazia do Kernel para /ai/vox/dogfood/report' }
+    }
+    const r = raw as Record<string, unknown>
+    return {
+      status: 'ok',
+      sessionsTotal: asNumber(pickAny(r, ['sessionsTotal', 'sessions_total']), 0),
+      sessionsLast7Days: asNumber(pickAny(r, ['sessionsLast7Days', 'sessions_last_7_days']), 0),
+      successRate: asNumber(pickAny(r, ['successRate', 'success_rate']), 0),
+      partialRate: asNumber(pickAny(r, ['partialRate', 'partial_rate']), 0),
+      failedRate: asNumber(pickAny(r, ['failedRate', 'failed_rate']), 0),
+      cancelledRate: asNumber(pickAny(r, ['cancelledRate', 'cancelled_rate']), 0),
+      regretRate: asNumber(pickAny(r, ['regretRate', 'regret_rate']), 0),
+      hotkeyUsageRate: asNumber(pickAny(r, ['hotkeyUsageRate', 'hotkey_usage_rate']), 0),
+      realSttUsageRate: asNumber(pickAny(r, ['realSttUsageRate', 'real_stt_usage_rate']), 0),
+      governedExecuteUsageCount: asNumber(pickAny(r, ['governedExecuteUsageCount', 'governed_execute_usage_count']), 0),
+      eclipseUsedCount: asNumber(pickAny(r, ['eclipseUsedCount', 'eclipse_used_count']), 0),
+      realUsageDays: asNumber(pickAny(r, ['realUsageDays', 'real_usage_days']), 0),
+      recommendation: asNullableString(pickAny(r, ['recommendation'])),
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return voxV3Unavailable<VoxDogfoodReportResponse>(
+        emptyBase,
+        'Kernel ainda não publicou /ai/vox/dogfood/report.',
+      )
+    }
+    return { ...emptyBase, status: 'error', message: msg }
+  }
+}
+
+/** POST /ai/vox/rivals/case — operator submits a comparison verdict. */
+export async function voxRivalsCaseCreate(
+  request: VoxRivalsCaseCreateRequest,
+): Promise<VoxRivalsCaseCreateResponse> {
+  if (!HTTP_BASE && MODE !== 'http') {
+    return {
+      status: 'unavailable',
+      caseId: null,
+      message: 'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).',
+    }
+  }
+  const body: Record<string, unknown> = {
+    baseline_kind: request.baselineKind,
+    preference: request.preference,
+    prompt_quality_vote: request.promptQualityVote,
+    regret: request.regret,
+  }
+  if (request.sessionId) body.session_id = request.sessionId
+  if (request.intentId) body.intent_id = request.intentId
+  if (request.receiptId) body.receipt_id = request.receiptId
+  if (request.note !== undefined && request.note !== null) body.note = request.note
+  try {
+    const raw = await fetchHttp<unknown>('/ai/vox/rivals/case', { method: 'POST', body })
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return {
+      status: 'ok',
+      caseId: asNullableString(pickAny(r, ['caseId', 'case_id', 'id'])),
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return {
+        status: 'unavailable',
+        caseId: null,
+        message: 'Kernel ainda não publicou /ai/vox/rivals/case.',
+      }
+    }
+    return { status: 'error', caseId: null, message: msg }
   }
 }

@@ -1,17 +1,21 @@
 /**
- * Atlas AI · ContextPanel premium.
+ * Atlas AI · ContextPanel premium (Hyperflow-first).
  *
- * Quatro seções nomeadas, separadas por hairline. Cada seção tem um
- * eyebrow uppercase + dl/list. Termina com nota editorial italic
- * (princípio Atlas AI = uma única inteligência).
+ * Seções nomeadas, separadas por hairline. A camada "Roteamento" agora
+ * mostra a **decisão Hyperflow real** do trace quando disponível; o que o
+ * front pediu vai como `hint`. Atlas Dev Runtime / Forge aparecem só quando
+ * o trace canônico os carrega — front não força nenhum dos dois.
  *
- *   1. Identidade     · workspace, surface, escopo
- *   2. Roteamento     · modo, tarefa, flow, provider, decision_mode
- *   3. Thread ativa   · id, mensagens, status, último provider
- *   4. Trace          · id, status, provider, latência (quando ativo)
- *   5. Atlas Dev Runtime (opcional, só com pendingTrace.atlas_dev_runtime)
+ *   1. Identidade            · workspace, surface, escopo
+ *   2. Roteamento (front)    · hint pedido pelo composer
+ *   3. Hyperflow (backend)   · trace.hyperflow real (intent/domain/flow/...)
+ *   4. Thread ativa          · id, mensagens, status, último provider
+ *   5. Trace recente         · id, status, provider, latência
+ *   6. Atlas Dev Runtime     · só com pendingTrace.atlas_dev_runtime
+ *   7. Forge handoff         · só com hyperflow.handoff_target.startsWith('forge')
  */
 import { flowIdForMode, providerLabel } from '../contract'
+import { useHyperflowRuntime } from '../useHyperflowRuntime'
 import type {
   AiThreadDetail,
   AiTrace,
@@ -53,9 +57,15 @@ export function AtlasAiContextPanel({
   const promotionTarget =
     mode === 'programming'
       ? 'Intervenção Rápida / Candidato'
-      : 'Obra Forge (apenas se complexidade exigir)'
+      : mode === 'auto'
+        ? 'Decidido pelo Hyperflow após routing'
+        : 'Obra Forge (apenas se complexidade exigir)'
   const decisionMode = provider === 'auto' ? 'atlas_decide' : 'manual_override'
   const devRuntime: AtlasDevRuntime | null = pendingTrace?.atlas_dev_runtime ?? null
+  const hyperflow = useHyperflowRuntime(pendingTrace)
+  const showForgeBlock = hyperflow.isForgeHandoff
+  const policyRefs = hyperflow.raw?.policy_refs ?? null
+  const evidenceRefs = hyperflow.raw?.evidence_refs ?? null
 
   return (
     <section className="atlas-ai-context" aria-label="Contexto operacional">
@@ -71,25 +81,87 @@ export function AtlasAiContextPanel({
           <dt>Surface</dt>
           <dd><code>atlas_desktop_ai</code></dd>
           <dt>Obra exigida</dt>
-          <dd>{mode === 'programming' ? 'não · Atlas Dev' : 'não'}</dd>
+          <dd>
+            {mode === 'programming'
+              ? 'não · Atlas Dev'
+              : mode === 'auto'
+                ? 'depende do Hyperflow'
+                : 'não'}
+          </dd>
         </dl>
       </div>
 
       <div className="atlas-ai-context-section">
-        <h3>Roteamento</h3>
+        <h3>Roteamento (hint)</h3>
         <dl className="atlas-ai-kv">
           <dt>Modo</dt>
           <dd>{mode}</dd>
           <dt>Tarefa</dt>
           <dd>{task}</dd>
-          <dt>Flow</dt>
+          <dt>Flow proposto</dt>
           <dd><code>{flowId}</code></dd>
           <dt>Provider</dt>
           <dd>{providerLabel(provider)}</dd>
           <dt>Decisão</dt>
           <dd><code>{decisionMode}</code></dd>
         </dl>
+        <p className="atlas-ai-context-note atlas-ai-faint" style={{ marginTop: 4 }}>
+          <em>Front coleta · backend decide · trace mostra a verdade abaixo.</em>
+        </p>
       </div>
+
+      {hyperflow.isReady ? (
+        <div className="atlas-ai-context-section atlas-ai-context-hyperflow">
+          <h3>Hyperflow (backend)</h3>
+          <ul className="atlas-ai-context-list">
+            {hyperflow.intent ? (
+              <li><span>intent</span><code>{hyperflow.intent}</code></li>
+            ) : null}
+            {hyperflow.domainId ? (
+              <li><span>domínio</span><code>{hyperflow.domainId}</code></li>
+            ) : null}
+            {hyperflow.flowId ? (
+              <li><span>flow</span><code>{hyperflow.flowId}</code></li>
+            ) : null}
+            {hyperflow.runtimeMode ? (
+              <li><span>runtime</span><code>{hyperflow.runtimeMode}</code></li>
+            ) : null}
+            {typeof hyperflow.confidence === 'number' ? (
+              <li><span>confiança</span><code>{hyperflow.confidence.toFixed(2)}</code></li>
+            ) : null}
+            {hyperflow.dispatchStatus ? (
+              <li><span>dispatch</span><code>{hyperflow.dispatchStatus}</code></li>
+            ) : null}
+            {hyperflow.raw?.decision_receipt_id ? (
+              <li><span>receipt</span><code>{hyperflow.raw.decision_receipt_id}</code></li>
+            ) : null}
+            {hyperflow.receiptHash ? (
+              <li><span>receipt_hash</span><code>{hyperflow.receiptHash.slice(0, 16)}…</code></li>
+            ) : null}
+            {hyperflow.handoffTarget ? (
+              <li><span>handoff</span><code>{hyperflow.handoffTarget}</code></li>
+            ) : null}
+            {policyRefs && policyRefs.length > 0 ? (
+              <li>
+                <span>policy_refs</span>
+                <code>{policyRefs.slice(0, 3).join(', ')}</code>
+              </li>
+            ) : null}
+            {evidenceRefs && evidenceRefs.length > 0 ? (
+              <li>
+                <span>evidence</span>
+                <code>{evidenceRefs.length} ref(s)</code>
+              </li>
+            ) : null}
+            {hyperflow.routingReasonSummary ? (
+              <li>
+                <span>razão</span>
+                <code>{hyperflow.routingReasonSummary}</code>
+              </li>
+            ) : null}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="atlas-ai-context-section">
         <h3>Promoção</h3>
@@ -127,6 +199,21 @@ export function AtlasAiContextPanel({
           <p className="atlas-ai-empty-line">Nenhum trace ativo.</p>
         )}
       </div>
+
+      {showForgeBlock ? (
+        <div className="atlas-ai-context-section atlas-ai-context-forge">
+          <h3>Forge handoff</h3>
+          <ul className="atlas-ai-context-list">
+            <li><span>target</span><code>{hyperflow.handoffTarget}</code></li>
+            {hyperflow.handoffReason ? (
+              <li><span>reason</span><code>{hyperflow.handoffReason}</code></li>
+            ) : null}
+            {hyperflow.dispatchStatus ? (
+              <li><span>dispatch</span><code>{hyperflow.dispatchStatus}</code></li>
+            ) : null}
+          </ul>
+        </div>
+      ) : null}
 
       {devRuntime ? (
         <div className="atlas-ai-context-section">

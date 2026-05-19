@@ -16,19 +16,27 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 
-export type Surface = 'code' | 'cartografia' | 'atencao' | 'atlas_ai'
+export type Surface = 'code' | 'cartografia' | 'atencao' | 'atlas_ai' | 'control_plane'
 
 const STORAGE_KEY = 'atlas-desktop:surface'
 
 function readInitial(): Surface {
   try {
     const v = sessionStorage.getItem(STORAGE_KEY)
-    if (v === 'code' || v === 'cartografia' || v === 'atencao' || v === 'atlas_ai') return v
+    if (
+      v === 'code' ||
+      v === 'cartografia' ||
+      v === 'atencao' ||
+      v === 'atlas_ai' ||
+      v === 'control_plane'
+    )
+      return v
   } catch {
     /* storage unavailable */
   }
   // Atlas AI é tela 1: começar pela conversa diária. Code aprofunda,
-  // Atenção decide, Cartografia audita a verdade canônica.
+  // Atenção decide, Cartografia audita a verdade canônica. Control Plane
+  // observa o Kernel novo (Meta 1-4) e fica em ⌘5.
   return 'atlas_ai'
 }
 
@@ -47,8 +55,8 @@ export function useSurface(): {
     }
   }, [])
 
-  // Cmd+1..4 keyboard shortcuts mirror the SurfaceSwitcher reading order
-  // (Atlas AI → Code → Atenção → Cartografia).
+  // Cmd+1..5 keyboard shortcuts mirror the SurfaceSwitcher reading order
+  // (Atlas AI → Code → Atenção → Cartografia → Control Plane).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
@@ -64,6 +72,9 @@ export function useSurface(): {
       } else if (e.key === '4') {
         e.preventDefault()
         setSurface('cartografia')
+      } else if (e.key === '5') {
+        e.preventDefault()
+        setSurface('control_plane')
       }
     }
     document.addEventListener('keydown', onKey)

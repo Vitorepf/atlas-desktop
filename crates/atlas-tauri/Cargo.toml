@@ -23,9 +23,28 @@ tracing-subscriber.workspace = true
 futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 
 # Workspace siblings · the Tauri shell composes the native crates.
 atlas-bridge = { path = "../atlas-bridge" }
 atlas-platform = { path = "../atlas-platform" }
 atlas-receipts = { path = "../atlas-receipts" }
 atlas-canon = { path = "../atlas-canon" }
+
+# Wave V3.10 (Claude AD) · Vox enterprise readiness.
+#
+# The `whisper-cpp` feature forwards the binding activation down to
+# `atlas-platform`, so a Tauri dev/build invoked with this feature actually
+# links `whisper-rs` instead of the no-op stub. Without this feature the
+# overlay STT path stays in `engine_available=false` mode (honest).
+#
+# Default-off on purpose: cmake must be installed (e.g. `brew install cmake`)
+# for the whisper-rs build script to succeed. CI builds without cmake should
+# stay on `--no-default-features` and never see the failure.
+#
+# Use via:
+#   npm run tauri:dev:vox     (drives `cargo … --features whisper-cpp`)
+#   npm run tauri:build:vox   (drives `cargo … --features whisper-cpp`)
+[features]
+default = []
+whisper-cpp = ["atlas-platform/whisper-cpp"]

@@ -17,6 +17,8 @@ import {
   createAiThread,
   getAiThread,
   getAiTrace,
+  getAtlasAiRouterBootstrap,
+  getAtlasAiRouterReadiness,
   listAiThreads,
   postAtlasDevPlan,
   updateAiThread,
@@ -28,6 +30,8 @@ import type {
   AiTrace,
   AtlasAiMode,
   AtlasAiProviderChoice,
+  AtlasAiRouterBootstrap,
+  AtlasAiRouterReadiness,
   AtlasAiTask,
   AtlasDevPlanResult,
 } from './types'
@@ -57,6 +61,11 @@ export interface AtlasAiState {
   setComposerTask: (task: AtlasAiTask) => void
   composerProvider: AtlasAiProviderChoice
   setComposerProvider: (provider: AtlasAiProviderChoice) => void
+
+  /** Bootstrap projection from Router Runtime (null if endpoint absent). */
+  routerBootstrap: AtlasAiRouterBootstrap | null
+  /** Readiness projection from Router Runtime (null if endpoint absent). */
+  routerReadiness: AtlasAiRouterReadiness | null
 
   pendingTrace: AiTrace | null
   /** Mensagem otimista do usuário — set ANTES dos awaits do send. Garante
@@ -142,9 +151,14 @@ export function useAtlasAi(
   const [threadDetailLoading, setThreadDetailLoading] = useState<boolean>(false)
   const [threadDetailError, setThreadDetailError] = useState<string | null>(null)
 
-  const [composerMode, setComposerModeRaw] = useState<AtlasAiMode>('programming')
-  const [composerTask, setComposerTaskRaw] = useState<AtlasAiTask>('dev')
+  // Default Hyperflow-first: o Desktop NÃO afirma "programming". `auto` =
+  // backend Router Runtime decide domínio/flow pelo contexto. O operador pode
+  // overrides explicitamente quando souber o domínio.
+  const [composerMode, setComposerModeRaw] = useState<AtlasAiMode>('auto')
+  const [composerTask, setComposerTaskRaw] = useState<AtlasAiTask>('auto')
   const [composerProvider, setComposerProvider] = useState<AtlasAiProviderChoice>('auto')
+  const [routerBootstrap, setRouterBootstrap] = useState<AtlasAiRouterBootstrap | null>(null)
+  const [routerReadiness, setRouterReadiness] = useState<AtlasAiRouterReadiness | null>(null)
 
   const [pendingTrace, setPendingTrace] = useState<AiTrace | null>(null)
   const [pendingUserMessage, setPendingUserMessage] = useState<{
@@ -410,6 +424,9 @@ export function useAtlasAi(
 
       const atlasDevWorkspace = workspacePath && workspacePath.trim() !== '' ? workspacePath : workspaceSlug
 
+      // Programming-only mode é o único que exige workspace. `auto` envia o
+      // hint pro backend; se o Hyperflow rotar para programação, o backend
+      // negocia workspace via Atlas Decide (ou retorna blocker explícito).
       if (composerMode === 'programming' && !atlasDevWorkspace) {
         setSendError('Atlas Dev exige Workspace · selecione um Projeto no topbar antes de enviar.')
         return null
@@ -440,6 +457,9 @@ export function useAtlasAi(
        * `blocked` or `forge_promotion_preview`, we stop the pipeline so the
        * operator can react before any provider call.
        */
+      // Plan-only só dispara para programação EXPLÍCITA (mode==='programming'
+      // E task in {dev, debug}). Em `auto` o backend decide se isso aplica;
+      // sem trigger no front, sem forçar o flow programação.
       const shouldRunPlanOnly =
         composerMode === 'programming' && (composerTask === 'dev' || composerTask === 'debug')
       let planOnlyDecision: 'continue' | 'halt' = 'continue'
@@ -511,8 +531,13 @@ export function useAtlasAi(
             metadata: {
               atlas_focus: composerMode,
               atlas_workflow_mode: composerTask,
-              routing_task: composerTask,
-              routing_domain: workspaceSlug ?? 'auto',
+              routing_task: composerTask === 'auto' ? 'auto' : composerTask,
+              routing_domain:
+                composerMode === 'auto'
+                  ? 'auto'
+                  : composerMode === 'programming' && workspaceSlug
+                    ? workspaceSlug
+                    : composerMode,
               created_via: 'atlas_desktop_ai',
             },
           })
@@ -677,6 +702,19 @@ export function useAtlasAi(
       if (!mountedRef.current) return
       void refreshThreads()
     })
+    // Hyperflow bootstrap + readiness — opcionais e silenciosos. Carregam só
+    // pra alimentar painéis informativos; o front nunca depende disso para
+    // decidir domínio (a verdade é o trace que volta do backend).
+    void Promise.resolve().then(async () => {
+      if (!mountedRef.current) return
+      const [bootstrap, readiness] = await Promise.all([
+        getAtlasAiRouterBootstrap(),
+        getAtlasAiRouterReadiness(),
+      ])
+      if (!mountedRef.current) return
+      setRouterBootstrap(bootstrap)
+      setRouterReadiness(readiness)
+    })
     return () => {
       mountedRef.current = false
       if (pollTimerRef.current !== null) {
@@ -717,6 +755,9 @@ export function useAtlasAi(
     setComposerTask,
     composerProvider,
     setComposerProvider,
+
+    routerBootstrap,
+    routerReadiness,
 
     pendingTrace,
     pendingUserMessage,
@@ -764,9 +805,29 @@ function threadMode(thread: AiThreadSummary): AtlasAiMode {
   const focus = typeof meta.atlas_focus === 'string' ? meta.atlas_focus : null
   const explicitMode = typeof meta.atlas_mode === 'string' ? meta.atlas_mode : null
   const routingTask = typeof meta.routing_task === 'string' ? meta.routing_task : null
+  // Threads que viajavam via Atlas Dev (legacy default) ainda mapeiam pra
+  // programming pelo histórico de task `dev`/`debug`.
   if (focus === 'programming' || explicitMode === 'programming' || routingTask === 'dev' || routingTask === 'debug') {
     return 'programming'
   }
   if (focus === 'operational' || explicitMode === 'operational') return 'operational'
+  // Thread metadata can carry any of the 11 canonical modes the Hyperflow
+  // resolves to. Trust the explicit value when present, else fall back to
+  // the legacy `general` bucket.
+  const candidates: AtlasAiMode[] = [
+    'auto',
+    'general',
+    'conversation',
+    'research',
+    'finance',
+    'marketing',
+    'strategy',
+    'personal_development',
+    'cyber',
+    'automation',
+  ]
+  for (const candidate of candidates) {
+    if (focus === candidate || explicitMode === candidate) return candidate
+  }
   return 'general'
 }
