@@ -147,8 +147,8 @@ pub struct DecisionReceiptDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReceiptSignaturePayload {
-    pub signature: String,    // base64 ed25519
-    pub public_key: String,   // base64 ed25519
+    pub signature: String,  // base64 ed25519
+    pub public_key: String, // base64 ed25519
     pub signed_at: DateTime<Utc>,
     pub signer_id: String,
 }

@@ -1,0 +1,210 @@
+/*
+ * 15 · LANE IDENTITY (Pass K · gravura editorial).
+ *
+ * Eleva as 6 lane heads de "label técnico" para gravura editorial Don Corleone:
+ *   eyebrow   Mono caps 9.5px · categoria semântica (domínio/capacidade/…)
+ *   count     Mono caps tabular · peças na lane (zero-padded)
+ *   title     Cormorant italic 20px · nome canon vindo do backend
+ *   deck      Cormorant italic 12.5px · uma frase, ink2
+ *
+ * + tone-sutil por território (cada lane respira numa cor distinta, 4-7%
+ * alpha, NUNCA color-coding semântico — é peso de tinta, não semáforo).
+ *
+ * Override de 03-regions.css. Posicionado depois de 14 no índice para
+ * vencer no cascade sem !important.
+ */
+
+.cartografia-surface .region-head {
+  /* override 03 (mono caps single-line) → grid editorial 3 colunas */
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'eyebrow count'
+    'title   title'
+    'deck    deck';
+  column-gap: 14px;
+  row-gap: 5px;
+  padding: 18px 22px 14px;
+  margin: -20px -22px 18px;
+  border-bottom: 1px solid rgba(138, 106, 53, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(247, 241, 227, 0.40),
+    rgba(247, 241, 227, 0.10)
+  );
+  /* limpa heranças do 03 */
+  font-family: var(--mono);
+  font-size: inherit;
+  letter-spacing: 0;
+  color: var(--ink);
+  text-transform: none;
+  font-weight: 400;
+  padding-right: 22px;
+}
+
+.cartografia-surface .region-head .eyebrow {
+  grid-area: eyebrow;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: var(--bronze-deep);
+  align-self: end;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cartografia-surface .region-head .count {
+  grid-area: count;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 1.6px;
+  color: var(--ink3);
+  align-self: end;
+  font-variant-numeric: tabular-nums lining-nums;
+  padding-left: 10px;
+  border-left: 1px solid rgba(138, 106, 53, 0.18);
+  margin-left: 36px; /* abre espaço pros signal-dots reposicionados */
+}
+
+/* Reposiciona signal-dots: agora vivem no head, à esquerda do count,
+   numa linha horizontal fina (4 × 6px) ao invés do canto 2×2 que
+   colidia com o count novo. */
+.cartografia-surface .region-signals {
+  top: 22px;
+  right: 58px;
+  grid-template-columns: repeat(4, 6px);
+  gap: 4px;
+}
+.cartografia-surface .signal-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.cartografia-surface .region-head .title {
+  grid-area: title;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+  color: var(--ink);
+  line-height: 1.16;
+  font-feature-settings: 'liga', 'dlig', 'kern';
+  margin-top: 4px;
+  /* manuscript: imperceptível tinta seca */
+  text-shadow: 0 0 0.5px rgba(26, 23, 20, 0.04);
+}
+
+.cartografia-surface .region-head .deck {
+  grid-area: deck;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 12.5px;
+  letter-spacing: 0.2px;
+  color: var(--ink2);
+  line-height: 1.36;
+  margin-top: 1px;
+  /* override 03 */
+  text-transform: none;
+}
+
+/* ─── Tone-sutil por território (peso de tinta, não semáforo) ─── */
+
+.cartografia-surface .region.territory-domain {
+  background:
+    linear-gradient(180deg, rgba(138, 106, 53, 0.06), rgba(138, 106, 53, 0.02) 38%),
+    rgba(247, 241, 227, 0.24);
+}
+.cartografia-surface .region.territory-domain .region-head .eyebrow {
+  color: var(--bronze-deep);
+}
+
+.cartografia-surface .region.territory-capability {
+  background:
+    linear-gradient(180deg, rgba(74, 95, 58, 0.07), rgba(74, 95, 58, 0.02) 40%),
+    rgba(247, 241, 227, 0.22);
+}
+.cartografia-surface .region.territory-capability .region-head .eyebrow {
+  color: var(--moss);
+}
+.cartografia-surface .region.territory-capability .region-head {
+  border-bottom-color: rgba(74, 95, 58, 0.28);
+}
+
+.cartografia-surface .region.territory-business {
+  background:
+    linear-gradient(180deg, rgba(94, 69, 32, 0.08), rgba(94, 69, 32, 0.02) 40%),
+    rgba(247, 241, 227, 0.26);
+}
+.cartografia-surface .region.territory-business .region-head .eyebrow {
+  color: var(--bronze-deep);
+  letter-spacing: 2.8px;
+}
+
+.cartografia-surface .region.territory-human {
+  background:
+    linear-gradient(180deg, rgba(43, 62, 84, 0.06), rgba(43, 62, 84, 0.02) 42%),
+    rgba(247, 241, 227, 0.22);
+}
+.cartografia-surface .region.territory-human .region-head .eyebrow {
+  color: var(--prussian);
+}
+.cartografia-surface .region.territory-human .region-head {
+  border-bottom-color: rgba(43, 62, 84, 0.26);
+}
+
+.cartografia-surface .region.territory-evidence {
+  background:
+    linear-gradient(180deg, rgba(138, 48, 37, 0.04), rgba(138, 48, 37, 0.012) 50%),
+    rgba(247, 241, 227, 0.22);
+}
+.cartografia-surface .region.territory-evidence .region-head .eyebrow {
+  color: var(--rec-red);
+}
+.cartografia-surface .region.territory-evidence .region-head {
+  border-bottom-color: rgba(138, 48, 37, 0.24);
+}
+
+.cartografia-surface .region.territory-docs {
+  background:
+    linear-gradient(180deg, rgba(138, 106, 53, 0.045), rgba(138, 106, 53, 0.012) 40%),
+    rgba(247, 241, 227, 0.22);
+}
+.cartografia-surface .region.territory-docs .region-head .eyebrow {
+  color: var(--bronze);
+}
+
+/* ─── LOD por scale (semantic zoom) ─── */
+
+/* zoom-far <65%: esconde deck mas mantém eyebrow+title+count.
+   Override do 03 antigo que esconde só .deck pelo .zoom-far seletor. */
+.cartografia-surface .world.zoom-far .region-head .deck {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .region-head .title {
+  font-size: 17px;
+  line-height: 1.12;
+  margin-top: 2px;
+}
+
+/* zoom-close ≥115%: dá ar extra ao título. */
+.cartografia-surface .world.zoom-close .region-head .title {
+  font-size: 22px;
+  letter-spacing: 0.3px;
+}
+.cartografia-surface .world.zoom-close .region-head {
+  row-gap: 6px;
+}
+
+/* ─── Modo Foco (active region): título ganha peso silencioso ─── */
+.cartografia-surface .region.active .region-head .title {
+  color: var(--bronze-deep);
+}
+.cartografia-surface .region.kin-host .region-head {
+  border-bottom-color: rgba(138, 106, 53, 0.42);
+}

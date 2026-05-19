@@ -1,21 +1,27 @@
 //! Native platform boundary for Atlas Desktop.
 //!
-//! Future ownership:
-//! - PTY sessions through portable-pty.
-//! - Filesystem watch through notify-rs.
-//! - macOS capabilities through objc2-* or an opt-in Swift sidecar.
+//! Owns:
+//!   - PTY sessions through [`portable-pty`] (real shell, not simulated).
+//!   - Filesystem watching through [`notify`].
+//!
+//! The Tauri shell wraps these in `tauri::command` handlers; the React side
+//! uses xterm.js for the visual terminal and listens to `pty://data` events.
+//!
+//! Anti-mock canon: if a PTY can't be spawned (missing shell, permission),
+//! we surface the OS error directly — no fake terminal output ever.
 
-#[derive(Debug, Clone)]
-pub struct PlatformBridge;
+#![forbid(unsafe_code)]
 
-impl PlatformBridge {
-    pub fn new() -> Self {
-        Self
-    }
-}
+pub mod fswatch;
+pub mod pty;
+pub mod vox;
+pub mod vox_settings;
+pub mod vox_stt;
 
-impl Default for PlatformBridge {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub use fswatch::{FsEvent, FsWatchHandle, watch_path};
+pub use pty::{PtyHandle, PtyManager, PtyOpenRequest, PtySpawnedEvent};
+pub use vox::{VoxEdge, VoxEdgeConfig, VoxEdgeError, VoxEdgeSession, VoxEdgeStatus};
+pub use vox_settings::{
+    clamp_cooldown, VoiceMode, VoxSettings, VoxSettingsError, VoxSettingsStore, VoxShortPhrase,
+    DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS, MIN_COOLDOWN_MS, SETTINGS_SCHEMA, SETTINGS_VERSION,
+};

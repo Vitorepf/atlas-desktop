@@ -1,0 +1,154 @@
+/*
+ * 16 · PHASE CHAPTER RHYTHM (Pass L · capítulos editoriais do pipeline).
+ *
+ * Pipeline de 17 etapas era fila monótona. Agora respira em 5 capítulos
+ * (i-iii intake · iv-viii shape · ix-xii decide · xiii-xv prove · xvi-xvii
+ * render). Cada capítulo tem:
+ *   - phase-divider · hairline 1px bronze 18% atravessando da coluna
+ *     do phase marker até o fim da pipeline column (fade nas pontas)
+ *   - phase-icon   · numeral Mono caps tiny (01..05), eyebrow vibe
+ *   - phase-label  · Cormorant italic 17px lowercase — nome do capítulo
+ *   - phase-deck   · Cormorant italic 11.5px ink3 — uma palavra-chave
+ *
+ * Override de 03-regions.css (.flow-phase). Posicionado depois do 15.
+ */
+
+/* ─── Hairline editorial entre capítulos ─── */
+/* Height ≥ 2px porque o .world aplica scale (0.78..1.4) e 1px×0.85 vira
+   0.85px e não pinta. 2px sobrevive aos zooms canon. */
+.cartografia-surface .flow-phase-divider {
+  position: absolute;
+  height: 2px;
+  pointer-events: none;
+  /* Atoms vivem em z:4. Divider precisa estar acima pra cruzar a coluna
+     do pipeline mesmo no gap entre steps (corridor-kernel + atoms se
+     misturam visualmente). Capítulo > peças. */
+  z-index: 5;
+  background: linear-gradient(
+    90deg,
+    rgba(138, 106, 53, 0) 0%,
+    rgba(138, 106, 53, 0.38) 14%,
+    rgba(138, 106, 53, 0.44) 50%,
+    rgba(138, 106, 53, 0.38) 86%,
+    rgba(138, 106, 53, 0) 100%
+  );
+}
+
+/* Ornamento manuscrito ❦ centralizado sobre o hairline · só nas dividers
+   que separam capítulos (Pass L). Não usar em outras hairlines do mundo. */
+.cartografia-surface .flow-phase-divider::after {
+  content: '❦';
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--bronze);
+  background: var(--cream);
+  padding: 0 12px;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+/* ─── Override do .flow-phase pra peso editorial ─── */
+.cartografia-surface .flow-phase {
+  width: 96px;
+  padding: 16px 8px 0 0;
+  border-left: none;
+  background: none;
+  gap: 6px;
+}
+
+.cartografia-surface .flow-phase .phase-icon {
+  /* Desfaz o círculo SaaS — vira numeral eyebrow Mono caps */
+  width: auto;
+  height: auto;
+  display: inline-block;
+  place-items: unset;
+  border: none;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2.4px;
+  color: var(--bronze-deep);
+  /* override 03 */
+  text-transform: uppercase;
+  padding: 0;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.cartografia-surface .flow-phase .phase-label {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 19px;
+  letter-spacing: 0.3px;
+  color: var(--ink);
+  line-height: 1.1;
+  /* override 03 caps */
+  text-transform: none;
+}
+
+.cartografia-surface .flow-phase .phase-deck {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  color: var(--ink3);
+  line-height: 1.32;
+  margin-top: 2px;
+}
+
+/* ─── LOD por scale ─── */
+/* zoom-far <65%: esconde deck/icon, mantém só label respiratório.
+   Divider ganha peso adicional pra continuar visível em mapa-mode. */
+.cartografia-surface .world.zoom-far .flow-phase .phase-deck,
+.cartografia-surface .world.zoom-far .flow-phase .phase-icon {
+  display: none;
+}
+.cartografia-surface .world.zoom-far .flow-phase .phase-label {
+  font-size: 15px;
+}
+.cartografia-surface .world.zoom-far .flow-phase-divider {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(138, 106, 53, 0) 0%,
+    rgba(138, 106, 53, 0.48) 14%,
+    rgba(138, 106, 53, 0.54) 50%,
+    rgba(138, 106, 53, 0.48) 86%,
+    rgba(138, 106, 53, 0) 100%
+  );
+}
+.cartografia-surface .world.zoom-far .flow-phase-divider::after {
+  font-size: 14px;
+  top: -10px;
+}
+
+/* zoom-close ≥115%: dá ar extra */
+.cartografia-surface .world.zoom-close .flow-phase .phase-label {
+  font-size: 19px;
+}
+.cartografia-surface .world.zoom-close .flow-phase-divider::after {
+  font-size: 15px;
+  top: -11px;
+}
+
+/* ─── Modo Foco: capítulo atual ganha peso, vizinhos fanam ─── */
+.cartografia-surface .world.is-isolated .flow-phase {
+  opacity: 0.42;
+}
+.cartografia-surface .world.is-isolated .flow-phase.is-active {
+  opacity: 1;
+}
+.cartografia-surface .world.is-isolated .flow-phase-divider {
+  opacity: 0.32;
+}

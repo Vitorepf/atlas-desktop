@@ -5,3 +5,15 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+hostname = "0.4"
+
+# Apple Keychain integration. Gated to macOS so non-macOS dev builds compile.
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"

@@ -1,0 +1,1882 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   20 · APPLE PRO POLISH · UNIFIED SLATE TEAL PALETTE
+   Cartografia compartilha a paleta do Atlas Code: slate teal + atlas gold +
+   cool cream. CORREÇÃO ROUND 4: cards `missing-source` agora SUTIS (não mais
+   vermelho dominante que atrapalhava leitura). Indicação de fonte ausente
+   via dot + badge pequeno + border-left fina; o card permanece slate teal
+   normal com texto cool cream legível.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ─── Token bridge dark warm slate teal (same as Atlas Code). */
+.atlas-shell.surface-cartografia,
+.cartografia-surface {
+  /* Legacy tokens redefined to slate equivalents. */
+  --cream: #1d2b34;
+  --cream-deep: #15212a;
+  --cream-paper: #243743;
+  --cream-canvas: #1d2b34;
+
+  --ink: #f0f4f7;
+  --ink2: #d6dde2;
+  --ink3: #95a3ac;
+  --ink4: #677482;
+
+  --bronze: #d4a85a;
+  --bronze-deep: #e6b966;
+  --bronze-soft: rgba(212, 168, 90, 0.32);
+  --bronze-veil: rgba(212, 168, 90, 0.10);
+
+  --hair: rgba(233, 238, 242, 0.10);
+  --hair-soft: rgba(233, 238, 242, 0.05);
+
+  --prussian: #7fa7c4;
+  --moss: #82b577;
+  --moss-veil: rgba(130, 181, 119, 0.12);
+  --moss-soft: rgba(130, 181, 119, 0.34);
+
+  --rec-red: #d05a52;
+  --rec-red-veil: rgba(208, 90, 82, 0.12);
+  --rec-red-soft: rgba(208, 90, 82, 0.34);
+
+  /* CC tokens consistente com surface-code. */
+  --cc-bg: #1d2b34;
+  --cc-surface: #243743;
+  --cc-surface-raised: #2d4351;
+  --cc-surface-sunken: #15212a;
+  --cc-text-strong: #f0f4f7;
+  --cc-text: #d6dde2;
+  --cc-text-muted: #95a3ac;
+  --cc-text-faint: #677482;
+  --cc-text-disabled: #3d4b54;
+  --cc-accent: #d4a85a;
+  --cc-accent-strong: #e6b966;
+  --cc-accent-veil: rgba(212, 168, 90, 0.10);
+  --cc-accent-border: rgba(212, 168, 90, 0.34);
+  --cc-border-soft: rgba(233, 238, 242, 0.05);
+  --cc-border: rgba(233, 238, 242, 0.10);
+  --cc-border-strong: rgba(233, 238, 242, 0.20);
+  --cc-danger: #d05a52;
+  --cc-danger-fg: #e89a93;
+  --cc-success: #82b577;
+  --cc-info: #7fa7c4;
+
+  background: radial-gradient(ellipse at top, rgba(45, 67, 81, 0.12) 0%, transparent 50%),
+              linear-gradient(180deg, #1d2b34 0%, #1a2832 100%);
+  color: var(--cc-text);
+}
+
+.cartografia-surface {
+  background: transparent;
+}
+
+/* ─── Inspector premium dark warm. */
+.cartografia-surface .cart-inspector {
+  background: var(--cc-surface);
+  border-right: 1px solid var(--cc-border-soft);
+}
+
+/* ─── Variable font axis em ATOMS. */
+.cartografia-surface .atom .a-name {
+  font-variation-settings: 'wght' 560;
+  letter-spacing: -0.005em;
+  color: var(--cc-text-strong);
+}
+.cartografia-surface .atom-pipe .a-name,
+.cartografia-surface .atom-pipe .a-body .a-name {
+  font-variation-settings: 'wght' 600;
+  letter-spacing: -0.008em;
+  color: var(--cc-text-strong);
+}
+.cartografia-surface .atom-pipe .a-deck,
+.cartografia-surface .atom-pipe .a-body .a-deck,
+.cartografia-surface .atom .a-deck {
+  font-variation-settings: 'wght' 440;
+  color: var(--cc-text-muted);
+}
+.cartografia-surface .region-head {
+  font-variation-settings: 'wght' 580;
+  letter-spacing: 0.16em;
+  color: var(--cc-text-faint);
+}
+.cartografia-surface .ribbon {
+  font-variation-settings: 'wght' 580;
+  letter-spacing: 0.20em;
+  color: var(--cc-text-strong);
+}
+
+/* ─── ATOM · slate teal surface premium uniforme.
+   Longhand background-color + background-image: none para garantir
+   uniformidade absoluta entre todos os cards (regulares e missing-source). */
+.cartografia-surface .atom {
+  background-color: rgba(36, 55, 67, 0.94) !important;
+  background-image: none !important;
+  border: 1px solid var(--cc-border) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    background-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cartografia-surface .atom:hover {
+  background-color: var(--cc-surface-raised) !important;
+  background-image: none !important;
+  border-color: var(--cc-border-strong) !important;
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CORREÇÃO CRÍTICA · MISSING-SOURCE SUTIL
+   Cards FONTE AUSENTE eram dominantes em vermelho saturado, atrapalhando
+   leitura. Agora: card permanece slate teal normal, com indicação SUTIL:
+   - border-left 2px red fina
+   - badge "fonte ausente" pequeno em red-veil + red-fg (NÃO bg vermelho)
+   - title cor cool cream (NÃO vermelho)
+   - subtle inner glow red
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cartografia-surface .atom.missing-source {
+  /* Longhand override: 13-color-encoding.css aplica background-image
+     repeating-linear-gradient sem !important; o shorthand background não
+     zera o image nesta ordem de cascade, então forçamos longhand. */
+  background-color: rgba(36, 55, 67, 0.94) !important;
+  background-image: none !important;
+  border: 1px solid var(--cc-border) !important;
+  border-left: 2px solid var(--cc-danger) !important;
+  box-shadow:
+    inset 4px 0 12px rgba(208, 90, 82, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+.cartografia-surface .atom.missing-source:hover {
+  background-color: var(--cc-surface-raised) !important;
+  background-image: none !important;
+  border-color: var(--cc-border-strong) !important;
+  border-left-color: var(--cc-danger) !important;
+}
+.cartografia-surface .atom.missing-source .a-name {
+  color: var(--cc-text-strong) !important;
+}
+.cartografia-surface .atom.missing-source .a-deck {
+  color: var(--cc-text-muted) !important;
+}
+
+/* — Badge "fonte ausente" agora SUTIL · red-veil + red-fg, não bg vermelho. */
+.cartografia-surface .atom.missing-source::before {
+  content: 'fonte ausente' !important;
+  position: absolute;
+  top: 8px !important;
+  right: 8px !important;
+  left: auto !important;
+  padding: 2px 8px !important;
+  background: var(--cc-danger-veil) !important;
+  color: var(--cc-danger-fg) !important;
+  border: 1px solid var(--cc-danger-soft, rgba(208, 90, 82, 0.34)) !important;
+  border-radius: 3px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 9.5px !important;
+  font-variation-settings: 'wght' 580 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  line-height: 1.4 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  z-index: 2;
+}
+
+/* ─── ATOM-PIPE · hero gold accent slate. */
+.cartografia-surface .atom-pipe {
+  background:
+    linear-gradient(90deg, rgba(212, 168, 90, 0.13), rgba(36, 55, 67, 0.92) 38%),
+    var(--cc-surface) !important;
+  border-color: rgba(212, 168, 90, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 28px rgba(0, 0, 0, 0.20),
+    0 4px 10px rgba(0, 0, 0, 0.12) !important;
+}
+.cartografia-surface .atom-pipe:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 40px rgba(0, 0, 0, 0.26),
+    0 6px 16px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(212, 168, 90, 0.20) !important;
+}
+.cartografia-surface .atom-pipe .a-num {
+  color: var(--cc-accent-strong) !important;
+}
+.cartografia-surface .atom-pipe .a-symbol {
+  background: linear-gradient(180deg, var(--cc-surface-raised) 0%, var(--cc-surface-sunken) 100%) !important;
+  color: var(--cc-accent-strong) !important;
+  border-color: rgba(212, 168, 90, 0.34) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.04),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.18),
+    0 0 0 6px rgba(212, 168, 90, 0.04) !important;
+}
+
+/* ─── Atlas Decide hero · gold premium glow. */
+.cartografia-surface .atom-pipe#atom-atlas-decide {
+  border-color: rgba(212, 168, 90, 0.46) !important;
+  background:
+    linear-gradient(90deg, rgba(212, 168, 90, 0.18), rgba(36, 55, 67, 0.94) 38%),
+    var(--cc-surface) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 44px rgba(0, 0, 0, 0.24),
+    0 8px 18px rgba(0, 0, 0, 0.14),
+    0 0 0 1px rgba(212, 168, 90, 0.10) !important;
+}
+.cartografia-surface .atom-pipe#atom-atlas-decide .a-symbol {
+  background: linear-gradient(180deg, rgba(212, 168, 90, 0.16) 0%, var(--cc-surface) 100%) !important;
+  border-color: var(--cc-accent) !important;
+  color: var(--cc-accent-strong) !important;
+}
+
+/* ─── ATOM has-risk · red sutil sem dominar. */
+.cartografia-surface .atom.has-risk {
+  box-shadow:
+    inset 4px 0 0 var(--cc-danger),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+.cartografia-surface .atom.has-risk::after {
+  content: 'risco' !important;
+  color: var(--cc-danger-fg) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 9.5px !important;
+  font-variation-settings: 'wght' 580 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+/* ─── ATOM has-next · success indicator. */
+.cartografia-surface .atom.has-next::before {
+  color: var(--cc-success) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 9.5px !important;
+  font-variation-settings: 'wght' 580 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+/* ─── ATOM orphan · gold dashed sutil. */
+.cartografia-surface .atom.is-orphan {
+  outline: 1px dashed rgba(212, 168, 90, 0.45);
+}
+
+/* ─── Source badges premium. */
+.cartografia-surface .atom .a-source-badge {
+  font-variation-settings: 'wght' 580;
+  letter-spacing: 0.14em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.cartografia-surface .atom .a-source-badge.repo {
+  background: var(--bronze-veil) !important;
+  color: var(--cc-accent-strong) !important;
+  border: 1px solid var(--bronze-soft) !important;
+}
+.cartografia-surface .atom .a-source-badge.vault {
+  background: var(--moss-veil) !important;
+  color: var(--moss) !important;
+  border: 1px solid var(--moss-soft) !important;
+}
+.cartografia-surface .atom .a-source-badge.missing {
+  background: var(--rec-red-veil) !important;
+  color: var(--cc-danger-fg) !important;
+  border: 1px solid var(--rec-red-soft) !important;
+}
+
+/* ─── Source row em atom · cool cream. */
+.cartografia-surface .atom .a-source {
+  border-top: 1px solid var(--cc-border-soft) !important;
+  color: var(--cc-text-muted) !important;
+}
+.cartografia-surface .atom .a-source-path {
+  color: var(--cc-text-faint) !important;
+  font-variation-settings: 'wght' 520;
+}
+
+/* ─── ATOM active (isolate-mode protagonist). */
+.cartografia-surface .world.isolate-mode .atom.active {
+  background: linear-gradient(180deg, var(--cc-surface-raised) 0%, var(--cc-surface) 100%) !important;
+  border-color: var(--cc-accent) !important;
+  border-width: 1.5px;
+  box-shadow:
+    0 0 0 8px rgba(212, 168, 90, 0.10),
+    0 20px 40px rgba(0, 0, 0, 0.32),
+    0 6px 14px rgba(0, 0, 0, 0.20) !important;
+}
+
+/* ─── Sub items em atoms. */
+.cartografia-surface .atom .a-subs {
+  border-top: 1px solid var(--cc-border-soft) !important;
+}
+.cartografia-surface .atom .a-sub .s-name {
+  color: var(--cc-text-strong) !important;
+}
+.cartografia-surface .atom .a-sub .s-meta {
+  color: var(--cc-accent-strong) !important;
+}
+
+/* ─── Region subtle bg slate. */
+.cartografia-surface .region {
+  background: rgba(36, 55, 67, 0.20);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 6px;
+  position: relative;
+}
+.cartografia-surface .region.kin-host {
+  background: rgba(36, 55, 67, 0.45);
+  border-color: rgba(212, 168, 90, 0.15);
+}
+
+/* ─── Inspector typography premium. */
+.cartografia-surface .cart-inspector .ins-title,
+.cart-inspector .ins-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 540;
+  letter-spacing: -0.014em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+}
+.cartografia-surface .cart-inspector .ins-lede,
+.cart-inspector .ins-lede {
+  color: var(--cc-text-muted);
+  font-variation-settings: 'wght' 420;
+}
+
+/* ─── Inspector tables. */
+.cartografia-surface .cart-inspector table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.cartografia-surface .cart-inspector table tr {
+  transition: background 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  border-bottom: 1px solid var(--cc-border-soft);
+}
+.cartografia-surface .cart-inspector table tr:last-child {
+  border-bottom: none;
+}
+.cartografia-surface .cart-inspector table tr:hover {
+  background: var(--cc-accent-veil);
+}
+.cartografia-surface .cart-inspector th,
+.cartografia-surface .cart-inspector td {
+  font-variation-settings: 'wght' 460;
+  font-feature-settings: 'tnum' 1, 'kern' 1;
+  letter-spacing: 0;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--cc-text);
+}
+.cartografia-surface .cart-inspector th {
+  font-variation-settings: 'wght' 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+  font-size: 10.5px;
+}
+
+/* ─── Inspector md content. */
+.cartografia-surface .cart-inspector .ins-md-body,
+.cartografia-surface .cart-inspector p {
+  font-variation-settings: 'wght' 440;
+  line-height: 1.65;
+  color: var(--cc-text);
+}
+.cartografia-surface .cart-inspector strong {
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-text-strong);
+}
+.cartografia-surface .cart-inspector .ins-recent-dock {
+  background: var(--cc-surface-sunken);
+  border-top: 1px solid var(--cc-border-soft);
+}
+
+/* ─── Floaters premium. */
+.cartografia-surface .floater,
+.cartografia-surface [class*='floater'],
+.cartografia-surface [class*='Floater'] {
+  background: rgba(36, 55, 67, 0.85);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 6px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: var(--cc-text);
+}
+
+/* ─── Buttons. */
+.cartografia-surface button,
+.cartografia-surface [role='button'] {
+  transition:
+    background 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--cc-text);
+}
+
+/* ─── Inputs. */
+.cartografia-surface input[type='search'],
+.cartografia-surface input[type='text'] {
+  background: var(--cc-surface-sunken);
+  border: 1px solid var(--cc-border);
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-variation-settings: 'wght' 440;
+  color: var(--cc-text);
+  letter-spacing: 0;
+  caret-color: var(--cc-accent);
+}
+.cartografia-surface input[type='search']:focus,
+.cartografia-surface input[type='text']:focus {
+  border-color: var(--cc-accent);
+  background: var(--cc-surface);
+  outline: none;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.18),
+    0 0 0 3px rgba(212, 168, 90, 0.18),
+    0 0 24px rgba(212, 168, 90, 0.10);
+}
+.cartografia-surface input::placeholder {
+  color: var(--cc-text-faint);
+  opacity: 0.85;
+}
+
+/* ─── Scrollbars premium. */
+.cartografia-surface *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.cartografia-surface *::-webkit-scrollbar-thumb {
+  background: rgba(149, 163, 172, 0.18);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.cartografia-surface *::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 168, 90, 0.32);
+  background-clip: padding-box;
+}
+
+/* ─── Selection accent gold. */
+.cartografia-surface ::selection {
+  background: rgba(212, 168, 90, 0.30);
+  color: var(--cc-text-strong);
+}
+
+/* ─── Focus ring premium. */
+.cartografia-surface :focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--cc-bg),
+    0 0 0 4px rgba(230, 185, 102, 0.55),
+    0 0 24px rgba(230, 185, 102, 0.18);
+  border-radius: 4px;
+}
+
+/* ─── Trails (linhas SVG). */
+.cartografia-surface .trail-line {
+  stroke: rgba(212, 168, 90, 0.25);
+  transition: stroke 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cartografia-surface .trail-group.path-active .trail-line {
+  stroke: rgba(212, 168, 90, 0.65);
+}
+
+/* ─── Region head text-shadow. */
+.cartografia-surface .region-head .title,
+.cartografia-surface .region-head {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+}
+
+/* ─── Resize handle. */
+.cartografia-surface .cart-resize-handle {
+  border-left-color: var(--cc-border-soft);
+  background: transparent;
+}
+.cartografia-surface .cart-resize-handle:hover,
+.cartografia-surface .cart-resize-handle:focus-visible,
+body.cart-resizing .cart-resize-handle {
+  background: rgba(212, 168, 90, 0.08);
+  border-left-color: var(--cc-accent);
+}
+.cartografia-surface .cart-resize-handle::after {
+  background: var(--cc-accent) !important;
+}
+
+/* ─── You-are-here pill. */
+.cartografia-surface .atom .you-are-here {
+  background: var(--cc-accent) !important;
+  color: #15212a !important;
+  font-variation-settings: 'wght' 620;
+  letter-spacing: 0.08em;
+}
+.cartografia-surface .atom .you-are-here::before {
+  color: rgba(21, 33, 42, 0.55) !important;
+}
+
+/* ─── Live badge. */
+.cartografia-surface .atom .a-live-badge {
+  background: var(--cc-accent) !important;
+  color: #15212a !important;
+  font-variation-settings: 'wght' 620;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Atom enter. */
+@keyframes cart-atom-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cartografia-surface .atom:not(.is-orphan) {
+  animation: cart-atom-enter 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .atom { animation: none; }
+}
+
+/* ─── Global ease-out. */
+.cartografia-surface * {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── ATOM text-shadow titles legibilidade. */
+.cartografia-surface .atom .a-name,
+.cartografia-surface .atom-pipe .a-name,
+.cartografia-surface .atom-pipe .a-body .a-name {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+}
+
+/* ─── Atom-pipe numeral arábico · tabular gold (era romano italic). */
+.cartografia-surface .atom-pipe .a-num {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-style: normal !important;
+  font-variation-settings: 'wght' 600 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'kern' 1 !important;
+  font-size: 20px !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  color: var(--cc-accent-strong) !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20) !important;
+}
+.cartografia-surface .atom-pipe#atom-atlas-decide .a-num {
+  font-variation-settings: 'wght' 680 !important;
+  font-size: 22px !important;
+}
+/* Subflow header roman → arabic. */
+.cartografia-surface .sh-roman {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-style: normal !important;
+  font-variation-settings: 'wght' 580 !important;
+  font-feature-settings: 'tnum' 1 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.18em !important;
+}
+
+/* ─── Inspector backdrop blur. */
+.cartografia-surface .cart-inspector {
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+}
+
+/* ─── Tabular numerics em metadata. */
+.cartografia-surface .atom .a-sub .s-meta,
+.cartografia-surface .atom .a-source,
+.cartografia-surface .ribbon,
+.cartografia-surface .region-head {
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'kern' 1;
+}
+
+/* ─── Inspector content scroll smooth. */
+.cartografia-surface .cart-inspector .ins-content {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 5 · FOLLOW-UPS PREMIUM (após missing-source fix)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Cobertura adicional · qualquer variant de missing/orfão. */
+.cartografia-surface .atom[class*='missing'],
+.cartografia-surface .atom[class*='orphan'],
+.cartografia-surface .atom[data-source='missing'] {
+  background: rgba(36, 55, 67, 0.92) !important;
+  border-color: var(--cc-border) !important;
+}
+.cartografia-surface .atom[class*='missing'] .a-name,
+.cartografia-surface .atom[class*='orphan'] .a-name,
+.cartografia-surface .atom[data-source='missing'] .a-name {
+  color: var(--cc-text-strong) !important;
+}
+
+/* ─── Top bar Atlas · Cartografia premium. */
+.cartografia-surface .topbar {
+  background: rgba(21, 33, 42, 0.92);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  border-bottom: 1px solid var(--cc-border-soft);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.20),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* ─── Surface switcher (Cartografia/Code) consistente com Atlas Code. */
+.cartografia-surface .surface-switcher {
+  padding: 4px;
+  gap: 2px;
+  border-radius: 9px;
+  background: var(--cc-surface-sunken);
+  border: 1px solid var(--cc-border-soft);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.18);
+}
+.cartografia-surface .surface-tab {
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-variation-settings: 'wght' 540;
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--cc-text-muted);
+  background: transparent;
+  border: none;
+}
+.cartografia-surface .surface-tab:hover:not(.on) {
+  background: rgba(212, 168, 90, 0.05);
+  color: var(--cc-text);
+}
+.cartografia-surface .surface-tab.on {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 620;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.cartografia-surface .surface-tab .surface-tab-label {
+  color: inherit;
+  font-style: normal;
+}
+.cartografia-surface .surface-tab .surface-tab-shortcut {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(212, 168, 90, 0.85);
+  letter-spacing: 0.04em;
+  font-variation-settings: 'wght' 540;
+}
+
+/* ─── Brand Atlas · Cartografia top-left. */
+.cartografia-surface .brand strong {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14.5px;
+  font-variation-settings: 'wght' 640;
+  letter-spacing: -0.008em;
+  color: var(--cc-text-strong);
+  text-transform: none;
+  background: linear-gradient(135deg, var(--cc-text-strong) 0%, rgba(212, 168, 90, 0.85) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Header cartográfico CONTINENTES DO VAULT. */
+.cartografia-surface [class*='vault-pill'],
+.cartografia-surface .breadcrumb-pill,
+.cartografia-surface [class*='breadcrumb-pill'] {
+  background: rgba(36, 55, 67, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  font-variation-settings: 'wght' 540;
+  color: var(--cc-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.20);
+}
+
+/* ─── Floater toolbar (FLUXO/RELAÇÕES/RISCO/RECENTES/EVIDÊNCIA). */
+.cartografia-surface [class*='toolbar'] button,
+.cartografia-surface [class*='filter-chip'],
+.cartografia-surface [class*='lens-toggle'] {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-variation-settings: 'wght' 540;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: 5px;
+  letter-spacing: 0;
+}
+.cartografia-surface [class*='toolbar'] button.is-active,
+.cartografia-surface [class*='toolbar'] button[aria-pressed='true'],
+.cartografia-surface [class*='filter-chip'].is-active {
+  color: var(--cc-accent-strong);
+  background: var(--cc-accent-veil);
+  border-color: var(--cc-accent-border);
+  font-variation-settings: 'wght' 620;
+}
+
+/* ─── ATOM final · garantir text contrast. */
+.cartografia-surface .atom .a-source,
+.cartografia-surface .atom .a-source-path,
+.cartografia-surface .atom .a-deck,
+.cartografia-surface .atom .a-name {
+  position: relative;
+  z-index: 1;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 6 · DEEP CLEANUP · ELIMINAR WARM CREAM RESIDUAL
+   Inventário: 07-floaters-controls.css aplica bg rgba(247,241,227,0.96) em
+   .visual-lens-floater + .search-floater (retângulo branco translúcido visto
+   na screenshot do usuário). 16-phase-rhythm.css aplica bg var(--cream) no
+   ornamento ❦. Phase labels (intake/shape/decide/prove/render) precisam
+   color cool cream legível sobre slate.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Floaters · search + visual lens toolbar slate raised + frosted glass. */
+.cartografia-surface .search-floater,
+.cartografia-surface .visual-lens-floater {
+  background: rgba(45, 67, 81, 0.82) !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  border-radius: 6px !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.18) !important;
+}
+.cartografia-surface .lens-button {
+  color: var(--cc-text-muted) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10px !important;
+  font-variation-settings: 'wght' 560 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+.cartografia-surface .lens-button:hover {
+  color: var(--cc-text-strong) !important;
+  background: var(--cc-surface-raised) !important;
+  border-color: var(--cc-border) !important;
+}
+.cartografia-surface .lens-button.is-active,
+.cartografia-surface .lens-button[aria-pressed='true'] {
+  color: var(--cc-accent-strong) !important;
+  background: var(--cc-accent-veil) !important;
+  border-color: var(--cc-accent-border) !important;
+  font-variation-settings: 'wght' 640 !important;
+}
+.cartografia-surface .lens-glyph {
+  background: var(--cc-surface-sunken) !important;
+  border-color: var(--cc-border) !important;
+  color: var(--cc-accent-strong) !important;
+}
+.cartografia-surface .lens-glyph.lens-risk {
+  color: var(--cc-danger-fg) !important;
+  border-color: rgba(208, 90, 82, 0.34) !important;
+}
+.cartografia-surface .lens-glyph.lens-recent {
+  color: var(--cc-success) !important;
+  border-color: rgba(130, 181, 119, 0.34) !important;
+}
+
+/* ─── Phase labels (intake · shape · decide · prove · render) · legível slate. */
+.cartografia-surface .flow-phase .phase-label {
+  color: var(--cc-text-strong) !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-size: 22px !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28) !important;
+}
+.cartografia-surface .flow-phase .phase-icon {
+  color: var(--cc-accent-strong) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 580 !important;
+  font-feature-settings: 'tnum' 1 !important;
+  letter-spacing: 0.2em !important;
+}
+.cartografia-surface .flow-phase .phase-deck {
+  color: var(--cc-text-muted) !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 440 !important;
+}
+
+/* ─── Phase divider ornament ❦ · bg slate (não cream) + bronze gold tint. */
+.cartografia-surface .flow-phase-divider {
+  background: linear-gradient(
+    90deg,
+    rgba(212, 168, 90, 0) 0%,
+    rgba(212, 168, 90, 0.34) 14%,
+    rgba(212, 168, 90, 0.46) 50%,
+    rgba(212, 168, 90, 0.34) 86%,
+    rgba(212, 168, 90, 0) 100%
+  ) !important;
+}
+.cartografia-surface .flow-phase-divider::after {
+  background: #1d2b34 !important;
+  color: var(--cc-accent-strong) !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+}
+
+/* ─── Corridors (intake/kernel/evidence) · slate accent. */
+.cartografia-surface .flow-corridor::before {
+  background:
+    linear-gradient(180deg, rgba(212, 168, 90, 0), rgba(212, 168, 90, 0.04)),
+    radial-gradient(rgba(212, 168, 90, 0.05) 1px, transparent 1px) 0 0 / 42px 42px !important;
+  opacity: 0.24 !important;
+}
+.cartografia-surface .corridor-intake {
+  background: linear-gradient(90deg, rgba(212, 168, 90, 0.04), rgba(212, 168, 90, 0)) !important;
+  border-left-color: rgba(212, 168, 90, 0.16) !important;
+}
+.cartografia-surface .corridor-kernel {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(212, 168, 90, 0.04) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(212, 168, 90, 0.04), rgba(45, 67, 81, 0.02) 40%, rgba(45, 67, 81, 0.02) 60%, rgba(212, 168, 90, 0.04)) !important;
+  border-color: rgba(212, 168, 90, 0.14) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(212, 168, 90, 0.08),
+    inset 0 16px 26px rgba(212, 168, 90, 0.02),
+    inset 0 -16px 26px rgba(212, 168, 90, 0.02) !important;
+}
+.cartografia-surface .corridor-evidence {
+  background: linear-gradient(90deg, rgba(130, 181, 119, 0), rgba(130, 181, 119, 0.04)) !important;
+  border-right-color: rgba(130, 181, 119, 0.18) !important;
+}
+
+/* ─── SVG trails · slate stroke (era cream). */
+.cartografia-surface .flow-machine-spine,
+.cartografia-surface svg.flow-trail-svg path,
+.cartografia-surface svg.flow-trail-svg line {
+  stroke: var(--cc-border) !important;
+}
+
+/* ─── Edit mode tooltip · slate. */
+.cartografia-surface .edit-mode-tooltip,
+.cartografia-surface .edit-overlay {
+  background: rgba(45, 67, 81, 0.94) !important;
+  color: var(--cc-text-strong) !important;
+  border: 1px solid var(--cc-border) !important;
+}
+
+/* ─── Active lens lane gradient · slate gold (era cream warm). */
+.cartografia-surface .world.lens-evidence .corridor-evidence {
+  background:
+    linear-gradient(90deg, rgba(130, 181, 119, 0.02), rgba(130, 181, 119, 0.09)),
+    radial-gradient(circle at 72% 34%, rgba(130, 181, 119, 0.07), transparent 42%) !important;
+  border-color: rgba(130, 181, 119, 0.22) !important;
+}
+
+/* ─── PEÇAS DE FONTE AUSENTE sutilmente identificadas com dot lateral · NÃO bg dominante. */
+.cartografia-surface .atom.missing-source {
+  position: relative;
+}
+.cartografia-surface .atom.missing-source > .a-source {
+  border-top-color: rgba(208, 90, 82, 0.20) !important;
+}
+
+/* ─── Inspector "ENGRENAGEM · ... " badges. */
+.cartografia-surface .cart-inspector [class*='label'],
+.cartografia-surface .cart-inspector [class*='tag'] {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-variation-settings: 'wght' 580;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 7 · FINAL POLISH PUSH · 9.8/10
+   Scrollbars slim, subflow scene typography, just-edited sutil, has-risk
+   estático sem pulse cafona, atom hover inner glow accent, symbol pill
+   gradient duplo, source path tabular.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Scrollbars slate slim (Webkit · Tauri WebView). */
+.cartografia-surface ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.cartografia-surface ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cartografia-surface ::-webkit-scrollbar-thumb {
+  background: rgba(233, 238, 242, 0.08);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.cartografia-surface ::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 168, 90, 0.28);
+  background-clip: padding-box;
+}
+
+/* ─── Subflow scene · typography editorial. */
+.cartografia-surface .subflow-stage {
+  background: var(--cc-bg);
+}
+.cartografia-surface .subflow-head .sh-title {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+  color: var(--cc-text-strong) !important;
+  font-size: 28px !important;
+  letter-spacing: -0.012em !important;
+  line-height: 1.1 !important;
+}
+.cartografia-surface .subflow-head .sh-sub {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 440 !important;
+  color: var(--cc-text-muted) !important;
+  font-size: 13px !important;
+  letter-spacing: -0.005em !important;
+}
+
+/* ─── Just-edited ring · sutil sem pulse cafona. */
+@keyframes just-edited-ring {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 0 1px rgba(212, 168, 90, 0.24),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 0 2px rgba(212, 168, 90, 0.32),
+      0 4px 12px rgba(212, 168, 90, 0.10),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+}
+
+/* ─── Has-risk · sem pulse de cor (estático red firme). */
+.cartografia-surface .atom.has-risk {
+  animation: none !important;
+  border-left: 3px solid var(--cc-danger) !important;
+}
+
+/* ─── Atom hover · inner glow accent gold sutil. */
+.cartografia-surface .atom:not(.atom-pipe):hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(212, 168, 90, 0.10),
+    0 8px 24px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* ─── Atom-pipe symbol pill · gradient duplo premium. */
+.cartografia-surface .atom-pipe .a-symbol {
+  background:
+    radial-gradient(ellipse at 30% 25%, rgba(212, 168, 90, 0.18) 0%, transparent 60%),
+    linear-gradient(180deg, var(--cc-surface-raised) 0%, var(--cc-surface-sunken) 100%) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.06),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(212, 168, 90, 0.14),
+    0 0 0 6px rgba(212, 168, 90, 0.04) !important;
+}
+
+/* ─── Source path · JetBrains Mono cv features tabular. */
+.cartografia-surface .atom .a-source-path,
+.cartografia-surface .ins-source-path {
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 480 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1, 'liga' 0 !important;
+  letter-spacing: 0 !important;
+}
+
+/* ─── Inspector content · fade top/bottom para scroll. */
+.cartografia-surface .cart-inspector .ins-content {
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+/* ─── Region containers · inner highlight + sombra premium. */
+.cartografia-surface .region {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 1px 1px rgba(0, 0, 0, 0.12);
+}
+
+/* ─── Cap region head · uppercase tracking + accent. */
+.cartografia-surface .region-head .head-name,
+.cartografia-surface .region-head .h-name {
+  color: var(--cc-text-strong) !important;
+  font-variation-settings: 'wght' 600 !important;
+  letter-spacing: 0.16em !important;
+}
+.cartografia-surface .region-head .h-count,
+.cartografia-surface .region-head .head-count {
+  color: var(--cc-accent-strong) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-feature-settings: 'tnum' 1 !important;
+  font-variation-settings: 'wght' 540 !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RIBBON · CORREÇÃO CRÍTICA · "ATLAS KERNEL PIPELINE"
+   05-scenes.css:5 aplicava bg var(--ink) que com o token bridge virou
+   cool cream forte. Resultado: bg branco/cinza claro com texto também
+   cool cream → INVISÍVEL. Inversão correta: bg slate sunken DARK + texto
+   cool cream claro, peso editorial Mono caps tracked.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cartografia-surface .ribbon {
+  background-color: var(--cc-surface-sunken) !important;
+  background-image: none !important;
+  color: var(--cc-text-strong) !important;
+  border: 1px solid var(--cc-border) !important;
+  border-radius: 4px !important;
+  padding: 10px 28px !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-style: normal !important;
+  font-variation-settings: 'wght' 580 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1, 'kern' 1 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.28em !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.36) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+    0 1px 0 rgba(212, 168, 90, 0.10),
+    0 14px 32px rgba(0, 0, 0, 0.28),
+    0 4px 10px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* ─── Reduced-motion respeitar. */
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .atom.just-edited {
+    animation: none !important;
+  }
+  .cartografia-surface * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 7B · INSPECTOR DETAIL TYPOGRAPHY
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Inspector kind eyebrow · JetBrains Mono caps gold accent. */
+.cart-inspector .ins-kind,
+.cartografia-surface .cart-inspector .ins-kind {
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-size: 10px !important;
+  letter-spacing: 0.22em !important;
+  color: var(--cc-accent-strong) !important;
+  text-transform: uppercase !important;
+}
+
+/* ─── Inspector title · Cormorant italic editorial 28px hierarchy. */
+.cart-inspector .ins-title,
+.cartografia-surface .cart-inspector .ins-title {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-size: 28px !important;
+  letter-spacing: -0.012em !important;
+  color: var(--cc-text-strong) !important;
+  line-height: 1.1 !important;
+}
+
+/* ─── Inspector lede · Cormorant italic 14.5px muted. */
+.cart-inspector .ins-lede,
+.cartografia-surface .cart-inspector .ins-lede {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 440 !important;
+  font-size: 14.5px !important;
+  color: var(--cc-text) !important;
+  line-height: 1.5 !important;
+  letter-spacing: -0.005em !important;
+}
+
+/* ─── Inspector source badges · slate variants. */
+.cart-inspector .ins-source-badge,
+.cartografia-surface .cart-inspector .ins-source-badge {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 580 !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  padding: 3px 7px !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+.cart-inspector .ins-source-badge.repo {
+  background: var(--cc-accent-veil) !important;
+  color: var(--cc-accent-strong) !important;
+  border-color: var(--cc-accent-border) !important;
+}
+.cart-inspector .ins-source-badge.vault {
+  background: rgba(130, 181, 119, 0.10) !important;
+  color: var(--cc-success) !important;
+  border-color: rgba(130, 181, 119, 0.34) !important;
+}
+.cart-inspector .ins-source-badge.mixed {
+  background: rgba(127, 167, 196, 0.10) !important;
+  color: var(--cc-info) !important;
+  border-color: rgba(127, 167, 196, 0.34) !important;
+}
+.cart-inspector .ins-source-badge.missing {
+  background: rgba(208, 90, 82, 0.10) !important;
+  color: var(--cc-danger-fg) !important;
+  border-color: rgba(208, 90, 82, 0.34) !important;
+}
+
+/* ─── Inspector status · cool cream muted. */
+.cart-inspector .ins-source-status,
+.cartografia-surface .cart-inspector .ins-source-status {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 520 !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  color: var(--cc-text-muted) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 8 · INSPECTOR FICHA-7 + FIT-GRID + ACTIONS · SLATE PREMIUM
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Ficha-7 container · slate raised + inner highlight. */
+.cart-inspector .ficha-7,
+.cartografia-surface .cart-inspector .ficha-7 {
+  background: var(--cc-surface) !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  border-radius: 4px !important;
+  padding: 16px 18px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+.cart-inspector .ficha-7 .row,
+.cartografia-surface .cart-inspector .ficha-7 .row {
+  border-bottom: 1px solid var(--cc-border-soft) !important;
+  padding: 10px 0 !important;
+}
+.cart-inspector .ficha-7 .label,
+.cartografia-surface .cart-inspector .ficha-7 .label {
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.18em !important;
+  color: var(--cc-text-faint) !important;
+  text-transform: uppercase !important;
+}
+.cart-inspector .ficha-7 .glyph,
+.cartografia-surface .cart-inspector .ficha-7 .glyph {
+  color: var(--cc-accent-strong) !important;
+}
+.cart-inspector .ficha-7 .value,
+.cartografia-surface .cart-inspector .ficha-7 .value {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 460 !important;
+  font-size: 14px !important;
+  color: var(--cc-text-strong) !important;
+  line-height: 1.45 !important;
+  letter-spacing: -0.005em !important;
+}
+.cart-inspector .ficha-7 .value.empty,
+.cartografia-surface .cart-inspector .ficha-7 .value.empty {
+  color: var(--cc-text-faint) !important;
+}
+.cart-inspector .ficha-7 .row.risk .value,
+.cartografia-surface .cart-inspector .ficha-7 .row.risk .value {
+  color: var(--cc-danger-fg) !important;
+}
+.cart-inspector .ficha-7 .row.next .value,
+.cartografia-surface .cart-inspector .ficha-7 .row.next .value {
+  color: var(--cc-accent-strong) !important;
+  font-variation-settings: 'wght' 540 !important;
+}
+
+/* ─── Fit-grid (Domain Plane info) · slate Mono caps gold. */
+.cart-inspector .fit-row,
+.cartografia-surface .cart-inspector .fit-row {
+  border-top: 1px solid var(--cc-border-soft) !important;
+  padding-top: 9px !important;
+  padding-bottom: 2px !important;
+}
+.cart-inspector .fit-row span,
+.cartografia-surface .cart-inspector .fit-row span {
+  color: var(--cc-text-faint) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.18em !important;
+}
+.cart-inspector .fit-row strong,
+.cartografia-surface .cart-inspector .fit-row strong {
+  color: var(--cc-text-strong) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 520 !important;
+  font-size: 12.5px !important;
+  letter-spacing: -0.005em !important;
+}
+.cart-inspector .fit-row strong.mono,
+.cartografia-surface .cart-inspector .fit-row strong.mono {
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 480 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1 !important;
+  font-size: 11px !important;
+  color: var(--cc-text) !important;
+  letter-spacing: 0 !important;
+}
+
+/* ─── Ins-md summary (markdown sections) · slate. */
+.cart-inspector .ins-md > summary,
+.cartografia-surface .cart-inspector .ins-md > summary {
+  background: var(--cc-surface-sunken) !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  border-radius: 3px !important;
+  padding: 11px 14px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+.cart-inspector .ins-md-title,
+.cartografia-surface .cart-inspector .ins-md-title {
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 580 !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.20em !important;
+  color: var(--cc-accent-strong) !important;
+  text-transform: uppercase !important;
+}
+
+/* ─── Action buttons · slate raised + gold hover. */
+.cart-inspector .ins-action,
+.cartografia-surface .cart-inspector .ins-action {
+  background: var(--cc-surface-raised) !important;
+  border: 1px solid var(--cc-border) !important;
+  border-radius: 3px !important;
+  padding: 9px 12px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 520 !important;
+  font-size: 12.5px !important;
+  color: var(--cc-text) !important;
+  transition:
+    background 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+.cart-inspector .ins-action:hover,
+.cartografia-surface .cart-inspector .ins-action:hover {
+  background: rgba(212, 168, 90, 0.06) !important;
+  border-color: var(--cc-accent-border) !important;
+  color: var(--cc-accent-strong) !important;
+  transform: translateY(-0.5px);
+}
+
+/* ─── Inspector section heading (h3) · Cormorant editorial. */
+.cart-inspector h3,
+.cartografia-surface .cart-inspector h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 520 !important;
+  font-size: 18px !important;
+  letter-spacing: -0.008em !important;
+  color: var(--cc-text-strong) !important;
+  margin: 0 0 8px !important;
+}
+
+/* ─── Ins-fit container · slate. */
+.cart-inspector .ins-fit,
+.cartografia-surface .cart-inspector .ins-fit {
+  background: var(--cc-surface) !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  border-radius: 4px !important;
+  padding: 14px 16px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 9 · TOKEN BRIDGE SWEEP · CORRIGIR var(--ink)/var(--cream) bg INVERTIDOS
+   16 lugares legacy usavam var(--cream) (que era warm paper, agora slate) ou
+   var(--ink) (que era warm dark, agora cool cream) como background. Resultado:
+   chips light viraram dark sem contraste, chips dark viraram light onde texto
+   também é light. Fix por seletor específico.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Focus action primary · CTA gold (era ink dark). */
+.cartografia-surface .focus-action.primary {
+  background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent) 100%) !important;
+  color: #1a2832 !important;
+  border-color: var(--cc-accent) !important;
+  font-variation-settings: 'wght' 620 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 6px 16px rgba(212, 168, 90, 0.18),
+    0 2px 4px rgba(0, 0, 0, 0.16) !important;
+}
+.cartografia-surface .focus-action.primary:hover {
+  background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent-strong) 100%) !important;
+  border-color: var(--cc-accent-strong) !important;
+  transform: translateY(-0.5px);
+}
+.cartografia-surface .focus-action {
+  background: var(--cc-surface-raised) !important;
+  border: 1px solid var(--cc-border) !important;
+  color: var(--cc-text) !important;
+}
+.cartografia-surface .focus-action:hover {
+  background: rgba(212, 168, 90, 0.06) !important;
+  border-color: var(--cc-accent-border) !important;
+  color: var(--cc-accent-strong) !important;
+}
+
+/* ─── Trail endpoint dot · gold accent (era cream sobre cream). */
+.cartografia-surface .trail-endpoint,
+.cartografia-surface [class*='endpoint'] {
+  background: var(--cc-accent-strong) !important;
+  border-color: var(--cc-accent) !important;
+  box-shadow:
+    0 0 0 2px rgba(212, 168, 90, 0.18),
+    0 0 0 5px rgba(212, 168, 90, 0.08) !important;
+}
+
+/* ─── Atom active isolate-mode · slate raised gold halo (era cream sobre cream). */
+.cartografia-surface .world.isolate-mode .atom.active {
+  background-color: var(--cc-surface-raised) !important;
+  background-image: none !important;
+  border: 2px solid var(--cc-accent) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 44px rgba(0, 0, 0, 0.28),
+    0 0 0 6px rgba(212, 168, 90, 0.14) !important;
+}
+
+/* ─── Lens-button states (search-floater) · slate. */
+.cartografia-surface .lens-button:hover {
+  color: var(--cc-text-strong) !important;
+  background: var(--cc-surface-raised) !important;
+  border-color: var(--cc-border) !important;
+}
+.cartografia-surface .lens-button.active .lens-glyph {
+  background: var(--cc-accent-veil) !important;
+  border-color: var(--cc-accent) !important;
+  box-shadow: 0 0 0 4px rgba(212, 168, 90, 0.10) !important;
+}
+
+/* ─── Atom-pipe a-symbol pill (IN/CTX/RUN) · slate gradient gold ring premium. */
+.cartografia-surface .atom-pipe .a-symbol {
+  background-color: transparent !important;
+  background-image:
+    radial-gradient(ellipse at 30% 25%, rgba(212, 168, 90, 0.20) 0%, transparent 60%),
+    linear-gradient(180deg, var(--cc-surface-raised) 0%, var(--cc-surface-sunken) 100%) !important;
+  border-color: rgba(212, 168, 90, 0.34) !important;
+  color: var(--cc-accent-strong) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 620 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1 !important;
+  font-size: 9px !important;
+  letter-spacing: 0.20em !important;
+  text-transform: uppercase !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(212, 168, 90, 0.16),
+    0 0 0 6px rgba(212, 168, 90, 0.04) !important;
+}
+
+/* ─── Toast banner (bottom floater) · slate sunken + cool cream. */
+.cartografia-surface [class*='toast'],
+.cartografia-surface [class*='banner'][class*='bottom'] {
+  background-color: var(--cc-surface-sunken) !important;
+  background-image: none !important;
+  color: var(--cc-text-strong) !important;
+  border: 1px solid var(--cc-border) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  letter-spacing: 0.18em !important;
+}
+
+/* ─── Edit mode preset input · slate surface. */
+.cartografia-surface .presets-name-input {
+  background-color: var(--cc-surface-sunken) !important;
+  background-image: none !important;
+  color: var(--cc-text-strong) !important;
+  border: 1px solid var(--cc-border) !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+}
+.cartografia-surface .presets-name-input:focus {
+  border-color: var(--cc-accent) !important;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.12) !important;
+  outline: none !important;
+}
+
+/* ─── Ins-md generic items · slate. */
+.cart-inspector .ins-md [class*='item'],
+.cart-inspector .ins-md [class*='row'],
+.cartografia-surface .cart-inspector .ins-md [class*='item'],
+.cartografia-surface .cart-inspector .ins-md [class*='row'] {
+  background: var(--cc-surface-sunken) !important;
+  border-color: var(--cc-border-soft) !important;
+  color: var(--cc-text) !important;
+}
+
+/* ─── Source-authority pill · slate accent gold. */
+.cart-inspector .ins-source-authority,
+.cartografia-surface .cart-inspector .ins-source-authority {
+  background: var(--cc-accent-veil) !important;
+  border-color: var(--cc-accent-border) !important;
+  color: var(--cc-accent-strong) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ROUND 10 · DEFENSIVE SWEEP · TODOS OS FLOATERS + REGION CARDS + EDIT MODE
+   22 lugares ainda com rgba(247,241,227,X) warm cream hardcoded. Override
+   sweep via seletores classe-based amplos cobrindo todos eles.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ─── Floaters base · todos com bg slate raised + frosted glass. */
+.cartografia-surface [class*='floater']:not([class*='floater-button']),
+.cartografia-surface .canvas-controls,
+.cartografia-surface .breadcrumb-floater,
+.cartografia-surface .back-to-map {
+  background-color: rgba(45, 67, 81, 0.86) !important;
+  background-image: none !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* ─── Floater inputs · slate sunken transparent. */
+.cartografia-surface [class*='floater'] input,
+.cartografia-surface [class*='floater'] textarea {
+  background: rgba(21, 33, 42, 0.6) !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  color: var(--cc-text-strong) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 480 !important;
+}
+.cartografia-surface [class*='floater'] input::placeholder,
+.cartografia-surface [class*='floater'] textarea::placeholder {
+  color: var(--cc-text-faint) !important;
+}
+
+/* ─── Region/lane card backgrounds light remnants · slate. */
+.cartografia-surface [class*='lane-paper'],
+.cartografia-surface [class*='paper-bg'],
+.cartografia-surface .region.has-paper,
+.cartografia-surface .region-card {
+  background-color: rgba(36, 55, 67, 0.88) !important;
+  background-image: none !important;
+}
+
+/* ─── Edit mode overlays · slate raised. */
+.cartografia-surface [class*='edit-mode'],
+.cartografia-surface [class*='presets-bar'],
+.cartografia-surface .edit-toolbar,
+.cartografia-surface .edit-toolbox {
+  background-color: rgba(45, 67, 81, 0.92) !important;
+  background-image: none !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 24px rgba(0, 0, 0, 0.32) !important;
+}
+
+/* ─── Reading mode highlight · slate. */
+.cartografia-surface .reading-highlight,
+.cartografia-surface [class*='reading-mode'] [class*='highlight'] {
+  background-color: var(--cc-accent-veil) !important;
+  background-image: none !important;
+  border-color: var(--cc-accent-border) !important;
+}
+
+/* ─── Region head dots indicator (• • • o · 65) · gold accent. */
+.cartografia-surface .region-head [class*='dot'],
+.cartografia-surface .region-head [class*='pip'] {
+  background: var(--cc-accent-strong) !important;
+}
+.cartografia-surface .region-head [class*='dot'].empty,
+.cartografia-surface .region-head [class*='pip'].empty,
+.cartografia-surface .region-head [class*='dot'][data-empty='true'] {
+  background: rgba(212, 168, 90, 0.18) !important;
+}
+
+/* ─── Atom subs items (subcomponentes) · slate. */
+.cartografia-surface .atom .a-sub {
+  border-color: var(--cc-border-soft) !important;
+}
+.cartografia-surface .atom .a-sub .s-name {
+  color: var(--cc-text) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 520 !important;
+  font-size: 11.5px !important;
+  letter-spacing: -0.005em !important;
+}
+.cartografia-surface .atom .a-sub .s-meta {
+  color: var(--cc-text-faint) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 460 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1 !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* ─── Just-edited halo · gold accent strong (era bronze warm). */
+.cartografia-surface .atom.just-edited {
+  border-color: var(--cc-accent) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FIX CRÍTICO · BREADCRUMB ↔ VISUAL-LENS TOOLBAR COLLISION
+   Bug: breadcrumb centralizado + toolbar colada à direita colidem quando
+   breadcrumb cresce (ex.: 'AtlasVault › Atlas › AI Kernel · Pipeline').
+   Fix: (1) breadcrumb max-width considera toolbar (520px reservados);
+   (2) overflow hidden + ellipsis no breadcrumb; (3) crumb individual
+   white-space:nowrap mas o container faz clipping editorial.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cartografia-surface .breadcrumb-floater {
+  /* Reserva segura: 360px à esquerda (minimap expanded com padding interno
+     real ~310-320px + margem de respiro 40-50px) e 540px à direita
+     (visual-lens-floater ~500px + margem). z-index 5 garante que se algo
+     der overlap, o minimap (z 8) e a toolbar (z 7) ficam por cima. */
+  left: 360px !important;
+  transform: none !important;
+  right: 540px !important;
+  max-width: none !important;
+  width: auto !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  z-index: 5 !important;
+  background-color: rgba(45, 67, 81, 0.86) !important;
+  background-image: none !important;
+  border: 1px solid var(--cc-border-soft) !important;
+  border-radius: 6px !important;
+  color: var(--cc-text) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-feature-settings: 'tnum' 1, 'cv11' 1, 'kern' 1 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: none !important;
+  padding: 8px 14px !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.16) !important;
+}
+.cartografia-surface .breadcrumb-floater .crumb {
+  color: var(--cc-text-muted) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-variation-settings: 'wght' 540 !important;
+  white-space: nowrap !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.cartografia-surface .breadcrumb-floater .crumb:hover {
+  color: var(--cc-accent-strong) !important;
+}
+.cartografia-surface .breadcrumb-floater .crumb.current {
+  color: var(--cc-text-strong) !important;
+  font-variation-settings: 'wght' 620 !important;
+  cursor: default !important;
+}
+.cartografia-surface .breadcrumb-floater .sep {
+  color: var(--cc-accent-strong) !important;
+  padding: 0 4px !important;
+}
+
+/* Visual-lens-floater fica fixo à direita com largura previsível · z-index 7
+   acima do breadcrumb, mas eles não colidem porque breadcrumb termina em
+   right:540 que reserva 522px (largura real ~480-500) + 22px margem. */
+.cartografia-surface .visual-lens-floater {
+  z-index: 7 !important;
+}
+
+/* Quando minimap collapsed (width real ~225px na prática), breadcrumb pode
+   encostar mais à esquerda mas com margem segura de 60px. */
+.cartografia-surface:has(.minimap-floater.is-collapsed) .breadcrumb-floater {
+  left: 285px !important;
+}
+
+/* Viewports estreitos: breadcrumb encolhe right agressivamente. */
+@media (max-width: 1300px) {
+  .cartografia-surface .breadcrumb-floater {
+    right: 520px !important;
+  }
+}
+@media (max-width: 1100px) {
+  .cartografia-surface .breadcrumb-floater {
+    right: 500px !important;
+    font-size: 10px !important;
+    padding: 6px 10px !important;
+  }
+}
+
+/* ─── Search-floater · compact command slot, same palette as Code list. */
+.cartografia-surface .search-floater {
+  top: 18px !important;
+  left: 330px !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: 420px !important;
+  max-width: calc(100% - 920px) !important;
+  min-width: 320px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 10px !important;
+  gap: 8px !important;
+  z-index: 6 !important;
+  background:
+    linear-gradient(180deg, rgba(19, 32, 41, 0.96) 0%, rgba(12, 22, 30, 0.96) 100%) !important;
+  border-color: rgba(127, 167, 196, 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 24px rgba(0, 0, 0, 0.28) !important;
+}
+.cartografia-surface .search-floater:focus-within {
+  border-color: rgba(212, 168, 90, 0.44) !important;
+  box-shadow:
+    inset 2px 0 0 rgba(212, 168, 90, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(212, 168, 90, 0.12),
+    0 12px 28px rgba(0, 0, 0, 0.34) !important;
+}
+.cartografia-surface .search-floater .glyph {
+  color: var(--cc-accent-strong) !important;
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+  opacity: 0.88 !important;
+}
+.cartografia-surface .search-floater input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--cc-text) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-variation-settings: 'wght' 500 !important;
+  font-size: 13px !important;
+  font-style: italic !important;
+  letter-spacing: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  caret-color: var(--cc-accent-strong) !important;
+}
+.cartografia-surface .search-floater input::placeholder {
+  color: var(--cc-text-muted) !important;
+  opacity: 0.72 !important;
+}
+.cartografia-surface .search-floater input::-webkit-search-cancel-button {
+  opacity: 0.34 !important;
+  filter: invert(72%) sepia(9%) saturate(493%) hue-rotate(160deg) brightness(88%) !important;
+}
+.cartografia-surface .search-results {
+  top: calc(100% + 8px) !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-height: min(284px, calc(100vh - 180px)) !important;
+  overflow: auto !important;
+  background:
+    linear-gradient(180deg, rgba(13, 24, 32, 0.985) 0%, rgba(9, 17, 24, 0.985) 100%) !important;
+  border-color: rgba(127, 167, 196, 0.20) !important;
+  border-radius: 6px !important;
+  color: var(--cc-text) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 18px 42px rgba(0, 0, 0, 0.46) !important;
+}
+.cartografia-surface .search-result {
+  border-bottom-color: var(--cc-border-soft) !important;
+  color: var(--cc-text) !important;
+  padding: 11px 14px !important;
+}
+.cartografia-surface .search-result:hover,
+.cartografia-surface .search-result.active,
+.cartografia-surface .search-result[aria-selected='true'] {
+  background:
+    linear-gradient(90deg, rgba(45, 67, 81, 0.78) 0%, rgba(36, 55, 67, 0.56) 100%) !important;
+}
+.cartografia-surface .search-result.active {
+  box-shadow: inset 2px 0 0 var(--cc-accent), inset 0 0 0 1px rgba(127, 167, 196, 0.10) !important;
+}
+.cartografia-surface .search-result .sr-title {
+  color: var(--cc-text-strong) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 13.5px !important;
+  font-variation-settings: 'wght' 650 !important;
+}
+.cartografia-surface .search-result .sr-meta {
+  color: var(--cc-text-faint) !important;
+  font-family: 'JetBrains Mono', Menlo, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+}
+
+@media (max-width: 1280px) {
+  .cartografia-surface .search-floater {
+    top: 64px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(420px, calc(100% - 64px)) !important;
+    max-width: none !important;
+    min-width: 280px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .cartografia-surface .search-floater {
+    width: calc(100% - 32px) !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ─── Top rail ownership · minimap/search/lens never overlap. */
+.cartografia-surface .cartography-top-rail {
+  position: absolute !important;
+  top: 18px !important;
+  left: 18px !important;
+  right: 18px !important;
+  z-index: 10 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(300px, 420px) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: start !important;
+  pointer-events: none !important;
+}
+.cartografia-surface .cartography-top-rail > .floater {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: auto !important;
+  pointer-events: auto !important;
+}
+.cartografia-surface .cartography-top-rail .minimap-floater {
+  grid-column: 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+.cartografia-surface .cartography-top-rail .search-floater {
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+.cartografia-surface .cartography-top-rail .visual-lens-floater {
+  grid-column: 3 !important;
+  justify-self: end !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 1900px) {
+  .cartografia-surface .cartography-top-rail {
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+    grid-template-areas:
+      'minimap lens'
+      'search search' !important;
+    row-gap: 10px !important;
+  }
+  .cartografia-surface .cartography-top-rail .minimap-floater {
+    grid-area: minimap !important;
+  }
+  .cartografia-surface .cartography-top-rail .visual-lens-floater {
+    grid-area: lens !important;
+    max-width: 100% !important;
+  }
+  .cartografia-surface .cartography-top-rail .search-floater {
+    grid-area: search !important;
+    width: 420px !important;
+    max-width: min(420px, calc(100vw - 72px)) !important;
+    justify-self: start !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .cartografia-surface .cartography-top-rail {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      'minimap'
+      'lens'
+      'search' !important;
+  }
+  .cartografia-surface .cartography-top-rail .visual-lens-floater,
+  .cartografia-surface .cartography-top-rail .search-floater {
+    justify-self: stretch !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* ─── Viewport bg ambient gradients · slate gold (era bronze warm). */
+.cartografia-surface .world::before,
+.cartografia-surface .world::after {
+  background: radial-gradient(circle at 62% 24%, rgba(212, 168, 90, 0.04), transparent 34%) !important;
+}
+
+/* ─── Atom title (a-name) override final · cool cream forte sempre. */
+.cartografia-surface .atom .a-name,
+.cartografia-surface .atom-pipe .a-name {
+  color: var(--cc-text-strong) !important;
+}
+.cartografia-surface .atom.missing-source .a-name {
+  color: var(--cc-text-strong) !important;
+}
+
+/* ─── Atom-pipe title heavier hierarchy. */
+.cartografia-surface .atom-pipe .a-name {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-size: 17px !important;
+  letter-spacing: -0.012em !important;
+}

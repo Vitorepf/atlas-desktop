@@ -40,7 +40,9 @@ pub enum BridgeAuth {
 
 impl AtlasServerConfig {
     pub fn with_token(mut self, token: impl Into<String>) -> Self {
-        self.auth = BridgeAuth::Bearer { token: token.into() };
+        self.auth = BridgeAuth::Bearer {
+            token: token.into(),
+        };
         self
     }
 }

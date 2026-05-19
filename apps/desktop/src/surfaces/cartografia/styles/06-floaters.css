@@ -1,0 +1,4 @@
+/* Floaters are split by responsibility. Keep this file as a stable import shim. */
+
+@import './06-floaters-core.css';
+@import './07-floaters-controls.css';

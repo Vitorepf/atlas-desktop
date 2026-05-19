@@ -70,18 +70,48 @@ desktop power:
 - Local ed25519 receipt signing.
 - macOS capabilities through narrow, auditable platform APIs.
 
+## Frontend Ownership Update · 2026-05-13
+
+The React cockpit now follows this ownership model:
+
+```text
+apps/desktop/src/shell/
+  global shell, surface routing, topbar, error boundaries.
+
+apps/desktop/src/surfaces/code/
+  Atlas Code product surface: obra, left rail, stage, right rail, terminal.
+
+apps/desktop/src/components/
+  legacy compatibility facades only. No new product feature starts here.
+```
+
+This update matters because Atlas Desktop is expected to grow into an
+Engineering Operations System cockpit. Generic `components/` buckets are no
+longer acceptable as the primary architecture. Product ownership must be local
+to the surface or shell boundary that owns the behavior.
+
 ## Definition of Done · v1
 
 - `npm install` resolves all workspaces with zero conflicts.
-- `npm run dev` boots the React shell with honest empty states until a Kernel
-  endpoint is configured.
+- `npm run dev` boots the React shell with honest empty/error states.
 - `npm run tauri:dev` (when Rust is installed) boots the Tauri window.
 - Each crate compiles with `cargo check`.
 - No business logic in the desktop — only UI composition + bridge transport
   + native primitives.
+- New UI behavior is added under `shell/` or `surfaces/`, not as a new generic
+  component in `components/`.
+- Production surfaces do not display silent mocks.
 
 ## Repo Status
 
-This commit lands the monorepo scaffold (apps/desktop + crates/* + packages/*
-+ docs/architecture). Layout-only React renders empty states. The bridge
-(passo 2) and atlas-server endpoints (passo 3) are next.
+As of 2026-05-13, the monorepo has moved beyond scaffold:
+
+- `shell/` exists and owns global layout/topbar/surface host.
+- `surfaces/code/` owns the Atlas Code cockpit boundaries.
+- `surfaces/code/terminal/` owns PTY/xterm layout and protocol plumbing.
+- `packages/atlas-domain` carries shared domain contracts.
+- Rust crates exist for bridge/platform/tauri/receipts/canon boundaries.
+
+The remaining risk is not folder layout. The remaining risk is operational
+trust: backend contract gaps, terminal prompt regression, receipt/diff
+verification, and visual regression coverage.

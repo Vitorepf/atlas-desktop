@@ -1,33 +1,70 @@
-//! Endpoint catalog — single source of truth mapping the 12 MVP needs to
+//! Endpoint catalog — single source of truth mapping the Desktop needs to
 //! atlas-server routes. Built from the audit:
 //!   docs/architecture/0001-atlas-desktop-boundaries.md
+//!   docs/architecture/0002-code-cartography-production-readiness.md
 //!
 //! REUSE = endpoint already exists in atlas-server today.
 //! WRAP  = endpoint exists but request/response shape needs minor extension.
 //! NEW   = endpoint must be created in the `atlas-code-mvp-endpoints` branch.
+//! V2    = added in production-readiness P0 (boot, mcp/status, works wrapper,
+//!         thread wrapper, receipt v2).
 
-pub const HEALTH: &str = "/health";                                         // REUSE
-pub const PROVIDERS_STATUS: &str = "/ai/providers/status";                  // REUSE
+pub const HEALTH: &str = "/health"; // REUSE
+pub const PROVIDERS_STATUS: &str = "/ai/providers/status"; // REUSE
 
-pub const PROJECTS_LIST: &str = "/projects";                                // REUSE
-pub const PROJECTS_CREATE: &str = "/projects";                              // WRAP
+pub const PROJECTS_LIST: &str = "/projects"; // REUSE (legacy)
+pub const PROJECTS_CREATE: &str = "/projects"; // WRAP (legacy)
 
-pub const THREAD_GET: &str = "/ai/threads/";                                // REUSE (+ {id})
-pub const INTERACTION_STREAM: &str = "/ai/interactions/";                   // REUSE (+ {id}/stream)
-pub const INTERACTION_CREATE: &str = "/ai/interactions";                    // REUSE
-pub const DECISION_GET: &str = "/ai/decisions/";                            // WRAP (+ {id})
+pub const THREAD_GET: &str = "/ai/threads/"; // REUSE (+ {id})
+pub const INTERACTION_STREAM: &str = "/ai/interactions/"; // REUSE (+ {id}/stream)
+pub const INTERACTION_CREATE: &str = "/ai/interactions"; // REUSE
+pub const DECISION_GET: &str = "/ai/decisions/"; // WRAP (+ {id})
 
-pub const TOOLS_GATE: &str = "/tools/gate";                                 // REUSE
-pub const TOOLS_RUN: &str = "/tools/";                                      // REUSE (+ {tool}/run)
-pub const TOOLS_EVIDENCE: &str = "/tools/evidence";                         // REUSE
+pub const TOOLS_GATE: &str = "/tools/gate"; // REUSE
+pub const TOOLS_RUN: &str = "/tools/"; // REUSE (+ {tool}/run)
+pub const TOOLS_EVIDENCE: &str = "/tools/evidence"; // REUSE
 
-// NEW · created in atlas-server branch atlas-code-mvp-endpoints
-pub const ATLAS_CODE_SESSIONS: &str = "/atlas-code/works/";                 // NEW (+ {work}/sessions)
-pub const ATLAS_CODE_EVIDENCE: &str = "/atlas-code/works/";                 // NEW (+ {work}/evidence)
-pub const ATLAS_CODE_SIGN: &str = "/atlas-code/decisions/";                 // NEW (+ {id}/sign)
-pub const ATLAS_CODE_APPLY_DIFF: &str = "/atlas-code/diffs/";               // NEW (+ {patch}/apply)
+// Atlas Code · NEW endpoints (atlas-code-mvp-endpoints branch)
+pub const ATLAS_CODE_SESSIONS: &str = "/atlas-code/works/"; // NEW (+ {work}/sessions)
+pub const ATLAS_CODE_EVIDENCE: &str = "/atlas-code/works/"; // NEW (+ {work}/evidence)
+pub const ATLAS_CODE_SIGN: &str = "/atlas-code/decisions/"; // NEW (+ {id}/sign)
+pub const ATLAS_CODE_APPLY_DIFF: &str = "/atlas-code/diffs/"; // NEW (+ {patch}/apply)
+
+// Atlas Code · V2 endpoints (production-readiness ADR-0002)
+pub const ATLAS_CODE_BOOT: &str = "/atlas-code/boot"; // V2
+pub const ATLAS_CODE_MCP_STATUS: &str = "/atlas-code/mcp/status"; // V2
+pub const ATLAS_CODE_CERTIFICATION: &str = "/atlas-code/certification"; // V2
+pub const ATLAS_CODE_WORKS_LIST: &str = "/atlas-code/works"; // V2
+pub const ATLAS_CODE_WORKS_CREATE: &str = "/atlas-code/works"; // V2
+pub const ATLAS_CODE_WORK_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id})
+pub const ATLAS_CODE_WORK_STATE: &str = "/atlas-code/works/"; // V2 (+ {id}/state)
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions)
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS_ASYNC: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/async)
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTION_ASYNC_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/{execution})
+pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTION_HISTORY_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/history/{history})
+pub const ATLAS_CODE_WORK_FORGE_REVIEWS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/reviews)
+pub const ATLAS_CODE_WORK_CHECKPOINTS: &str = "/atlas-code/works/"; // V2 (+ {id}/checkpoints)
+pub const ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEMS: &str = "/atlas-code/works/"; // V2 (+ {id}/programming/work-items)
+pub const ATLAS_CODE_WORK_PROGRAMMING_WORK_ITEM_SPEC: &str = "/atlas-code/works/"; // V2 (+ {id}/programming/work-items/{work_item}/spec)
+pub const ATLAS_CODE_WORK_FORGE_FAST_PATH: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/fast-path)
+pub const ATLAS_CODE_WORK_FORGE_INTAKE: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/intake)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_TOPOLOGY: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-topology)
+pub const ATLAS_CODE_WORK_FORGE_CONTINUUM_CERTIFICATION: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/continuum-certification)
+pub const ATLAS_CODE_FORGE_PROVIDER_CAPACITY: &str = "/atlas-code/forge/provider-capacity"; // V2 (global capacity)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_CAPACITY: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-capacity)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_FAILURES: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-failures)
+pub const ATLAS_CODE_WORK_FORGE_RUNTIME_DISPATCH: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/runtime-dispatch)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_INVOCATIONS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_INVOCATION_LATEST: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations/latest)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_DRIVERS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations/drivers)
+pub const ATLAS_CODE_WORK_FORGE_PROVIDER_PLAN_DRIVER: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/provider-invocations/plan-driver)
+pub const ATLAS_CODE_WORK_FORGE_UX_ORCHESTRATOR: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/ux-orchestrator)
+pub const ATLAS_CODE_FORGE_PROVIDER_ARENA_SNAPSHOT: &str = "/atlas-code/forge/provider-arena/snapshot"; // Provider Arena UI v1
+pub const ATLAS_CODE_FORGE_PROVIDER_ARENA_RUN: &str = "/atlas-code/forge/provider-arena/run"; // Provider Arena UI v1
+pub const ATLAS_CODE_THREAD: &str = "/atlas-code/threads/"; // V2 (+ {id})
+pub const ATLAS_CODE_RECEIPT: &str = "/atlas-code/decisions/"; // V2 (+ {id}/receipt)
 
 // CARTOGRAPHY · read-only · GET endpoints exposed by AtlasCartographyController
 pub const CARTOGRAPHY_GRAPH: &str = "/atlas-cartography/graph";
 pub const CARTOGRAPHY_RECENT_CHANGES: &str = "/atlas-cartography/recent-changes";
-pub const CARTOGRAPHY_NOTE: &str = "/atlas-cartography/note/";              // + {graph_id}
+pub const CARTOGRAPHY_NOTE: &str = "/atlas-cartography/note/"; // + {graph_id}

@@ -1,0 +1,73 @@
+{
+  "schema": "atlas.vox.v6_desktop_companion.v1",
+  "status": "pass",
+  "generated_at": "2026-05-19T18:33:43.224Z",
+  "duration_ms": 9582,
+  "totals": {
+    "total": 2,
+    "pass": 2,
+    "warn": 0,
+    "fail": 0
+  },
+  "steps": [
+    {
+      "status": "pass",
+      "summary": "manifest=pass · 17 pass / 0 warn / 0 fail",
+      "detail": {
+        "exit": 0,
+        "manifest_path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-release-check/manifest.json",
+        "manifest_status": "pass",
+        "totals": {
+          "total": 17,
+          "pass": 17,
+          "warn": 0,
+          "fail": 0
+        }
+      },
+      "id": "vox_release_check",
+      "title": "vox:release-check (build + smoke + visual-smoke)",
+      "duration_ms": 9349
+    },
+    {
+      "status": "pass",
+      "summary": "cert=pass · 32 pass / 0 warn / 0 fail",
+      "detail": {
+        "exit": 0,
+        "php_bin": "/opt/homebrew/bin/php",
+        "schema": "atlas.vox.v6_certification.v1",
+        "cert_status": "pass",
+        "v6_ready_for_dogfood": true,
+        "ready_for_daily_use": true,
+        "v7_unlock_allowed": false,
+        "v7_would_unlock_if_doctrine_allowed": false,
+        "v7_blockers_pt_br": [
+          "Uso real insuficiente: 43 sessões, 1 dias com Vox aberto. Precisamos de ≥ 100 sessões OU ≥ 30 dias.",
+          "Sem dogfood registrado ainda — sem como medir taxa de sucesso. Use o Vox por dias e marque sessões via /ai/vox/dogfood/session.",
+          "Sem dogfood registrado — sem como medir arrependimento. V7 exige amostra real.",
+          "Apenas 0 correções pessoais aplicadas. V7 (memória longitudinal) precisa de padrões reais — meta ≥ 10.",
+          "Marcador humano ausente. Crie ~/.atlas/vox/v7_unlock_approved.json com {\"approved_by\":\"Vitor\",\"approved_at\":\"<ISO 8601>\",\"reason\":\"...\"} para registrar aprovação explícita."
+        ],
+        "dogfood_headline_pt_br": "Atlas Vox utilizável; siga registrando sessões para refinar.",
+        "dogfood_sentences_pt_br": [
+          "Você usou o Atlas Vox 43 vezes.",
+          "Ainda coletando uso real — abra o Atlas Vox, use no dia a dia e marque cada sessão como \"Funcionou\" ou \"Ruim\".",
+          "Memória entre dias (V7) bloqueada por design até haver uso real suficiente. V7 segue bloqueada. 5 critério(s) ainda não cumprido(s). Use o Vox no dia a dia, registre dogfood e zere bloqueios duros antes de pensar em destravar."
+        ],
+        "totals": {
+          "pass": 32,
+          "warn": 0,
+          "fail": 0
+        },
+        "next_actions": [
+          "Use o Atlas Vox V6 em uso real (dogfood) por algumas semanas antes de cogitar V7.",
+          "Capture sessões reais com `/ai/vox/dogfood/session` para alimentar o relatório.",
+          "Re-rode `php artisan atlas:vox:v6-certify --json` semanalmente para garantir não-regressão."
+        ]
+      },
+      "id": "artisan_v6_certify",
+      "title": "php artisan atlas:vox:v6-certify --json",
+      "duration_ms": 231
+    }
+  ],
+  "hint": "Comando principal documentado: `php artisan atlas:vox:v6-certify --json`."
+}

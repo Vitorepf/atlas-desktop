@@ -1,0 +1,73 @@
+/* ─── VIEWPORT (canvas com pan/zoom) ─────── */
+.cartografia-surface .viewport {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(rgba(138, 106, 53, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--cream);
+  cursor: grab;
+}
+.cartografia-surface .viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 240ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .viewport.viewport-relations::after {
+  opacity: 1;
+  background: radial-gradient(circle at 62% 24%, rgba(138, 106, 53, 0.045), transparent 34%);
+}
+.cartografia-surface .viewport.viewport-risk::after {
+  opacity: 1;
+  background: radial-gradient(circle at 52% 52%, rgba(138, 48, 37, 0.045), transparent 36%);
+}
+.cartografia-surface .viewport.viewport-recent::after {
+  opacity: 1;
+  background: radial-gradient(circle at 18% 84%, rgba(138, 106, 53, 0.052), transparent 30%);
+}
+.cartografia-surface .viewport.viewport-evidence::after {
+  opacity: 1;
+  background: radial-gradient(circle at 72% 48%, rgba(74, 95, 58, 0.05), transparent 38%);
+}
+.cartografia-surface .viewport.is-panning { cursor: grabbing; }
+
+/* ─── ISOLATE-MODE / SPOTLIGHT (canon Don Corleone) ────────
+   Vinheta radial cream-deep nas bordas + blur 2px nos não-kin.
+   Não é overlay — é tratamento do próprio viewport para que o
+   mundo permaneça presente, apenas desfocado, em volta da peça. */
+.cartografia-surface .viewport.is-isolated::after {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 18%, rgba(60, 47, 23, 0.10) 58%, rgba(40, 30, 15, 0.22) 92%);
+  transition: opacity 420ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+
+/* ─── WORLD (transformed) ────────────────── */
+.cartografia-surface .world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  transition: transform 420ms cubic-bezier(0.4, 1, 0.2, 1);
+}
+.cartografia-surface .world.no-transition { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cartografia-surface .world { transition: none; }
+  .cartografia-surface .viewport::after { transition: none; }
+  .cartografia-surface .viewport.is-isolated::after { transition: none; }
+}
+.cartografia-surface .world-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+

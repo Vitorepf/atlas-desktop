@@ -1,16 +1,18 @@
-import { useCallback } from 'react'
-import { CartografiaSurface } from './components/cartografia/CartografiaSurface'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { LeftRail } from './components/LeftRail'
-import { MainStage } from './components/MainStage'
-import { ObraBar } from './components/ObraBar'
-import { RightRail } from './components/RightRail'
-import { TerminalDock } from './components/TerminalDock'
+import { useCallback, useEffect } from 'react'
 import { TopBar } from './components/TopBar'
-import { idlePipeline, noTerminalLines } from './data/empty'
+import { useBoot } from './hooks/useBoot'
 import { useBridge } from './hooks/useBridge'
 import { useKernelStatus } from './hooks/useKernelStatus'
+import { useMcpStatus } from './hooks/useMcpStatus'
 import { useSurface } from './hooks/useSurface'
+import { ProjectProfileSheet } from './shared/projectProfile/ProjectProfileSheet'
+import { useProjectProfile } from './shared/projectProfile/useProjectProfile'
+import { AtlasShell } from './shell/AtlasShell'
+import { SurfaceHost } from './shell/SurfaceHost'
+import { TopBarLocationTrailProvider } from './shell/topbar/TopBarLocationTrailProvider'
+import { useNativeMenuEvents } from './shell/useNativeMenuEvents'
+import { useTerminalStore } from './state/terminalStore'
+import { useAttentionCount } from './surfaces/atencao/useAttentionCount'
 
 /**
  * Atlas Desktop · single .app, multiple sovereign surfaces.
@@ -18,20 +20,45 @@ import { useSurface } from './hooks/useSurface'
  * - Code:        cabine onde você dirige o Atlas (programa).
  * - Cartografia: mapa read-only do canon (audita a verdade).
  *
- * Enterprise lifecycle:
- *   atlas-tauri sobe o atlas-server como sidecar (php artisan serve + queue
- *   worker). useKernelStatus polla o status; quando vira 'ready', invocamos
- *   atlas_bridge_reconfigure (Tauri rehidrata AtlasBridge com ATLAS_TOKEN
- *   real) e disparamos useBridge.refresh() pra puxar dados frescos. O
- *   usuário vê tudo acontecer sem abrir terminal.
- *
- * CANON · Atlas Code usa somente dados reais ou estados vazios explícitos.
- *   No invented data. The cockpit renders exactly what the Kernel returns.
- *   When nothing is returned, components show honest empty states.
+ * Lifecycle:
+ *   atlas-tauri sobe atlas-server como sidecar (php artisan serve + queue
+ *   worker). useKernelStatus polla até `ready` (com retry+diagnóstico),
+ *   onReady chama atlas_bridge_reconfigure (rehidrata AtlasBridge com
+ *   ATLAS_TOKEN real) e dispara useBridge.refresh() pra puxar dados frescos.
  */
 function App() {
   const { surface, setSurface } = useSurface()
   const b = useBridge()
+  const terminalPlacement = useTerminalStore((s) => s.dockPlacement)
+  const openTerminalDock = useTerminalStore((s) => s.openDock)
+  const toggleTerminalDock = useTerminalStore((s) => s.toggleDock)
+
+  useNativeMenuEvents(surface, setSurface)
+
+  const onTerminalToggle = useCallback(() => {
+    if (surface !== 'code') {
+      setSurface('code')
+      openTerminalDock()
+      return
+    }
+    toggleTerminalDock()
+  }, [openTerminalDock, setSurface, surface, toggleTerminalDock])
+
+  useEffect(() => {
+    if (surface === 'code') return
+
+    const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
+    function onKeyDown(e: KeyboardEvent) {
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (modifier && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault()
+        onTerminalToggle()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onTerminalToggle, surface])
 
   const onKernelReady = useCallback(() => {
     void (async () => {
@@ -46,57 +73,61 @@ function App() {
   }, [b])
 
   const kernel = useKernelStatus({ onReady: onKernelReady })
+  const { boot } = useBoot(kernel.status === 'ready' || b.mode !== 'tauri')
+  const { mcp } = useMcpStatus(kernel.status === 'ready' || b.mode !== 'tauri')
+
+  // Poll Atenção count when kernel is ready and operator is NOT in the
+  // Atenção surface (when they are, the surface itself has the snapshot
+  // and renders the counter inline). 30s interval is enough — Atenção is
+  // a steady-state queue, not a real-time log.
+  const attentionCount = useAttentionCount({
+    workspaceSlug: b.activeWorkspaceSlug ?? null,
+    enabled: surface !== 'atencao' && (kernel.status === 'ready' || b.mode !== 'tauri'),
+  })
+
+  // Project Profile Sheet · Cmd+Shift+P opens; reachable from WorkspacePill
+  // and any future surface that needs to inspect the active Project profile.
+  // Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
+  const projectProfile = useProjectProfile()
 
   return (
-    <div className={`atlas-shell surface-${surface}`}>
-      <TopBar
-        mode={b.mode}
-        loading={b.loading || b.busy}
-        errors={b.errors}
-        surface={surface}
-        onSurfaceChange={setSurface}
-        kernel={kernel}
-      />
+    <TopBarLocationTrailProvider>
+      <AtlasShell surface={surface} terminalPlacement={terminalPlacement}>
+        <TopBar
+          mode={b.mode}
+          loading={b.loading || b.busy}
+          errors={b.errors}
+          surface={surface}
+          onSurfaceChange={setSurface}
+          kernel={kernel}
+          mcp={mcp}
+          workspaces={b.workspaces}
+          activeWorkspace={b.activeWorkspace}
+          activeWorkspaceSlug={b.activeWorkspaceSlug}
+          onSelectWorkspace={b.setActiveWorkspaceSlug}
+          onOpenWorkspaceProfile={projectProfile.show}
+          attentionCount={attentionCount}
+          enabledSurfaces={b.activeWorkspace?.surfacesEnabled ?? null}
+        />
 
-      {surface === 'code' ? (
-        <>
-          <ObraBar obra={b.obra} onCreate={b.createObra} busy={b.busy} />
-          <LeftRail
-            obras={b.obras}
-            activeObraId={b.obra?.id ?? null}
-            active={b.active}
-            recent={b.recent}
-            loading={b.loading}
-            busy={b.busy}
-            onSelectObra={b.selectObra}
-          />
-          <MainStage
-            stages={idlePipeline}
-            messages={b.messages}
-            receiptHash={b.receipt?.id ?? ''}
-            loading={b.loading}
-            busy={b.busy}
-            hasObra={!!b.obra}
-            onSend={b.sendIntent}
-          />
-          <ErrorBoundary label="RightRail">
-            <RightRail
-              receipt={b.receipt}
-              gates={b.gates}
-              core={b.core}
-              busy={b.busy}
-              onSignReceipt={b.signReceipt}
-              onRunGate={b.runGate}
-            />
-          </ErrorBoundary>
-          <TerminalDock lines={noTerminalLines} ptyMode={b.core.pty} cwd={b.core.workspacePath} />
-        </>
-      ) : (
-        <ErrorBoundary label="Cartografia">
-          <CartografiaSurface />
-        </ErrorBoundary>
-      )}
-    </div>
+        <SurfaceHost
+          surface={surface}
+          bridge={b}
+          boot={boot}
+          onSurfaceChange={setSurface}
+          onOpenWorkspaceProfile={projectProfile.show}
+        />
+
+        <ProjectProfileSheet
+          open={projectProfile.open}
+          onClose={projectProfile.hide}
+          workspaces={b.workspaces}
+          active={b.activeWorkspace}
+          activeSlug={b.activeWorkspaceSlug ?? null}
+          onSelect={b.setActiveWorkspaceSlug}
+        />
+      </AtlasShell>
+    </TopBarLocationTrailProvider>
   )
 }
 

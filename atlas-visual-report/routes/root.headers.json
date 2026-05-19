@@ -1,0 +1,26 @@
+{
+    "Vary": [
+        "Origin"
+    ],
+    "Content-Type": [
+        "text/html"
+    ],
+    "Cache-Control": [
+        "no-cache"
+    ],
+    "Etag": [
+        "W/\"3de-yqACcaDyDyT85H3l+pWQkKTv6Go\""
+    ],
+    "Date": [
+        "Sat, 16 May 2026 20:07:32 GMT"
+    ],
+    "Connection": [
+        "keep-alive"
+    ],
+    "Keep-Alive": [
+        "timeout=5"
+    ],
+    "Content-Length": [
+        "990"
+    ]
+}

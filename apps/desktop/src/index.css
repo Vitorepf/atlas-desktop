@@ -1,4 +1,4 @@
-@layer reset, tokens, base, layout, components, motion;
+@layer reset, tokens, enterprise, base, layout, components, motion;
 
 /* ──────────────────────────────────────────────────────────────────────────
    Atlas Editorial DNA · cream/bronze/cormorant
@@ -39,6 +39,14 @@
     --rec-red-veil: rgba(138, 48, 37, 0.06);
     --rec-red-soft: rgba(138, 48, 37, 0.30);
 
+    --ansi-magenta: #6b3a52;
+    --ansi-magenta-bright: #8a5072;
+    --ansi-cyan: #2f5a6b;
+    --ansi-cyan-bright: #4a7588;
+    --ansi-red-bright: #a8453a;
+    --ansi-green-bright: #5e7548;
+    --ansi-blue-bright: #3d5570;
+
     --hair: rgba(26, 23, 20, 0.14);
     --hair-soft: rgba(26, 23, 20, 0.07);
 
@@ -47,23 +55,3520 @@
     --sans: 'Inter', system-ui, sans-serif;
 
     --ease-i: cubic-bezier(0.32, 0.72, 0.24, 1);
+
+    --terminal-dock-height: 260px;
+    --terminal-side-height: 320px;
+    --code-left-width: 260px;
+    --code-right-width: 320px;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Atlas Code · Visual Ergonomics & Enterprise Polish v1
+   12h workstation tokens · paleta menos monocromática, tipografia legível,
+   status colors distintos, focus rings, spacing scale, density.
+   Esta camada complementa @layer tokens sem reescrever o DNA editorial;
+   componentes podem adotar `--cc-*` para superfície enterprise.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@layer enterprise {
+  :root {
+    /* Paleta enterprise estendida — warm ivory mais calmo, menos amarelado. */
+    --cc-bg: #f4ede0;              /* canvas principal, warm ivory levemente mais cinza */
+    --cc-surface: #faf5e8;         /* superfície de painel/card */
+    --cc-surface-raised: #fcfaf4;  /* superfície elevada (popovers/diálogos), warm off-white */
+    --cc-surface-sunken: #ece4d3;  /* superfície recuada (sidebars, footers) */
+
+    /* Hierarquia de texto · graphite warm em vez de marrom puro. */
+    --cc-text: #1d1a16;            /* primary */
+    --cc-text-strong: #0f0e0c;     /* headlines */
+    --cc-text-muted: #5a544a;      /* secondary, legível em 12h */
+    --cc-text-faint: #8a8275;      /* helpers/captions */
+    --cc-text-disabled: #b3ac9e;   /* disabled */
+
+    /* Bordas calmas, com escala. */
+    --cc-border-soft: rgba(26, 23, 20, 0.08);
+    --cc-border: rgba(26, 23, 20, 0.16);
+    --cc-border-strong: rgba(26, 23, 20, 0.28);
+
+    /* Status colors enterprise — distintos do warm dominante. */
+    --cc-success: #4a6a3c;
+    --cc-success-fg: #2d4525;
+    --cc-success-veil: rgba(74, 106, 60, 0.10);
+    --cc-success-border: rgba(74, 106, 60, 0.32);
+
+    --cc-warning: #a87327;
+    --cc-warning-fg: #6e4818;
+    --cc-warning-veil: rgba(168, 115, 39, 0.10);
+    --cc-warning-border: rgba(168, 115, 39, 0.32);
+
+    --cc-danger: #8a3025;
+    --cc-danger-fg: #5e1e16;
+    --cc-danger-veil: rgba(138, 48, 37, 0.08);
+    --cc-danger-border: rgba(138, 48, 37, 0.30);
+
+    --cc-info: #2f5a6b;
+    --cc-info-fg: #1c3c4a;
+    --cc-info-veil: rgba(47, 90, 107, 0.08);
+    --cc-info-border: rgba(47, 90, 107, 0.32);
+
+    --cc-neutral: #5e564b;
+    --cc-neutral-fg: #3a352d;
+    --cc-neutral-veil: rgba(94, 86, 75, 0.08);
+    --cc-neutral-border: rgba(94, 86, 75, 0.28);
+
+    /* Accent (deep umber) — usado em ativos, foco, CTAs primários. */
+    --cc-accent: #6b4a1e;
+    --cc-accent-strong: #4d3613;
+    --cc-accent-veil: rgba(107, 74, 30, 0.08);
+    --cc-accent-border: rgba(107, 74, 30, 0.32);
+
+    /* Tipografia · operacional. Sans pra corpo, serif só pra display. */
+    --cc-font-sans: 'Inter', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --cc-font-serif: 'Cormorant Garamond', Georgia, serif;
+    --cc-font-mono: 'JetBrains Mono', 'JetBrains Mono Variable', ui-monospace, 'Menlo', monospace;
+    --cc-font-display: 'Inter', 'Inter Variable', system-ui, sans-serif;
+
+    /* Easing curves Apple Pro class. */
+    --cc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --cc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --cc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Escala tipográfica curada — 12h-friendly. */
+    --cc-text-display: 22px;   /* display/headlines especiais */
+    --cc-text-title: 17px;     /* títulos de painel */
+    --cc-text-section: 14px;   /* títulos de seção */
+    --cc-text-body: 13.5px;    /* corpo operacional */
+    --cc-text-body-sm: 12.5px; /* corpo denso */
+    --cc-text-caption: 11.5px; /* legendas */
+    --cc-text-label: 10px;     /* labels uppercase */
+    --cc-text-data: 12px;      /* dados em mono */
+
+    /* Line-heights generosos pra parágrafos longos. */
+    --cc-leading-tight: 1.25;
+    --cc-leading-snug: 1.4;
+    --cc-leading-normal: 1.5;
+    --cc-leading-relaxed: 1.6;
+
+    /* Letter-spacing — 0 no corpo, mínimo em labels uppercase. */
+    --cc-tracking-tight: -0.005em;
+    --cc-tracking-normal: 0;
+    --cc-tracking-label: 0.08em;
+    --cc-tracking-data: 0.02em;
+
+    /* Pesos. */
+    --cc-weight-regular: 400;
+    --cc-weight-medium: 500;
+    --cc-weight-semibold: 600;
+    --cc-weight-bold: 700;
+
+    /* Spacing scale · 4px base. */
+    --cc-space-0: 0;
+    --cc-space-1: 4px;
+    --cc-space-2: 8px;
+    --cc-space-3: 12px;
+    --cc-space-4: 16px;
+    --cc-space-5: 20px;
+    --cc-space-6: 24px;
+    --cc-space-8: 32px;
+    --cc-space-10: 40px;
+    --cc-space-12: 48px;
+
+    /* Radii. */
+    --cc-radius-xs: 2px;
+    --cc-radius-sm: 3px;
+    --cc-radius-md: 5px;
+    --cc-radius-lg: 8px;
+
+    /* Sombras enterprise discretas (warm-tinted). */
+    --cc-shadow-xs: 0 1px 0 rgba(26, 23, 20, 0.04);
+    --cc-shadow-sm: 0 1px 2px rgba(26, 23, 20, 0.06);
+    --cc-shadow-md: 0 4px 12px rgba(26, 23, 20, 0.08);
+    --cc-shadow-lg: 0 10px 28px rgba(26, 23, 20, 0.10);
+
+    /* Focus ring · acessível por keyboard, calmo. */
+    --cc-focus-ring: 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(107, 74, 30, 0.55);
+
+    /* Density · comfortable padrão, compact opcional. */
+    --cc-density: comfortable;
+    --cc-row-h: 36px;
+    --cc-row-h-compact: 30px;
+    --cc-control-h: 32px;
+    --cc-control-h-compact: 26px;
+
+    /* Status dot · cores baseadas em status canônicos. */
+    --cc-dot-running: var(--cc-info);
+    --cc-dot-blocked: var(--cc-danger);
+    --cc-dot-review: var(--cc-warning);
+    --cc-dot-passed: var(--cc-success);
+    --cc-dot-unknown: var(--cc-neutral);
+  }
+
+  [data-cc-density='compact'] {
+    --cc-row-h: var(--cc-row-h-compact);
+    --cc-control-h: var(--cc-control-h-compact);
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     Atlas Code · Premium Workbench Visual Comfort v1
+     12h workstation theme · warm graphite/charcoal, low-glare, premium feel.
+     Aplicado APENAS dentro do shell Atlas Code para preservar Cartografia
+     (que continua warm cream legacy).
+     ──────────────────────────────────────────────────────────────────── */
+  /* ════════════════════════════════════════════════════════════════════
+     SURFACE OPT-IN SLATE DARK · ADICIONE SUA SURFACE NOVA AQUI ↓
+     ────────────────────────────────────────────────────────────────────
+     Atlas Desktop é slate teal dark POR DEFAULT. Só Cartografia é cream.
+     Os tokens `--cc-*` declarados no `:root` acima são cream warm — é
+     ESTE bloco que redefine eles para slate. Surface que não entra aqui
+     herda CREAM e fica visualmente quebrada (ver Control Plane violation
+     em `docs/anti-patterns/control-plane-cream-violation.png`).
+
+     Antes de criar uma surface nova LEIA:
+       docs/IMPLEMENTING-NEW-SURFACE.md   (atalho 200 linhas + checklist)
+       docs/architecture/0007-atlas-desktop-design-system.md  cap. 22
+
+     Adicione sua surface AQUI e também nos seletores de scrollbar/font
+     mais abaixo nesta mesma camada @layer enterprise. Grep:
+       grep -n "surface-code," apps/desktop/src/index.css
+     ════════════════════════════════════════════════════════════════════ */
+  .atlas-shell.surface-code,
+  .atlas-shell.surface-atencao,
+  .atlas-shell.surface-atlas_ai,
+  .atlas-shell.surface-atlas-ai,
+  .atlas-shell.surface-control_plane {
+    /* Legacy token bridge · Atlas Code roda em slate teal (Codex-inspired).
+       Redefinir cream/ink/bronze/hair propaga o tema para painels legacy
+       que ainda nao migraram para cc-*. Cartografia intocada. */
+    --cream: #1d2b34;
+    --cream-deep: #15212a;
+    --cream-paper: #243743;
+    --cream-canvas: #1d2b34;
+
+    --ink: #e9eef2;
+    --ink2: #cdd6dc;
+    --ink3: #8d9aa3;
+    --ink4: #5d6c75;
+
+    --bronze: #d4a85a;
+    --bronze-deep: #e6b966;
+    --bronze-soft: rgba(212, 168, 90, 0.32);
+    --bronze-veil: rgba(212, 168, 90, 0.10);
+
+    --hair: rgba(233, 238, 242, 0.10);
+    --hair-soft: rgba(233, 238, 242, 0.05);
+
+    --prussian: #7fa7c4;
+    --moss: #82b577;
+    --moss-veil: rgba(130, 181, 119, 0.12);
+    --moss-soft: rgba(130, 181, 119, 0.34);
+
+    --rec-red: #d05a52;
+    --rec-red-veil: rgba(208, 90, 82, 0.12);
+    --rec-red-soft: rgba(208, 90, 82, 0.34);
+
+    /* Superfícies escalonadas · slate teal premium (Codex-inspired). */
+    --cc-bg: #1d2b34;
+    --cc-surface: #243743;
+    --cc-surface-raised: #2d4351;
+    --cc-surface-sunken: #15212a;
+
+    /* Texto · escala high-contrast cool cream sobre slate. */
+    --cc-text-strong: #f0f4f7;
+    --cc-text: #d6dde2;
+    --cc-text-muted: #95a3ac;
+    --cc-text-faint: #677482;
+    --cc-text-disabled: #3d4b54;
+
+    /* Bordas · alpha sobre cream, low-glare slate. */
+    --cc-border-soft: rgba(233, 238, 242, 0.05);
+    --cc-border: rgba(233, 238, 242, 0.10);
+    --cc-border-strong: rgba(233, 238, 242, 0.20);
+
+    /* Accent · atlas gold burnished (parcimônia sobre slate). */
+    --cc-accent: #d4a85a;
+    --cc-accent-strong: #e6b966;
+    --cc-accent-veil: rgba(212, 168, 90, 0.12);
+    --cc-accent-border: rgba(212, 168, 90, 0.34);
+
+    /* Status colors tuned para slate · saturados o suficiente sem agressão. */
+    --cc-success: #82b577;
+    --cc-success-fg: #b9e4ac;
+    --cc-success-veil: rgba(130, 181, 119, 0.12);
+    --cc-success-border: rgba(130, 181, 119, 0.34);
+
+    --cc-warning: #e0ad5e;
+    --cc-warning-fg: #f0cf94;
+    --cc-warning-veil: rgba(224, 173, 94, 0.12);
+    --cc-warning-border: rgba(224, 173, 94, 0.34);
+
+    --cc-danger: #d05a52;
+    --cc-danger-fg: #e89a93;
+    --cc-danger-veil: rgba(208, 90, 82, 0.12);
+    --cc-danger-border: rgba(208, 90, 82, 0.34);
+
+    --cc-info: #7fa7c4;
+    --cc-info-fg: #b9d0e0;
+    --cc-info-veil: rgba(127, 167, 196, 0.12);
+    --cc-info-border: rgba(127, 167, 196, 0.34);
+
+    --cc-neutral: #95a3ac;
+    --cc-neutral-fg: #c0c9d0;
+    --cc-neutral-veil: rgba(149, 163, 172, 0.10);
+    --cc-neutral-border: rgba(149, 163, 172, 0.28);
+
+    /* Shadows deep slate. */
+    --cc-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.20);
+    --cc-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.26);
+    --cc-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.32);
+    --cc-shadow-lg: 0 14px 32px rgba(0, 0, 0, 0.38);
+
+    /* Focus ring · burnished gold sobre slate bg. */
+    --cc-focus-ring: 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(230, 185, 102, 0.55);
+
+    /* Status dots já mapeiam pros cores acima. */
+    --cc-dot-running: var(--cc-info);
+    --cc-dot-blocked: var(--cc-danger);
+    --cc-dot-review: var(--cc-warning);
+    --cc-dot-passed: var(--cc-success);
+    --cc-dot-unknown: var(--cc-neutral);
+
+    /* Body do shell · gradient sutil Apple Pro. */
+    background:
+      radial-gradient(ellipse at top, rgba(45, 67, 81, 0.12) 0%, transparent 50%),
+      linear-gradient(180deg, #1d2b34 0%, #1a2832 100%);
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    line-height: var(--cc-leading-normal);
+    font-feature-settings: 'cv11', 'ss01', 'ss03', 'tnum' 0, 'kern' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numbers tabulares em monos/data · alinhamento perfeito. */
+  .atlas-shell.surface-code .cc-obra-row-id,
+  .atlas-shell.surface-code [class*='-mono'],
+  .atlas-shell.surface-code .check-tag,
+  .atlas-shell.surface-code .panel-title .muted {
+    font-feature-settings: 'tnum' 1, 'cv11' 1;
+  }
+
+  /* Focus rings premium · glow accent gold sutil. */
+  .atlas-shell.surface-code button:focus-visible,
+  .atlas-shell.surface-code input:focus-visible,
+  .atlas-shell.surface-code textarea:focus-visible,
+  .atlas-shell.surface-code [role='button']:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--cc-bg),
+      0 0 0 4px rgba(230, 185, 102, 0.45),
+      0 0 24px rgba(230, 185, 102, 0.18);
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* Scrollbar customizada · slate teal subtle.
+     Estendido para Atlas Code + Atenção + Atlas AI surfaces. */
+  .atlas-shell.surface-code *::-webkit-scrollbar,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .atlas-shell.surface-code *::-webkit-scrollbar-track,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar-track,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-track,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-track,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb {
+    background: rgba(149, 163, 172, 0.18);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+    transition: background 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb:hover {
+    background: rgba(149, 163, 172, 0.32);
+    background-clip: padding-box;
+  }
+  /* Firefox scrollbar-color fallback. */
+  .atlas-shell.surface-atlas_ai *,
+  .atlas-shell.surface-atlas-ai *,
+  .atlas-shell.surface-atencao *,
+  .atlas-shell.surface-code *,
+  .atlas-shell.surface-control_plane * {
+    scrollbar-color: rgba(149, 163, 172, 0.22) transparent;
+    scrollbar-width: thin;
+  }
+
+  /* Atlas Code -- Premium polish overrides (legacy compatibility)
+     Painels que ainda nao migraram para cc-* herdam refinamento via tracking
+     reduzido em uppercase, padding compactado, fontes sans, rows confortaveis. */
+  .atlas-shell.surface-code .panel-title,
+  .atlas-shell.surface-code .sess-section h3,
+  .atlas-shell.surface-code .ops-tab,
+  .atlas-shell.surface-code .cc-eyebrow {
+    font-family: var(--cc-font-sans);
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .panel-title {
+    font-size: 12.5px;
+    color: var(--cc-text);
+    font-weight: var(--cc-weight-semibold);
+    border-bottom-color: var(--cc-border-soft);
+    padding-bottom: 4px;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .atlas-shell.surface-code .panel-title .muted {
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--cc-text-faint);
+    font-weight: 400;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .sess-section h3 {
+    font-size: 11.5px;
+    color: var(--cc-text-muted);
+  }
+  .atlas-shell.surface-code .sess-section h3 .meta {
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+  }
+  .atlas-shell.surface-code .ops-tabs {
+    background: var(--cc-surface-sunken);
+    border-bottom-color: var(--cc-border-soft);
+    min-height: 0;
+  }
+  .atlas-shell.surface-code .ops-tab {
+    padding: 10px 6px;
+    font-size: 11.5px;
+    font-weight: var(--cc-weight-medium);
+    color: var(--cc-text-muted);
+    border-right-color: var(--cc-border-soft);
+    border-bottom-width: 2px;
+    line-height: 1.2;
+  }
+  .atlas-shell.surface-code .ops-tab:hover {
+    color: var(--cc-text);
+    background: var(--cc-accent-veil);
+  }
+  .atlas-shell.surface-code .ops-tab.on {
+    color: var(--cc-accent-strong);
+    background: var(--cc-bg);
+    border-bottom-color: var(--cc-accent);
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .ops-panel {
+    padding: 14px 16px 0;
+  }
+  .atlas-shell.surface-code .ops-section {
+    margin-bottom: 16px;
+  }
+
+  /* — Buttons enterprise: ink black → atlas gold premium. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    background: var(--cc-accent);
+    color: #15212a;
+    border-color: var(--cc-accent-strong);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:hover:not(:disabled) {
+    background: var(--cc-accent-strong);
+    color: #11202a;
+  }
+
+  /* — Left create-obra legacy override. */
+  .atlas-shell.surface-code .left-create-obra-btn {
+    background: var(--cc-accent);
+    color: #15212a;
+    border-color: var(--cc-accent-strong);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--cc-font-sans);
+    font-size: 13px;
+    font-weight: var(--cc-weight-semibold);
+    border-radius: var(--cc-radius-sm);
+  }
+  .atlas-shell.surface-code .left-create-obra-title {
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    color: var(--cc-text-muted);
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .left-create-obra-input {
+    background: var(--cc-surface-raised);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    font-family: var(--cc-font-sans);
+    font-size: 12.5px;
+    letter-spacing: 0;
+  }
+  .atlas-shell.surface-code .left-create-obra-actions button {
+    background: var(--cc-surface);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--cc-font-sans);
+    font-size: 11.5px;
+    font-weight: var(--cc-weight-medium);
+    border-radius: var(--cc-radius-sm);
+  }
+  .atlas-shell.surface-code .left-create-obra-actions button:first-child {
+    background: var(--cc-accent);
+    color: #15212a;
+    border-color: var(--cc-accent-strong);
+    font-weight: var(--cc-weight-semibold);
+  }
+
+  /* — Legacy `.pill` mapping. */
+  .atlas-shell.surface-code .pill {
+    background: var(--cc-neutral-veil);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+  }
+  .atlas-shell.surface-code .pill-primary {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+  }
+  .atlas-shell.surface-code .pill-ok {
+    background: var(--cc-success-veil);
+    color: var(--cc-success-fg);
+    border-color: var(--cc-success-border);
+  }
+  .atlas-shell.surface-code .pill-danger {
+    background: var(--cc-danger-veil);
+    color: var(--cc-danger-fg);
+    border-color: var(--cc-danger-border);
+  }
+
+  /* — Legacy `.obra-id` é claro demais sobre dark; recalibrar. */
+  .atlas-shell.surface-code .obra-id {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    font-family: var(--cc-font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .obra-objective {
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-weight: var(--cc-weight-medium);
+    font-size: 13.5px;
+    letter-spacing: 0;
+  }
+
+  /* — Status board legacy. */
+  .atlas-shell.surface-code .status-board {
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--cc-text-muted);
+    font-size: 12px;
+  }
+  .atlas-shell.surface-code .status-item .l {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .status-item .v { color: var(--cc-text); font-weight: var(--cc-weight-medium); }
+  .atlas-shell.surface-code .status-item .v.ok { color: var(--cc-success-fg); }
+  .atlas-shell.surface-code .status-item .v.warn { color: var(--cc-danger-fg); }
+
+  /* — Brand block premium. */
+  .atlas-shell.surface-code .brand strong {
+    letter-spacing: 0.02em;
+    color: var(--cc-text-strong);
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .brand .v {
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    background: var(--cc-accent-veil);
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .brand .sub {
+    color: var(--cc-text-muted);
+    font-style: normal;
+  }
+
+  /* — Surface switcher. */
+  .atlas-shell.surface-code .surface-switcher {
+    background: var(--cc-surface-sunken);
+    border-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-label {
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    letter-spacing: 0;
+    font-weight: var(--cc-weight-medium);
+  }
+  .atlas-shell.surface-code .surface-tab.on {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border);
+  }
+  .atlas-shell.surface-code .surface-tab.on .surface-tab-label {
+    color: var(--cc-text-strong);
+    font-weight: var(--cc-weight-semibold);
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+  }
+  .atlas-shell.surface-code .surface-tab.on .surface-tab-shortcut {
+    color: var(--cc-accent);
+  }
+
+  /* — folio (live indicator). */
+  .atlas-shell.surface-code .folio {
+    color: var(--cc-text-muted);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-mono);
+    font-size: 10.5px;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .folio .live { background: var(--cc-success); }
+
+  /* — Right rail body. */
+  .atlas-shell.surface-code .right-rail {
+    background: var(--cc-bg);
+    border-left-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .left-rail {
+    background: var(--cc-surface-sunken);
+    border-right-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .main-stage {
+    background: var(--cc-bg);
+  }
+  .atlas-shell.surface-code .conv-thread { background: transparent; }
+
+  /* — sdd-mini premium. */
+  .atlas-shell.surface-code .sdd-mini {
+    background: var(--cc-surface);
+    border-color: var(--cc-border-soft);
+    border-radius: var(--cc-radius-md);
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    padding: 12px 16px;
+    box-shadow: var(--cc-shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+  .atlas-shell.surface-code .sdd-mini .label {
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+    font-family: var(--cc-font-sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .atlas-shell.surface-code .sdd-mini .stages { gap: 14px; }
+  .atlas-shell.surface-code .sdd-mini .stage {
+    color: var(--cc-text-muted);
+    font-size: 12px;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 3px 8px;
+    border-radius: var(--cc-radius-xs);
+    transition: background 120ms var(--ease-i), color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.done {
+    color: var(--cc-success-fg);
+    background: var(--cc-success-veil);
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    color: var(--cc-accent-strong);
+    background: var(--cc-accent-veil);
+    font-weight: 600;
+    animation: none;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.todo {
+    color: var(--cc-text-faint);
+  }
+  .atlas-shell.surface-code .sdd-mini .meta {
+    color: var(--cc-text-faint);
+    font-size: 10.5px;
+    font-family: var(--cc-font-mono);
+    letter-spacing: 0.02em;
+  }
+  .atlas-shell.surface-code .sdd-mini .meta .v { color: var(--cc-text); }
+
+  /* Aumentar comprimento do ribbon SDD: 6 pills (Context/Spec/Plan/Execute/
+     Verify/Learn) cabem sem espremer + meta à direita. Pills não encolhem. */
+  .atlas-shell.surface-code .sdd-mini {
+    max-width: 1080px;
+  }
+  .atlas-shell.surface-code .sdd-mini .stages {
+    overflow-x: visible;
+    gap: 10px;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage {
+    flex-shrink: 0;
+  }
+
+  /* — Composer premium dark. */
+  .atlas-shell.surface-code .composer {
+    background: var(--cc-surface-sunken);
+    border-top-color: var(--cc-border-soft);
+  }
+  .atlas-shell.surface-code .composer textarea {
+    background: var(--cc-surface-raised);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+    font-style: normal;
+    font-family: var(--cc-font-sans);
+  }
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    color: var(--cc-text-faint);
+  }
+  .atlas-shell.surface-code .send-btn {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    font-style: normal;
+    font-family: var(--cc-font-sans);
+  }
+  .atlas-shell.surface-code .send-btn:hover {
+    background: var(--cc-accent);
+    color: #15212a;
+  }
+  .atlas-shell.surface-code .composer {
+    padding: 14px 32px 16px;
+  }
+  .atlas-shell.surface-code .composer-meta {
+    color: var(--cc-text-faint);
+    letter-spacing: 0;
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    font-size: 11.5px;
+    margin-top: 4px;
+  }
+  .atlas-shell.surface-code .composer-meta kbd {
+    background: var(--cc-surface);
+    color: var(--cc-text-muted);
+    border-color: var(--cc-border-soft);
+    font-family: var(--cc-font-mono);
+    letter-spacing: 0;
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border-radius: var(--cc-radius-xs);
+  }
+
+  /* — Generic legacy "section title" / "label" forms. */
+  .atlas-shell.surface-code [style*="text-transform: uppercase"] {
+    letter-spacing: 0.04em !important;
+  }
+
+  /* — Conversation messages premium dark. */
+  .atlas-shell.surface-code .conv-msg .who { color: var(--cc-text-muted); font-family: var(--cc-font-sans); letter-spacing: 0; text-transform: none; font-weight: var(--cc-weight-semibold); font-size: 11px; }
+  .atlas-shell.surface-code .conv-msg .who .time { color: var(--cc-text-faint); font-family: var(--cc-font-mono); }
+  .atlas-shell.surface-code .conv-msg.you .who { color: var(--cc-info-fg); }
+  .atlas-shell.surface-code .conv-msg.you .body { font-family: var(--cc-font-sans); font-style: normal; color: var(--cc-text); border-left-color: var(--cc-info); font-size: 14px; }
+  .atlas-shell.surface-code .conv-msg.atlas .body { font-family: var(--cc-font-sans); color: var(--cc-text); font-size: 13.5px; }
+
+  /* — Terminal status premium (slate teal status bar). */
+  .atlas-shell.surface-code .term-status {
+    font-family: var(--cc-font-sans);
+    color: var(--cc-text-faint);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11.5px;
+    padding: 8px 16px;
+    background: var(--cc-surface-sunken);
+    border-top-color: var(--cc-border-soft);
+    gap: 16px;
+  }
+  .atlas-shell.surface-code .term-status-cwd {
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .term-status-branch {
+    color: var(--cc-success-fg);
+    font-family: var(--cc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .atlas-shell.surface-code .term-status-exit.ok { color: var(--cc-success-fg); }
+  .atlas-shell.surface-code .term-status-exit.err { color: var(--cc-danger-fg); }
+  .atlas-shell.surface-code .term-status-running,
+  .atlas-shell.surface-code .term-status-pending {
+    color: var(--cc-info-fg);
+    font-size: 11px;
+  }
+  .atlas-shell.surface-code .pty-badge {
+    background: var(--cc-success-veil);
+    color: var(--cc-success-fg);
+    border-color: var(--cc-success-border);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: var(--cc-radius-xs);
+    text-transform: none;
+  }
+  .atlas-shell.surface-code .pty-badge.unavailable {
+    background: var(--cc-info-veil);
+    color: var(--cc-info-fg);
+    border-color: var(--cc-info-border);
+  }
+  .atlas-shell.surface-code .term-tab {
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--cc-text-muted);
+    transition: color 120ms var(--ease-i), border-color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code .term-tab:hover { color: var(--cc-text); }
+  .atlas-shell.surface-code .term-tab.active {
+    color: var(--cc-accent-strong);
+    border-bottom-color: var(--cc-accent);
+    font-weight: 600;
+  }
+  .atlas-shell.surface-code .term-context-k {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-sans);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .atlas-shell.surface-code .term-context-v {
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .atlas-shell.surface-code .term-action {
+    font-family: var(--cc-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--cc-text-muted);
+    border-radius: var(--cc-radius-xs);
+    transition: color 120ms var(--ease-i), background 120ms var(--ease-i), border-color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code .term-action:hover {
+    color: var(--cc-text);
+    background: var(--cc-accent-veil);
+    border-color: var(--cc-accent-border);
+  }
+  .atlas-shell.surface-code .term-action.primary {
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+    background: var(--cc-accent-veil);
+  }
+
+  /* — Hover micro-interactions Apple Pro class. */
+  .atlas-shell.surface-code .cc-obra-row {
+    transition:
+      background 280ms var(--cc-ease-out),
+      border-color 280ms var(--cc-ease-out),
+      transform 280ms var(--cc-ease-out),
+      box-shadow 280ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-obra-row:hover:not(:disabled):not([data-active='true']) {
+    transform: translateX(3px);
+    box-shadow:
+      -2px 0 0 0 var(--cc-accent-border),
+      0 0 20px rgba(212, 168, 90, 0.08);
+    background: rgba(255, 255, 255, 0.015);
+  }
+  .atlas-shell.surface-code .cc-obra-row[data-active='true'] {
+    box-shadow:
+      inset 2px 0 0 var(--cc-accent),
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* — Cards com inner highlight Apple Pro (3% em vez de 2%). */
+  .atlas-shell.surface-code .cc-card,
+  .atlas-shell.surface-code .cc-card-raised,
+  .atlas-shell.surface-code .ops-panel section[style*='border'],
+  .atlas-shell.surface-code .rail-panel > section {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* — Botões com hover Apple Pro · lift sutil + glow. */
+  .atlas-shell.surface-code .cc-btn,
+  .atlas-shell.surface-code .left-create-obra-btn,
+  .atlas-shell.surface-code .left-create-obra-actions button {
+    transition:
+      background 220ms var(--cc-ease-out),
+      border-color 220ms var(--cc-ease-out),
+      transform 180ms var(--cc-ease-out),
+      box-shadow 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:hover:not(:disabled),
+  .atlas-shell.surface-code .left-create-obra-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 16px rgba(212, 168, 90, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:active:not(:disabled),
+  .atlas-shell.surface-code .left-create-obra-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+  }
+
+  /* — SDD mini stage current · spring scale. */
+  .atlas-shell.surface-code .sdd-mini .stage {
+    transition:
+      background 220ms var(--cc-ease-out),
+      color 220ms var(--cc-ease-out),
+      transform 320ms var(--cc-ease-spring);
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    transform: scale(1.04);
+  }
+
+  /* — Workbench panels entrada cinematográfica. */
+  @keyframes cc-panel-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .atlas-shell.surface-code .cc-panel,
+  .atlas-shell.surface-code .rail-panel {
+    animation: cc-panel-enter 380ms var(--cc-ease-out) backwards;
+  }
+  .atlas-shell.surface-code .cc-panel > * {
+    animation: cc-panel-enter 380ms var(--cc-ease-out) backwards;
+  }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(2) { animation-delay: 40ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(3) { animation-delay: 80ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(4) { animation-delay: 120ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(5) { animation-delay: 160ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(6) { animation-delay: 200ms; }
+  .atlas-shell.surface-code .cc-panel > *:nth-child(n+7) { animation-delay: 240ms; }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-panel,
+    .atlas-shell.surface-code .cc-panel > *,
+    .atlas-shell.surface-code .rail-panel { animation: none; }
+  }
+
+  /* — Tab transitions Apple Pro. */
+  .atlas-shell.surface-code .ops-tab {
+    transition:
+      color 220ms var(--cc-ease-out),
+      background 220ms var(--cc-ease-out),
+      border-bottom-color 220ms var(--cc-ease-out);
+    position: relative;
+  }
+  .atlas-shell.surface-code .ops-tab.on::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 24px;
+    height: 2px;
+    background: var(--cc-accent);
+    border-radius: 999px 999px 0 0;
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(212, 168, 90, 0.45);
+  }
+
+  /* — Surface tab Cartografia/Code com underline glow. */
+  .atlas-shell.surface-code .surface-tab.on {
+    position: relative;
+  }
+
+  /* — Progress bar com pulse sutil quando running. */
+  .atlas-shell.surface-code .progress-fill-running {
+    background-size: 200% 100%;
+    background-image: linear-gradient(
+      90deg,
+      var(--cc-info) 0%,
+      rgba(127, 167, 196, 0.65) 50%,
+      var(--cc-info) 100%
+    );
+    animation: cc-progress-shimmer 2.4s var(--cc-ease-in-out) infinite;
+  }
+  @keyframes cc-progress-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .progress-fill-running { animation: none; }
+  }
+
+  /* — Empty state · "Recentes" e similares com mais elegância. */
+  .atlas-shell.surface-code .cc-empty {
+    background: transparent;
+    border: 1px dashed var(--cc-border-soft);
+    border-radius: var(--cc-radius-md);
+    padding: 12px 14px;
+    color: var(--cc-text-faint);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  /* — Botão primary com gradient gold premium (Apple Pro buttons). */
+  .atlas-shell.surface-code .cc-btn-primary,
+  .atlas-shell.surface-code .left-create-obra-btn {
+    background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent) 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.10) inset,
+      0 1px 2px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(212, 168, 90, 0.45) inset;
+    border: none;
+    color: #15212a;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Inputs/textareas com inner depth + focus glow. */
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea,
+  .atlas-shell.surface-code .left-create-obra-input,
+  .atlas-shell.surface-code .composer textarea {
+    background: var(--cc-surface-sunken);
+    border: 1px solid var(--cc-border);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.20);
+    transition:
+      border-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out),
+      background 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-input:focus,
+  .atlas-shell.surface-code .cc-textarea:focus,
+  .atlas-shell.surface-code .left-create-obra-input:focus,
+  .atlas-shell.surface-code .composer textarea:focus {
+    border-color: var(--cc-accent);
+    background: var(--cc-surface);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.18),
+      0 0 0 3px rgba(212, 168, 90, 0.18),
+      0 0 24px rgba(212, 168, 90, 0.10);
+  }
+
+  /* — Send button (✦) com glow premium. */
+  .atlas-shell.surface-code .send-btn {
+    transition:
+      background 200ms var(--cc-ease-out),
+      color 200ms var(--cc-ease-out),
+      transform 180ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    background: linear-gradient(180deg, var(--cc-accent-strong) 0%, var(--cc-accent) 100%);
+    color: #15212a;
+    box-shadow:
+      0 0 16px rgba(212, 168, 90, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /* — Status badges com inner highlight. */
+  .atlas-shell.surface-code .cc-badge {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    font-weight: 500;
+  }
+
+  /* — Obra-id badge premium (atlas gold pill). */
+  .atlas-shell.surface-code .obra-id {
+    background: linear-gradient(180deg, var(--cc-accent-veil) 0%, transparent 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  /* — Surface switcher tabs com depth premium. */
+  .atlas-shell.surface-code .surface-switcher {
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.18);
+  }
+  .atlas-shell.surface-code .surface-tab.on {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Top bar com subtle bottom highlight. */
+  .atlas-shell.surface-code .topbar {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  }
+  .atlas-shell.surface-code .obra-bar {
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  /* — Section card heading com micro letter-spacing premium. */
+  .atlas-shell.surface-code .panel-title,
+  .atlas-shell.surface-code .cc-section-title,
+  .atlas-shell.surface-code .cc-rail-section-head {
+    font-feature-settings: 'cv11' 1, 'ss01' 1;
+  }
+
+  /* — Headings premium · variable font weight axis. */
+  .atlas-shell.surface-code h1 {
+    font-variation-settings: 'wght' 680;
+    letter-spacing: -0.018em;
+  }
+  .atlas-shell.surface-code h2 {
+    font-variation-settings: 'wght' 620;
+    letter-spacing: -0.012em;
+  }
+  .atlas-shell.surface-code h3 {
+    font-variation-settings: 'wght' 580;
+    letter-spacing: -0.006em;
+  }
+  /* — Body text com axis fino entre regular e medium. */
+  .atlas-shell.surface-code {
+    font-variation-settings: 'wght' 420;
+  }
+  .atlas-shell.surface-code strong,
+  .atlas-shell.surface-code [style*='fontWeight: 500'],
+  .atlas-shell.surface-code [style*='fontWeight: 600'] {
+    font-variation-settings: 'wght' 560;
+  }
+  /* — Mono numerics tabulares premium. */
+  .atlas-shell.surface-code .cc-obra-row-id,
+  .atlas-shell.surface-code .obra-id {
+    font-variation-settings: 'wght' 520;
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1;
+  }
+
+  /* — Smooth fade entre Obra changes. */
+  .atlas-shell.surface-code .conv-thread {
+    animation: cc-fade-in 320ms var(--cc-ease-out);
+  }
+  @keyframes cc-fade-in {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .conv-thread { animation: none; }
+  }
+
+  /* — Selection highlight slate teal subtle (Atlas Code + Atenção + Atlas AI). */
+  .atlas-shell.surface-code ::selection,
+  .atlas-shell.surface-atencao ::selection,
+  .atlas-shell.surface-atlas_ai ::selection,
+  .atlas-shell.surface-atlas-ai ::selection {
+    background: rgba(212, 168, 90, 0.28);
+    color: var(--cc-text-strong);
+  }
+  /* Selection sem cor de fundo escurecido em inputs/textareas (mantém legibilidade). */
+  .atlas-shell.surface-atlas_ai textarea::selection,
+  .atlas-shell.surface-atlas_ai input::selection,
+  .atlas-shell.surface-atlas-ai textarea::selection,
+  .atlas-shell.surface-atlas-ai input::selection {
+    background: rgba(212, 168, 90, 0.34);
+    color: var(--cc-text-strong);
+  }
+
+  /* — Empty state divider canon. */
+  .atlas-shell.surface-code .cc-rail-section + .cc-rail-section {
+    margin-top: var(--cc-space-4);
+  }
+
+  /* — Search input premium · backdrop sutil. */
+  .atlas-shell.surface-code .cc-input[type='search'] {
+    background: var(--cc-surface-sunken);
+    backdrop-filter: blur(4px);
+  }
+
+  /* — Decision inbox cards hover preview. */
+  .atlas-shell.surface-code .cc-panel li[role='listitem'],
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    transition:
+      background 220ms var(--cc-ease-out),
+      border-color 220ms var(--cc-ease-out),
+      transform 220ms var(--cc-ease-out),
+      box-shadow 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Workbench panel borders glow sutil em hover. */
+  .atlas-shell.surface-code .cc-panel section[aria-label] {
+    transition: border-color 240ms var(--cc-ease-out), box-shadow 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-panel section[aria-label]:hover {
+    border-color: rgba(212, 168, 90, 0.15);
+  }
+
+  /* — Status badges com refinement em hover. */
+  .atlas-shell.surface-code .cc-badge {
+    transition: filter 200ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-badge:hover {
+    filter: brightness(1.08);
+  }
+
+  /* — Progress fill com subtle inner highlight. */
+  .atlas-shell.surface-code [role='progressbar'] > div {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      0 0 12px rgba(255, 255, 255, 0.05);
+  }
+
+  /* — Conv-msg refinement Apple Pro. */
+  .atlas-shell.surface-code .conv-msg {
+    transition: opacity 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .conv-msg.you .body {
+    border-left-width: 3px;
+    padding-left: 18px;
+  }
+
+  /* — Body com kerning + ligatures. */
+  .atlas-shell.surface-code {
+    text-rendering: optimizeLegibility;
+  }
+
+  /* — Brand strong com tracking premium. */
+  .atlas-shell.surface-code .brand strong {
+    font-variation-settings: 'wght' 620;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Tabs Cartografia/Code com subtle motion. */
+  .atlas-shell.surface-code .surface-tab {
+    transition:
+      background 240ms var(--cc-ease-out),
+      color 240ms var(--cc-ease-out),
+      box-shadow 240ms var(--cc-ease-out);
+  }
+
+  /* — Ops panel sections com padding refinado. */
+  .atlas-shell.surface-code .ops-section {
+    margin-bottom: 18px;
+  }
+  .atlas-shell.surface-code .ops-panel .rail-panel > h3 {
+    margin-bottom: 12px;
+  }
+
+  /* — Borders dos cards técnicos refinados. */
+  .atlas-shell.surface-code [style*='border: 1px solid var(--hair'] {
+    border-color: var(--cc-border-soft) !important;
+  }
+
+  /* — Right rail vertical scrollbar com fade. */
+  .atlas-shell.surface-code .right-rail::-webkit-scrollbar-thumb {
+    background: rgba(212, 168, 90, 0.12);
+    background-clip: padding-box;
+  }
+  .atlas-shell.surface-code .right-rail::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 168, 90, 0.24);
+    background-clip: padding-box;
+  }
+
+  /* — Send button com pulse premium ao montar. */
+  .atlas-shell.surface-code .send-btn {
+    backdrop-filter: blur(4px);
+  }
+
+  /* — Composer com gradient backdrop premium. */
+  .atlas-shell.surface-code .composer {
+    background: linear-gradient(180deg, transparent 0%, var(--cc-surface-sunken) 30%);
+    border-top: 1px solid var(--cc-border-soft);
+  }
+
+  /* — Subtle global text-shadow para extra readability sobre slate. */
+  .atlas-shell.surface-code h1,
+  .atlas-shell.surface-code .obra-objective {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Folio (live indicator) premium. */
+  .atlas-shell.surface-code .folio {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Smooth between obra changes for main-stage. */
+  .atlas-shell.surface-code .main-stage {
+    transition: background 320ms var(--cc-ease-out);
+  }
+
+  /* — Left rail premium with subtle separator gradient. */
+  .atlas-shell.surface-code .left-rail {
+    background:
+      linear-gradient(180deg, var(--cc-surface-sunken) 0%, rgba(21, 33, 42, 0.96) 100%);
+    box-shadow: inset -1px 0 0 var(--cc-border-soft);
+  }
+
+  /* — Right rail premium with subtle separator gradient. */
+  .atlas-shell.surface-code .right-rail {
+    background:
+      linear-gradient(180deg, var(--cc-bg) 0%, rgba(26, 40, 50, 0.98) 100%);
+    box-shadow: inset 1px 0 0 var(--cc-border-soft);
+  }
+
+  /* — Ops tabs · pill-style refinement Apple Pro. */
+  .atlas-shell.surface-code .ops-tabs {
+    padding: 4px 6px 0;
+    gap: 2px;
+  }
+  .atlas-shell.surface-code .ops-tab {
+    border-radius: var(--cc-radius-sm) var(--cc-radius-sm) 0 0;
+    margin: 0 2px;
+    padding: 11px 8px;
+    border-right: none;
+    border-bottom: 2px solid transparent;
+  }
+
+  /* — Brand sub badges premium. */
+  .atlas-shell.surface-code .brand .v {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Obra-bar com refinement. */
+  .atlas-shell.surface-code .obra-bar {
+    background: var(--cc-surface-sunken);
+    border-bottom-color: var(--cc-border-soft);
+  }
+
+  /* — Section card titles com optical alignment. */
+  .atlas-shell.surface-code .panel-title {
+    font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1;
+  }
+
+  /* — Active obra row premium · subtle gradient. */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true'] {
+    background:
+      linear-gradient(90deg, var(--cc-accent-veil) 0%, transparent 60%),
+      var(--cc-surface-raised);
+  }
+
+  /* — Subtle accent line below active right rail tab (more visible). */
+  .atlas-shell.surface-code .ops-tab.on::after {
+    width: 32px;
+    height: 2.5px;
+    box-shadow: 0 0 12px rgba(212, 168, 90, 0.55), 0 0 4px rgba(212, 168, 90, 0.30);
+  }
+
+  /* — Status dot com glow ao se tornar active phase. */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true'] .cc-status-dot {
+    box-shadow: 0 0 8px rgba(212, 168, 90, 0.30);
+  }
+
+  /* — Buttons com active state Apple Pro. */
+  .atlas-shell.surface-code .cc-btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+    transition: transform 80ms var(--cc-ease-out);
+  }
+
+  /* — Live cockpit row refinement. */
+  .atlas-shell.surface-code [class*='LiveCockpit'] {
+    transition: opacity 220ms var(--cc-ease-out);
+  }
+
+  /* — Pano de fundo subtle texture (low-glare premium). */
+  .atlas-shell.surface-code .main-stage {
+    background:
+      radial-gradient(ellipse at top, rgba(45, 67, 81, 0.20) 0%, transparent 60%),
+      linear-gradient(180deg, var(--cc-bg) 0%, #1a2832 100%);
+  }
+
+  /* — Workbench panel subtle headers · uppercase só nos eyebrows pequenos. */
+  .atlas-shell.surface-code h1,
+  .atlas-shell.surface-code h2,
+  .atlas-shell.surface-code h3,
+  .atlas-shell.surface-code h4 {
+    color: var(--cc-text-strong);
+  }
+
+  /* — Composer textarea refinement. */
+  .atlas-shell.surface-code .composer textarea {
+    padding: 12px 14px;
+    line-height: 1.5;
+    font-size: 13.5px;
+  }
+
+  /* — Obra-bar refinement gold. */
+  .atlas-shell.surface-code .obra-bar .obra-id {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 0 1px rgba(212, 168, 90, 0.20);
+  }
+
+  /* — Smooth scroll behavior global. */
+  .atlas-shell.surface-code {
+    scroll-behavior: smooth;
+  }
+
+  /* — Composer textarea caret premium gold. */
+  .atlas-shell.surface-code .composer textarea {
+    caret-color: var(--cc-accent);
+  }
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea,
+  .atlas-shell.surface-code .left-create-obra-input {
+    caret-color: var(--cc-accent);
+  }
+
+  /* — Better link / kbd defaults. */
+  .atlas-shell.surface-code a {
+    color: var(--cc-accent-strong);
+    text-decoration: none;
+    transition: color 180ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code a:hover {
+    color: var(--cc-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  /* — Links em decision_inbox e descriptions. */
+  .atlas-shell.surface-code strong {
+    color: var(--cc-text-strong);
+  }
+  .atlas-shell.surface-code code {
+    font-family: var(--cc-font-mono);
+    font-size: 0.94em;
+    background: var(--cc-surface-sunken);
+    border: 1px solid var(--cc-border-soft);
+    color: var(--cc-accent-strong);
+    padding: 1px 6px;
+    border-radius: var(--cc-radius-xs);
+    font-variation-settings: 'wght' 500;
+  }
+
+  /* — Skeleton loading premium subtle. */
+  .atlas-shell.surface-code .cc-loading {
+    background: var(--cc-info-veil);
+    border: 1px solid var(--cc-info-border);
+    color: var(--cc-info-fg);
+    position: relative;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code .cc-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(127, 167, 196, 0.10) 50%,
+      transparent 100%
+    );
+    animation: cc-skeleton-shimmer 1.8s var(--cc-ease-in-out) infinite;
+  }
+  @keyframes cc-skeleton-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-loading::after { animation: none; }
+  }
+
+  /* — Atlas brand strong com hover micro animation. */
+  .atlas-shell.surface-code .brand strong {
+    transition: letter-spacing 240ms var(--cc-ease-out), color 240ms var(--cc-ease-out);
+  }
+
+  /* — Container max-widths refinados (Apple Pro readability). */
+  .atlas-shell.surface-code .cc-panel {
+    max-width: 960px !important;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 var(--cc-space-2);
+  }
+
+  /* — Panel children proper spacing. */
+  .atlas-shell.surface-code .cc-panel > section,
+  .atlas-shell.surface-code .cc-panel > article {
+    width: 100%;
+  }
+
+  /* — Right rail · paddings consistentes. */
+  .atlas-shell.surface-code .right-rail .ops-panel {
+    padding-top: 16px;
+  }
+  .atlas-shell.surface-code .rail-panel {
+    margin-bottom: 18px;
+  }
+
+  /* — Reduce eyebrow uppercase to 0.04em max. */
+  .atlas-shell.surface-code [class*='eyebrow'],
+  .atlas-shell.surface-code [style*='text-transform: uppercase'] {
+    letter-spacing: 0.04em !important;
+  }
+
+  /* — Sutil divider on ops-tab right side. */
+  .atlas-shell.surface-code .ops-tab:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 25%;
+    bottom: 25%;
+    width: 1px;
+    background: var(--cc-border-soft);
+  }
+
+  /* — Code em monos com tabular Apple Pro. */
+  .atlas-shell.surface-code code,
+  .atlas-shell.surface-code pre,
+  .atlas-shell.surface-code .cc-obra-row-id,
+  .atlas-shell.surface-code .obra-id {
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1, 'kern' 1;
+  }
+
+  /* — Composer placeholder com fade premium. */
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    color: var(--cc-text-faint);
+    font-style: normal;
+    transition: opacity 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .composer textarea:focus::placeholder {
+    opacity: 0.5;
+  }
+
+  /* — Status dots com inner shadow subtle. */
+  .atlas-shell.surface-code .cc-status-dot {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 1px 2px rgba(0, 0, 0, 0.30);
+  }
+
+  /* — Checkbox circles · premium depth. */
+  .atlas-shell.surface-code .check-circle.done,
+  .atlas-shell.surface-code [aria-label*='Checklist'] [style*='border-radius: 999'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+
+  /* — Right rail item spacing consistency. */
+  .atlas-shell.surface-code .ops-panel > * + * {
+    margin-top: 16px;
+  }
+
+  /* — Eyebrow tipografia premium. */
+  .atlas-shell.surface-code .cc-eyebrow {
+    color: var(--cc-text-faint);
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 10.5px;
+  }
+
+  /* — Workbench panel header com sutil border accent. */
+  .atlas-shell.surface-code .cc-panel header,
+  .atlas-shell.surface-code .rail-panel header,
+  .atlas-shell.surface-code .ops-panel > section > header {
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  /* — Drop shadow para floating elements. */
+  .atlas-shell.surface-code details[open] {
+    margin-bottom: 4px;
+  }
+
+  /* — Details summary hover refinement. */
+  .atlas-shell.surface-code details summary {
+    transition: color 200ms var(--cc-ease-out);
+    user-select: none;
+  }
+  .atlas-shell.surface-code details summary:hover {
+    color: var(--cc-text);
+  }
+
+  /* — Pulse on Atlas Code brand hover (premium accent). */
+  .atlas-shell.surface-code .brand:hover strong {
+    color: var(--cc-accent-strong);
+  }
+
+  /* — Subtle gradient borders on hover (Apple class). */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--cc-radius-sm);
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .atlas-shell.surface-code .cc-obra-row {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* — Loading state premium spinner subtle. */
+  .atlas-shell.surface-code [aria-busy='true']::after,
+  .atlas-shell.surface-code [data-state='loading']::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--cc-accent-veil);
+    border-top-color: var(--cc-accent);
+    border-radius: 999px;
+    animation: cc-spin 800ms linear infinite;
+  }
+  @keyframes cc-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* — Subtle hover preview em todo o app: cursor pointer + transitions. */
+  .atlas-shell.surface-code button,
+  .atlas-shell.surface-code [role='button'],
+  .atlas-shell.surface-code [role='listitem'] {
+    cursor: pointer;
+  }
+  .atlas-shell.surface-code button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* — Final premium polish · global anti-aliasing pro. */
+  .atlas-shell.surface-code,
+  .atlas-shell.surface-code * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* — Premium border radius padronizado. */
+  .atlas-shell.surface-code [style*='borderRadius: 2'] {
+    border-radius: var(--cc-radius-sm) !important;
+  }
+  .atlas-shell.surface-code [style*='borderRadius: 3'] {
+    border-radius: var(--cc-radius-sm) !important;
+  }
+  .atlas-shell.surface-code [style*='borderRadius: 4'] {
+    border-radius: var(--cc-radius-md) !important;
+  }
+
+  /* — Better focus ring para inputs/buttons em estado disabled. */
+  .atlas-shell.surface-code button:disabled,
+  .atlas-shell.surface-code input:disabled,
+  .atlas-shell.surface-code textarea:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* — Tabs hover background subtle. */
+  .atlas-shell.surface-code .ops-tab:hover:not(.on):not(:disabled) {
+    background: rgba(212, 168, 90, 0.04);
+    color: var(--cc-text);
+  }
+
+  /* — Surface switcher · ainda mais premium. */
+  .atlas-shell.surface-code .surface-switcher {
+    padding: 3px;
+    border-radius: 8px;
+  }
+  .atlas-shell.surface-code .surface-tab {
+    border-radius: 6px;
+    padding: 6px 14px;
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    margin-left: 6px;
+    font-size: 10px;
+  }
+
+  /* — Workbench panels · paddings premium uniformes. */
+  .atlas-shell.surface-code .cc-card,
+  .atlas-shell.surface-code .cc-card-raised {
+    padding: 16px 18px;
+  }
+
+  /* — Cards do command center · respiro Apple Pro. */
+  .atlas-shell.surface-code .cc-panel > section,
+  .atlas-shell.surface-code .cc-panel > article {
+    padding: 18px 20px;
+  }
+
+  /* — Section card heading espaço sutil. */
+  .atlas-shell.surface-code .cc-panel header h3,
+  .atlas-shell.surface-code .rail-panel header h3 {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.25;
+  }
+
+  /* — Sticky right rail tabs · backdrop blur. */
+  .atlas-shell.surface-code .ops-tabs {
+    background: rgba(36, 55, 67, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* — Composer com backdrop blur premium. */
+  .atlas-shell.surface-code .composer {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* — Top bar com backdrop blur. */
+  .atlas-shell.surface-code .topbar {
+    background: rgba(21, 33, 42, 0.92);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+  }
+
+  /* — Brand v badge refinement. */
+  .atlas-shell.surface-code .brand .v {
+    font-variation-settings: 'wght' 560;
+  }
+
+  /* — Decision inbox cards subtle outer glow on hover. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li[style*='var(--cc-danger'],
+  .atlas-shell.surface-code [aria-label*='Decision'] li[style*='var(--cc-danger'] {
+    border-color: var(--cc-danger-border) !important;
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li[style*='var(--cc-warning'],
+  .atlas-shell.surface-code [aria-label*='Decision'] li[style*='var(--cc-warning'] {
+    border-color: var(--cc-warning-border) !important;
+  }
+
+  /* — Workbench panel section title weight Apple Pro. */
+  .atlas-shell.surface-code .cc-section-title {
+    font-variation-settings: 'wght' 600;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Conv-thread spacing premium. */
+  .atlas-shell.surface-code .conv-thread {
+    padding: 24px 32px 20px;
+  }
+
+  /* — Status dot premium · glow ao redor. */
+  .atlas-shell.surface-code .cc-status-dot[data-status='running'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(127, 167, 196, 0.40);
+  }
+  .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(208, 90, 82, 0.40);
+  }
+  .atlas-shell.surface-code .cc-status-dot[data-status='passed'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(130, 181, 119, 0.40);
+  }
+
+  /* — Premium hierarchy entre status dot e text adjacent. */
+  .atlas-shell.surface-code .cc-obra-row-head {
+    gap: 10px;
+  }
+
+  /* — Brand strong com gradient sutil. */
+  .atlas-shell.surface-code .brand strong {
+    background: linear-gradient(135deg, var(--cc-text-strong) 0%, rgba(212, 168, 90, 0.85) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* — Subtle inner shadow nos status-cards. */
+  .atlas-shell.surface-code [role='status'],
+  .atlas-shell.surface-code [role='alert'] {
+    box-shadow:
+      var(--cc-shadow-xs),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Term dock subtle gradient para depth. */
+  .atlas-shell.surface-code .terminal-dock {
+    background: linear-gradient(180deg, #16252e 0%, #11202a 100%);
+  }
+
+  /* — Term tabs subtle bottom highlight. */
+  .atlas-shell.surface-code .term-tabs {
+    background: rgba(17, 32, 42, 0.92);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: inset 0 -1px 0 var(--cc-border-soft);
+  }
+
+  /* — Refinar mais sessões em curso na left rail. */
+  .atlas-shell.surface-code .cc-rail-section-head {
+    padding-bottom: 6px;
+    padding-top: 4px;
+    border-bottom: 1px solid var(--cc-border-soft);
+    margin-bottom: 4px;
+  }
+
+  /* — Brand atlas hover · gradient subtly shifts. */
+  .atlas-shell.surface-code .brand strong {
+    transition:
+      background 320ms var(--cc-ease-out),
+      letter-spacing 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .brand:hover strong {
+    background: linear-gradient(135deg, var(--cc-accent-strong) 0%, var(--cc-text-strong) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* — Links com animated underline Apple Pro. */
+  .atlas-shell.surface-code a {
+    position: relative;
+    text-decoration: none;
+  }
+  .atlas-shell.surface-code a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 1px;
+    background: var(--cc-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code a:hover::after {
+    transform: scaleX(1);
+  }
+  .atlas-shell.surface-code a:hover {
+    text-decoration: none;
+  }
+
+  /* — Ops tab subtle gradient on active. */
+  .atlas-shell.surface-code .ops-tab.on {
+    background: linear-gradient(180deg, transparent 0%, var(--cc-accent-veil) 100%);
+  }
+
+  /* — Rail panel section refinement. */
+  .atlas-shell.surface-code .rail-panel {
+    padding-bottom: 4px;
+  }
+
+  /* — Cards section content max-width 880 (Apple class reading). */
+  .atlas-shell.surface-code .cc-panel > section[aria-label] {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* — Cards-side container · respiração horizontal. */
+  .atlas-shell.surface-code .cc-panel {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* — Conv-msg.atlas body refinement. */
+  .atlas-shell.surface-code .conv-msg.atlas .body {
+    line-height: 1.65;
+  }
+
+  /* — Conv-msg.you body refinement. */
+  .atlas-shell.surface-code .conv-msg.you .body {
+    line-height: 1.6;
+  }
+
+  /* — Premium icons (✦, ✓, ○) com letter-spacing 0. */
+  .atlas-shell.surface-code .left-create-obra-btn span[aria-hidden],
+  .atlas-shell.surface-code button span[aria-hidden] {
+    letter-spacing: 0;
+  }
+
+  /* — Buttons compactos com hover lift suave. */
+  .atlas-shell.surface-code .cc-btn-secondary {
+    transition:
+      background 220ms var(--cc-ease-out),
+      border-color 220ms var(--cc-ease-out),
+      transform 180ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-btn-secondary:hover:not(:disabled) {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border-strong);
+    transform: translateY(-0.5px);
+  }
+
+  /* — Empty state ::before subtle decoration. */
+  .atlas-shell.surface-code .cc-empty {
+    position: relative;
+  }
+
+  /* — Filter pills (Self-Imp PROPOSTAS) hover. */
+  .atlas-shell.surface-code [class*='pill-btn'] {
+    transition: all 200ms var(--cc-ease-out);
+  }
+
+  /* — Refinement nos badge tone success/danger/etc. */
+  .atlas-shell.surface-code .cc-badge[data-tone='success'] {
+    background: linear-gradient(180deg,
+      rgba(130, 181, 119, 0.16) 0%,
+      rgba(130, 181, 119, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='warning'] {
+    background: linear-gradient(180deg,
+      rgba(224, 173, 94, 0.16) 0%,
+      rgba(224, 173, 94, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='danger'] {
+    background: linear-gradient(180deg,
+      rgba(208, 90, 82, 0.16) 0%,
+      rgba(208, 90, 82, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='info'] {
+    background: linear-gradient(180deg,
+      rgba(127, 167, 196, 0.16) 0%,
+      rgba(127, 167, 196, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='accent'] {
+    background: linear-gradient(180deg,
+      rgba(212, 168, 90, 0.18) 0%,
+      rgba(212, 168, 90, 0.10) 100%);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='neutral'] {
+    background: linear-gradient(180deg,
+      rgba(149, 163, 172, 0.14) 0%,
+      rgba(149, 163, 172, 0.08) 100%);
+  }
+
+  /* — Loading spinner · color accent. */
+  .atlas-shell.surface-code .cc-loading-title {
+    color: var(--cc-info-fg);
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Active state em ButtonGroup. */
+  .atlas-shell.surface-code [aria-current='true'] {
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Progressbar subtle gloss. */
+  .atlas-shell.surface-code [role='progressbar'] {
+    background: linear-gradient(180deg, var(--cc-surface-sunken) 0%, rgba(21, 33, 42, 0.7) 100%);
+  }
+
+  /* — Workbench eyebrow uppercase fine-tuned. */
+  .atlas-shell.surface-code [aria-label] > header > span:first-child {
+    text-transform: uppercase;
+    font-size: 10.5px;
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.04em;
+    color: var(--cc-text-faint);
+  }
+
+  /* — Compose action chip. */
+  .atlas-shell.surface-code .composer-meta span[title*='Papel'] {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border: 1px solid var(--cc-accent-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 200ms var(--cc-ease-out);
+  }
+
+  /* — Headings size scaling Apple Pro · optical. */
+  .atlas-shell.surface-code h1 {
+    font-size: 24px;
+    line-height: 1.18;
+  }
+  .atlas-shell.surface-code h2 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+  .atlas-shell.surface-code h3 {
+    font-size: 14.5px;
+    line-height: 1.3;
+  }
+
+  /* — Sticky behavior em headers premium. */
+  .atlas-shell.surface-code .ops-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* — Section card titles muito sutil border-top accent quando hover. */
+  .atlas-shell.surface-code section[aria-label]:hover .cc-eyebrow {
+    color: var(--cc-text-muted);
+  }
+
+  /* — Premium · Form input transition Apple cubic. */
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea {
+    transition: all 240ms var(--cc-ease-out);
+  }
+
+  /* — Refinement extra em cores de status para optical balance. */
+  .atlas-shell.surface-code .row .v.ok {
+    font-variation-settings: 'wght' 560;
+  }
+
+  /* — Subtle outline-offset Apple Pro premium. */
+  .atlas-shell.surface-code :focus-visible {
+    outline-offset: 2px;
+  }
+
+  /* — Send button (✦) com static gold subtle glow. */
+  .atlas-shell.surface-code .send-btn {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Composer meta · cmd+enter kbds com depth. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Ops-panel inner padding mais ar. */
+  .atlas-shell.surface-code .ops-panel {
+    padding: 18px 18px 0;
+  }
+
+  /* — Status board (no obra bar) refinement final. */
+  .atlas-shell.surface-code .status-board {
+    gap: 18px;
+  }
+
+  /* — Subtle separator pattern em right rail tabs · invisivel quando active. */
+  .atlas-shell.surface-code .ops-tab.on::before {
+    display: none;
+  }
+
+  /* — Composer cmd/enter kbds reset to inline-flex e alignment. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+  }
+
+  /* — Reset font-variation in body for stable rendering. */
+  .atlas-shell.surface-code body,
+  .atlas-shell.surface-code p {
+    font-variation-settings: 'wght' 440;
+  }
+
+  /* — Animacao keyframe optional para shimmer de progress. */
+  @keyframes cc-shimmer-once {
+    0%, 100% { background-position: -100% 0; }
+    50% { background-position: 100% 0; }
+  }
+
+  /* — Conv-thread thumbs more subtle. */
+  .atlas-shell.surface-code .conv-thread::-webkit-scrollbar-thumb {
+    background: rgba(212, 168, 90, 0.10);
+    background-clip: padding-box;
+  }
+
+  /* — Atlas Code app icon area · subtle. */
+  .atlas-shell.surface-code .brand {
+    transition: opacity 240ms var(--cc-ease-out);
+  }
+
+  /* — Pixel-perfect alignment em headers. */
+  .atlas-shell.surface-code .cc-rail-section-head span:first-child {
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.01em;
+  }
+
+  /* — Truly Apple class: subtle premium glow nos active items. */
+  .atlas-shell.surface-code [data-active='true']::after,
+  .atlas-shell.surface-code [aria-current='true']::after {
+    /* glow gold ao redor opcionalmente · só nos rows premium */
+  }
+
+  /* — Garantir border-radius padrão global. */
+  .atlas-shell.surface-code button {
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Premium icons em sans (sem fallback emoji estranho). */
+  .atlas-shell.surface-code .send-btn,
+  .atlas-shell.surface-code .left-create-obra-btn span[aria-hidden] {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-variation-settings: 'wght' 500;
+  }
+
+  /* — Right rail mais ar consistente. */
+  .atlas-shell.surface-code .right-rail .rail-panel {
+    padding: 4px 0;
+  }
+
+  /* — Centro do shell · padding ar para conversa. */
+  .atlas-shell.surface-code .conv-thread {
+    padding-bottom: 32px;
+  }
+
+  /* — Obra bar · tipografia premium. */
+  .atlas-shell.surface-code .obra-bar .obra-objective {
+    font-variation-settings: 'wght' 540;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Cards · refinement em borders soft. */
+  .atlas-shell.surface-code .cc-panel section[aria-label],
+  .atlas-shell.surface-code .rail-panel section {
+    border-color: var(--cc-border-soft);
+  }
+
+  /* — Premium subtle glow em badges accent. */
+  .atlas-shell.surface-code .cc-badge[data-tone='accent'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 8px rgba(212, 168, 90, 0.10);
+  }
+
+  /* — Mini icons (✦ ✓ ⌛) refinement. */
+  .atlas-shell.surface-code .send-btn {
+    font-size: 16px;
+    font-variation-settings: 'wght' 500;
+  }
+  .atlas-shell.surface-code .check-circle.done,
+  .atlas-shell.surface-code [aria-label='Checklist'] span[style*='border-radius: 999'] {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Final premium polish em buttons primary com ::before glow. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    position: relative;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code .cc-btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 50%);
+    pointer-events: none;
+    transition: opacity 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-btn-primary:hover::before {
+    opacity: 1.3;
+  }
+
+  /* — Premium · mini bar conv-thread separator. */
+  .atlas-shell.surface-code .conv-msg + .conv-msg {
+    margin-top: 28px;
+  }
+
+  /* — Status dot · pequeno extra ring sutil. */
+  .atlas-shell.surface-code .cc-obra-row .cc-status-dot {
+    transition: box-shadow 200ms var(--cc-ease-out);
+  }
+
+  /* — Subtle hover bg em ops-tab. */
+  .atlas-shell.surface-code .ops-tab:hover:not(.on):not(:disabled) {
+    background: rgba(212, 168, 90, 0.05);
+  }
+
+  /* — Buttons cc-btn-secondary com refinement. */
+  .atlas-shell.surface-code .cc-btn-secondary {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    color: var(--cc-text);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+  .atlas-shell.surface-code .cc-btn-secondary:hover:not(:disabled) {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 2px 4px rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Improved decision inbox cards layout. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    padding: 12px 14px;
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Conv-thread max-width premium. */
+  .atlas-shell.surface-code .conv-msg {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* — Top bar height ajustado. */
+  .atlas-shell.surface-code .topbar {
+    height: 52px;
+  }
+
+  /* — Subtle text-shadow nos progress percent. */
+  .atlas-shell.surface-code [aria-valuenow] + div strong,
+  .atlas-shell.surface-code [role='progressbar'] ~ * strong {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Forge primary action button padrão · ar generoso. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] button[style*='btnPrimary'] {
+    margin-top: 4px;
+  }
+
+  /* — Atlas Code Forge title style refined. */
+  .atlas-shell.surface-code .panel-title {
+    font-variation-settings: 'wght' 620;
+  }
+
+  /* — Right rail tabs subtle bottom border. */
+  .atlas-shell.surface-code .ops-tabs {
+    border-bottom: 1px solid var(--cc-border);
+  }
+
+  /* — Obra row id refinement (smaller, more elegant). */
+  .atlas-shell.surface-code .cc-obra-row-id {
+    font-size: 9.5px;
+    font-variation-settings: 'wght' 540;
+    color: var(--cc-text-faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* — Obra row title with optical refinement. */
+  .atlas-shell.surface-code .cc-obra-row-title {
+    font-variation-settings: 'wght' 540;
+    font-size: 12.5px;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Active obra title bolder. */
+  .atlas-shell.surface-code [data-active='true'] .cc-obra-row-title {
+    font-variation-settings: 'wght' 600;
+    color: var(--cc-text-strong);
+  }
+
+  /* — Workbench panel padding consistency. */
+  .atlas-shell.surface-code .cc-section-title {
+    margin-bottom: 8px;
+  }
+
+  /* — Reset all transform-origin to center for spring scales. */
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    transform-origin: center;
+  }
+
+  /* — Premium · subtle dot indicator nas tabs com badge count. */
+  .atlas-shell.surface-code .ops-tab .badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 5px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    font-family: 'JetBrains Mono';
+    font-size: 9.5px;
+    font-variation-settings: 'wght' 600;
+    letter-spacing: 0;
+  }
+
+  /* — Status board v.ok mais saturado. */
+  .atlas-shell.surface-code .status-item .v.ok {
+    color: var(--cc-success-fg);
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Subtle ::selection refinement. */
+  .atlas-shell.surface-code ::-moz-selection {
+    background: rgba(212, 168, 90, 0.30);
+    color: var(--cc-text-strong);
+  }
+
+  /* — Section card layered subtle hover. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li,
+  .atlas-shell.surface-code [aria-label*='diagnostic'] article,
+  .atlas-shell.surface-code [aria-label*='Lifecycle'] li {
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* — Sticky obra-bar (faster perception). */
+  .atlas-shell.surface-code .obra-bar {
+    position: sticky;
+    top: 52px;
+    z-index: 9;
+  }
+
+  /* — Subtle scrollbar para conv-thread. */
+  .atlas-shell.surface-code .conv-thread::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  /* — Sutil border na conv-msg.you. */
+  .atlas-shell.surface-code .conv-msg.you .body {
+    border-left: 3px solid;
+    border-image: linear-gradient(180deg, var(--cc-info) 0%, rgba(127, 167, 196, 0.3) 100%) 1;
+  }
+
+  /* — Subtle padding refinement em sections de stats. */
+  .atlas-shell.surface-code [aria-label*='Trust'],
+  .atlas-shell.surface-code [aria-label*='Operational'],
+  .atlas-shell.surface-code [aria-label*='Evidence'],
+  .atlas-shell.surface-code [aria-label*='Provider'] {
+    padding: 14px 16px;
+  }
+
+  /* — Premium: subtle aurora glow no card primário ativo. */
+  .atlas-shell.surface-code .cc-obra-row[data-active='true']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at left, rgba(212, 168, 90, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Atlas Code button minimo · refinement. */
+  .atlas-shell.surface-code .cc-btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+    height: 28px;
+  }
+
+  /* — Final premium: Composer focus enters smoothly. */
+  .atlas-shell.surface-code .composer-row:focus-within {
+    transition: all 240ms var(--cc-ease-out);
+  }
+
+  /* — Refinement no spacing entre stages SDD. */
+  .atlas-shell.surface-code .sdd-mini .stages { gap: 10px; }
+
+  /* — Composer · botão send mais centralizado verticalmente. */
+  .atlas-shell.surface-code .composer-row {
+    align-items: stretch;
+  }
+  .atlas-shell.surface-code .composer .send-btn {
+    align-self: stretch;
+    height: auto;
+    min-height: 44px;
+  }
+
+  /* — Premium typography em form labels. */
+  .atlas-shell.surface-code .cc-label {
+    font-variation-settings: 'wght' 540;
+    color: var(--cc-text-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* — Sutil decoração premium em buttons primary com inner depth glow. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    backdrop-filter: blur(1px);
+  }
+
+  /* — Animação smooth em status dot mudança. */
+  .atlas-shell.surface-code .cc-status-dot {
+    transition:
+      background-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out);
+  }
+
+  /* — Compose composer-meta refinement (mais ar entre meta + textarea). */
+  .atlas-shell.surface-code .composer {
+    display: grid;
+    gap: 8px;
+  }
+
+  /* — Premium: workbench obra-id rendering. */
+  .atlas-shell.surface-code .obra-id {
+    font-variation-settings: 'wght' 540;
+    text-transform: uppercase;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Refinement final: tabela rows com hover sutil. */
+  .atlas-shell.surface-code .row,
+  .atlas-shell.surface-code .check-row,
+  .atlas-shell.surface-code .row-card {
+    transition: background 180ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code section .row:hover,
+  .atlas-shell.surface-code section .check-row:hover {
+    background: rgba(255, 255, 255, 0.012);
+  }
+
+  /* — Forge title heading premium variation. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] h3 {
+    font-variation-settings: 'wght' 640;
+  }
+
+  /* — Subtle outer glow nas hero cards. */
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* — Premium small text refinement. */
+  .atlas-shell.surface-code small,
+  .atlas-shell.surface-code .hint,
+  .atlas-shell.surface-code .cc-empty-hint {
+    font-variation-settings: 'wght' 440;
+    color: var(--cc-text-faint);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  /* — Premium · workbench panel separation com subtle gradient line. */
+  .atlas-shell.surface-code .cc-panel section + section {
+    position: relative;
+  }
+
+  /* — Decision badges padding mais ar. */
+  .atlas-shell.surface-code .cc-badge {
+    padding: 2px 8px;
+    line-height: 1.5;
+  }
+
+  /* — Cards layered shadows premium · 2-layer composite. */
+  .atlas-shell.surface-code .cc-panel > section {
+    box-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.20),
+      0 1px 4px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* — Premium · subtle highlight em buttons quando keyboard navigation. */
+  .atlas-shell.surface-code button:focus-visible {
+    outline-offset: 2px;
+    outline: none;
+  }
+
+  /* — Cards content padding refinement. */
+  .atlas-shell.surface-code [aria-label='Lifecycle da Obra'] {
+    padding: 16px 20px;
+  }
+
+  /* — Composer textarea refinement. */
+  .atlas-shell.surface-code .composer textarea {
+    border-radius: var(--cc-radius-sm);
+    font-variation-settings: 'wght' 440;
+  }
+
+  /* — Subtle motion em ops-panel content (transição entre tabs). */
+  .atlas-shell.surface-code .ops-panel {
+    animation: cc-fade-in 240ms var(--cc-ease-out);
+  }
+
+  /* — Refinement: progress card subtle gradient. */
+  .atlas-shell.surface-code [aria-label='Próximo passo seguro'] {
+    background: linear-gradient(180deg, var(--cc-surface) 0%, var(--cc-surface-sunken) 100%);
+  }
+
+  /* — Subtle gradient nos status cards (Apple Pro). */
+  .atlas-shell.surface-code [aria-label='Lifecycle da Obra'] {
+    background: linear-gradient(180deg, var(--cc-surface) 0%, rgba(36, 55, 67, 0.96) 100%);
+  }
+
+  /* — Premium · subtle hover en send-btn quando habilitado. */
+  .atlas-shell.surface-code .send-btn:not(:disabled) {
+    cursor: pointer;
+  }
+  .atlas-shell.surface-code .send-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* — Workbench section · subtle motion on enter. */
+  .atlas-shell.surface-code .cc-rail-section {
+    animation: cc-fade-in 320ms var(--cc-ease-out);
+  }
+
+  /* — Premium · headings hover (where applicable). */
+  .atlas-shell.surface-code [role='button'] h3,
+  .atlas-shell.surface-code button h3 {
+    transition: color 180ms var(--cc-ease-out);
+  }
+
+  /* — Workbench panel hover subtle gold border (only when interactive). */
+  .atlas-shell.surface-code button section[aria-label]:hover {
+    border-color: rgba(212, 168, 90, 0.20);
+  }
+
+  /* — Sutil texture noise overlay (Apple Pro). */
+  .atlas-shell.surface-code .main-stage::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(rgba(255, 255, 255, 0.008) 1px, transparent 1px);
+    background-size: 3px 3px;
+    opacity: 0.6;
+    z-index: 0;
+  }
+  .atlas-shell.surface-code .main-stage > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* — Premium · subtle aurora glow vertices nas cards. */
+  .atlas-shell.surface-code .cc-panel article[aria-label='Atlas Code Obra Command Center'] {
+    position: relative;
+  }
+  .atlas-shell.surface-code .cc-panel article[aria-label='Atlas Code Obra Command Center']::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(212, 168, 90, 0.30) 40%,
+      rgba(212, 168, 90, 0.30) 60%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* — Premium loading dot pulse alternative (calmo, não cafona). */
+  @keyframes cc-loading-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+  .atlas-shell.surface-code .cc-loading-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--cc-info);
+    border-radius: 999px;
+    animation: cc-loading-pulse 1.8s var(--cc-ease-in-out) infinite;
+  }
+
+  /* — Subtle hover refinement em sections com ::after gradient. */
+  .atlas-shell.surface-code section[aria-label='Próximo passo seguro']::after,
+  .atlas-shell.surface-code section[aria-label='Lifecycle da Obra']::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.04), transparent 50%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 280ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code section[aria-label='Próximo passo seguro'],
+  .atlas-shell.surface-code section[aria-label='Lifecycle da Obra'] {
+    position: relative;
+  }
+
+  /* — Decision Inbox card hover · subtle accent overlay. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li:hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.04), transparent 60%);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* — Progressbar com glow externo subtle quando focado/hovered. */
+  .atlas-shell.surface-code [role='progressbar']:hover {
+    box-shadow: 0 0 12px rgba(212, 168, 90, 0.06);
+  }
+
+  /* — Premium spacing em conv-thread quando há mensagens. */
+  .atlas-shell.surface-code .conv-thread {
+    padding-top: 28px;
+  }
+
+  /* — Subtle inner highlight em obra-id quando focused. */
+  .atlas-shell.surface-code .obra-id:focus-visible {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 0 2px var(--cc-bg),
+      0 0 0 4px var(--cc-accent-strong);
+  }
+
+  /* — Final premium: bottom highlight nas top-bars (sticky). */
+  .atlas-shell.surface-code .topbar::after,
+  .atlas-shell.surface-code .obra-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(212, 168, 90, 0.12) 50%,
+      transparent 100%);
+    pointer-events: none;
+  }
+
+  /* — Premium · subtle pulse nos status dots blocked (alert sem ser cafona). */
+  .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] {
+    animation: cc-blocked-soft-pulse 3s var(--cc-ease-in-out) infinite;
+  }
+  @keyframes cc-blocked-soft-pulse {
+    0%, 100% {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 0 4px rgba(208, 90, 82, 0.35);
+    }
+    50% {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 0 10px rgba(208, 90, 82, 0.55);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] { animation: none; }
+  }
+
+  /* — Premium typography hierarchy nos progress percent. */
+  .atlas-shell.surface-code [aria-valuenow] ~ * strong:first-child,
+  .atlas-shell.surface-code section[aria-label*='Próximo'] > div:first-of-type span:first-child {
+    font-variation-settings: 'wght' 680;
+    font-feature-settings: 'tnum' 1, 'cv11' 1;
+    letter-spacing: -0.014em;
+  }
+
+  /* — Subtle horizontal divider between SectionCards. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] > section + section {
+    margin-top: 14px;
+  }
+
+  /* — Cards content readability max-width. */
+  .atlas-shell.surface-code .conv-msg .body {
+    max-width: 68ch;
+  }
+
+  /* — Composer textarea Apple Pro smoothing. */
+  .atlas-shell.surface-code .composer textarea {
+    transition:
+      border-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out),
+      background 200ms var(--cc-ease-out),
+      min-height 200ms var(--cc-ease-out);
+  }
+
+  /* — Premium: refinement em surface-tab shortcut keys. */
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    font-variation-settings: 'wght' 520;
+    opacity: 0.7;
+  }
+  .atlas-shell.surface-code .surface-tab.on .surface-tab-shortcut {
+    opacity: 1;
+  }
+
+  /* — Premium · subtle border-radius em right-rail bottom for visual coherence. */
+  .atlas-shell.surface-code .right-rail .ops-panel {
+    border-radius: 0 0 var(--cc-radius-md) 0;
+  }
+
+  /* — Premium · fade-in animation refinement (mais suave). */
+  @keyframes cc-soft-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.998);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .atlas-shell.surface-code .cc-obra-row {
+    animation: cc-soft-enter 280ms var(--cc-ease-out) backwards;
+  }
+
+  /* — Premium: subtle hover scale em status dots interactive. */
+  .atlas-shell.surface-code .cc-obra-row:hover .cc-status-dot {
+    transform: scale(1.15);
+  }
+  .atlas-shell.surface-code .cc-status-dot {
+    transform: scale(1);
+    transition:
+      transform 240ms var(--cc-ease-spring),
+      background-color 200ms var(--cc-ease-out),
+      box-shadow 200ms var(--cc-ease-out);
+  }
+
+  /* — Final Apple Pro: subtle font-feature settings em data table values. */
+  .atlas-shell.surface-code .row .v,
+  .atlas-shell.surface-code .row-card .v,
+  .atlas-shell.surface-code .check-tag {
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'kern' 1;
+  }
+
+  /* — Premium: subtle hover em links também aplicado a strong. */
+  .atlas-shell.surface-code strong {
+    font-variation-settings: 'wght' 600;
+  }
+
+  /* — Subtle outline focus-within em panels (rare). */
+  .atlas-shell.surface-code button:focus-visible {
+    z-index: 2;
+  }
+
+  /* — Premium details opening animation. */
+  .atlas-shell.surface-code details {
+    transition: padding 220ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code details[open] > *:not(summary) {
+    animation: cc-soft-enter 280ms var(--cc-ease-out) backwards;
+  }
+
+  /* — Premium subtle accent marker no inicio de h1 (Apple Pro typography). */
+  .atlas-shell.surface-code h1[style*='font-size: 22'],
+  .atlas-shell.surface-code h1[style*='font-size: 24'] {
+    position: relative;
+  }
+
+  /* — Mini chips compact (status_summary). */
+  .atlas-shell.surface-code [aria-label='Safety strip'] span,
+  .atlas-shell.surface-code [aria-label*='afety'] span {
+    transition: color 200ms var(--cc-ease-out);
+  }
+
+  /* — Premium · subtle font feature em accent areas. */
+  .atlas-shell.surface-code .cc-accent,
+  .atlas-shell.surface-code [style*='color: var(--cc-accent)'] {
+    font-variation-settings: 'wght' 560;
+    font-feature-settings: 'cv11' 1;
+  }
+
+  /* — Hover refinement em surface-tab. */
+  .atlas-shell.surface-code .surface-tab:hover:not(.on) {
+    background: rgba(212, 168, 90, 0.05);
+    color: var(--cc-text);
+  }
+
+  /* — Cmd+Enter kbds com refinement Apple class. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    font-variation-settings: 'wght' 540;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Subtle decorative line em rail section heads (premium pattern). */
+  .atlas-shell.surface-code .cc-rail-section-head {
+    background: linear-gradient(180deg, transparent 0%, rgba(212, 168, 90, 0.04) 100%);
+  }
+
+  /* — Brand sub badge com inner glow. */
+  .atlas-shell.surface-code .brand .v {
+    background: linear-gradient(180deg,
+      rgba(212, 168, 90, 0.16) 0%,
+      rgba(212, 168, 90, 0.10) 100%);
+    backdrop-filter: blur(2px);
+  }
+
+  /* — Premium · refinement em pty-badge real. */
+  .atlas-shell.surface-code .pty-badge {
+    background: linear-gradient(180deg,
+      rgba(130, 181, 119, 0.18) 0%,
+      rgba(130, 181, 119, 0.10) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 0 4px rgba(130, 181, 119, 0.20);
+    font-variation-settings: 'wght' 580;
+  }
+
+  /* — Composer textarea sutil glow no hover (não focus). */
+  .atlas-shell.surface-code .composer textarea:hover:not(:focus):not(:disabled) {
+    border-color: var(--cc-border-strong);
+  }
+
+  /* — Final premium: subtle backdrop em status badges. */
+  .atlas-shell.surface-code .cc-badge {
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* — Subtle outer glow em forge tab quando active. */
+  .atlas-shell.surface-code .ops-tab.on {
+    color: var(--cc-accent-strong);
+    text-shadow: 0 0 12px rgba(212, 168, 90, 0.25);
+  }
+
+  /* — Loading spinner premium gold. */
+  .atlas-shell.surface-code .cc-loading-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .atlas-shell.surface-code .cc-loading-title::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--cc-info-veil);
+    border-top-color: var(--cc-info);
+    border-radius: 999px;
+    animation: cc-spin 800ms linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-shell.surface-code .cc-loading-title::before { animation: none; }
+  }
+
+  /* — Right rail · refinement final. */
+  .atlas-shell.surface-code .right-rail > .ops-tabs + .ops-panel {
+    padding-top: 16px;
+  }
+
+  /* — Subtle decoration nos ::after dos rail sections. */
+  .atlas-shell.surface-code .cc-rail-section-head::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 32px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cc-accent-border), transparent);
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 280ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code .cc-rail-section:hover .cc-rail-section-head::after {
+    opacity: 1;
+  }
+  .atlas-shell.surface-code .cc-rail-section-head {
+    position: relative;
+  }
+
+  /* ━━━ ROUND 15 · FINAL POLISH SWEEP · 9.8 absoluto ━━━ */
+
+  /* — Right rail panels: respiro vertical consistente. */
+  .atlas-shell.surface-code .rail-panel {
+    padding: 0;
+    margin-bottom: 20px;
+  }
+  .atlas-shell.surface-code .rail-panel section[role='status'],
+  .atlas-shell.surface-code .rail-panel section[role='alert'] {
+    margin-bottom: 14px;
+  }
+  .atlas-shell.surface-code .rail-panel h3 {
+    margin: 14px 0 10px;
+  }
+
+  /* — Right rail header forge title premium. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] > h3:first-child,
+  .atlas-shell.surface-code .rail-panel > h3:first-child {
+    padding-bottom: 6px;
+    margin-top: 0;
+    border-bottom: 1px solid var(--cc-border-soft);
+    font-size: 13px;
+    font-variation-settings: 'wght' 620;
+    color: var(--cc-text);
+    letter-spacing: -0.005em;
+  }
+
+  /* — Centro Command Center: hero card refinement. */
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] {
+    padding: 22px 26px;
+    gap: 14px;
+    border-radius: var(--cc-radius-lg);
+  }
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] h1 {
+    font-size: 26px;
+    line-height: 1.16;
+    font-variation-settings: 'wght' 720;
+    letter-spacing: -0.020em;
+  }
+
+  /* — Decision Inbox cards · hover lift premium. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    padding: 14px 16px;
+    border-radius: var(--cc-radius-md);
+    gap: 6px;
+  }
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li strong {
+    font-size: 14px;
+    font-variation-settings: 'wght' 620;
+    line-height: 1.3;
+  }
+
+  /* — Left rail · respiro extra. */
+  .atlas-shell.surface-code .left-rail {
+    padding: 16px 14px 24px;
+  }
+  .atlas-shell.surface-code .cc-rail-section {
+    margin-bottom: 20px;
+    gap: 1px;
+  }
+  .atlas-shell.surface-code .cc-rail-section-head {
+    padding: 6px 14px 8px;
+    margin-bottom: 6px;
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 600;
+    letter-spacing: -0.001em;
+  }
+  .atlas-shell.surface-code .cc-obra-row {
+    padding: 10px 14px;
+  }
+  .atlas-shell.surface-code .cc-obra-row-head {
+    gap: 11px;
+  }
+  .atlas-shell.surface-code .cc-obra-row-title {
+    font-size: 13px;
+    line-height: 1.35;
+    font-variation-settings: 'wght' 560;
+  }
+  .atlas-shell.surface-code .cc-obra-row-meta {
+    padding-left: 19px;
+    gap: 7px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--cc-text-faint);
+    font-variation-settings: 'wght' 460;
+  }
+
+  /* — Search input premium refinement. */
+  .atlas-shell.surface-code .cc-input[type='search'] {
+    height: 32px !important;
+    font-size: 12.5px !important;
+    padding: 0 12px !important;
+    margin-bottom: 10px !important;
+    background: var(--cc-surface-sunken);
+    border: 1px solid var(--cc-border);
+    border-radius: var(--cc-radius-sm);
+  }
+
+  /* — Top bar refinement. */
+  .atlas-shell.surface-code .topbar {
+    padding: 0 24px;
+  }
+  .atlas-shell.surface-code .brand strong {
+    font-size: 14.5px;
+    font-variation-settings: 'wght' 640;
+    letter-spacing: -0.008em;
+  }
+
+  /* — Surface switcher · pill premium. */
+  .atlas-shell.surface-code .surface-switcher {
+    padding: 4px;
+    gap: 2px;
+    border-radius: 9px;
+  }
+  .atlas-shell.surface-code .surface-tab {
+    padding: 7px 16px;
+    border-radius: 6px;
+    gap: 8px;
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-label {
+    font-size: 13px;
+  }
+  .atlas-shell.surface-code .surface-tab .surface-tab-shortcut {
+    font-size: 10px;
+    margin-left: 0;
+  }
+
+  /* — Obra bar refinement. */
+  .atlas-shell.surface-code .obra-bar {
+    padding: 0 24px;
+    gap: 14px;
+  }
+  .atlas-shell.surface-code .obra-id {
+    padding: 3px 9px;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+  }
+  .atlas-shell.surface-code .obra-objective {
+    font-size: 14px;
+    font-variation-settings: 'wght' 540;
+  }
+
+  /* — Terminal dock refinement. */
+  .atlas-shell.surface-code .term-tabs {
+    padding: 0 12px;
+    gap: 0;
+  }
+  .atlas-shell.surface-code .term-tab {
+    padding: 9px 14px 8px;
+    font-size: 12px;
+    font-variation-settings: 'wght' 540;
+  }
+  .atlas-shell.surface-code .term-action {
+    padding: 0 9px;
+    font-size: 11px;
+    font-variation-settings: 'wght' 540;
+    height: 24px;
+    border-radius: var(--cc-radius-xs);
+  }
+  .atlas-shell.surface-code .term-actions {
+    gap: 4px;
+  }
+  .atlas-shell.surface-code .term-status {
+    padding: 8px 18px;
+    gap: 18px;
+    font-size: 12px;
+  }
+  .atlas-shell.surface-code .term-status-cwd {
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 500;
+  }
+  .atlas-shell.surface-code .pty-badge {
+    padding: 3px 10px;
+    font-size: 10px;
+    font-variation-settings: 'wght' 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* — Composer refinement final. */
+  .atlas-shell.surface-code .composer {
+    padding: 16px 32px 18px;
+    gap: 10px;
+  }
+  .atlas-shell.surface-code .composer textarea {
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    min-height: 52px;
+  }
+  .atlas-shell.surface-code .composer-row {
+    gap: 12px;
+  }
+  .atlas-shell.surface-code .composer-meta {
+    font-size: 12px;
+    color: var(--cc-text-faint);
+    margin-top: 2px;
+  }
+  .atlas-shell.surface-code .composer-meta kbd {
+    padding: 3px 7px;
+    font-size: 10.5px;
+    margin: 0 1px;
+  }
+
+  /* — SDD mini refinement. */
+  .atlas-shell.surface-code .sdd-mini {
+    padding: 14px 18px;
+    gap: 18px;
+  }
+  .atlas-shell.surface-code .sdd-mini .label {
+    font-size: 11px;
+    font-variation-settings: 'wght' 620;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-variation-settings: 'wght' 540;
+  }
+  .atlas-shell.surface-code .sdd-mini .stage.now {
+    font-variation-settings: 'wght' 620;
+  }
+  .atlas-shell.surface-code .sdd-mini .stages {
+    gap: 6px;
+  }
+
+  /* — Conv msg refinement. */
+  .atlas-shell.surface-code .conv-msg .who {
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 600;
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+  .atlas-shell.surface-code .conv-msg.you .body,
+  .atlas-shell.surface-code .conv-msg.atlas .body {
+    font-size: 14px;
+    line-height: 1.65;
+    font-variation-settings: 'wght' 440;
+  }
+
+  /* — Section heads em ops-panel premium. */
+  .atlas-shell.surface-code [aria-labelledby='forge-human-title'] section[role='status'] > div:nth-child(2) {
+    font-size: 15px;
+    line-height: 1.3;
+    font-variation-settings: 'wght' 620;
+    letter-spacing: -0.005em;
+  }
+
+  /* — Buttons hover micro-spring (mais sutil). */
+  .atlas-shell.surface-code .cc-btn-primary:hover:not(:disabled) {
+    transform: translateY(-0.5px);
+  }
+  .atlas-shell.surface-code .send-btn:hover:not(:disabled) {
+    transform: scale(1.04);
+  }
+
+  /* — Right rail tabs micro spacing. */
+  .atlas-shell.surface-code .ops-tab {
+    padding: 11px 6px;
+    font-size: 11.5px;
+    font-variation-settings: 'wght' 540;
+  }
+  .atlas-shell.surface-code .ops-tab.on {
+    font-variation-settings: 'wght' 640;
+  }
+
+  /* — Section card heading premium. */
+  .atlas-shell.surface-code .panel-title {
+    margin: 0 0 14px;
+    padding-bottom: 6px;
+    font-size: 13px;
+    font-variation-settings: 'wght' 620;
+    color: var(--cc-text);
+    letter-spacing: -0.005em;
+  }
+
+  /* — Status badges em corpo · refinement consistente. */
+  .atlas-shell.surface-code .cc-badge {
+    padding: 3px 10px;
+    font-size: 10.5px;
+    font-variation-settings: 'wght' 580;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+
+  /* — Row premium values com text-align right. */
+  .atlas-shell.surface-code [role='listitem'][class*='row'] .v,
+  .atlas-shell.surface-code .row .v {
+    font-variation-settings: 'wght' 600;
+  }
+
+  /* — Final premium · backdrop em status-card right rail. */
+  .atlas-shell.surface-code .rail-panel section[role='status'] {
+    backdrop-filter: blur(2px);
+  }
+
+  /* — Inputs/textareas radius padrão. */
+  .atlas-shell.surface-code .cc-input,
+  .atlas-shell.surface-code .cc-textarea,
+  .atlas-shell.surface-code .left-create-obra-input,
+  .atlas-shell.surface-code .composer textarea {
+    border-radius: var(--cc-radius-md);
+  }
+
+  /* — Buttons premium · radius padrão. */
+  .atlas-shell.surface-code .cc-btn,
+  .atlas-shell.surface-code .cc-btn-primary,
+  .atlas-shell.surface-code .left-create-obra-btn,
+  .atlas-shell.surface-code .left-create-obra-actions button {
+    border-radius: var(--cc-radius-md);
+  }
+
+  /* ━━━ ROUND 16 · MICRO REFINEMENT ABSOLUTO ━━━ */
+
+  /* — Premium · scroll snap em conv-thread (ótima leitura). */
+  .atlas-shell.surface-code .conv-thread {
+    overscroll-behavior: contain;
+  }
+
+  /* — Premium · text-rendering em headings importantes. */
+  .atlas-shell.surface-code h1,
+  .atlas-shell.surface-code h2 {
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* — Refinement micro em check-circle (radius perfeitamente arredondado). */
+  .atlas-shell.surface-code [aria-label*='Checklist'] span[style*='border-radius: 999'],
+  .atlas-shell.surface-code .check-circle {
+    aspect-ratio: 1;
+  }
+
+  /* — Premium subtle decoration · Forge title icon prefix optional. */
+  .atlas-shell.surface-code .rail-panel > h3:first-child::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 11px;
+    background: var(--cc-accent);
+    border-radius: 999px;
+    margin-right: 8px;
+    vertical-align: middle;
+    box-shadow: 0 0 6px rgba(212, 168, 90, 0.45);
+  }
+
+  /* — Section card heading com bullet point premium. */
+  .atlas-shell.surface-code .section-card-header,
+  .atlas-shell.surface-code [aria-label*='Checklist'] > header,
+  .atlas-shell.surface-code [aria-label*='Segurança'] > header,
+  .atlas-shell.surface-code [aria-label*='Provider'] > header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* — Premium · subtle padding em rows. */
+  .atlas-shell.surface-code .row,
+  .atlas-shell.surface-code .check-row,
+  .atlas-shell.surface-code .row-card {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  /* — Premium · workbench panels · respiro lateral. */
+  .atlas-shell.surface-code .cc-panel {
+    padding: 0 12px;
+  }
+
+  /* — Premium · sticky shadow underline em obra-bar sticky. */
+  .atlas-shell.surface-code .obra-bar {
+    box-shadow:
+      inset 0 1px 0 rgba(0, 0, 0, 0.06),
+      0 1px 0 var(--cc-border-soft);
+  }
+
+  /* — Premium · empty rail-section minimal text. */
+  .atlas-shell.surface-code .cc-rail-section:empty {
+    display: none;
+  }
+
+  /* — Premium · animation refinement em cards · ease-out slower. */
+  .atlas-shell.surface-code .cc-card,
+  .atlas-shell.surface-code .rail-panel section,
+  .atlas-shell.surface-code .cc-panel > section {
+    transition: box-shadow 320ms var(--cc-ease-out), border-color 320ms var(--cc-ease-out);
+  }
+
+  /* — Premium · gentle hover em cards de Lifecycle. */
+  .atlas-shell.surface-code [aria-label='Lifecycle da Obra']:hover {
+    border-color: rgba(212, 168, 90, 0.12);
+  }
+
+  /* — Premium · cmd+enter kbds in line-height padronizado. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    line-height: 1.4;
+  }
+
+  /* — Premium · h3 em section card headers. */
+  .atlas-shell.surface-code .cc-card h3,
+  .atlas-shell.surface-code .cc-card-raised h3,
+  .atlas-shell.surface-code .cc-panel section h3 {
+    font-size: 14.5px;
+    font-variation-settings: 'wght' 620;
+    color: var(--cc-text-strong);
+    letter-spacing: -0.005em;
+    line-height: 1.3;
+  }
+
+  /* — Premium · subtle indication em "ok" tags. */
+  .atlas-shell.surface-code .row .v.ok,
+  .atlas-shell.surface-code .row-card .v.ok,
+  .atlas-shell.surface-code .check-tag.done {
+    text-shadow: 0 0 8px rgba(130, 181, 119, 0.25);
+  }
+
+  /* — Premium · subtle border-radius nos action chips. */
+  .atlas-shell.surface-code [aria-label*='Decision'] li {
+    border-radius: 6px;
+  }
+
+  /* — Premium · refinement em scrollbar pra direção horizontal. */
+  .atlas-shell.surface-code *::-webkit-scrollbar:horizontal {
+    height: 6px;
+  }
+
+  /* — Premium · cursor mais discreto · pointer só onde interativo. */
+  .atlas-shell.surface-code .cc-empty,
+  .atlas-shell.surface-code .cc-loading,
+  .atlas-shell.surface-code .cc-error {
+    cursor: default;
+  }
+
+  /* — Premium · refinement em status badges com text-shadow. */
+  .atlas-shell.surface-code .cc-badge[data-tone='success'] strong,
+  .atlas-shell.surface-code .cc-badge[data-tone='success'] {
+    text-shadow: 0 0 8px rgba(130, 181, 119, 0.15);
+  }
+  .atlas-shell.surface-code .cc-badge[data-tone='danger'],
+  .atlas-shell.surface-code .cc-badge[data-tone='warning'] {
+    text-shadow: 0 0 6px currentColor;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.20);
+  }
+
+  /* — Premium · refined linewidth em borders externas. */
+  .atlas-shell.surface-code .rail-panel section[role='status'] {
+    border-width: 1px;
+    border-style: solid;
+  }
+
+  /* — Premium · refinement em conv-thread → ar superior. */
+  .atlas-shell.surface-code .conv-thread > * + * {
+    margin-top: 6px;
+  }
+
+  /* — Premium · subtle motion entre Obra changes (smooth). */
+  .atlas-shell.surface-code .main-stage > * {
+    animation: cc-fade-in 320ms var(--cc-ease-out);
+  }
+
+  /* — Premium · padronização visual de all transitions. */
+  .atlas-shell.surface-code * {
+    transition-timing-function: var(--cc-ease-out);
+  }
+
+  /* — Premium · subtle highlight em decision inbox cards. */
+  .atlas-shell.surface-code [aria-label='Decision Inbox'] li {
+    border-width: 1px;
+  }
+
+  /* — Premium · ::placeholder optical refinement. */
+  .atlas-shell.surface-code .cc-input::placeholder,
+  .atlas-shell.surface-code .cc-textarea::placeholder,
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    font-variation-settings: 'wght' 420;
+    opacity: 0.9;
+  }
+
+  /* — Premium · scrollbar com fade-in subtle. */
+  .atlas-shell.surface-code *::-webkit-scrollbar-thumb {
+    opacity: 0.5;
+    transition: opacity 240ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-code *:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+  }
+
+  /* ━━━ ROUND 17 · PIXEL PERFECT ABSOLUTO ━━━ */
+
+  /* — Forge tab title bullet · vertical micro. */
+  .atlas-shell.surface-code .rail-panel > h3:first-child {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 2px;
+  }
+
+  /* — Premium · scroll-margin para deep links. */
+  .atlas-shell.surface-code .cc-panel section[aria-label] {
+    scroll-margin-top: 100px;
+  }
+
+  /* — Premium · subtle texture em backgrounds das cards. */
+  .atlas-shell.surface-code .cc-panel > section[aria-label='Próximo passo seguro'] {
+    background:
+      radial-gradient(ellipse at top right, rgba(212, 168, 90, 0.04) 0%, transparent 60%),
+      var(--cc-surface-raised);
+  }
+
+  /* — Premium · subtle accent border-image em buttons primary. */
+  .atlas-shell.surface-code .cc-btn-primary {
+    border: 1px solid;
+    border-image: linear-gradient(180deg, rgba(255,255,255,0.20), rgba(0,0,0,0.10)) 1;
+  }
+
+  /* — Premium · ::after subtle line decoration em headings. */
+  .atlas-shell.surface-code [aria-label='Resumo da Obra'] h1::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cc-accent), transparent);
+    border-radius: 999px;
+    margin-top: 8px;
+  }
+
+  /* — Premium · workbench panels heading com clean separator. */
+  .atlas-shell.surface-code .cc-panel h3 {
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--cc-border-soft);
+    margin-bottom: 12px;
+  }
+
+  /* — Premium · refinement em conv-thread message you. */
+  .atlas-shell.surface-code .conv-msg.you .body {
+    padding: 4px 0 4px 18px;
+  }
+
+  /* — Premium · subtle background nos atlas-msg quando hover. */
+  .atlas-shell.surface-code .conv-msg.atlas {
+    padding: 8px 10px;
+    margin-left: -10px;
+    border-radius: var(--cc-radius-md);
+    transition: background 240ms var(--cc-ease-out);
+  }
+
+  /* — Premium · cmd+enter kbds com dimensões consistentes. */
+  .atlas-shell.surface-code .composer-meta kbd {
+    min-width: 24px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  /* — Premium · empty divider line nos rail-section-head ::after. */
+  .atlas-shell.surface-code .cc-rail-section-head::after {
+    height: 1.5px;
+  }
+
+  /* — Premium · scrollbar corner remove. */
+  .atlas-shell.surface-code *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* — Premium · placeholder otimizado · letter-spacing 0. */
+  .atlas-shell.surface-code .cc-input::placeholder,
+  .atlas-shell.surface-code .cc-textarea::placeholder,
+  .atlas-shell.surface-code .composer textarea::placeholder {
+    letter-spacing: 0;
+    font-variation-settings: 'wght' 420;
+  }
+
+  /* — Premium · :focus-visible em rails é tratado pelo focus-ring. */
+  .atlas-shell.surface-code .cc-obra-row:focus-visible {
+    outline: none;
+    background: var(--cc-accent-veil);
+    border-color: var(--cc-accent-border);
+  }
+
+  /* — Premium · subtle vertical spacing entre sections em ops-panel. */
+  .atlas-shell.surface-code .ops-panel > * {
+    margin-bottom: 14px;
+  }
+  .atlas-shell.surface-code .ops-panel > *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* — Premium · subtle micro-typography refinement em strong. */
+  .atlas-shell.surface-code strong {
+    font-feature-settings: 'cv11' 1, 'kern' 1;
+  }
+
+  /* — Premium · global font-rendering em cards principais. */
+  .atlas-shell.surface-code .cc-panel,
+  .atlas-shell.surface-code .rail-panel {
+    -webkit-text-stroke: 0.01em transparent;
+  }
+
+  /* — Premium · subtle font-feature em descriptions. */
+  .atlas-shell.surface-code p,
+  .atlas-shell.surface-code [class*='description'] {
+    font-feature-settings: 'kern' 1, 'liga' 1, 'cv11' 1;
+  }
+
+  /* — Premium · obra-id em hover com glow gold. */
+  .atlas-shell.surface-code .obra-bar:hover .obra-id {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 0 1px rgba(212, 168, 90, 0.30),
+      0 0 12px rgba(212, 168, 90, 0.15);
+  }
+
+  /* — Premium · subtle inner gloss em send-btn. */
+  .atlas-shell.surface-code .send-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code .send-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent);
+    pointer-events: none;
+    border-radius: var(--cc-radius-md) var(--cc-radius-md) 0 0;
+  }
+
+  /* — Premium · refinement em ops-tab disabled. */
+  .atlas-shell.surface-code .ops-tab:disabled {
+    color: var(--cc-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  /* — Premium · subtle accent halo nos buttons primary glow. */
+  .atlas-shell.surface-code .cc-btn-primary:not(:disabled) {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  /* — Premium · subtle backdrop em status cards. */
+  .atlas-shell.surface-code [role='status'][style*='background: var(--cc-danger-veil'],
+  .atlas-shell.surface-code [role='alert'][style*='background: var(--cc-danger-veil'] {
+    background:
+      radial-gradient(ellipse at top, rgba(208, 90, 82, 0.04) 0%, transparent 60%),
+      var(--cc-danger-veil) !important;
+  }
+
+  /* — Final premium · refinement absoluto em check-circle done. */
+  .atlas-shell.surface-code .check-circle.done,
+  .atlas-shell.surface-code [aria-label*='Checklist'] span[style*='var(--cc-success'][style*='border-radius'] {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 6px rgba(130, 181, 119, 0.15);
   }
 }
 
 @layer base {
   body {
-    background: var(--cream);
-    color: var(--ink);
-    font-family: var(--serif);
-    font-size: 16px;
+    background: var(--cc-bg);
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-body);
+    line-height: var(--cc-leading-normal);
+    letter-spacing: var(--cc-tracking-normal);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  /* Scrollbars warm-tinted, calmas em 12h de uso. */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--cc-border);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--cc-border-strong);
+    background-clip: padding-box;
+  }
+
+  /* Focus visível só por keyboard — não por clique de mouse. */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--cc-focus-ring);
+    border-radius: var(--cc-radius-xs);
   }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
    LAYOUT MASTER · 4 rows × 3 cols
-   topbar 50 · obra-bar 44 · workspace 1fr · terminal-dock 168
+   topbar 50 · obra-bar 44 · workspace 1fr · terminal-dock variable
    ────────────────────────────────────────────────────────────────────────── */
 
 @layer layout {
@@ -75,13 +3580,20 @@
   }
   /* Code surface · 4 rows × 3 cols */
   .atlas-shell.surface-code {
-    grid-template-rows: 50px 44px minmax(0, 1fr) 168px;
-    grid-template-columns: 260px minmax(0, 1fr) 320px;
+    grid-template-rows: 50px 44px minmax(0, 1fr) var(--terminal-dock-height);
+    grid-template-columns: var(--code-left-width) minmax(0, 1fr) var(--code-right-width);
     grid-template-areas:
       'topbar    topbar     topbar'
       'obra      obra       obra'
       'left      stage      right'
       'terminal  terminal   terminal';
+  }
+  .atlas-shell.surface-code.terminal-right {
+    grid-template-rows: 50px 44px minmax(0, 1fr);
+    grid-template-areas:
+      'topbar    topbar     topbar'
+      'obra      obra       obra'
+      'left      stage      right';
   }
   /* Cartografia surface · 2 rows · canvas + inspector lives inside CartografiaSurface */
   .atlas-shell.surface-cartografia {
@@ -98,15 +3610,189 @@
     overflow: hidden;
   }
 
+  /* Atenção · 2 rows shape (Cartografia-like). */
+  .atlas-shell.surface-atencao {
+    grid-template-rows: 50px minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      'topbar'
+      'main' !important;
+    grid-auto-rows: 0 !important;
+    grid-auto-flow: row !important;
+  }
+  .atlas-shell.surface-atencao > .topbar {
+    grid-area: topbar !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+  .atlas-shell.surface-atencao > .atencao-surface {
+    grid-area: main !important;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Atlas AI · rails-based layout (mesma shape do Atlas Code).
+     row 1: topbar global (shell)
+     row 2: header-bar (3 cols)
+     row 3: left-rail │ stage │ right-rail
+     ───────────────────────────────────────────────────────────────── */
+  :root {
+    --atlas-ai-left-width: 280px;
+    --atlas-ai-right-width: 340px;
+    --atlas-ai-header-bar-height: 56px;
+  }
+  .atlas-shell.surface-atlas_ai,
+  .atlas-shell.surface-atlas-ai {
+    grid-template-rows: 50px var(--atlas-ai-header-bar-height) minmax(0, 1fr) !important;
+    grid-template-columns:
+      var(--atlas-ai-left-width)
+      minmax(0, 1fr)
+      var(--atlas-ai-right-width) !important;
+    grid-template-areas:
+      'topbar     topbar  topbar'
+      'headerbar  headerbar  headerbar'
+      'left       stage   right' !important;
+    grid-auto-rows: 0 !important;
+    grid-auto-flow: row !important;
+  }
+  .atlas-shell.surface-atlas_ai > .topbar,
+  .atlas-shell.surface-atlas-ai > .topbar {
+    grid-area: topbar !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-header-bar,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-header-bar {
+    grid-area: headerbar !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-rail-left,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-rail-left {
+    grid-area: left !important;
+    min-height: 0;
+    min-width: 0;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-stage,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-stage {
+    grid-area: stage !important;
+    min-height: 0;
+    min-width: 0;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-rail-right,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-rail-right {
+    grid-area: right !important;
+    min-height: 0;
+    min-width: 0;
+  }
+  /* Fallback offline (renderiza só <main class="atlas-ai-stage-fallback">) */
+  .atlas-shell.surface-atlas_ai > .atlas-ai-stage-fallback,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-stage-fallback {
+    grid-area: headerbar / left / stage / right !important;
+  }
+  /* Collapsed states · rail vira 0px e o stage absorve o espaço. */
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-rail-left,
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-rail-left,
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left,
+  html.atlas-ai-left-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left {
+    display: none !important;
+  }
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-rail-right,
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-rail-right,
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right,
+  html.atlas-ai-right-collapsed .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right {
+    display: none !important;
+  }
+  /* Resizers (overlay sobre as bordas dos rails). */
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left {
+    grid-area: left;
+    justify-self: end;
+    align-self: stretch;
+    width: 12px;
+    min-width: 12px;
+    cursor: col-resize;
+    transform: translateX(6px);
+    z-index: 5;
+    pointer-events: auto;
+    position: relative;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right {
+    grid-area: right;
+    justify-self: start;
+    align-self: stretch;
+    width: 12px;
+    min-width: 12px;
+    cursor: col-resize;
+    transform: translateX(-6px);
+    z-index: 5;
+    pointer-events: auto;
+    position: relative;
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 5px;
+    width: 2px;
+    background: transparent;
+    transition: background 160ms var(--cc-ease-out);
+  }
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left:hover::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-left.dragging::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right:hover::before,
+  .atlas-shell.surface-atlas_ai > .atlas-ai-column-resizer-right.dragging::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left:hover::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-left.dragging::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right:hover::before,
+  .atlas-shell.surface-atlas-ai > .atlas-ai-column-resizer-right.dragging::before {
+    background: rgba(212, 168, 90, 0.36);
+  }
+  body.atlas-ai-column-resizing,
+  body.atlas-ai-column-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+
   .topbar {
     grid-area: topbar;
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 18px;
-    padding: 0 22px;
-    border-bottom: 1px solid var(--bronze-soft);
-    background: var(--cream-paper);
+    padding: 0 var(--cc-space-6);
+    border-bottom: 1px solid var(--cc-border-soft);
+    background: var(--cc-surface-sunken);
+    color: var(--cc-text);
+    box-shadow: var(--cc-shadow-xs);
+  }
+  .atlas-shell.surface-cartografia .topbar {
+    background:
+      linear-gradient(180deg, rgba(34, 54, 67, 0.98), rgba(28, 44, 55, 0.96)),
+      var(--cc-surface-sunken);
+    color: var(--cc-text);
+    border-bottom-color: rgba(142, 168, 184, 0.16);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.035) inset,
+      0 1px 0 rgba(0, 0, 0, 0.28),
+      0 14px 34px rgba(5, 12, 18, 0.16);
+    backdrop-filter: blur(18px) saturate(125%);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+  }
+  .topbar-start {
+    justify-self: start;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .topbar-spacer {
+    min-width: 0;
   }
   .topbar-meta {
     display: flex;
@@ -119,19 +3805,99 @@
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 18px;
-    padding: 0 22px;
-    border-bottom: 1px solid var(--hair);
-    background: linear-gradient(180deg, var(--cream-paper) 0%, var(--cream) 100%);
+    gap: var(--cc-space-4);
+    padding: 0 var(--cc-space-6);
+    border-bottom: 1px solid var(--cc-border-soft);
+    background: var(--cc-surface);
   }
 
   .left-rail {
     grid-area: left;
-    border-right: 1px solid var(--bronze-soft);
+    border-right: 1px solid var(--cc-border-soft);
     overflow-y: auto;
     min-height: 0;
-    background: var(--cream-paper);
-    padding: 16px 16px 18px;
+    background: var(--cc-surface-sunken);
+    padding: var(--cc-space-4) var(--cc-space-3) var(--cc-space-5);
+  }
+
+  .left-create-obra {
+    margin: 0 0 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--hair);
+  }
+  .left-create-obra-btn {
+    width: 100%;
+    min-height: 34px;
+    border: 1px solid var(--bronze);
+    border-radius: 2px;
+    background: var(--ink);
+    color: var(--cream);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .left-create-obra-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .left-create-obra-form {
+    display: grid;
+    gap: 8px;
+  }
+  .left-create-obra-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.8px;
+    color: var(--bronze);
+    text-transform: uppercase;
+  }
+  .left-create-obra-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--bronze-soft);
+    border-radius: 2px;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1.35;
+    padding: 7px 8px;
+    box-sizing: border-box;
+  }
+  .left-create-obra-textarea {
+    min-height: 70px;
+    resize: vertical;
+  }
+  .left-create-obra-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .left-create-obra-actions button {
+    min-height: 30px;
+    border: 1px solid var(--bronze);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--bronze);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+  .left-create-obra-actions button:first-child {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .left-create-obra-actions button:disabled {
+    opacity: 0.45;
+  }
+  .left-create-obra-error {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--rec-red);
+    word-break: break-word;
   }
 
   .main-stage {
@@ -140,26 +3906,112 @@
     grid-template-rows: minmax(0, 1fr) auto;
     min-width: 0;
     min-height: 0;
-    background: var(--cream-canvas);
+    background: var(--cc-bg);
   }
 
   .right-rail {
     grid-area: right;
-    border-left: 1px solid var(--bronze-soft);
+    border-left: 1px solid var(--cc-border-soft);
     overflow-y: auto;
     min-height: 0;
-    background: var(--cream-paper);
-    padding: 0 0 18px;
+    background: var(--cc-surface);
+    padding: 0 0 var(--cc-space-5);
+    position: relative;
+    z-index: 1;
+  }
+  .atlas-shell.surface-code.terminal-right .right-rail {
+    padding-bottom: calc(var(--terminal-side-height) + 22px);
   }
 
   .terminal-dock {
     grid-area: terminal;
-    background: var(--cream-paper);
-    border-top: 1px solid var(--bronze-soft);
+    background: #11202a;
+    border-top: 1px solid var(--cc-border-soft);
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: 10px auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'resize'
+      'tabs'
+      'search'
+      'body'
+      'status';
     min-height: 0;
     overflow: hidden;
+    position: relative;
+  }
+  .atlas-shell.surface-code.terminal-right .terminal-dock {
+    grid-area: right;
+    align-self: end;
+    height: var(--terminal-side-height);
+    min-height: 120px;
+    max-height: calc(100vh - 214px);
+    z-index: 3;
+    border-top: 1px solid var(--cc-border-soft);
+    border-left: 1px solid var(--cc-border-soft);
+    box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.36);
+  }
+
+  .code-column-resizer {
+    align-self: stretch;
+    width: 14px;
+    min-width: 14px;
+    cursor: col-resize;
+    pointer-events: auto;
+    position: relative;
+    z-index: 8;
+    touch-action: none;
+  }
+  .code-column-resizer::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 6px;
+    width: 1px;
+    background: transparent;
+    transition:
+      background 120ms var(--ease-i),
+      box-shadow 120ms var(--ease-i),
+      width 120ms var(--ease-i);
+  }
+  .code-column-resizer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 7px;
+    height: 54px;
+    border-radius: 999px;
+    background: transparent;
+    transform: translateY(-50%);
+    transition:
+      background 120ms var(--ease-i),
+      opacity 120ms var(--ease-i);
+  }
+  .code-column-resizer:hover::before,
+  .code-column-resizer.dragging::before {
+    left: 5px;
+    width: 3px;
+    background: var(--bronze);
+    box-shadow: 0 0 0 1px rgba(141, 102, 50, 0.10);
+  }
+  .code-column-resizer:hover::after,
+  .code-column-resizer.dragging::after {
+    background: rgba(141, 102, 50, 0.16);
+  }
+  .code-column-resizer-left {
+    grid-area: left;
+    justify-self: end;
+    transform: translateX(7px);
+  }
+  .code-column-resizer-right {
+    grid-area: right;
+    justify-self: start;
+    transform: translateX(-7px);
+  }
+  body.code-column-resizing,
+  body.code-column-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
   }
 }
 
@@ -168,90 +4020,303 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 @layer components {
-  /* — TopBar */
-  .brand { display: flex; align-items: baseline; gap: 12px; }
+  /* — TopBar (premium workbench) */
+  .brand { display: flex; align-items: baseline; gap: 10px; }
   .brand strong {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: 16px;
-    letter-spacing: 3.4px;
-    color: var(--ink);
-    text-transform: uppercase;
+    font-family: var(--cc-font-sans);
+    font-weight: var(--cc-weight-semibold);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    color: var(--cc-text-strong);
+    text-transform: none;
   }
   .brand .v {
-    font-family: var(--mono);
-    font-size: 8.5px;
-    letter-spacing: 1.4px;
-    color: var(--bronze);
-    padding: 1px 5px;
-    border: 1px solid var(--bronze-soft);
-    border-radius: 2px;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: var(--cc-tracking-data);
+    color: var(--cc-accent);
+    padding: 1px 6px;
+    border: 1px solid var(--cc-accent-border);
+    border-radius: var(--cc-radius-xs);
     text-transform: uppercase;
   }
   .brand .sub {
-    font-style: italic;
+    font-style: normal;
     font-size: 12px;
-    color: var(--ink2);
+    color: var(--cc-text-muted);
+  }
+  .topbar-start .brand {
+    flex: 0 0 auto;
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     Brand · interactive pill (premium dark workbench).
+     When the brand is a button (opens Project Profile sheet), it must
+     look like a deliberate pill — not a default <button> with user-agent
+     white veil. This style overrides ALL surfaces (Code, Cartografia,
+     Atenção, Atlas AI) so every shell shows the same calm dark pill.
+     ────────────────────────────────────────────────────────────────── */
+  button.brand,
+  .brand-interactive {
+    margin: 0;
+    padding: 5px 12px;
+    background: linear-gradient(180deg,
+      rgba(45, 67, 81, 0.78) 0%,
+      rgba(36, 55, 67, 0.86) 100%);
+    border: 1px solid rgba(233, 238, 242, 0.08);
+    border-radius: 7px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    appearance: none;
+    -webkit-appearance: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 1px 0 rgba(0, 0, 0, 0.28);
+    transition:
+      background 240ms var(--cc-ease-out),
+      border-color 240ms var(--cc-ease-out),
+      box-shadow 240ms var(--cc-ease-out),
+      transform 240ms var(--cc-ease-out);
+  }
+  button.brand:hover,
+  .brand-interactive:hover {
+    background: linear-gradient(180deg,
+      rgba(212, 168, 90, 0.10) 0%,
+      rgba(45, 67, 81, 0.88) 100%);
+    border-color: rgba(212, 168, 90, 0.34);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 0 rgba(0, 0, 0, 0.30),
+      0 6px 18px rgba(212, 168, 90, 0.10);
+  }
+  button.brand:active,
+  .brand-interactive:active {
+    transform: translateY(0.5px);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.20),
+      0 0 0 rgba(0, 0, 0, 0);
+  }
+  button.brand:focus-visible,
+  .brand-interactive:focus-visible {
+    outline: none;
+    border-color: rgba(212, 168, 90, 0.55);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 0 2px var(--cc-bg),
+      0 0 0 4px rgba(212, 168, 90, 0.55);
+  }
+  /* Inner <strong> stays calm; only the pill chrome reacts to hover. */
+  button.brand strong,
+  .brand-interactive strong {
+    color: var(--cc-text-strong);
+    -webkit-text-fill-color: var(--cc-text-strong);
+    background: none;
+    transition: color 240ms var(--cc-ease-out);
+  }
+  button.brand:hover strong,
+  .brand-interactive:hover strong {
+    color: #f5f1e8;
+    -webkit-text-fill-color: #f5f1e8;
+  }
+  .atlas-shell.surface-cartografia .brand strong {
+    font-size: 17px;
+    font-weight: 680;
+    letter-spacing: 0;
+    color: #f2f6f8;
+    background: linear-gradient(135deg, #f7fbfc 0%, #dfe8ed 54%, rgba(212, 168, 90, 0.92) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 1px 18px rgba(212, 168, 90, 0.10);
+  }
+  .topbar-location {
+    min-width: 0;
+    max-width: min(48vw, 740px);
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 10px;
+    border: 1px solid rgba(135, 165, 184, 0.17);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(56, 80, 95, 0.68), rgba(35, 54, 67, 0.58)),
+      rgba(20, 31, 39, 0.72);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.055) inset,
+      0 10px 24px rgba(3, 10, 15, 0.16);
+    overflow: hidden;
+  }
+  .topbar-location-marker {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #d4a85a;
+    box-shadow:
+      0 0 0 3px rgba(212, 168, 90, 0.10),
+      0 0 16px rgba(212, 168, 90, 0.32);
+  }
+  .topbar-location-list {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+  }
+  .topbar-location-step {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 1 auto;
+  }
+  .topbar-location-step:last-child {
+    flex: 1 1 auto;
+  }
+  .topbar-location-separator {
+    width: 14px;
+    height: 18px;
+    flex: 0 0 14px;
+    position: relative;
+    opacity: 0.74;
+  }
+  .topbar-location-separator::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    width: 5px;
+    height: 5px;
+    border-top: 1px solid rgba(212, 168, 90, 0.72);
+    border-right: 1px solid rgba(212, 168, 90, 0.72);
+    transform: rotate(45deg);
+  }
+  .topbar-location-crumb {
+    min-width: 0;
+    max-width: 190px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(214, 226, 232, 0.72);
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    font-weight: 570;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  button.topbar-location-crumb {
+    cursor: pointer;
+    transition:
+      color 140ms var(--ease-i),
+      background 140ms var(--ease-i),
+      border-color 140ms var(--ease-i);
+  }
+  button.topbar-location-crumb:hover {
+    color: #f2f6f8;
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(212, 168, 90, 0.18);
+  }
+  .topbar-location-crumb.is-current {
+    max-width: 260px;
+    color: #f8fbfc;
+    background:
+      linear-gradient(180deg, rgba(212, 168, 90, 0.18), rgba(212, 168, 90, 0.08)),
+      rgba(255, 255, 255, 0.035);
+    border-color: rgba(212, 168, 90, 0.25);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.055) inset;
+  }
+  .topbar-location-crumb:focus-visible {
+    outline: 2px solid rgba(212, 168, 90, 0.64);
+    outline-offset: 2px;
+  }
+  @media (max-width: 1180px) {
+    .topbar-location {
+      max-width: 36vw;
+    }
+    .topbar-location-crumb {
+      max-width: 132px;
+    }
+    .topbar-location-crumb.is-current {
+      max-width: 180px;
+    }
+  }
+  @media (max-width: 900px) {
+    .topbar-location {
+      display: none;
+    }
   }
   .brand .bridge-mode {
     margin-left: 6px;
     text-transform: lowercase;
-    letter-spacing: 1px;
+    letter-spacing: var(--cc-tracking-data);
   }
-  .brand .bridge-mode-tauri { color: var(--moss); border-color: var(--moss-soft); background: var(--moss-veil); }
-  .brand .bridge-mode-http  { color: var(--prussian); border-color: rgba(43,62,84,.25); background: rgba(43,62,84,.06); }
-  .brand .bridge-mode-offline  { color: var(--ink3); border-color: var(--hair); background: transparent; }
+  .brand .bridge-mode-tauri    { color: var(--cc-success-fg); border-color: var(--cc-success-border); background: var(--cc-success-veil); }
+  .brand .bridge-mode-http     { color: var(--cc-info-fg);    border-color: var(--cc-info-border);    background: var(--cc-info-veil); }
+  .brand .bridge-mode-offline  { color: var(--cc-text-faint); border-color: var(--cc-border-soft);    background: transparent; }
 
-  /* — Surface switcher · Code | Cartografia */
+  /* — Surface switcher · Code | Cartografia (Visual Ergonomics v1) */
   .surface-switcher {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     justify-self: center;
-    padding: 3px;
-    border: 1px solid var(--hair);
-    border-radius: 3px;
-    background: var(--cream-deep);
+    padding: 2px;
+    border: 1px solid var(--cc-border-soft);
+    border-radius: var(--cc-radius-md);
+    background: var(--cc-surface-sunken);
   }
   .surface-tab {
     display: inline-flex;
-    align-items: baseline;
-    gap: 7px;
-    padding: 5px 14px 5px 12px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 2px;
+    border-radius: var(--cc-radius-sm);
     cursor: pointer;
-    transition: background 180ms var(--ease-i), border-color 180ms var(--ease-i);
+    transition: background 120ms var(--ease-i), color 120ms var(--ease-i);
   }
   .surface-tab:hover {
-    background: var(--cream);
-    border-color: var(--hair);
+    background: var(--cc-surface);
+    color: var(--cc-text);
   }
   .surface-tab.on {
-    background: var(--cream-paper);
-    border-color: var(--bronze-soft);
-    box-shadow: 0 1px 0 0 var(--bronze) inset;
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border-soft);
+    box-shadow: var(--cc-shadow-xs);
   }
   .surface-tab .surface-tab-label {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 14px;
-    color: var(--ink3);
-    letter-spacing: 0.4px;
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-size: 12.5px;
+    font-weight: var(--cc-weight-medium);
+    color: var(--cc-text-muted);
+    letter-spacing: var(--cc-tracking-normal);
   }
   .surface-tab.on .surface-tab-label {
-    color: var(--bronze-deep);
-    font-weight: 500;
+    color: var(--cc-text-strong);
+    font-weight: var(--cc-weight-semibold);
   }
   .surface-tab .surface-tab-shortcut {
-    font-family: var(--mono);
-    font-size: 8.5px;
-    letter-spacing: 1.1px;
-    color: var(--ink4);
+    font-family: var(--cc-font-mono);
+    font-size: 9.5px;
+    letter-spacing: var(--cc-tracking-data);
+    color: var(--cc-text-faint);
     text-transform: uppercase;
   }
   .surface-tab.on .surface-tab-shortcut {
-    color: var(--bronze);
+    color: var(--cc-accent);
   }
 
   /* — Kernel status pill (managed sidecar) */
@@ -291,6 +4356,108 @@
     border-color: var(--hair);
     background: transparent;
   }
+  .kernel-diagnostic {
+    position: absolute;
+    right: 0;
+    top: 110%;
+    z-index: 1000;
+    width: 460px;
+    max-width: min(460px, calc(100vw - 32px));
+    padding: 14px 16px;
+    background: var(--cream-deep);
+    border: 1px solid var(--bronze-soft);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(26, 23, 20, 0.10);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink);
+  }
+  .kernel-diagnostic-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .kernel-diagnostic-head strong {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+  }
+  .kernel-diagnostic-close {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--ink3);
+  }
+  .kernel-diag-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--hair-soft);
+    align-items: baseline;
+  }
+  .kernel-diag-key {
+    font-size: 8.5px;
+    letter-spacing: 1.3px;
+    color: var(--bronze);
+    text-transform: uppercase;
+  }
+  .kernel-diag-value {
+    font-size: 10.5px;
+    color: var(--ink);
+    word-break: break-all;
+  }
+  .kernel-diag-value.is-wrapped {
+    word-break: break-word;
+  }
+  .kernel-diag-value-rec {
+    color: var(--rec-red);
+  }
+  .kernel-diag-value-moss {
+    color: var(--moss);
+  }
+  .kernel-tail {
+    margin-top: 8px;
+  }
+  .kernel-tail:first-of-type {
+    margin-top: 10px;
+  }
+  .kernel-tail summary {
+    cursor: pointer;
+    color: var(--ink3);
+  }
+  .kernel-tail-rec summary {
+    color: var(--rec-red);
+  }
+  .kernel-tail pre {
+    margin-top: 6px;
+    padding: 8px;
+    max-height: 180px;
+    overflow: auto;
+    background: var(--ink);
+    color: var(--cream);
+    border-radius: 2px;
+    font-size: 10px;
+  }
+  .kernel-diagnostic-retry {
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: var(--ink);
+    color: var(--cream);
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .kernel-diagnostic-retry:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
   .folio {
     font-family: var(--mono);
     font-size: 9.5px;
@@ -309,29 +4476,76 @@
   }
   .folio .div { color: var(--bronze); margin: 0 5px; }
 
-  /* — ObraBar */
-  .obra-id {
-    padding: 2px 7px;
-    background: var(--bronze-veil);
-    border: 1px solid var(--bronze-soft);
-    color: var(--bronze-deep);
-    font-family: var(--mono);
-    font-weight: 500;
-    font-size: 10px;
-    letter-spacing: 1.2px;
+  .atlas-error-boundary {
+    margin: 8px;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 16px;
+    background: rgba(138, 48, 37, 0.06);
+    border: 1px solid rgba(138, 48, 37, 0.30);
+    border-left: 3px solid var(--rec-red);
     border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink);
+  }
+  .atlas-error-boundary-label {
+    margin-bottom: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.6px;
+    color: var(--rec-red);
     text-transform: uppercase;
-    margin-right: 10px;
+  }
+  .atlas-error-boundary-message {
+    margin-bottom: 8px;
+  }
+  .atlas-error-boundary-stack {
+    white-space: pre-wrap;
+    font-size: 10px;
+    color: var(--ink2);
+  }
+
+  /* — ObraBar (premium workbench) */
+  .obra-id {
+    padding: 2px 8px;
+    background: var(--cc-accent-veil);
+    border: 1px solid var(--cc-accent-border);
+    color: var(--cc-accent-strong);
+    font-family: var(--cc-font-mono);
+    font-weight: var(--cc-weight-semibold);
+    font-size: 10.5px;
+    letter-spacing: var(--cc-tracking-data);
+    border-radius: var(--cc-radius-xs);
+    text-transform: uppercase;
+    margin-right: 12px;
   }
   .obra-objective {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 14px;
-    color: var(--ink);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-size: 13.5px;
+    font-weight: var(--cc-weight-medium);
+    color: var(--cc-text);
+    letter-spacing: var(--cc-tracking-normal);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .status-board {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text-muted);
+    text-transform: none;
+  }
+  .status-item { display: flex; gap: 5px; align-items: baseline; }
+  .status-item .l { color: var(--cc-text-faint); font-size: 10px; font-family: var(--cc-font-mono); letter-spacing: var(--cc-tracking-data); text-transform: uppercase; }
+  .status-item .v { color: var(--cc-text); font-weight: var(--cc-weight-medium); }
+  .status-item .v.ok { color: var(--cc-success-fg); }
+  .status-item .v.warn { color: var(--cc-danger-fg); }
   .status-board {
     display: flex;
     gap: 14px;
@@ -348,54 +4562,55 @@
   .status-item .v.ok { color: var(--moss); }
   .status-item .v.warn { color: var(--rec-red); }
 
-  /* — LeftRail · sessions */
+  /* — LeftRail · legacy sessions (premium workbench) */
   .sess-section { margin-bottom: 14px; }
   .sess-section h3 {
     margin: 0 0 6px;
     padding-bottom: 4px;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 1.6px;
-    color: var(--bronze);
-    text-transform: uppercase;
-    font-weight: 400;
-    border-bottom: 1px solid var(--hair);
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    font-weight: var(--cc-weight-semibold);
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text-muted);
+    text-transform: none;
+    border-bottom: 1px solid var(--cc-border-soft);
     display: flex;
     justify-content: space-between;
   }
   .sess-section h3 .meta {
-    font-size: 8px;
-    color: var(--ink3);
-    letter-spacing: 1px;
+    font-size: 10px;
+    color: var(--cc-text-faint);
+    letter-spacing: var(--cc-tracking-data);
+    font-family: var(--cc-font-mono);
   }
   .sess-entry {
     display: grid;
     gap: 3px;
     padding: 8px 0 9px;
-    border-bottom: 1px solid var(--hair-soft);
+    border-bottom: 1px solid var(--cc-border-soft);
     transition: padding-left 180ms var(--ease-i);
   }
   .sess-entry:last-child { border-bottom: 0; }
   .sess-entry.active {
-    border-left: 1.5px solid var(--bronze);
-    padding-left: 7px;
-    margin-left: -7px;
-    background: var(--bronze-veil);
-    padding-right: 7px;
+    border-left: 2px solid var(--cc-accent);
+    padding-left: 8px;
+    margin-left: -8px;
+    background: var(--cc-accent-veil);
+    padding-right: 8px;
   }
   .sess-entry .meta {
-    font-family: var(--mono);
-    font-size: 8px;
-    letter-spacing: 1px;
-    color: var(--ink3);
-    text-transform: uppercase;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    letter-spacing: var(--cc-tracking-data);
+    color: var(--cc-text-faint);
+    text-transform: none;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
   }
-  .sess-entry .meta .origin { color: var(--bronze); font-weight: 500; }
-  .sess-entry .title { font-size: 12.5px; color: var(--ink); line-height: 1.3; }
-  .sess-entry .workspace { font-style: italic; font-size: 11px; color: var(--ink2); }
+  .sess-entry .meta .origin { color: var(--cc-accent); font-weight: var(--cc-weight-medium); }
+  .sess-entry .title { font-family: var(--cc-font-sans); font-size: 12.5px; color: var(--cc-text); line-height: var(--cc-leading-snug); }
+  .sess-entry .workspace { font-family: var(--cc-font-sans); font-style: normal; font-size: 11px; color: var(--cc-text-muted); }
 
   /* — Main Stage · conversation thread */
   .conv-thread {
@@ -438,50 +4653,57 @@
   .sdd-mini .meta { color: var(--ink3); white-space: nowrap; font-size: 8.5px; }
   .sdd-mini .meta .v { color: var(--bronze-deep); }
 
-  .conv-msg { max-width: 760px; margin: 0 auto 24px; }
+  .conv-msg { max-width: 760px; margin: 0 auto 22px; }
   .conv-msg .who {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
-    margin-bottom: 7px;
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    font-weight: var(--cc-weight-semibold);
+    letter-spacing: var(--cc-tracking-normal);
+    text-transform: none;
+    margin-bottom: 6px;
     display: flex;
-    gap: 9px;
+    gap: 10px;
     align-items: baseline;
-    color: var(--bronze);
+    color: var(--cc-text-muted);
   }
-  .conv-msg .who .time { color: var(--ink3); letter-spacing: 1.1px; }
-  .conv-msg.you .who { color: var(--prussian); }
+  .conv-msg .who .time {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    font-weight: var(--cc-weight-regular);
+    letter-spacing: var(--cc-tracking-data);
+  }
+  .conv-msg.you .who { color: var(--cc-info-fg); }
   .conv-msg.you .body {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 17px;
-    line-height: 1.5;
-    color: var(--ink);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-size: 14.5px;
+    line-height: var(--cc-leading-relaxed);
+    color: var(--cc-text);
     padding-left: 16px;
-    border-left: 2px solid var(--prussian);
+    border-left: 2px solid var(--cc-info);
   }
   .conv-msg.atlas .body {
-    font-family: var(--serif);
-    font-size: 15.5px;
-    line-height: 1.55;
-    color: var(--ink);
+    font-family: var(--cc-font-sans);
+    font-size: 14px;
+    line-height: var(--cc-leading-relaxed);
+    color: var(--cc-text);
   }
   .conv-msg.atlas .body p { margin: 0 0 10px; }
   .conv-msg.atlas .body p:last-child { margin-bottom: 0; }
 
-  /* — Composer */
+  /* — Composer (Visual Ergonomics v1) */
   .composer {
-    border-top: 1px solid var(--bronze-soft);
-    padding: 12px 32px 14px;
-    background: var(--cream-paper);
+    border-top: 1px solid var(--cc-border-soft);
+    padding: var(--cc-space-3) var(--cc-space-8) var(--cc-space-3);
+    background: var(--cc-surface);
     display: grid;
     gap: 6px;
   }
   .composer-row {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 12px;
+    gap: 10px;
     align-items: end;
   }
   .composer textarea {
@@ -489,134 +4711,640 @@
     min-height: 48px;
     max-height: 130px;
     resize: none;
-    border: 1px solid var(--hair);
-    border-radius: 2px;
-    background: var(--cream);
-    padding: 9px 12px;
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 15.5px;
-    line-height: 1.4;
-    color: var(--ink);
+    border: 1px solid var(--cc-border);
+    border-radius: var(--cc-radius-sm);
+    background: var(--cc-surface-raised);
+    padding: 10px 12px;
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-size: 13.5px;
+    line-height: var(--cc-leading-snug);
+    color: var(--cc-text);
+    letter-spacing: var(--cc-tracking-normal);
     outline: none;
-    transition: border-color 180ms var(--ease-i);
+    transition: border-color 120ms var(--ease-i), box-shadow 120ms var(--ease-i);
   }
-  .composer textarea:focus { border-color: var(--bronze); }
-  .composer textarea::placeholder { color: var(--ink3); }
+  .composer textarea:focus {
+    border-color: var(--cc-accent);
+    box-shadow: 0 0 0 2px var(--cc-accent-veil);
+  }
+  .composer textarea::placeholder { color: var(--cc-text-faint); }
   .send-btn {
     width: 40px;
     height: 40px;
     display: grid;
     place-items: center;
-    border: 1px solid var(--bronze);
-    border-radius: 2px;
-    color: var(--bronze);
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 20px;
+    border: 1px solid var(--cc-accent);
+    border-radius: var(--cc-radius-sm);
+    color: var(--cc-accent);
+    font-family: var(--cc-font-sans);
+    font-style: normal;
+    font-size: 18px;
     cursor: pointer;
-    background: transparent;
-    transition: background 180ms var(--ease-i);
+    background: var(--cc-accent-veil);
+    transition: background 120ms var(--ease-i), color 120ms var(--ease-i);
   }
-  .send-btn:hover { background: var(--bronze-veil); }
+  .send-btn:hover {
+    background: var(--cc-accent);
+    color: #fff9ed;
+  }
+  .send-btn:disabled {
+    color: var(--cc-text-disabled);
+    border-color: var(--cc-border-soft);
+    background: transparent;
+    cursor: not-allowed;
+  }
   .composer-meta {
     display: flex;
     justify-content: space-between;
-    font-family: var(--mono);
-    font-size: 8.5px;
-    letter-spacing: 1.2px;
-    color: var(--ink3);
-    text-transform: uppercase;
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text-faint);
+    text-transform: none;
   }
   .composer-meta kbd {
-    font-family: var(--mono);
-    font-size: 8.5px;
-    padding: 1px 4px;
-    border: 1px solid var(--hair);
-    border-radius: 2px;
-    background: var(--cream);
-    color: var(--ink2);
-    letter-spacing: 0.6px;
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    padding: 1px 5px;
+    border: 1px solid var(--cc-border-soft);
+    border-radius: var(--cc-radius-xs);
+    background: var(--cc-surface-raised);
+    color: var(--cc-text-muted);
+    letter-spacing: var(--cc-tracking-data);
   }
 
-  /* — RightRail · ops panel */
+  /* — RightRail · ops panel (Visual Ergonomics v1) */
   .ops-tabs {
     display: flex;
-    border-bottom: 1px solid var(--hair);
-    background: var(--cream-paper);
+    border-bottom: 1px solid var(--cc-border-soft);
+    background: var(--cc-surface);
     position: sticky;
     top: 0;
     z-index: 2;
   }
   .ops-tab {
     flex: 1;
-    padding: 11px 6px;
-    font-family: var(--mono);
-    font-size: 9.5px;
-    letter-spacing: 1.4px;
-    color: var(--ink3);
-    text-transform: uppercase;
+    padding: 12px 8px;
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    font-weight: var(--cc-weight-medium);
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text-muted);
+    text-transform: none;
     border: 0;
-    border-right: 1px solid var(--hair);
-    border-bottom: 1.5px solid transparent;
+    border-right: 1px solid var(--cc-border-soft);
+    border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     cursor: pointer;
     background: transparent;
-    transition: color 180ms var(--ease-i), background 180ms var(--ease-i);
+    transition: color 120ms var(--ease-i), background 120ms var(--ease-i), border-color 120ms var(--ease-i);
   }
   .ops-tab:last-child { border-right: 0; }
-  .ops-tab:hover { color: var(--ink2); }
-  .ops-tab.on {
-    color: var(--bronze);
-    border-bottom-color: var(--bronze);
-    background: var(--cream);
+  .ops-tab:hover {
+    color: var(--cc-text);
+    background: var(--cc-accent-veil);
   }
-  .ops-panel { padding: 16px 16px 0; }
-  .ops-section { margin-bottom: 18px; }
+  .ops-tab.on {
+    color: var(--cc-accent-strong);
+    font-weight: var(--cc-weight-semibold);
+    border-bottom-color: var(--cc-accent);
+    background: var(--cc-surface-raised);
+  }
+  .ops-tab[aria-disabled='true'],
+  .ops-tab:disabled {
+    color: var(--cc-text-disabled);
+    cursor: not-allowed;
+  }
+  .ops-panel { padding: var(--cc-space-4) var(--cc-space-4) 0; }
+  .ops-section { margin-bottom: var(--cc-space-5); }
   .panel-title {
-    margin: 0 0 7px;
-    padding-bottom: 4px;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 1.6px;
-    color: var(--bronze);
-    text-transform: uppercase;
-    font-weight: 400;
-    border-bottom: 1px solid var(--hair);
+    margin: 0 0 var(--cc-space-2);
+    padding-bottom: var(--cc-space-1);
+    font-family: var(--cc-font-sans);
+    font-size: 12px;
+    font-weight: var(--cc-weight-semibold);
+    letter-spacing: var(--cc-tracking-normal);
+    color: var(--cc-text);
+    text-transform: none;
+    border-bottom: 1px solid var(--cc-border-soft);
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    line-height: var(--cc-leading-snug);
   }
-  .panel-title .muted { color: var(--ink3); font-size: 8.5px; font-weight: 400; }
+  .panel-title .muted {
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    font-weight: var(--cc-weight-regular);
+  }
 
   /* — Terminal */
-  .term-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 7px 18px;
-    border-bottom: 1px solid var(--hair);
+  .term-resize-handle {
+    grid-area: resize;
+    height: 10px;
+    cursor: row-resize;
+    position: relative;
+    background: transparent;
+    transition: background 120ms var(--ease-i);
+    touch-action: none;
   }
+  .term-resize-handle::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 4px;
+    height: 1px;
+    background: var(--hair);
+    transition: background 120ms var(--ease-i), box-shadow 120ms var(--ease-i);
+  }
+  .term-resize-handle:hover::before,
+  .term-resize-handle.dragging::before {
+    background: var(--bronze);
+    box-shadow: 0 0 0 1px rgba(141, 102, 50, 0.10);
+  }
+  .term-resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 3px;
+    width: 44px;
+    height: 3px;
+    border-radius: 999px;
+    background: transparent;
+    transform: translateX(-50%);
+    transition: background 120ms var(--ease-i), opacity 120ms var(--ease-i);
+  }
+  .term-resize-handle:hover::after,
+  .term-resize-handle.dragging::after {
+    background: rgba(141, 102, 50, 0.42);
+  }
+  .atlas-shell.surface-code.terminal-right .term-resize-handle {
+    height: 8px;
+  }
+  .atlas-shell.surface-code.terminal-right .term-resize-handle::before {
+    top: 0;
+    background: var(--bronze-soft);
+  }
+  .atlas-shell.surface-code.terminal-right .term-resize-handle::after {
+    top: 2px;
+    width: 34px;
+    height: 2px;
+  }
+  body.terminal-resizing,
+  body.terminal-resizing * {
+    cursor: row-resize !important;
+    user-select: none !important;
+  }
+
+  .term-tabs {
+    grid-area: tabs;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 10px 0 14px;
+    border-bottom: 1px solid var(--hair);
+    background: var(--cream-paper);
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 30px;
+    scrollbar-width: none;
+  }
+  .term-tabs::-webkit-scrollbar { display: none; }
+  .atlas-shell.surface-code.terminal-right .term-tabs {
+    min-height: 78px;
+    padding: 6px 8px 5px;
+    align-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 0;
+    overflow: hidden;
+  }
+
   .term-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 7px;
     font-family: var(--mono);
     font-size: 9.5px;
     letter-spacing: 1.2px;
-    color: var(--bronze);
-    text-transform: uppercase;
-    padding: 3px 0;
-    border-bottom: 1.5px solid var(--bronze);
-  }
-  .term-meta {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 1.3px;
     color: var(--ink3);
     text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1.5px solid transparent;
+    transition: color 120ms var(--ease-i), border-color 120ms var(--ease-i);
+    white-space: nowrap;
   }
-  .pty-badge {
+  .term-tab:hover { color: var(--ink2); }
+  .term-tab.active {
+    color: var(--bronze);
+    border-bottom-color: var(--bronze);
+  }
+  .term-tab-label { display: inline-block; }
+  .term-tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    color: var(--ink4);
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 120ms var(--ease-i), background 120ms var(--ease-i), color 120ms var(--ease-i);
+  }
+  .term-tab:hover .term-tab-close,
+  .term-tab.active .term-tab-close { opacity: 1; }
+  .term-tab-close:hover {
+    background: var(--rec-red-veil);
+    color: var(--rec-red);
+  }
+  .term-tab-new {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    padding: 7px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink4);
+    cursor: pointer;
+    transition: color 120ms var(--ease-i);
+  }
+  .term-tab-new:hover { color: var(--bronze); }
+  .atlas-shell.surface-code.terminal-right .term-tab {
+    padding: 6px 8px 5px;
+    font-size: 8.5px;
+    max-width: 112px;
+  }
+  .atlas-shell.surface-code.terminal-right .term-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .atlas-shell.surface-code.terminal-right .term-tab-new {
+    width: 22px;
+    padding: 5px 0;
+  }
+
+  .term-context {
+    margin-left: auto;
+    min-width: 0;
+    max-width: 38%;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 14px;
+    font-family: var(--mono);
+    color: var(--ink3);
+    white-space: nowrap;
+  }
+  .atlas-shell.surface-code.terminal-right .term-context {
+    order: 20;
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    padding: 2px 2px 0;
+  }
+  .term-context-k {
+    font-size: 8px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--bronze);
+  }
+  .term-context-v {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    color: var(--ink2);
+    text-transform: none;
+  }
+  .term-context-branch {
+    flex: none;
+    font-size: 9px;
+    letter-spacing: 0.6px;
+    color: var(--moss);
+    text-transform: none;
+  }
+  .term-actions {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 10px;
+  }
+  .atlas-shell.surface-code.terminal-right .term-actions {
+    order: 30;
+    width: 100%;
+    justify-content: flex-end;
+    padding-left: 0;
+    gap: 3px;
+  }
+  .term-action {
+    height: 21px;
+    padding: 0 7px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--ink3);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      color 120ms var(--ease-i),
+      background 120ms var(--ease-i),
+      border-color 120ms var(--ease-i);
+  }
+  .atlas-shell.surface-code.terminal-right .term-action {
+    height: 20px;
+    padding: 0 5px;
+    font-size: 7.4px;
+    letter-spacing: 0.95px;
+  }
+  .term-action:hover {
+    color: var(--ink);
+    background: rgba(141, 102, 50, 0.06);
+    border-color: var(--hair);
+  }
+  .term-action.primary {
+    color: var(--bronze);
+    border-color: var(--bronze-soft);
+    background: rgba(141, 102, 50, 0.04);
+  }
+  .term-action.primary:hover {
+    color: var(--bronze-deep);
+    border-color: var(--bronze);
+  }
+  .term-action.icon {
+    width: 27px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-color: var(--hair);
+  }
+  .atlas-shell.surface-code.terminal-right .term-action.icon {
+    width: 24px;
+    padding: 0;
+  }
+  .term-action.icon:hover {
+    border-color: var(--bronze);
+    background: rgba(141, 102, 50, 0.08);
+  }
+  .term-dock-icon {
+    width: 13px;
+    height: 13px;
     display: inline-block;
-    margin-left: 8px;
-    padding: 1px 5px;
+    position: relative;
+    border: 1px solid currentColor;
+    color: var(--bronze);
+    opacity: 0.92;
+  }
+  .term-dock-icon::before,
+  .term-dock-icon::after {
+    content: '';
+    position: absolute;
+    background: currentColor;
+  }
+  .term-dock-icon.to-right-bottom::before {
+    right: 0;
+    bottom: 0;
+    width: 4px;
+    height: 100%;
+    opacity: 0.55;
+  }
+  .term-dock-icon.to-right-bottom::after {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 4px;
+    opacity: 0.55;
+  }
+  .term-dock-icon.to-bottom::before {
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 4px;
+    opacity: 0.62;
+  }
+  .term-dock-icon.to-bottom::after {
+    left: 50%;
+    bottom: 4px;
+    width: 1px;
+    height: 5px;
+    transform: translateX(-50%);
+  }
+  .term-action.danger {
+    color: var(--rec-red);
+    border-color: var(--rec-red-soft);
+    background: var(--rec-red-veil);
+  }
+  .term-action.danger:hover {
+    color: var(--cream-paper);
+    background: var(--rec-red);
+    border-color: var(--rec-red);
+  }
+
+  .term-searchbar {
+    grid-area: search;
+    display: grid;
+    grid-template-columns: auto minmax(160px, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--hair-soft);
+    background:
+      linear-gradient(90deg, rgba(141, 102, 50, 0.055), transparent 42%),
+      var(--cream-paper);
+    font-family: var(--mono);
+  }
+  .term-searchbar-label {
+    color: var(--bronze);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .term-searchbar input {
+    width: 100%;
+    min-width: 0;
+    height: 24px;
+    padding: 0 9px;
+    border: 1px solid var(--hair);
+    border-radius: 2px;
+    background: rgba(255, 250, 238, 0.58);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    outline: none;
+  }
+  .term-searchbar input:focus {
+    border-color: var(--bronze);
+    box-shadow: 0 0 0 2px rgba(141, 102, 50, 0.10);
+  }
+  .term-searchbar-action {
+    height: 24px;
+    padding: 0 9px;
+    border: 1px solid var(--bronze-soft);
+    border-radius: 2px;
+    background: rgba(141, 102, 50, 0.05);
+    color: var(--bronze);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .term-searchbar-action:hover {
+    border-color: var(--bronze);
+    color: var(--bronze-deep);
+  }
+  .term-searchbar-action.quiet {
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink3);
+  }
+
+  .term-body {
+    grid-area: body;
+    min-height: 0;
+    min-width: 0;
+    background: var(--cream-paper);
+    color: var(--ink);
+    padding: 12px 18px 8px;
+    overflow: hidden;
+  }
+  .atlas-shell.surface-code.terminal-right .term-body {
+    padding: 9px 10px 7px;
+  }
+  .term-body .xterm {
+    height: 100%;
+    width: 100%;
+    font-family: 'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace !important;
+    background: #11202a !important;
+    color: var(--cc-text-strong) !important;
+  }
+  .term-body .xterm-viewport {
+    background-color: #11202a !important;
+  }
+  .term-body .xterm-screen {
+    background-color: #11202a !important;
+  }
+  .term-body .xterm-helpers,
+  .term-body .xterm-rows,
+  .term-body .xterm-text-layer,
+  .term-body .xterm-link-layer,
+  .term-body .xterm-cursor-layer,
+  .term-body .xterm-selection-layer {
+    background-color: transparent !important;
+  }
+  .term-body .xterm-screen canvas {
+    background-color: var(--cream-paper) !important;
+  }
+
+  .term-status {
+    grid-area: status;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 5px 16px 6px;
+    border-top: 1px solid var(--hair-soft);
+    background: var(--cream-paper);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: var(--ink3);
+    min-height: 22px;
+  }
+  .atlas-shell.surface-code.terminal-right .term-status {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    min-height: 42px;
+    padding: 5px 8px 6px;
+    align-content: center;
+  }
+  .term-status-cwd {
+    color: var(--ink2);
+    text-transform: none;
+    letter-spacing: 0.4px;
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+  }
+  .atlas-shell.surface-code.terminal-right .term-status-cwd {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+  .term-status-branch {
+    color: var(--bronze);
+    text-transform: none;
+    letter-spacing: 0.3px;
+    font-size: 10px;
+  }
+  .term-status-exit {
+    margin-left: auto;
+    font-size: 9px;
+  }
+  .atlas-shell.surface-code.terminal-right .term-status-exit,
+  .atlas-shell.surface-code.terminal-right .term-status-running {
+    margin-left: 0;
+  }
+  .term-status-exit.ok {
+    color: var(--moss);
+  }
+  .term-status-exit.err {
+    color: var(--rec-red);
+  }
+  .term-status-running {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--bronze);
+    font-size: 9px;
+  }
+  .term-status-running::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bronze);
+    animation: pulseDot 1100ms ease-in-out infinite;
+  }
+  .term-status-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink3);
+    font-size: 9px;
+  }
+  .term-status-pending::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 1px solid var(--bronze-soft);
+    background: transparent;
+    animation: pulseDot 900ms ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 0.35; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .pty-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
     background: var(--moss-veil);
     color: var(--moss);
     border: 1px solid var(--moss-soft);
@@ -629,14 +5357,22 @@
     color: var(--prussian);
     border-color: rgba(43, 62, 84, 0.25);
   }
-  .term-body {
-    padding: 10px 18px 12px;
-    overflow-y: auto;
-    min-height: 0;
+
+  .term-empty {
+    grid-area: body / body / status / status;
+    padding: 18px 18px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink3);
+    background: var(--cream);
+  }
+  .term-empty-error {
+    margin-top: 8px;
     font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.55;
-    color: var(--ink);
+    font-size: 9.5px;
+    color: var(--rec-red);
+    letter-spacing: 0.4px;
   }
   .term-line { white-space: pre-wrap; word-break: break-word; }
   .term-line .glyph { color: var(--bronze); }
@@ -661,6 +5397,379 @@
   .pill-primary { background: var(--ink); color: var(--cream); border-color: var(--ink); }
   .pill-ok { background: var(--moss-veil); color: var(--moss); border-color: var(--moss-soft); }
   .pill-danger { background: var(--rec-red-veil); color: var(--rec-red); border-color: var(--rec-red-soft); }
+
+  /* ────────────────────────────────────────────────────────────────────────
+     Atlas Code · Enterprise utility classes (Visual Ergonomics v1)
+     Botões, inputs, cards, status dots, badges, empty/loading/error states
+     padronizados. Componentes podem adotar gradualmente sem quebrar o DNA.
+     ──────────────────────────────────────────────────────────────────────── */
+
+  /* — Buttons */
+  .cc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cc-space-2);
+    height: var(--cc-control-h);
+    padding: 0 var(--cc-space-3);
+    border-radius: var(--cc-radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-body-sm);
+    font-weight: var(--cc-weight-medium);
+    letter-spacing: var(--cc-tracking-normal);
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background 120ms var(--ease-i),
+      border-color 120ms var(--ease-i),
+      color 120ms var(--ease-i),
+      box-shadow 120ms var(--ease-i);
+  }
+  .cc-btn:disabled,
+  .cc-btn[aria-disabled='true'] {
+    color: var(--cc-text-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+    background: transparent;
+    border-color: var(--cc-border-soft);
+  }
+  .cc-btn-primary {
+    background: var(--cc-accent);
+    color: #fff9ed;
+    border-color: var(--cc-accent-strong);
+    box-shadow: var(--cc-shadow-xs);
+  }
+  .cc-btn-primary:hover:not(:disabled) {
+    background: var(--cc-accent-strong);
+    border-color: var(--cc-accent-strong);
+  }
+  .cc-btn-secondary {
+    background: var(--cc-surface);
+    color: var(--cc-text);
+    border-color: var(--cc-border);
+  }
+  .cc-btn-secondary:hover:not(:disabled) {
+    background: var(--cc-surface-raised);
+    border-color: var(--cc-border-strong);
+  }
+  .cc-btn-ghost {
+    background: transparent;
+    color: var(--cc-text-muted);
+    border-color: transparent;
+  }
+  .cc-btn-ghost:hover:not(:disabled) {
+    background: var(--cc-accent-veil);
+    color: var(--cc-text);
+  }
+  .cc-btn-danger {
+    background: var(--cc-danger-veil);
+    color: var(--cc-danger);
+    border-color: var(--cc-danger-border);
+  }
+  .cc-btn-danger:hover:not(:disabled) {
+    background: var(--cc-danger);
+    color: #fff9ed;
+    border-color: var(--cc-danger);
+  }
+  .cc-btn-sm {
+    height: var(--cc-control-h-compact);
+    padding: 0 var(--cc-space-2);
+    font-size: var(--cc-text-caption);
+  }
+
+  /* — Inputs */
+  .cc-input,
+  .cc-textarea {
+    width: 100%;
+    min-width: 0;
+    height: var(--cc-control-h);
+    padding: 0 var(--cc-space-3);
+    border: 1px solid var(--cc-border);
+    border-radius: var(--cc-radius-sm);
+    background: var(--cc-surface-raised);
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-body);
+    line-height: var(--cc-leading-snug);
+    letter-spacing: var(--cc-tracking-normal);
+    outline: none;
+    transition: border-color 120ms var(--ease-i), box-shadow 120ms var(--ease-i);
+    box-sizing: border-box;
+  }
+  .cc-textarea {
+    height: auto;
+    min-height: 72px;
+    padding: var(--cc-space-2) var(--cc-space-3);
+    resize: vertical;
+  }
+  .cc-input::placeholder,
+  .cc-textarea::placeholder {
+    color: var(--cc-text-faint);
+  }
+  .cc-input:hover,
+  .cc-textarea:hover {
+    border-color: var(--cc-border-strong);
+  }
+  .cc-input:focus,
+  .cc-textarea:focus {
+    border-color: var(--cc-accent);
+    box-shadow: 0 0 0 2px var(--cc-accent-veil);
+  }
+  .cc-input:disabled,
+  .cc-textarea:disabled {
+    background: var(--cc-surface-sunken);
+    color: var(--cc-text-disabled);
+    cursor: not-allowed;
+  }
+
+  /* — Labels */
+  .cc-label {
+    display: block;
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-caption);
+    font-weight: var(--cc-weight-medium);
+    color: var(--cc-text-muted);
+    margin-bottom: var(--cc-space-1);
+    letter-spacing: var(--cc-tracking-normal);
+  }
+  .cc-eyebrow {
+    display: inline-block;
+    font-family: var(--cc-font-sans);
+    font-size: 11px;
+    font-weight: var(--cc-weight-semibold);
+    color: var(--cc-text-faint);
+    letter-spacing: var(--cc-tracking-normal);
+    text-transform: none;
+  }
+
+  /* — Status dots / badges enterprise */
+  .cc-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cc-dot-unknown);
+    flex-shrink: 0;
+  }
+  .cc-status-dot[data-status='running'] { background: var(--cc-dot-running); }
+  .cc-status-dot[data-status='queued']  { background: var(--cc-dot-running); opacity: 0.55; }
+  .cc-status-dot[data-status='blocked'] { background: var(--cc-dot-blocked); }
+  .cc-status-dot[data-status='review']  { background: var(--cc-dot-review); }
+  .cc-status-dot[data-status='passed']  { background: var(--cc-dot-passed); }
+  .cc-status-dot[data-status='proven']  { background: var(--cc-dot-passed); }
+  .cc-status-dot[data-status='unknown'] { background: var(--cc-dot-unknown); }
+  .cc-status-dot[data-status='ready']   { background: var(--cc-accent); }
+  /* Premium · sem animação halo (cafona). Dot estático calmo, status é por cor. */
+  .cc-status-dot[data-pulse='true'] {
+    box-shadow: none;
+    animation: none;
+  }
+
+  .cc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cc-space-1);
+    padding: 1px var(--cc-space-2);
+    border-radius: var(--cc-radius-xs);
+    border: 1px solid var(--cc-border);
+    background: var(--cc-surface-sunken);
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-label);
+    font-weight: var(--cc-weight-medium);
+    letter-spacing: var(--cc-tracking-data);
+    line-height: 1.6;
+  }
+  .cc-badge[data-tone='success'] {
+    background: var(--cc-success-veil);
+    color: var(--cc-success-fg);
+    border-color: var(--cc-success-border);
+  }
+  .cc-badge[data-tone='warning'] {
+    background: var(--cc-warning-veil);
+    color: var(--cc-warning-fg);
+    border-color: var(--cc-warning-border);
+  }
+  .cc-badge[data-tone='danger'] {
+    background: var(--cc-danger-veil);
+    color: var(--cc-danger-fg);
+    border-color: var(--cc-danger-border);
+  }
+  .cc-badge[data-tone='info'] {
+    background: var(--cc-info-veil);
+    color: var(--cc-info-fg);
+    border-color: var(--cc-info-border);
+  }
+  .cc-badge[data-tone='accent'] {
+    background: var(--cc-accent-veil);
+    color: var(--cc-accent-strong);
+    border-color: var(--cc-accent-border);
+  }
+
+  /* — Cards */
+  .cc-card {
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border-soft);
+    border-radius: var(--cc-radius-md);
+    padding: var(--cc-space-4);
+    box-shadow: var(--cc-shadow-xs);
+  }
+  .cc-card-raised {
+    background: var(--cc-surface-raised);
+    box-shadow: var(--cc-shadow-sm);
+  }
+
+  /* — Empty / Loading / Error states */
+  .cc-empty,
+  .cc-loading,
+  .cc-error {
+    display: grid;
+    gap: var(--cc-space-2);
+    padding: var(--cc-space-4) var(--cc-space-4);
+    border-radius: var(--cc-radius-md);
+    color: var(--cc-text-muted);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-body-sm);
+    line-height: var(--cc-leading-relaxed);
+  }
+  .cc-empty {
+    background: transparent;
+    border: 1px dashed var(--cc-border-soft);
+  }
+  .cc-empty-title,
+  .cc-loading-title,
+  .cc-error-title {
+    font-weight: var(--cc-weight-medium);
+    color: var(--cc-text);
+  }
+  .cc-empty-hint {
+    color: var(--cc-text-faint);
+    font-size: var(--cc-text-caption);
+  }
+  .cc-loading {
+    background: var(--cc-info-veil);
+    border: 1px solid var(--cc-info-border);
+    color: var(--cc-info-fg);
+  }
+  .cc-error {
+    background: var(--cc-danger-veil);
+    border: 1px solid var(--cc-danger-border);
+    color: var(--cc-danger-fg);
+  }
+
+  /* — Section heading enterprise */
+  .cc-section-title {
+    margin: 0 0 var(--cc-space-2);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-section);
+    font-weight: var(--cc-weight-semibold);
+    color: var(--cc-text);
+    letter-spacing: var(--cc-tracking-normal);
+  }
+  .cc-section-subtitle {
+    margin: 0 0 var(--cc-space-3);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-caption);
+    color: var(--cc-text-muted);
+  }
+
+  /* — Obra row enterprise (LeftRail) */
+  .cc-obra-row {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--cc-radius-sm);
+    padding: var(--cc-space-2) var(--cc-space-3);
+    margin: 1px 0;
+    display: grid;
+    gap: 4px;
+    cursor: pointer;
+    transition: background 120ms var(--ease-i), border-color 120ms var(--ease-i);
+  }
+  .cc-obra-row:hover:not(:disabled) {
+    background: var(--cc-surface);
+    border-color: var(--cc-border-soft);
+  }
+  .cc-obra-row:focus-visible {
+    outline: none;
+    border-color: var(--cc-accent);
+    box-shadow: 0 0 0 2px var(--cc-accent-veil);
+  }
+  .cc-obra-row[data-active='true'] {
+    background: var(--cc-accent-veil);
+    border-color: var(--cc-accent-border);
+    box-shadow: inset 2px 0 0 var(--cc-accent);
+  }
+  .cc-obra-row:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .cc-obra-row-head {
+    display: flex;
+    align-items: center;
+    gap: var(--cc-space-2);
+    min-width: 0;
+  }
+  .cc-obra-row-id {
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    color: var(--cc-text-faint);
+    letter-spacing: var(--cc-tracking-data);
+    flex-shrink: 0;
+  }
+  .cc-obra-row-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--cc-text);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-body-sm);
+    font-weight: var(--cc-weight-medium);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-active='true'] .cc-obra-row-title {
+    color: var(--cc-text-strong);
+  }
+  .cc-obra-row-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--cc-space-2);
+    color: var(--cc-text-faint);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-label);
+  }
+  .cc-obra-row-meta .sep {
+    color: var(--cc-text-disabled);
+  }
+
+  /* — LeftRail section header enterprise */
+  .cc-rail-section {
+    display: grid;
+    gap: 2px;
+    margin-bottom: var(--cc-space-4);
+  }
+  .cc-rail-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 var(--cc-space-3) var(--cc-space-1);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-caption);
+    font-weight: var(--cc-weight-semibold);
+    color: var(--cc-text-muted);
+    letter-spacing: var(--cc-tracking-normal);
+  }
+  .cc-rail-section-head .count {
+    font-family: var(--cc-font-mono);
+    font-size: 10px;
+    color: var(--cc-text-faint);
+  }
 }
 
 @layer motion {
@@ -668,4 +5777,240 @@
     0%, 100% { opacity: 0.5; }
     50% { opacity: 1; }
   }
+  @keyframes cockpit-slide-up {
+    from { transform: translateY(0); opacity: 1; }
+    to   { transform: translateY(-8px); opacity: 0; }
+  }
+  @keyframes cockpit-thinking-fade {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    @keyframes cockpit-slide-up { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes cockpit-thinking-fade { from { opacity: 0; } to { opacity: 1; } }
+  }
+}
+
+/*
+  Terminal hard overrides live outside @layer on purpose.
+  @xterm/xterm/css/xterm.css is imported dynamically without a cascade layer;
+  unlayered rules beat layered Atlas rules. This block is the final authority
+  for the Atlas terminal surface.
+*/
+.atlas-shell.surface-code .terminal-dock,
+.atlas-shell.surface-code .terminal-dock .term-tabs,
+.atlas-shell.surface-code .terminal-dock .term-body,
+.atlas-shell.surface-code .terminal-dock .term-status,
+.atlas-shell.surface-code .terminal-dock .xterm,
+.atlas-shell.surface-code .terminal-dock .xterm-viewport,
+.atlas-shell.surface-code .terminal-dock .xterm-screen {
+  background: #11202a !important;
+  background-color: #11202a !important;
+  color: var(--cc-text-strong) !important;
+}
+
+.terminal-dock .term-body {
+  position: relative;
+  isolation: isolate;
+  line-height: 1.22;
+}
+
+.atlas-shell.surface-code .terminal-dock .term-body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #11202a;
+}
+
+.terminal-dock .term-body.has-error::after {
+  content: attr(data-error);
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  z-index: 4;
+  max-width: min(520px, 70%);
+  padding: 5px 8px;
+  border: 1px solid var(--rec-red-soft);
+  border-radius: 2px;
+  background: rgba(247, 241, 227, 0.94);
+  color: var(--rec-red);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  pointer-events: none;
+}
+
+.terminal-dock .xterm-helpers,
+.terminal-dock .xterm-rows,
+.terminal-dock .xterm-text-layer,
+.terminal-dock .xterm-link-layer,
+.terminal-dock .xterm-cursor-layer,
+.terminal-dock .xterm-selection-layer {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.atlas-shell.surface-code .terminal-dock .xterm-screen canvas {
+  background: #11202a !important;
+  background-color: #11202a !important;
+}
+
+.terminal-dock .xterm .xterm-rows {
+  line-height: 1.22 !important;
+}
+
+.terminal-dock .atlas-native-terminal {
+  overflow: auto;
+  cursor: text;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+}
+
+.terminal-dock .atlas-native-terminal:focus {
+  box-shadow: inset 0 0 0 1px rgba(138, 106, 53, 0.18);
+}
+
+.terminal-dock .atlas-terminal-output {
+  margin: 0;
+  color: var(--ink);
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.terminal-dock .atlas-native-terminal[data-status='opening'] .atlas-terminal-output {
+  color: var(--bronze);
+}
+
+.terminal-dock .atlas-native-terminal[data-status='error'] .atlas-terminal-output {
+  color: var(--rec-red);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   OBRA BAR · LEFT RAIL TOGGLE
+   Botão ícone à esquerda do pill 019E272B que colapsa/expande LeftRail.
+   Quando `html.code-left-collapsed` ativo: --code-left-width: 0px,
+   .left-rail hidden, .code-column-resizer-left hidden.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.atlas-shell.surface-code .obra-left-toggle {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--cc-border, rgba(233, 238, 242, 0.10));
+  border-radius: 5px;
+  background: var(--cc-surface-raised, #2d4351);
+  color: var(--cc-text-muted, #95a3ac);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.atlas-shell.surface-code .obra-left-toggle:hover {
+  background: rgba(212, 168, 90, 0.08);
+  border-color: var(--cc-accent-border, rgba(212, 168, 90, 0.34));
+  color: var(--cc-accent-strong, #e6b966);
+}
+.atlas-shell.surface-code .obra-left-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 3px rgba(212, 168, 90, 0.16);
+}
+.atlas-shell.surface-code .obra-left-toggle[aria-pressed='true'] {
+  background: var(--cc-accent-veil, rgba(212, 168, 90, 0.10));
+  border-color: var(--cc-accent-border, rgba(212, 168, 90, 0.34));
+  color: var(--cc-accent-strong, #e6b966);
+}
+
+/* LeftRail + resizer escondidos quando collapsed (CSS variable já é 0px). */
+html.code-left-collapsed .atlas-shell.surface-code .left-rail {
+  display: none !important;
+}
+html.code-left-collapsed .atlas-shell.surface-code .code-column-resizer-left {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TERMINAL DOCK · TOGGLE (close X + ⌘J reabre)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+html.code-terminal-hidden {
+  --terminal-dock-height: 0px;
+  --terminal-side-height: 0px;
+}
+html.code-terminal-hidden .atlas-shell.surface-code .terminal-dock {
+  display: none !important;
+}
+html.code-terminal-hidden .atlas-shell.surface-code.terminal-right .right-rail {
+  padding-bottom: var(--cc-space-5);
+}
+
+/* Botão X de fechar terminal · slot direito do toolbar. */
+.atlas-shell.surface-code .term-close-dock {
+  margin-left: 2px;
+  color: var(--cc-text-muted, #95a3ac);
+  transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.atlas-shell.surface-code .term-close-dock:hover {
+  color: var(--cc-danger-fg, #e89a93);
+  background: rgba(208, 90, 82, 0.10);
+}
+.atlas-shell.surface-code .term-close-dock:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(208, 90, 82, 0.18);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   OBRA BAR · 3 COLUNAS + TÍTULO EDITORIAL CENTRALIZADO
+   Aplica APENAS quando há Obra ativa (.obra-bar-active). Loading/Create
+   states mantêm seu CSS legacy original.
+   Grid: [toggle+id] [título centralizado] [vazio simétrico].
+   Título: Cormorant Garamond italic 26px wght 540 cool cream forte —
+   peso digno de NOME DA OBRA, não chip metadata.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.atlas-shell.surface-code .obra-bar.obra-bar-active {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr !important;
+  align-items: center !important;
+  min-height: 44px;
+  padding: 0 24px !important;
+}
+.atlas-shell.surface-code .obra-bar-active .obra-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  justify-self: start;
+}
+.atlas-shell.surface-code .obra-bar-active .obra-bar-right {
+  justify-self: end;
+}
+.atlas-shell.surface-code .obra-bar-active .obra-objective {
+  margin: 0 !important;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif !important;
+  font-style: italic !important;
+  font-variation-settings: 'wght' 540 !important;
+  font-weight: 540 !important;
+  font-size: 26px !important;
+  letter-spacing: -0.014em !important;
+  line-height: 1.1 !important;
+  color: var(--cc-text-strong, #f0f4f7) !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 720px !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24) !important;
+  justify-self: center;
 }

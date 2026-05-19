@@ -1,0 +1,2498 @@
+/**
+ * Atlas Vox · overlay V1 styles.
+ *
+ * Usa tokens --cc-* já carregados pelo Atlas AI surface (Codex Slate Premium).
+ * Não cria nenhuma var nova; só reusa. Escopo: classes `.vox-*` exclusivas
+ * — nenhum override em seletores existentes.
+ */
+
+/* Botão Vox ativo (estado open/listening) */
+.vox-btn.is-active {
+  color: var(--cc-accent);
+  border-color: rgba(212, 168, 90, 0.32);
+  background: rgba(212, 168, 90, 0.08);
+}
+
+.vox-btn.is-listening {
+  color: var(--cc-accent-strong, var(--cc-accent));
+  border-color: rgba(212, 168, 90, 0.55);
+  background: rgba(212, 168, 90, 0.14);
+  /* pulso silencioso · 1.6s loop, opacity-only · sem teatro */
+  animation: vox-btn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes vox-btn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 90, 0.0); }
+  50% { box-shadow: 0 0 0 4px rgba(212, 168, 90, 0.22); }
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Overlay container · posicionado pelo wrapper na surface         */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-overlay {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  /* V6-VISUAL-POLISH-FINAL · respeita também o viewport (não só o pai).
+     Em viewport estreito o overlay encolhe sem overflow horizontal feio. */
+  width: min(440px, calc(100% - 24px), calc(100vw - 32px));
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--cc-surface-raised, #232f37);
+  border: 1px solid var(--cc-border-soft, rgba(233, 238, 242, 0.08));
+  border-radius: 12px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.32),
+    0 2px 8px rgba(0, 0, 0, 0.18);
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 40;
+  color: var(--cc-text, #d6dde3);
+  font-family: var(--cc-font-sans);
+}
+
+/* V6-VISUAL-POLISH-FINAL · em telas estreitas, mode segmented quebra em
+   duas linhas iguais (2x2) pra evitar texto cortado. */
+@media (max-width: 380px) {
+  .vox-mode-seg-btn {
+    flex-basis: calc(50% - 1px);
+    flex-grow: 0;
+  }
+}
+
+.vox-overlay-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vox-overlay-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vox-overlay-eyebrow {
+  font-size: 12px;
+  font-variation-settings: 'wght' 580;
+  color: var(--cc-accent, #d4a85a);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.vox-overlay-session {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-overlay-close {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cc-text-faint, #8a98a4);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 160ms ease;
+}
+
+.vox-overlay-close:hover {
+  background: rgba(233, 238, 242, 0.06);
+  color: var(--cc-text-strong, #ecf0f3);
+}
+
+/* Banners */
+.vox-overlay-banner {
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.vox-overlay-banner-warn {
+  background: rgba(212, 168, 90, 0.07);
+  border-color: rgba(212, 168, 90, 0.22);
+  color: var(--cc-text, #d6dde3);
+}
+
+.vox-overlay-banner-info {
+  background: rgba(120, 180, 240, 0.07);
+  border-color: rgba(120, 180, 240, 0.18);
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-overlay-banner-error {
+  background: rgba(220, 110, 110, 0.08);
+  border-color: rgba(220, 110, 110, 0.32);
+  color: #f0c0c0;
+}
+
+/* Ações primárias */
+.vox-overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vox-btn-primary,
+.vox-btn-secondary,
+.vox-btn-ghost {
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  font-variation-settings: 'wght' 560;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 160ms ease;
+  letter-spacing: 0;
+}
+
+.vox-btn-primary {
+  background: var(--cc-accent, #d4a85a);
+  color: #15212a;
+  border: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.vox-btn-primary:hover:not(:disabled) {
+  background: var(--cc-accent-strong, #e0b770);
+}
+
+.vox-btn-secondary {
+  background: rgba(233, 238, 242, 0.06);
+  color: var(--cc-text-strong, #ecf0f3);
+  border: 1px solid rgba(233, 238, 242, 0.14);
+}
+
+.vox-btn-secondary:hover:not(:disabled) {
+  background: rgba(233, 238, 242, 0.1);
+}
+
+.vox-btn-ghost {
+  background: transparent;
+  color: var(--cc-text-muted, #b3bcc4);
+  border: 1px solid rgba(233, 238, 242, 0.08);
+}
+
+.vox-btn-ghost:hover:not(:disabled) {
+  background: rgba(233, 238, 242, 0.04);
+  color: var(--cc-text-strong, #ecf0f3);
+}
+
+.vox-btn-eclipse {
+  margin-left: auto;
+  color: #d8aaaa;
+  border-color: rgba(220, 110, 110, 0.22);
+}
+
+.vox-btn-eclipse:hover:not(:disabled) {
+  background: rgba(220, 110, 110, 0.08);
+  color: #f0c0c0;
+}
+
+.vox-btn-primary:disabled,
+.vox-btn-secondary:disabled,
+.vox-btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vox-btn-primary:focus-visible,
+.vox-btn-secondary:focus-visible,
+.vox-btn-ghost:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.32);
+}
+
+/* Sections */
+.vox-overlay-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(233, 238, 242, 0.06);
+}
+
+.vox-overlay-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.vox-overlay-section-title {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cc-text-faint, #8a98a4);
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-overlay-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--cc-text-muted, #b3bcc4);
+  line-height: 1.5;
+}
+
+.vox-overlay-hint-warn { color: var(--cc-accent, #d4a85a); }
+.vox-overlay-hint-error { color: #f0c0c0; }
+
+/* V6-ES-B · dica de baixa confiança · link inline discreto */
+.vox-overlay-lowconf-hint {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.vox-overlay-lowconf-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.vox-overlay-lowconf-link:hover:not(:disabled) {
+  color: var(--cc-accent-strong, #e8b800);
+}
+.vox-overlay-lowconf-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vox-overlay-transcript,
+.vox-overlay-debug-input {
+  font-family: var(--cc-font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--cc-text-strong, #ecf0f3);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 64px;
+}
+
+.vox-overlay-transcript:focus,
+.vox-overlay-debug-input:focus {
+  outline: none;
+  border-color: rgba(212, 168, 90, 0.4);
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.18);
+}
+
+.vox-overlay-corrections {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+  font-family: var(--cc-font-mono);
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-overlay-correction-from { color: #d8aaaa; }
+.vox-overlay-correction-to { color: var(--cc-accent, #d4a85a); }
+.vox-overlay-correction-rule { color: var(--cc-text-faint, #8a98a4); margin-left: 4px; }
+
+.vox-overlay-transcript-meta {
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-mono);
+}
+
+.vox-overlay-transcript-meta code {
+  background: transparent;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-overlay-intent-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-style: italic;
+}
+
+.vox-overlay-kernel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-overlay-kernel-meta code {
+  color: var(--cc-accent, #d4a85a);
+  background: transparent;
+}
+
+.vox-overlay-receipt {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+}
+
+.vox-overlay-receipt dt {
+  color: var(--cc-text-faint, #8a98a4);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.vox-overlay-receipt dd {
+  margin: 0;
+  font-family: var(--cc-font-mono);
+  color: var(--cc-text-muted, #b3bcc4);
+  word-break: break-all;
+}
+
+.vox-overlay-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(233, 238, 242, 0.06);
+}
+
+.vox-overlay-flash {
+  font-size: 11px;
+  color: var(--cc-accent, #d4a85a);
+  font-family: var(--cc-font-mono);
+  margin-left: auto;
+}
+
+/* Wrapper relativo no composer pra posicionar o overlay */
+.atlas-ai-composer-wrap {
+  position: relative;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V4 · cabine automática + Gravar CTA limpo + Trocar modo       */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-v4-record-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.vox-v4-record-btn {
+  font-size: 13.5px;
+  padding: 10px 16px;
+  letter-spacing: 0.01em;
+}
+
+.vox-v4-record-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-sans);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.55;
+}
+
+.vox-v4-record-hint-sep {
+  color: var(--cc-text-faint, #8a98a4);
+  opacity: 0.6;
+}
+
+/* V6-G · botão discreto de recovery pós-sessão. Vive logo abaixo da CTA
+   principal e fica à direita, fora do peso visual do "Gravar de novo". */
+.vox-v4-record-stop {
+  align-self: flex-end;
+  margin-top: 4px;
+  font-size: 11.5px;
+  padding: 4px 10px;
+}
+
+.vox-v4-understanding {
+  gap: 8px;
+}
+
+.vox-v4-understanding-line {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 540;
+  letter-spacing: 0;
+}
+
+/* V6.5 · Smart Preview block — substitui a linha legada quando o backend
+   envia `flow_decision`. Layout limpo, sem overflow, sem jargão. */
+.vox-smart-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vox-smart-preview-eyebrow {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-smart-preview-triplet {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.vox-smart-preview-line {
+  display: contents;
+}
+
+.vox-smart-preview-line-label {
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-text-muted, #b3bcc4);
+  letter-spacing: 0;
+  align-self: start;
+  padding-top: 1px;
+}
+
+.vox-smart-preview-line-value {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 520;
+  letter-spacing: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.vox-smart-preview-clarification {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(212, 168, 90, 0.06);
+  border-left: 2px solid var(--cc-accent, #d4a85a);
+}
+
+.vox-smart-preview-question {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 540;
+}
+
+.vox-smart-preview-clarify-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vox-smart-preview-clarify-label-text {
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-smart-preview-clarify-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--cc-surface-mute, #1a242b);
+  border: 1px solid var(--cc-border-muted, #2a3640);
+  color: var(--cc-text-strong, #ecf0f3);
+  font-family: var(--cc-font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.vox-smart-preview-clarify-input:focus {
+  outline: 2px solid var(--cc-accent, #d4a85a);
+  outline-offset: 1px;
+}
+
+.vox-smart-preview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vox-smart-preview-low-conf,
+.vox-smart-preview-block-reason {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.vox-smart-preview-safe-fallback {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+  letter-spacing: 0;
+}
+
+/* Estado destrutivo ganha contraste extra na borda esquerda. */
+.vox-smart-preview-blocked_destructive {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 2px solid #d97070;
+  background: rgba(217, 112, 112, 0.06);
+}
+
+.vox-smart-preview-low_confidence {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 2px solid var(--cc-accent, #d4a85a);
+  background: rgba(212, 168, 90, 0.04);
+}
+
+.vox-v4-suggestion {
+  margin: 0;
+  font-size: 11.5px;
+  font-family: var(--cc-font-sans);
+  color: var(--cc-text-muted, #b3bcc4);
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vox-v4-suggestion-active {
+  color: var(--cc-accent, #d4a85a);
+}
+
+.vox-v4-suggestion-active strong {
+  font-variation-settings: 'wght' 620;
+  color: var(--cc-accent-strong, #e0b770);
+}
+
+.vox-v4-suggestion-idle {
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+}
+
+.vox-v4-suggestion-idle strong {
+  color: var(--cc-text-muted, #b3bcc4);
+  font-variation-settings: 'wght' 600;
+  font-family: var(--cc-font-sans);
+}
+
+.vox-v4-suggestion-apply {
+  background: transparent;
+  border: 1px solid rgba(212, 168, 90, 0.32);
+  color: var(--cc-accent, #d4a85a);
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0;
+}
+
+.vox-v4-suggestion-apply:hover:not(:disabled) {
+  background: rgba(212, 168, 90, 0.08);
+  border-color: rgba(212, 168, 90, 0.5);
+}
+
+.vox-v4-suggestion-apply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vox-v4-prompt-details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vox-v4-prompt-details-summary {
+  cursor: pointer;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cc-text-faint, #8a98a4);
+  font-variation-settings: 'wght' 600;
+  list-style: none;
+  padding: 2px 0;
+  user-select: none;
+}
+
+.vox-v4-prompt-details-summary::-webkit-details-marker { display: none; }
+.vox-v4-prompt-details-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  width: 12px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+.vox-v4-prompt-details[open] > .vox-v4-prompt-details-summary::before {
+  content: '▾ ';
+}
+
+.vox-v4-prompt-details-summary:hover {
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-v4-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+/* V6-VISUAL-POLISH-FINAL · flat — não é card-dentro-de-card. */
+.vox-v4-mode-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 0;
+  margin-top: 4px;
+  border-top: 1px solid rgba(233, 238, 242, 0.06);
+  background: transparent;
+  border-radius: 0;
+}
+
+.vox-v4-mode-switcher-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-sans);
+  line-height: 1.45;
+}
+
+.vox-v4-mode-switcher-hint strong {
+  color: var(--cc-text-muted, #b3bcc4);
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-v4-mode-switcher-reset {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--cc-accent, #d4a85a);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.vox-v4-mode-switcher-reset:hover:not(:disabled) {
+  color: var(--cc-accent-strong, #e0b770);
+}
+
+.vox-v4-mode-switcher-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.28);
+  border-radius: 3px;
+}
+
+.vox-v4-mode-switcher-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vox-v4-footer-controls {
+  border-top: none;
+  padding-top: 4px;
+  gap: 6px;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V5-A · Symbiotic Interlocutor                                  */
+/* Cabine conversacional curta dentro da seção "Atlas entendeu".  */
+/* Sem card-dentro-de-card: bloco horizontal sóbrio com borda     */
+/* esquerda colorida por tipo de intervenção.                     */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-v4-interlocutor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 8px 12px;
+  border-left: 3px solid rgba(212, 168, 90, 0.45);
+  background: rgba(212, 168, 90, 0.06);
+  border-radius: 0 6px 6px 0;
+  margin-top: 2px;
+}
+
+.vox-v4-interlocutor-message {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--cc-text-strong, #ecf0f3);
+}
+
+.vox-v4-interlocutor-question {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-variation-settings: 'wght' 540;
+}
+
+.vox-v4-interlocutor-blocking-note {
+  margin: 2px 0 0;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: #f0c0c0;
+  letter-spacing: 0;
+}
+
+.vox-v4-interlocutor-blocking-note strong {
+  color: #f5d5d5;
+  font-variation-settings: 'wght' 620;
+}
+
+.vox-v4-interlocutor-clarify {
+  border-left-color: rgba(120, 180, 240, 0.45);
+  background: rgba(120, 180, 240, 0.05);
+}
+
+.vox-v4-interlocutor-caution {
+  border-left-color: rgba(220, 160, 90, 0.55);
+  background: rgba(220, 160, 90, 0.05);
+}
+
+.vox-v4-interlocutor-suggest_better_prompt {
+  border-left-color: rgba(212, 168, 90, 0.55);
+  background: rgba(212, 168, 90, 0.05);
+}
+
+.vox-v4-interlocutor-disagree {
+  border-left-color: rgba(220, 110, 110, 0.55);
+  background: rgba(220, 110, 110, 0.06);
+}
+
+.vox-v4-interlocutor-blocking {
+  border-left-color: rgba(220, 90, 90, 0.7);
+  background: rgba(220, 90, 90, 0.08);
+  box-shadow: 0 0 0 1px rgba(220, 90, 90, 0.18);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V6 · Reply Surface · "Atlas respondeu" + Voz pref             */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-v4-reply {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-left: 2px solid rgba(212, 168, 90, 0.35);
+  background: transparent;
+  font-family: var(--cc-font-sans);
+}
+
+.vox-v4-reply-eyebrow {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint, #8a98a4);
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-v4-reply-text {
+  font-size: 12.5px;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 540;
+  letter-spacing: 0;
+}
+
+.vox-v4-reply-voice-tag {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--cc-accent, #d4a85a);
+  border: 1px solid rgba(212, 168, 90, 0.32);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.vox-v4-reply[data-reply-phrase="blocked_safety"] {
+  border-left-color: rgba(220, 90, 90, 0.55);
+}
+
+.vox-v4-reply[data-reply-phrase="need_detail"] {
+  border-left-color: rgba(120, 180, 240, 0.55);
+}
+
+.vox-v4-reply[data-reply-phrase="prompt_ready"] {
+  border-left-color: rgba(212, 168, 90, 0.55);
+}
+
+.vox-v4-reply[data-reply-phrase="understood"] {
+  border-left-color: rgba(160, 200, 160, 0.5);
+}
+
+.vox-overlay-voice-prefs {
+  display: flex;
+  flex-direction: column;
+}
+
+.vox-voice-mode-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid rgba(233, 238, 242, 0.10);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.vox-voice-mode-legend {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  color: var(--cc-text-faint, #8a98a4);
+  padding: 0 4px;
+}
+
+.vox-voice-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text, #d6dde3);
+  cursor: pointer;
+}
+
+.vox-voice-mode-option input[type="radio"] {
+  accent-color: var(--cc-accent, #d4a85a);
+  cursor: pointer;
+}
+
+.vox-voice-mode-option input[type="radio"]:disabled {
+  cursor: progress;
+}
+
+.vox-voice-mode-hint {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  color: var(--cc-text-faint, #8a98a4);
+  line-height: 1.45;
+}
+
+.vox-v4-interlocutor-eyebrow {
+  margin: 0;
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-variation-settings: 'wght' 580;
+}
+
+.vox-v4-interlocutor-clarify-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.vox-v4-interlocutor-clarify-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vox-v4-interlocutor-clarify-label-text {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-v4-interlocutor-clarify-input {
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.12);
+  color: var(--cc-text-strong, #ecf0f3);
+  outline: none;
+}
+
+.vox-v4-interlocutor-clarify-input:focus-visible {
+  border-color: rgba(120, 180, 240, 0.55);
+  box-shadow: 0 0 0 2px rgba(120, 180, 240, 0.18);
+}
+
+.vox-v4-interlocutor-clarify-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vox-v4-interlocutor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+
+/* ───────────────────────────────────────────────────────────── */
+/* Mode segmented selector · Dictation / Prompt Polish             */
+/* ───────────────────────────────────────────────────────────── */
+
+/* V6-VISUAL-POLISH-FINAL · 4 modos canônicos sem overflow em viewport
+   estreito (≤ 380 px). Flex equal-width pra alinhamento perfeito + wrap
+   honesto quando o conteúdo realmente não couber em uma linha. */
+.vox-mode-seg {
+  display: flex;
+  flex-wrap: wrap;
+  align-self: stretch;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  border-radius: 8px;
+  gap: 2px;
+  width: 100%;
+}
+
+.vox-mode-seg-btn {
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 560;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cc-text-muted, #b3bcc4);
+  cursor: pointer;
+  transition: all 160ms ease;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.vox-mode-seg-btn:hover:not(:disabled) {
+  color: var(--cc-text-strong, #ecf0f3);
+  background: rgba(233, 238, 242, 0.04);
+}
+
+.vox-mode-seg-btn.is-active {
+  background: rgba(212, 168, 90, 0.12);
+  color: var(--cc-accent, #d4a85a);
+  border-color: rgba(212, 168, 90, 0.32);
+}
+
+.vox-mode-seg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vox-mode-seg-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.28);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Compiled prompt block                                           */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-overlay-compiled-prompt {
+  margin: 0;
+  font-family: var(--cc-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(212, 168, 90, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.vox-overlay-compiled-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Personal dictionary panel · collapsible                         */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-overlay-dictionary {
+  border-top: 1px solid rgba(233, 238, 242, 0.06);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* V6-VISUAL-POLISH-FINAL · "Detalhes avançados" e amigos lêem como
+   secundários: tipografia menor, sem caixa-alta agressiva, cinza sóbrio.
+   A intenção é que o operador veja primeiro o fluxo principal, não os
+   toggles. */
+.vox-overlay-dict-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--cc-text-faint, #8a98a4);
+  font-variation-settings: 'wght' 540;
+  border-radius: 4px;
+  transition: color 160ms ease;
+}
+
+.vox-overlay-dict-toggle:hover {
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-overlay-dict-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.24);
+}
+
+.vox-overlay-dict-meta {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cc-text-muted, #b3bcc4);
+  margin-left: auto;
+}
+
+.vox-overlay-dict-chevron {
+  font-size: 10px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-overlay-dict-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vox-overlay-dict-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vox-overlay-dict-chip,
+.vox-overlay-dict-chip-more {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(233, 238, 242, 0.05);
+  color: var(--cc-text-muted, #b3bcc4);
+  border: 1px solid rgba(233, 238, 242, 0.06);
+}
+
+.vox-overlay-dict-chip-more {
+  color: var(--cc-text-faint, #8a98a4);
+  background: transparent;
+}
+
+.vox-overlay-dict-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.vox-overlay-dict-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.vox-overlay-dict-field > span {
+  font-size: 10.5px;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-mono);
+}
+
+.vox-overlay-dict-field > input {
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  color: var(--cc-text-strong, #ecf0f3);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.1);
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+
+.vox-overlay-dict-field > input:focus {
+  outline: none;
+  border-color: rgba(212, 168, 90, 0.4);
+  box-shadow: 0 0 0 2px rgba(212, 168, 90, 0.18);
+}
+
+@media (max-width: 460px) {
+  .vox-overlay-dict-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Intent Compile controles · provider / output format             */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-overlay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vox-overlay-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.vox-overlay-control > span {
+  font-size: 10.5px;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-mono);
+}
+
+.vox-overlay-control > select {
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text-strong, #ecf0f3);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.1);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  min-width: 110px;
+}
+
+.vox-overlay-control > select:focus {
+  outline: none;
+  border-color: rgba(212, 168, 90, 0.4);
+  box-shadow: 0 0 0 2px rgba(212, 168, 90, 0.18);
+}
+
+.vox-overlay-control > select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Entendi · enriquecida (V2)                                      */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-overlay-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-mono);
+  padding-top: 2px;
+}
+
+.vox-overlay-meta-grid code {
+  color: var(--cc-accent, #d4a85a);
+  background: transparent;
+  margin-left: 4px;
+}
+
+.vox-overlay-meta-label {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-overlay-constraints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vox-overlay-constraint-chip {
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(220, 110, 110, 0.08);
+  color: #f0c0c0;
+  border: 1px solid rgba(220, 110, 110, 0.22);
+}
+
+/* Risk badges · cor por severidade · V2 só mostra, nunca bloqueia */
+.vox-risk {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-variation-settings: 'wght' 620;
+  letter-spacing: 0.04em;
+  font-size: 10.5px;
+}
+
+.vox-risk-R0 { background: rgba(120, 180, 240, 0.10); color: #a9c8e8; border: 1px solid rgba(120, 180, 240, 0.22); }
+.vox-risk-R1 { background: rgba(212, 168, 90, 0.10); color: var(--cc-accent, #d4a85a); border: 1px solid rgba(212, 168, 90, 0.22); }
+.vox-risk-R2 { background: rgba(220, 160, 90, 0.12); color: #e8b878; border: 1px solid rgba(220, 160, 90, 0.30); }
+.vox-risk-R3 { background: rgba(220, 130, 90, 0.14); color: #e8a070; border: 1px solid rgba(220, 130, 90, 0.34); }
+.vox-risk-R4 { background: rgba(220, 90, 90, 0.16); color: #f0a0a0; border: 1px solid rgba(220, 90, 90, 0.40); }
+
+/* ───────────────────────────────────────────────────────────── */
+/* V3 Governed Execute · confirmation panel                       */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-confirm-panel {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  background: rgba(0, 0, 0, 0.18);
+  margin-top: 4px;
+}
+
+/* V6-VISUAL-POLISH-FINAL · dentro do painel de confirmação, blocos de
+   código/prompt achatam pra não virar card-em-card. Conteúdo continua
+   identificável (mono + leve fundo) sem mais um anel de borda. */
+.vox-confirm-panel .vox-overlay-compiled-prompt,
+.vox-confirm-panel .vox-terminal-proposal {
+  background: rgba(0, 0, 0, 0.18);
+  border-color: transparent;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.vox-confirm-low {
+  border-color: rgba(120, 180, 240, 0.22);
+  background: rgba(120, 180, 240, 0.05);
+}
+
+.vox-confirm-r2 {
+  border-color: rgba(220, 160, 90, 0.34);
+  background: rgba(220, 160, 90, 0.06);
+}
+
+.vox-confirm-r3 {
+  border-color: rgba(220, 130, 90, 0.40);
+  background: rgba(220, 130, 90, 0.08);
+}
+
+.vox-confirm-r4 {
+  border-color: rgba(220, 90, 90, 0.48);
+  background: rgba(220, 90, 90, 0.10);
+  box-shadow: 0 0 0 1px rgba(220, 90, 90, 0.22);
+}
+
+.vox-confirm-literal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.vox-confirm-literal-input {
+  font-family: var(--cc-font-mono);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  min-height: 0;
+  resize: none;
+  /* Garante input "input-like" mesmo herdando estilos de textarea siblings. */
+  padding: 6px 10px;
+}
+
+.vox-confirm-literal-expected {
+  font-family: var(--cc-font-mono);
+  color: var(--cc-accent, #d4a85a);
+  background: transparent;
+  word-break: break-word;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V6.5 · "Atlas ouvindo" indicador grande e sóbrio                */
+/* V6-ES-A · agora com botão Finalizar primário sob o pill         */
+/* ───────────────────────────────────────────────────────────── */
+
+/* V6-VISUAL-POLISH-FINAL · estado ouvindo: pill grande + Finalizar full
+   width pra dar peso visual e tornar a ação primária inequívoca. */
+.vox-listening {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 6px 0 2px;
+}
+
+.vox-listening-stop {
+  align-self: stretch;
+  font-size: 13.5px;
+  padding: 10px 16px;
+  letter-spacing: 0.01em;
+}
+
+.vox-listening-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(212, 168, 90, 0.10);
+  border: 1px solid rgba(212, 168, 90, 0.32);
+  color: var(--cc-text-strong, #ecf0f3);
+  font-size: 13px;
+  align-self: stretch;
+  justify-content: center;
+}
+
+.vox-listening-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cc-accent, #d4a85a);
+  box-shadow: 0 0 0 0 rgba(212, 168, 90, 0.6);
+  animation: vox-listening-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes vox-listening-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(212, 168, 90, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(212, 168, 90, 0);
+    transform: scale(1.12);
+  }
+}
+
+.vox-listening-label {
+  font-variation-settings: 'wght' 580;
+  color: var(--cc-accent, #d4a85a);
+  letter-spacing: 0.02em;
+}
+
+.vox-listening-hint {
+  font-size: 11px;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-mono);
+  margin: 0;
+  letter-spacing: 0;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V6.5 · Atalhos discretos                                        */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-hotkey-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--cc-text-faint, #8a98a4);
+  line-height: 1.5;
+}
+
+.vox-hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--cc-font-mono);
+  letter-spacing: 0;
+}
+
+.vox-hotkey-hint-key {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(233, 238, 242, 0.06);
+  border: 1px solid rgba(233, 238, 242, 0.10);
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/* Terminal proposal · NUNCA executado pelo Vox. Bloco de leitura + copy. */
+.vox-terminal-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px dashed rgba(212, 168, 90, 0.36);
+}
+
+.vox-terminal-proposal-cmd {
+  border-color: rgba(212, 168, 90, 0.36);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V7.6 · Dogfood mini-bloco "Como foi?"                           */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-dogfood {
+  gap: 8px;
+}
+
+.vox-dogfood-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.vox-dogfood-chip {
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  font-variation-settings: 'wght' 560;
+  letter-spacing: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(233, 238, 242, 0.05);
+  color: var(--cc-text-strong, #ecf0f3);
+  border: 1px solid rgba(233, 238, 242, 0.12);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.vox-dogfood-chip:hover:not(:disabled) {
+  background: rgba(233, 238, 242, 0.10);
+  border-color: rgba(233, 238, 242, 0.20);
+}
+
+.vox-dogfood-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.28);
+}
+
+.vox-dogfood-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vox-dogfood-chip-good {
+  background: rgba(140, 200, 130, 0.10);
+  border-color: rgba(140, 200, 130, 0.30);
+  color: #c6e2bb;
+}
+
+.vox-dogfood-chip-good:hover:not(:disabled) {
+  background: rgba(140, 200, 130, 0.16);
+  border-color: rgba(140, 200, 130, 0.45);
+}
+
+.vox-dogfood-chip-bad {
+  background: rgba(220, 110, 110, 0.10);
+  border-color: rgba(220, 110, 110, 0.32);
+  color: #f0c0c0;
+}
+
+.vox-dogfood-chip-bad:hover:not(:disabled) {
+  background: rgba(220, 110, 110, 0.16);
+  border-color: rgba(220, 110, 110, 0.46);
+}
+
+.vox-dogfood-chip-ghost {
+  background: transparent;
+  color: var(--cc-text-faint, #8a98a4);
+  border-color: rgba(233, 238, 242, 0.08);
+}
+
+.vox-dogfood-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.vox-dogfood-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vox-dogfood-note {
+  min-height: 0;
+  resize: vertical;
+  padding: 6px 10px;
+}
+
+.vox-dogfood-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--cc-accent, #d4a85a);
+  font-family: var(--cc-font-sans);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.vox-dogfood-link:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V3.9 · Session closeout "Registrar uso real?"                   */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-closeout {
+  gap: 8px;
+}
+
+.vox-closeout-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.vox-closeout-chip {
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  font-variation-settings: 'wght' 560;
+  letter-spacing: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(233, 238, 242, 0.05);
+  color: var(--cc-text-strong, #ecf0f3);
+  border: 1px solid rgba(233, 238, 242, 0.12);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.vox-closeout-chip:hover:not(:disabled) {
+  background: rgba(233, 238, 242, 0.10);
+  border-color: rgba(233, 238, 242, 0.20);
+}
+
+.vox-closeout-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.28);
+}
+
+.vox-closeout-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vox-closeout-chip-success {
+  background: rgba(140, 200, 130, 0.10);
+  border-color: rgba(140, 200, 130, 0.32);
+  color: #c6e2bb;
+}
+
+.vox-closeout-chip-success:hover:not(:disabled) {
+  background: rgba(140, 200, 130, 0.18);
+  border-color: rgba(140, 200, 130, 0.46);
+}
+
+.vox-closeout-chip-partial {
+  background: rgba(212, 168, 90, 0.10);
+  border-color: rgba(212, 168, 90, 0.32);
+  color: var(--cc-accent, #d4a85a);
+}
+
+.vox-closeout-chip-partial:hover:not(:disabled) {
+  background: rgba(212, 168, 90, 0.18);
+  border-color: rgba(212, 168, 90, 0.46);
+}
+
+.vox-closeout-chip-failed {
+  background: rgba(220, 110, 110, 0.10);
+  border-color: rgba(220, 110, 110, 0.32);
+  color: #f0c0c0;
+}
+
+.vox-closeout-chip-failed:hover:not(:disabled) {
+  background: rgba(220, 110, 110, 0.18);
+  border-color: rgba(220, 110, 110, 0.46);
+}
+
+.vox-closeout-chip-cancelled {
+  /* Subtle by design — cancellation isn't a failure, it's an honest exit. */
+  background: rgba(233, 238, 242, 0.04);
+  border-color: rgba(233, 238, 242, 0.18);
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-closeout-chip-cancelled:hover:not(:disabled) {
+  background: rgba(233, 238, 242, 0.10);
+  border-color: rgba(233, 238, 242, 0.28);
+}
+
+.vox-closeout-chip-ghost {
+  background: transparent;
+  color: var(--cc-text-faint, #8a98a4);
+  border-color: rgba(233, 238, 242, 0.08);
+  margin-left: auto;
+}
+
+.vox-closeout-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.vox-closeout-regret {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+  cursor: pointer;
+}
+
+.vox-closeout-regret input {
+  cursor: pointer;
+}
+
+.vox-closeout-note {
+  flex: 1 1 200px;
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text-strong, #ecf0f3);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.10);
+  border-radius: 6px;
+  padding: 5px 9px;
+  min-width: 0;
+}
+
+.vox-closeout-note:focus {
+  outline: none;
+  border-color: rgba(212, 168, 90, 0.4);
+  box-shadow: 0 0 0 2px rgba(212, 168, 90, 0.18);
+}
+
+.vox-closeout-inferred {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-closeout-inferred code {
+  background: transparent;
+  color: var(--cc-text-muted, #b3bcc4);
+  margin-right: 2px;
+}
+
+.vox-closeout-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 0 0 4px;
+  color: var(--cc-accent, #d4a85a);
+  font-family: var(--cc-font-sans);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.vox-closeout-link:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+}
+
+.vox-closeout-meta {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-closeout-meta code {
+  background: transparent;
+  color: var(--cc-accent, #d4a85a);
+}
+
+.vox-closeout-resolved {
+  background: rgba(140, 200, 130, 0.05);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V6.6 · transcribing banner + collapsible STT fallback           */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-overlay-transcribing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--cc-accent, #d4a85a);
+  font-family: var(--cc-font-sans);
+  padding: 6px 0 2px;
+}
+
+.vox-overlay-transcribing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cc-accent, #d4a85a);
+  animation: vox-overlay-transcribing-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes vox-overlay-transcribing-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1);  }
+}
+
+.vox-overlay-fallback {
+  margin-top: 4px;
+  border-top: 1px dashed rgba(233, 238, 242, 0.08);
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vox-overlay-fallback-summary {
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-mono);
+  list-style: none;
+  padding: 2px 0;
+  user-select: none;
+}
+
+.vox-overlay-fallback-summary::-webkit-details-marker { display: none; }
+.vox-overlay-fallback-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  width: 12px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+.vox-overlay-fallback[open] > .vox-overlay-fallback-summary::before {
+  content: '▾ ';
+}
+
+.vox-overlay-fallback-summary:hover {
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V3 Gate panel · métricas + rivals (Onda 7 / Claude P)           */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-gate-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.vox-gate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.vox-gate-row-tight {
+  gap: 4px 12px;
+  font-family: var(--cc-font-mono);
+  font-size: 11.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-gate-key {
+  font-size: 10.5px;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  color: var(--cc-text-faint, #8a98a4);
+  font-family: var(--cc-font-mono);
+}
+
+.vox-gate-val {
+  color: var(--cc-text-strong, #ecf0f3);
+  font-family: var(--cc-font-mono);
+  font-size: 11.5px;
+}
+
+.vox-gate-val-faint {
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-gate-refresh {
+  margin-left: auto;
+  font-size: 10.5px;
+  padding: 3px 8px;
+}
+
+.vox-gate-pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  font-variation-settings: 'wght' 620;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: lowercase;
+}
+
+.vox-gate-pill-blocked {
+  background: rgba(220, 110, 110, 0.10);
+  color: #f0c0c0;
+  border: 1px solid rgba(220, 110, 110, 0.32);
+}
+
+.vox-gate-pill-warming {
+  background: rgba(212, 168, 90, 0.10);
+  color: var(--cc-accent, #d4a85a);
+  border: 1px solid rgba(212, 168, 90, 0.32);
+}
+
+.vox-gate-pill-ready {
+  background: rgba(120, 180, 120, 0.10);
+  color: #b8e0b8;
+  border: 1px solid rgba(120, 180, 120, 0.40);
+}
+
+.vox-gate-hard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(233, 238, 242, 0.06);
+}
+
+.vox-gate-hard-ok {
+  color: #b8e0b8;
+}
+
+.vox-gate-hard-bad {
+  color: #f0c0c0;
+  font-variation-settings: 'wght' 620;
+}
+
+.vox-gate-v4-note {
+  margin: 0;
+  font-size: 10.5px;
+  font-family: var(--cc-font-mono);
+  color: var(--cc-text-faint, #8a98a4);
+  line-height: 1.4;
+  border-top: 1px dashed rgba(233, 238, 242, 0.06);
+  padding-top: 6px;
+}
+
+.vox-gate-rivals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.vox-gate-rivals-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.vox-gate-rivals-regret {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-sans);
+}
+
+.vox-gate-rivals-note {
+  width: 100%;
+  min-height: 44px;
+}
+
+.vox-gate-rivals-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Readiness panel · first-run checklist · slate dark             */
+/* (Wave 7.8 / Claude U)                                          */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-readiness-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 2px 2px;
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-readiness-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vox-readiness-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vox-readiness-aggregate {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-readiness-aggregate-ready {
+  color: var(--cc-success, #6bb98a);
+}
+
+.vox-readiness-aggregate-partial {
+  color: var(--cc-warning, #d4a85a);
+}
+
+.vox-readiness-aggregate-blocked {
+  color: var(--cc-danger, #d6655a);
+}
+
+.vox-readiness-aggregate-unavailable,
+.vox-readiness-aggregate-checking {
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-readiness-counts {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-readiness-refresh {
+  background: transparent;
+  border: 1px solid rgba(233, 238, 242, 0.12);
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.vox-readiness-refresh:hover:not(:disabled) {
+  color: var(--cc-text-strong, #ecf0f3);
+  border-color: rgba(233, 238, 242, 0.24);
+}
+
+.vox-readiness-refresh:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.vox-readiness-refresh:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.24);
+}
+
+.vox-readiness-error {
+  color: var(--cc-danger, #d6655a);
+  font-size: 11px;
+  margin: 0;
+}
+
+.vox-readiness-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vox-readiness-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(233, 238, 242, 0.03);
+  border: 1px solid rgba(233, 238, 242, 0.05);
+}
+
+.vox-readiness-item-passed {
+  border-color: rgba(107, 185, 138, 0.18);
+}
+.vox-readiness-item-warning {
+  border-color: rgba(212, 168, 90, 0.20);
+}
+.vox-readiness-item-blocked {
+  border-color: rgba(214, 101, 90, 0.22);
+}
+
+.vox-readiness-glyph {
+  font-family: var(--cc-font-mono);
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+  margin-top: 1px;
+}
+
+.vox-readiness-item-passed .vox-readiness-glyph {
+  color: var(--cc-success, #6bb98a);
+}
+.vox-readiness-item-warning .vox-readiness-glyph {
+  color: var(--cc-warning, #d4a85a);
+}
+.vox-readiness-item-blocked .vox-readiness-glyph {
+  color: var(--cc-danger, #d6655a);
+}
+.vox-readiness-item-unavailable .vox-readiness-glyph,
+.vox-readiness-item-checking .vox-readiness-glyph {
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-readiness-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vox-readiness-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vox-readiness-label {
+  font-size: 12px;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-readiness-status {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-readiness-detail {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-readiness-action {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--cc-warning, #d4a85a);
+}
+
+.vox-readiness-footer {
+  margin: 0;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Setup Assistant · first-use action panel (Wave 7.9 / Claude X) */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-setup-assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(233, 238, 242, 0.08);
+  border-radius: 6px;
+  background: rgba(233, 238, 242, 0.025);
+  margin-bottom: 6px;
+}
+
+.vox-setup-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.vox-setup-headline-ready {
+  background: rgba(107, 185, 138, 0.10);
+  border-left: 2px solid var(--cc-success, #6bb98a);
+}
+
+.vox-setup-headline-pending {
+  background: rgba(212, 168, 90, 0.08);
+  border-left: 2px solid var(--cc-warning, #d4a85a);
+}
+
+.vox-setup-headline-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-text-strong, #ecf0f3);
+}
+
+.vox-setup-headline-ready .vox-setup-headline-label {
+  color: var(--cc-success, #6bb98a);
+}
+
+.vox-setup-headline-pending .vox-setup-headline-label {
+  color: var(--cc-warning, #d4a85a);
+}
+
+.vox-setup-headline-detail {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-setup-tiers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vox-setup-tier {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  background: rgba(233, 238, 242, 0.04);
+  border: 1px solid rgba(233, 238, 242, 0.06);
+}
+
+.vox-setup-tier-available {
+  color: var(--cc-success, #6bb98a);
+  border-color: rgba(107, 185, 138, 0.22);
+  background: rgba(107, 185, 138, 0.08);
+}
+
+.vox-setup-tier-pending {
+  color: var(--cc-text-faint, #8a98a4);
+}
+
+.vox-setup-tier-glyph {
+  font-size: 11px;
+  width: 12px;
+  text-align: center;
+}
+
+.vox-setup-actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vox-setup-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(233, 238, 242, 0.025);
+  border: 1px solid rgba(233, 238, 242, 0.06);
+}
+
+.vox-setup-action-row-blocked {
+  border-color: rgba(214, 101, 90, 0.22);
+}
+
+.vox-setup-action-row-warning {
+  border-color: rgba(212, 168, 90, 0.22);
+}
+
+.vox-setup-action-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vox-setup-action-label {
+  font-size: 12px;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-setup-action-status {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint, #8a98a4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vox-setup-action-detail {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-setup-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vox-setup-action-btn {
+  background: transparent;
+  border: 1px solid rgba(233, 238, 242, 0.16);
+  color: var(--cc-text-strong, #ecf0f3);
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.vox-setup-action-btn:hover {
+  border-color: rgba(212, 168, 90, 0.40);
+  color: var(--cc-warning, #d4a85a);
+}
+
+.vox-setup-action-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.24);
+}
+
+.vox-setup-action-btn-instruction {
+  color: var(--cc-text-muted, #b3bcc4);
+  border-style: dashed;
+  cursor: help;
+}
+
+.vox-setup-action-btn-refresh {
+  border-color: rgba(212, 168, 90, 0.30);
+  color: var(--cc-warning, #d4a85a);
+}
+
+.vox-setup-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.vox-setup-refresh {
+  background: transparent;
+  border: 1px solid rgba(233, 238, 242, 0.18);
+  color: var(--cc-text-strong, #ecf0f3);
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.vox-setup-refresh:hover:not(:disabled) {
+  border-color: rgba(212, 168, 90, 0.40);
+  color: var(--cc-warning, #d4a85a);
+}
+
+.vox-setup-refresh:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.vox-setup-refresh:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.24);
+}
+
+.vox-setup-feedback {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   V6-E · Auto Dogfood Chip
+   Chip discreto que confirma "Sessão registrada" + 2 botões opcionais.
+   Sem cards aninhados, sem formulário. Aparece logo abaixo do fluxo
+   principal e some sozinho depois do operador agir.
+   ───────────────────────────────────────────────────────────────── */
+.vox-auto-dogfood {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: var(--cc-radius-6, 6px);
+  background: rgba(212, 168, 90, 0.06);
+  border: 1px solid rgba(212, 168, 90, 0.18);
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text, #d7d8d2);
+}
+.vox-auto-dogfood-submitting {
+  background: transparent;
+  border-color: transparent;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+.vox-auto-dogfood-unavailable,
+.vox-auto-dogfood-failed {
+  background: transparent;
+  border-color: rgba(180, 180, 180, 0.18);
+  color: var(--cc-text-muted, #b3bcc4);
+}
+.vox-auto-dogfood-resolved {
+  background: rgba(120, 160, 100, 0.08);
+  border-color: rgba(120, 160, 100, 0.24);
+}
+.vox-auto-dogfood-text {
+  flex: 1 1 auto;
+}
+.vox-auto-dogfood-outcome {
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-mono);
+}
+.vox-auto-dogfood-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cc-text-muted, #b3bcc4);
+  animation: vox-auto-dogfood-blink 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vox-auto-dogfood-dot { animation: none; }
+}
+@keyframes vox-auto-dogfood-blink {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.vox-auto-dogfood-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+.vox-auto-dogfood-btn {
+  padding: 4px 10px;
+  border-radius: var(--cc-radius-4, 4px);
+  border: 1px solid rgba(180, 180, 180, 0.22);
+  background: transparent;
+  color: var(--cc-text, #d7d8d2);
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.vox-auto-dogfood-btn:hover:not(:disabled) {
+  border-color: rgba(212, 168, 90, 0.5);
+}
+.vox-auto-dogfood-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.24);
+}
+.vox-auto-dogfood-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.vox-auto-dogfood-btn-good:hover:not(:disabled) {
+  background: rgba(120, 160, 100, 0.14);
+}
+.vox-auto-dogfood-btn-bad:hover:not(:disabled) {
+  background: rgba(200, 110, 90, 0.14);
+}
+.vox-auto-dogfood-feedback-error {
+  width: 100%;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+}

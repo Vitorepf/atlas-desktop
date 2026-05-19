@@ -11,12 +11,23 @@
 use std::sync::Arc;
 
 use atlas_bridge::{AtlasBridge, AtlasServerConfig};
+use atlas_platform::vox::{VoxEdge, VoxEdgeConfig};
+use atlas_platform::PtyManager;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, RunEvent};
 use tokio::sync::Mutex;
 
 mod commands_bridge;
+mod commands_terminal;
+mod commands_vox;
+mod commands_vox_benchmark;
+mod commands_vox_edge;
+mod commands_vox_hotkey;
+mod commands_vox_reply;
+mod commands_vox_setup;
 mod kernel_manager;
+mod native_menu;
+mod vox_ambient_launch;
 
 use kernel_manager::{KernelManagerState, KernelStatusReport};
 
@@ -35,13 +46,37 @@ fn atlas_core_status() -> CoreStatus {
     CoreStatus {
         mode: "tauri-core",
         db_path: shellexpand_default("~/.atlas/atlas.db"),
-        workspace_path: std::env::current_dir()
-            .ok()
-            .and_then(|p| p.to_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| "~/develop/Atlas/atlas-server".to_string()),
-        pty: "unavailable",
-        signing: "unavailable",
+        workspace_path: atlas_workspace_path(),
+        pty: "portable-pty",
+        signing: "ed25519",
     }
+}
+
+fn atlas_workspace_path() -> String {
+    if let Ok(path) = std::env::var("ATLAS_DESKTOP_WORKSPACE") {
+        if std::path::Path::new(&path).is_dir() {
+            return path;
+        }
+    }
+
+    if let Ok(path) = std::env::current_dir() {
+        if path.is_dir() && path != std::path::Path::new("/") {
+            return path.to_string_lossy().to_string();
+        }
+    }
+
+    for candidate in [
+        "~/develop/Atlas/atlas-desktop",
+        "~/develop/Atlas/atlas-server",
+        "~/develop/Atlas",
+    ] {
+        let expanded = shellexpand_default(candidate);
+        if std::path::Path::new(&expanded).is_dir() {
+            return expanded;
+        }
+    }
+
+    shellexpand_default("~/develop/Atlas")
 }
 
 #[tauri::command]
@@ -51,15 +86,37 @@ async fn atlas_kernel_status(
     Ok(state.snapshot().await)
 }
 
+/// Re-runs the kernel boot sequence. Idempotent — adopts an already-running
+/// server if /health responds. Returns the fresh status report.
 #[tauri::command]
-async fn atlas_bridge_reconfigure(
+async fn atlas_kernel_retry(
     app: AppHandle,
-) -> Result<(), String> {
+    state: tauri::State<'_, Arc<KernelManagerState>>,
+) -> Result<KernelStatusReport, String> {
+    // Kill any old children before re-spawning, to avoid two artisan serves
+    // on :8001 both crashing.
+    state.shutdown().await;
+
+    let report = kernel_manager::boot(Arc::clone(&state)).await;
+    if matches!(report.status, kernel_manager::KernelStatus::Ready) {
+        if let Ok(new_bridge) = AtlasBridge::new(AtlasServerConfig::default()) {
+            let app_state: tauri::State<'_, AppState> = app.state();
+            let mut guard = app_state.bridge.lock().await;
+            *guard = new_bridge;
+        }
+        let _ = app.emit("kernel://ready", &report);
+    } else {
+        let _ = app.emit("kernel://failed", &report);
+    }
+    Ok(report)
+}
+
+#[tauri::command]
+async fn atlas_bridge_reconfigure(app: AppHandle) -> Result<(), String> {
     // Rebuild AtlasBridge from current env (after the kernel becomes ready
     // we exported ATLAS_SERVER_URL + ATLAS_TOKEN, so the new bridge picks them
     // up automatically).
-    let new_bridge = AtlasBridge::new(AtlasServerConfig::default())
-        .map_err(|e| e.to_string())?;
+    let new_bridge = AtlasBridge::new(AtlasServerConfig::default()).map_err(|e| e.to_string())?;
     let state: tauri::State<'_, AppState> = app.state();
     let mut guard = state.bridge.lock().await;
     *guard = new_bridge;
@@ -86,18 +143,37 @@ pub struct AppState {
 pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| {
-                    "atlas_tauri=info,atlas_bridge=info,kernel_manager=info".into()
-                }),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "atlas_tauri=info,atlas_bridge=info,kernel_manager=info".into()
+            }),
         )
         .with_target(true)
         .compact()
         .init();
 
     let kernel_state: Arc<KernelManagerState> = Arc::new(KernelManagerState::default());
+    let pty_manager: Arc<PtyManager> = PtyManager::new();
+    let vox_edge: Arc<VoxEdge> = Arc::new(VoxEdge::new(VoxEdgeConfig::production()));
+
+    // V6-A · Atlas Vox Ambient Launch. Lê `--vox-start-listening` da linha de
+    // comando ou `ATLAS_VOX_START_LISTENING=1` antes de tudo. Single-shot: o
+    // overlay consome o sinal uma única vez quando o webview monta.
+    let vox_ambient: Arc<vox_ambient_launch::VoxAmbientLaunchState> =
+        vox_ambient_launch::VoxAmbientLaunchState::from_process();
+    {
+        let snap = vox_ambient.peek();
+        if snap.start_listening {
+            tracing::info!(
+                target: "vox-ambient",
+                source = ?snap.source,
+                "atlas vox ambient launch: pedido para abrir já ouvindo detectado"
+            );
+        }
+    }
 
     let app = tauri::Builder::default()
+        .menu(native_menu::atlas_menu)
+        .on_menu_event(native_menu::handle_menu_event)
         .setup({
             let kernel_state = Arc::clone(&kernel_state);
             move |app| {
@@ -109,6 +185,35 @@ pub fn run() {
                     bridge: Mutex::new(bridge),
                 });
                 app.manage(Arc::clone(&kernel_state));
+                app.manage(Arc::clone(&pty_manager));
+                app.manage(Arc::clone(&vox_edge));
+                app.manage(Arc::clone(&vox_ambient));
+                // V6 · Reply Surface cooldown state (anti-flood do `say`).
+                app.manage(commands_vox_reply::VoxReplyState::new());
+
+                // V6-A · emite o pedido ambient logo após o setup. O frontend
+                // pode subscrever via `vox://ambient-launch-requested` para
+                // reagir antes de chamar `vox_ambient_consume_pending_launch`.
+                // O comando é a fonte canônica; o evento é só um "ping" para
+                // economizar uma round-trip no caso comum.
+                {
+                    let snap: vox_ambient_launch::VoxAmbientLaunchSnapshot =
+                        vox_ambient.peek().into();
+                    if snap.start_listening {
+                        let _ = app.handle().emit(
+                            "vox://ambient-launch-requested",
+                            &snap,
+                        );
+                    }
+                }
+
+                // Wave 6.5: install the Vox global-hotkey runtime
+                // (Option+Space toggle + Cmd+Shift+Space open overlay)
+                // and spawn the dispatcher that forwards hotkey events
+                // into VoxEdge + Tauri vox://* events. If macOS denies
+                // registration we still manage the runtime so the
+                // status command works honestly.
+                commands_vox_hotkey::install(&app.handle().clone(), Arc::clone(&vox_edge));
 
                 // Boot the Kernel sidecar in the background; the UI polls
                 // atlas_kernel_status until status=ready, then re-reads
@@ -137,7 +242,56 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             atlas_core_status,
             atlas_kernel_status,
+            atlas_kernel_retry,
             atlas_bridge_reconfigure,
+            commands_bridge::bridge_boot,
+            commands_bridge::bridge_mcp_status,
+            commands_bridge::bridge_get_atlas_code_enterprise_certification,
+            commands_bridge::bridge_run_atlas_code_enterprise_certification,
+            commands_bridge::bridge_list_works,
+            commands_bridge::bridge_create_work,
+            commands_bridge::bridge_get_work_state,
+            commands_bridge::bridge_run_forge_live_execution,
+            commands_bridge::bridge_start_forge_live_execution_async,
+            commands_bridge::bridge_get_forge_live_execution_async,
+            commands_bridge::bridge_get_forge_run_history_replay,
+            commands_bridge::bridge_create_programming_work_item,
+            commands_bridge::bridge_compile_programming_work_item_spec_plan,
+            commands_bridge::bridge_run_forge_fast_path,
+            commands_bridge::bridge_get_forge_fast_path_status,
+            commands_bridge::bridge_resume_forge_fast_path,
+            commands_bridge::bridge_get_forge_review_packet,
+            commands_bridge::bridge_decide_forge_review,
+            commands_bridge::bridge_get_forge_work_intake,
+            commands_bridge::bridge_save_forge_work_intake,
+            commands_bridge::bridge_get_forge_provider_topology,
+            commands_bridge::bridge_get_forge_continuum_certification,
+            commands_bridge::bridge_get_forge_provider_capacity,
+            commands_bridge::bridge_record_forge_provider_failure,
+            commands_bridge::bridge_run_forge_runtime_dispatch,
+            commands_bridge::bridge_get_forge_runtime_dispatch,
+            commands_bridge::bridge_run_forge_provider_invocation,
+            commands_bridge::bridge_get_forge_provider_invocation_latest,
+            commands_bridge::bridge_get_forge_ux_orchestrator,
+            commands_bridge::bridge_get_provider_arena_snapshot,
+            commands_bridge::bridge_run_provider_arena,
+            commands_bridge::bridge_get_forge_provider_drivers,
+            commands_bridge::bridge_plan_forge_provider_driver,
+            commands_bridge::bridge_create_checkpoint,
+            commands_bridge::bridge_review_forge_run,
+            commands_bridge::bridge_rollback_forge_promotion,
+            commands_bridge::bridge_get_thread,
+            commands_bridge::bridge_send_intent_v2,
+            commands_bridge::bridge_get_receipt_v2,
+            commands_bridge::bridge_list_gate_runs,
+            commands_bridge::pty_open,
+            commands_bridge::pty_write,
+            commands_bridge::pty_resize,
+            commands_bridge::pty_close,
+            commands_bridge::sign_canonical,
+            commands_bridge::open_external,
+            commands_bridge::reveal_in_finder,
+            commands_bridge::git_branch,
             commands_bridge::bridge_health,
             commands_bridge::bridge_list_obras,
             commands_bridge::bridge_create_obra,
@@ -154,6 +308,34 @@ pub fn run() {
             commands_bridge::bridge_cartography_graph,
             commands_bridge::bridge_cartography_recent_changes,
             commands_bridge::bridge_cartography_note,
+            commands_bridge::bridge_list_self_improvement_forge_activations,
+            commands_bridge::bridge_get_self_improvement_forge_activation,
+            commands_bridge::bridge_create_self_improvement_forge_activation,
+            commands_bridge::bridge_accept_self_improvement_forge_activation,
+            commands_bridge::bridge_reject_self_improvement_forge_activation,
+            commands_terminal::bridge_open_terminal_in_workspace,
+            commands_vox::vox_stt_status,
+            commands_vox::vox_dictionary_get,
+            commands_vox::vox_dictionary_update,
+            commands_vox::vox_stt_transcribe_debug_text,
+            commands_vox::vox_stt_transcribe_audio,
+            commands_vox_edge::vox_edge_status,
+            commands_vox_edge::vox_edge_start_session,
+            commands_vox_edge::vox_edge_finish_session,
+            commands_vox_edge::vox_edge_cancel_session,
+            commands_vox_edge::vox_edge_eclipse,
+            commands_vox_hotkey::vox_hotkey_status,
+            commands_vox_hotkey::vox_hotkey_record_escape,
+            vox_ambient_launch::vox_ambient_consume_pending_launch,
+            commands_vox_benchmark::vox_stt_benchmark_status,
+            commands_vox_benchmark::vox_stt_benchmark_record_sample,
+            commands_vox_benchmark::vox_stt_benchmark_run,
+            commands_vox_benchmark::vox_stt_benchmark_report_latest,
+            commands_vox_setup::vox_open_system_settings,
+            commands_vox_setup::vox_audio_input_describe,
+            commands_vox_reply::vox_settings_get,
+            commands_vox_reply::vox_settings_update,
+            commands_vox_reply::vox_speak_short,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Atlas Code");

@@ -1,0 +1,30 @@
+/*
+ * Cartografia · CSS canon · Atlas Desktop.
+ *
+ * Este arquivo e somente o indice da surface. CSS novo deve entrar no arquivo
+ * da regiao responsavel, sempre escopado por `.cartografia-surface`.
+ */
+
+@import './00-work.css';
+@import './01-viewport-world.css';
+@import './02-trails.css';
+@import './03-regions.css';
+@import './04-atoms.css';
+@import './05-scenes.css';
+@import './06-floaters.css';
+@import './08-inspector.css';
+@import './09-overlay-responsive.css';
+/* Visibility passes · ordem importa: typography (cobertura geral) →
+   semantic zoom (LOD por scale) → fisheye (hover) → color encoding (saliência)
+   → reading mode (narrativa). Cada um override o anterior conforme escopo. */
+@import './10-typography-scale.css';
+@import './11-semantic-zoom.css';
+@import './12-fisheye-lens.css';
+@import './13-color-encoding.css';
+@import './14-reading-mode.css';
+@import './15-lane-identity.css';
+@import './16-phase-rhythm.css';
+@import './17-hero-signature.css';
+@import './18-paper-texture.css';
+@import './19-edit-mode.css';
+@import './20-apple-pro-polish.css';

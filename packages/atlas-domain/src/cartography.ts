@@ -94,26 +94,116 @@ export interface Connection {
 }
 
 /**
- * Audit do graph: quantas peças canon foram encontradas vs missing,
- * quantos arquivos repo/vault foram indexados.
+ * Node vindo do `semantic_graph`: e a camada fonte-real da Cartografia.
+ * Diferente do canvas canonico, ele nasce diretamente dos frontmatters de
+ * repo docs + AtlasVault, usando graph_parent/flows_to/depends_on/unlocks.
+ */
+export interface SemanticNode {
+  graphId: string
+  graphTitle: string
+  graphWorld: string
+  graphLayer: 'world' | 'system' | 'flow' | 'module' | 'gear' | 'subcomponent' | string | null
+  graphKind: string | null
+  graphParent: string | null
+  graphStatus: string | null
+  graphSource: GraphSource
+  sourcePath: string
+  summary: string | null
+  dependsOn: string[]
+  flowsTo: string[]
+  unlocks: string[]
+  governs: string[]
+  riskLevel: string | null
+  evidence: string[]
+  nextActions: string[]
+  mtime: number | null
+}
+
+/**
+ * Grafo semantico real derivado dos arquivos. `hierarchy` responde pelo zoom
+ * mundo → sistema → fluxo → modulo → engrenagem; `relations` desenha conexoes.
+ */
+export interface SemanticGraph {
+  worlds: string[]
+  nodes: SemanticNode[]
+  hierarchy: Record<string, string[]>
+  relations: Connection[]
+}
+
+/**
+ * Path canônico ausente · usado pelo Audit Panel pra mostrar exatamente onde
+ * o canon esperava um .md e o backend não encontrou.
+ */
+export interface BrokenPath {
+  graphId: string
+  name: string
+  expectedPath: string
+  graphKind: string
+}
+
+/**
+ * Node do semantic graph que declara um parent inexistente. Informativo —
+ * surfaces drift entre canon e filesystem real.
+ */
+export interface OrphanNode {
+  graphId: string
+  missingParent: string
+}
+
+/**
+ * Audit completo do graph. Cobre saúde do canon (found vs missing), das fontes
+ * (repo readable, vault readable), das relações (orphan_count) e do volume
+ * (semantic_node_count, semantic_relation_count).
  */
 export interface GraphAudit {
   found: number
   missing: number
+  brokenPaths: BrokenPath[]
+  orphanNodes: OrphanNode[]
+  orphanCount: number
+  semanticNodeCount: number
+  semanticRelationCount: number
   generatedAt: string | null
   repoIndexed: number
   vaultIndexed: number
 }
 
 /**
+ * Saúde por fonte canônica. Repo = engineering-knowledge-base; Vault =
+ * AtlasVault Obsidian. Ambas precisam ser readable para a cartografia honrar
+ * o canon "ler direto, sem intermediário".
+ */
+export interface SourceRootHealth {
+  root: string
+  readable: boolean
+  indexedCount: number
+  errors: string[]
+}
+export interface SourceHealth {
+  repo: SourceRootHealth
+  vault: SourceRootHealth
+}
+
+export interface CartographySources {
+  repoDocsPath: string
+  obsidianVaultPath: string
+}
+
+/**
  * Resposta canônica de `/atlas-cartography/graph`.
+ * `checksum` é sha256 estável das superfícies canônicas (exclui generated_at)
+ * pra permitir detecção de mudança sem diff do payload inteiro.
  */
 export interface CartographyGraph {
   audit: GraphAudit
+  sources: CartographySources
+  sourceHealth: SourceHealth | null
+  checksum: string | null
   universe: Continent[]
   pipeline: PipelineStep[]
   lanes: Record<string, Lane>
   connections: Connection[]
+  semanticGraph: SemanticGraph | null
 }
 
 /**
@@ -160,7 +250,7 @@ export type CartographyView = 'universe' | 'system' | 'flow' | 'gear' | 'subflow
  * Indexado em `atomIndex` pra resolução O(1) de connections + breadcrumbs.
  */
 export interface CartographyAtom {
-  kind: 'pipeline' | 'lateral' | 'lane' | 'continent'
+  kind: 'pipeline' | 'lateral' | 'lane' | 'continent' | 'semantic'
   graphId: string
   name: string
   deck: string | null
@@ -179,4 +269,8 @@ export interface CartographyAtom {
   subs?: Array<[string, string]>
   regionId?: string
   regionHead?: string
+  graphLayer?: string | null
+  graphParent?: string | null
+  flowsTo?: string[]
+  governs?: string[]
 }

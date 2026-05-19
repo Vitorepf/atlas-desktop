@@ -22,7 +22,8 @@
     "paths": {
       "@atlas/domain": ["../../packages/atlas-domain/src/index.ts"],
       "@atlas/ui": ["../../packages/atlas-ui/src/index.ts"],
-      "@atlas/ui/*": ["../../packages/atlas-ui/src/*"]
+      "@atlas/ui/*": ["../../packages/atlas-ui/src/*"],
+      "@atlas/rich-input-canon": ["../../../packages/atlas-rich-input-canon/src/index.ts"]
     }
   },
   "include": ["src"]

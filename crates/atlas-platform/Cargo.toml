@@ -5,4 +5,31 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "io-util", "time"] }
+tracing = "0.1"
+thiserror = "2"
+portable-pty = "0.8"
+notify = "6"
+anyhow = "1"
+parking_lot = "0.12"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+cpal = "0.15"
+
+[features]
+default = []
+# Wave 6.6: real local STT via whisper-rs (Metal backend). Opt-in because
+# whisper-rs-sys requires `cmake` (run `brew install cmake` once on macOS).
+# The default build keeps the engine honest: model_store reports
+# binding_compiled=false and the engine returns ModelMissingOrEngineUnavailable
+# until the operator opts in with `cargo build --features whisper-cpp`.
+whisper-cpp = ["dep:whisper-rs"]
+
+[target.'cfg(target_os = "macos")'.dependencies]
+global-hotkey = "0.5"
+whisper-rs = { version = "0.14", features = ["metal"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"

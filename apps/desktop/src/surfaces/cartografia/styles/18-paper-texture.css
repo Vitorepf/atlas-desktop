@@ -1,0 +1,109 @@
+/*
+ * 18 · PAPER TEXTURE (Pass N · atmosfera Patek manuscript).
+ *
+ * Adiciona ao .world três camadas de textura sutis:
+ *   1) noise SVG @4% opacity — papel-rugoso (não-flat)
+ *   2) hairlines verticais ritmo 400px @4% — instrumentação editorial
+ *   3) watermark "ATLAS · I" Cormorant italic 200px bronze 3% no canto
+ *      inferior direito — manuscript signature
+ *
+ * Todas escalam junto com pan/zoom (vivem dentro do .world transform).
+ * Não interferem com pointer-events (todas são background ou ::after
+ * pointer-events:none).
+ *
+ * O grid radial 32px @5% existente em .viewport fica intacto — esta
+ * camada se SOMA, não substitui.
+ */
+
+.cartografia-surface .world {
+  /* Stack:
+     - noise SVG (turbulence baseFrequency 0.9) @ 4% opacity ¬ papel
+     - hairlines verticais a cada 400px ¬ ritmo editorial
+     - bg cream-canvas como base (transparente ainda? não — world é absolute
+       sobre viewport, sem bg próprio. Vou só sobrepor texturas com transparência.) */
+  background-image:
+    /* Hairlines verticais a cada 400px — instrumentação editorial */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 399px,
+      rgba(138, 106, 53, 0.058) 399px,
+      rgba(138, 106, 53, 0.058) 400px
+    ),
+    /* Noise SVG turbulência — papel rugoso. Alpha 0.06 mantém canon sem
+       virar grão SaaS; a turbulence baseFrequency 0.92 dá granularidade
+       de papel "wove" Smythson, não digital. */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.34  0 0 0 0 0.26  0 0 0 0 0.13  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size:
+    400px 100%,
+    240px 240px;
+  background-repeat:
+    repeat,
+    repeat;
+  background-position:
+    0 0,
+    0 0;
+}
+
+/* Watermark "ATLAS · I" no canto inferior direito do mundo */
+.cartografia-surface .world::after {
+  content: 'ATLAS · I';
+  position: absolute;
+  right: 80px;
+  bottom: 90px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 200px;
+  letter-spacing: 4px;
+  color: var(--bronze);
+  opacity: 0.035;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* zoom-far <65%: noise + hairlines mais fortes pra ver textura
+   em macro-leitura (40% papel, 60% mapa) */
+.cartografia-surface .viewport:has(.world.zoom-far) .world {
+  /* override via cascade no .zoom-far — incrementa peso */
+}
+.cartografia-surface .world.zoom-far {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 398px,
+      rgba(138, 106, 53, 0.052) 399px,
+      rgba(138, 106, 53, 0.052) 400px
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.34  0 0 0 0 0.26  0 0 0 0 0.13  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.cartografia-surface .world.zoom-far::after {
+  opacity: 0.05;
+  font-size: 240px;
+}
+
+/* zoom-close ≥115%: noise mais fino, watermark menor (foco na peça) */
+.cartografia-surface .world.zoom-close::after {
+  opacity: 0.022;
+  font-size: 170px;
+}
+
+/* Modo Foco / isolate: atenua texturas pra dar silêncio ao spotlight */
+.cartografia-surface .world.is-isolated {
+  background-blend-mode: multiply;
+}
+.cartografia-surface .world.is-isolated::after {
+  opacity: 0.018;
+}
+
+/* Reading mode: silêncio editorial total — papel sem ruído competidor */
+.cartografia-surface .world.reading-mode {
+  background-image: none;
+}
+.cartografia-surface .world.reading-mode::after {
+  opacity: 0.018;
+}

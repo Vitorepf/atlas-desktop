@@ -1,0 +1,109 @@
+{
+  "schema": "atlas.vox.first_use_smoke.v1",
+  "status": "pass",
+  "generated_at": "2026-05-19T18:33:34.036Z",
+  "repo_root": "~/develop/Atlas/atlas-desktop",
+  "backend_url_present": true,
+  "backend_url_redacted": "http://127.0.0.1:8001",
+  "token_present": true,
+  "checks": [
+    {
+      "id": "bridge_present",
+      "status": "pass",
+      "summary": "bridge.ts exporta as 12 APIs Vox principais.",
+      "detail": {
+        "path": "~/develop/Atlas/atlas-desktop/apps/desktop/src/lib/bridge.ts",
+        "bytes": 401975
+      },
+      "next_action": null,
+      "category": null
+    },
+    {
+      "id": "tauri_commands",
+      "status": "pass",
+      "summary": "Todos os 8 comandos Tauri Vox aparecem nos fontes Rust.",
+      "detail": {
+        "commands": [
+          "vox_edge_status",
+          "vox_edge_start_session",
+          "vox_edge_finish_session",
+          "vox_edge_cancel_session",
+          "vox_edge_eclipse",
+          "vox_stt_status",
+          "vox_stt_transcribe_audio",
+          "vox_stt_transcribe_debug_text"
+        ],
+        "sources": [
+          "~/develop/Atlas/atlas-desktop/crates/atlas-tauri/src/commands_vox.rs",
+          "~/develop/Atlas/atlas-desktop/crates/atlas-tauri/src/commands_vox_edge.rs",
+          "~/develop/Atlas/atlas-desktop/crates/atlas-tauri/src/commands_vox_hotkey.rs",
+          "~/develop/Atlas/atlas-desktop/crates/atlas-tauri/src/lib.rs"
+        ]
+      },
+      "next_action": null,
+      "category": null
+    },
+    {
+      "id": "hotkey_runtime",
+      "status": "pass",
+      "summary": "Runtime de hotkey Rust + assinatura no bridge cobrem todos os eventos esperados.",
+      "detail": {
+        "events": [
+          "vox://hotkey-toggle-recording",
+          "vox://hotkey-open-overlay",
+          "vox://hotkey-eclipse",
+          "vox://hotkey-status-changed"
+        ],
+        "mentions_option_space_human": true,
+        "mentions_option_space_binding": true,
+        "sources": [
+          "~/develop/Atlas/atlas-desktop/crates/atlas-tauri/src/commands_vox_hotkey.rs",
+          "~/develop/Atlas/atlas-desktop/crates/atlas-platform/src/vox/hotkey.rs"
+        ]
+      },
+      "next_action": null,
+      "category": null
+    },
+    {
+      "id": "backend_reachability",
+      "status": "pass",
+      "summary": "atlas-server reconhece pelo menos um endpoint Vox em http://127.0.0.1:8001.",
+      "detail": {
+        "base_url": "http://127.0.0.1:8001",
+        "endpoints": [
+          {
+            "endpoint": "/ai/vox/health",
+            "http_status": 200,
+            "auth_header_sent": true
+          },
+          {
+            "endpoint": "/ai/vox/readiness",
+            "http_status": 200,
+            "auth_header_sent": true
+          },
+          {
+            "endpoint": "/ai/vox/gate-v3",
+            "http_status": 200,
+            "auth_header_sent": true
+          }
+        ],
+        "token_present": true,
+        "auth_header_sent": true
+      },
+      "next_action": null,
+      "category": null
+    },
+    {
+      "id": "whisper_model_file",
+      "status": "pass",
+      "summary": "Modelo Whisper presente em ~/.atlas/vox/models/ggml-large-v3.bin.",
+      "detail": {
+        "path": "~/.atlas/vox/models/ggml-large-v3.bin",
+        "bytes": 3095033483
+      },
+      "next_action": null,
+      "category": null
+    }
+  ],
+  "next_actions": []
+}
