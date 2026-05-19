@@ -15,6 +15,7 @@ import {
   normalizeVoxHotkeyStatus,
   subscribeVoxEdgeEvent,
   VoxAudioTranscribeError,
+  voxAmbientConsumePendingLaunch,
   voxDictionaryGet,
   voxDictionaryUpdate,
   voxEdgeCancelSession,
@@ -36,6 +37,7 @@ import {
   type VoxExecuteDecision,
   type VoxExecuteResponse,
   type VoxHotkeyStatus,
+  type VoxInterlocutorDecision,
   type VoxKernelIntentResponse,
   type VoxMode,
   type VoxModelStatus,
@@ -45,6 +47,12 @@ import {
   type VoxStartSessionRequest,
   type VoxTranscript,
 } from '../../lib/bridge'
+import {
+  composeInterlocutorReply,
+  composeStructuredPromptTemplate,
+  interlocutorDismissalKey,
+} from '../../lib/voxInterlocutor'
+import { useVoxAutoDogfood } from './useVoxAutoDogfood'
 
 export type VoxOverlayState =
   | 'closed'
@@ -69,11 +77,18 @@ export type VoxOverlayMode = 'tauri' | 'unavailable'
 /** Subset of canonical `VoxMode` that the Desktop overlay exposes. V3
  * (`governed_execute`) is selectable but the Desktop NEVER executes locally
  * — it only forwards the operator's confirmation to the Kernel and renders
- * whatever the Kernel reports back. */
-export type VoxOverlaySelectedMode = Extract<
-  VoxMode,
-  'dictation' | 'prompt_polish' | 'intent_compile' | 'governed_execute'
->
+ * whatever the Kernel reports back.
+ *
+ * V4 · `'auto'` é o default canon. O Desktop envia `mode_requested='auto'` ao
+ * Kernel e deixa o VoxAutoModeRouter decidir; quando o Kernel responde, o
+ * hook sincroniza `selectedMode` com `kernelResponse.suggestedMode` para que
+ * a UI mostre o modo concreto ("Criar prompt", "Ditado", …). */
+export type VoxOverlaySelectedMode =
+  | 'auto'
+  | Extract<
+      VoxMode,
+      'dictation' | 'prompt_polish' | 'intent_compile' | 'governed_execute'
+    >
 
 export interface VoxDictionaryAddRequest {
   variant: string
@@ -134,6 +149,16 @@ export interface UseVoxOverlayResult {
   /** V3 · operator-typed text for R4 literal confirmation. Lives only in
    * state — never persisted, never logged. */
   literalConfirmationDraft: string
+  /** V5-B · texto que o operador digita para responder a um `clarify` do
+   * Symbiotic Interlocutor. Reset a cada nova sessão / recompile. */
+  clarificationDraft: string
+  /** V5-B · `true` quando o operador escondeu localmente a intervenção atual
+   * ("Manter original" / "Continuar mesmo assim"). Não muda o backend — só
+   * libera o fluxo do overlay. */
+  interlocutorDismissed: boolean
+  /** V5-B · efetivamente visível? `interlocutor.intervention !== 'none'` E
+   * não-dismissed. Conveniência pra componente. */
+  interlocutorVisible: boolean
   /** V3 · last /ai/vox/execute response (null until an execute happens). */
   executionResult: VoxExecuteResponse | null
   /** V3 · true when there is a valid confirmation_request AND literal text
@@ -141,6 +166,16 @@ export interface UseVoxOverlayResult {
   canExecute: boolean
   error: string | null
   busy: boolean
+  /** V6-PF · milissegundos decorridos dentro do estado produtivo atual
+   * (`transcribing`, `compiling`, `executing`, `finishing`). Vai pra 0 quando
+   * sai da fase. UI principal usa pra mostrar "transcrevendo… 8s" e a
+   * superfície humanizada decide quando dizer "está demorando mais que o
+   * esperado". NÃO vaza token nem áudio — só tempo decorrido local. */
+  phaseElapsedMs: number
+  /** V6-PF · `true` quando a transcrição passou de 30 s e o operador deve
+   * ver um aviso humanizado. Derivado de `state==='transcribing' &&
+   * phaseElapsedMs > 30_000`. Não cancela — só sinaliza. */
+  sttSlow: boolean
   /** V6.6 · last STT transcription error (whisper model missing, binding
    * not compiled, runtime error). `null` when transcription succeeded or
    * has not been attempted yet. UI uses this to switch the "Ouvi" section
@@ -169,6 +204,21 @@ export interface UseVoxOverlayResult {
   applyDebugTranscript: (rawText: string) => Promise<void>
   /** V3 · operator-typed literal confirmation draft (R4 only). */
   setLiteralConfirmationDraft: (text: string) => void
+  /** V5-B · atualiza o texto da resposta ao `clarify` do Interlocutor. */
+  setClarificationDraft: (text: string) => void
+  /** V5-B · envia a resposta ao `clarify`. Anexa `clarificationDraft` ao
+   * transcript e dispara compile() novamente. No-op quando o draft está vazio,
+   * a sessão não tem transcript, ou já existe outra chamada em curso. */
+  submitClarification: () => Promise<void>
+  /** V5-B · aplica a sugestão do Interlocutor (`disagree`/`suggest_better_prompt`)
+   * substituindo o transcript draft por um template estruturado a partir de
+   * `suggested_edit`. Volta o estado para `transcript_ready` para o operador
+   * editar antes de recompilar. */
+  applyInterlocutorSuggestion: () => void
+  /** V5-B · esconde localmente a intervenção atual ("Manter original" /
+   * "Continuar mesmo assim"). Não mexe no backend — só sai da frente do
+   * fluxo principal. */
+  dismissInterlocutor: () => void
   /** V3 · POSTs /ai/vox/execute with decision=`execute`. Only valid when
    * `canExecute` is true. Desktop NEVER runs anything locally — this just
    * forwards the operator decision to the Kernel. */
@@ -194,6 +244,11 @@ export interface UseVoxOverlayResult {
   // dictionary
   refreshDictionary: () => Promise<VoxPersonalDictionary | null>
   addDictionaryCorrection: (req: VoxDictionaryAddRequest) => Promise<VoxDictionaryAddResult>
+  // V6-E · Auto-Dogfood (registro silencioso + chip Funcionou/Ruim).
+  autoDogfood: import('./useVoxAutoDogfood').UseVoxAutoDogfoodResult
+  /** V6-E · operador marcou uma ação primária. Atualiza o
+   * `clicked_action` que será reportado no próximo auto-record terminal. */
+  markClickedAction: (action: import('./useVoxAutoDogfood').VoxAutoDogfoodClickedAction) => void
 }
 
 function isTauriRuntime(): boolean {
@@ -205,7 +260,31 @@ export function useVoxOverlay(
 ): UseVoxOverlayResult {
   const { onInsertIntoComposer, contextRefsProvider, contextSnapshotProvider } = options
   const [state, setState] = useState<VoxOverlayState>('closed')
-  const [selectedMode, setSelectedMode] = useState<VoxOverlaySelectedMode>('dictation')
+  // V4 · default 'auto': o Kernel decide o modo via VoxAutoModeRouter.
+  // V3 manual continua funcionando — o consumidor pode chamar setSelectedMode
+  // com qualquer um dos 4 canônicos antes do compile.
+  const [selectedMode, setSelectedModeState] = useState<VoxOverlaySelectedMode>('auto')
+  // V4 · marca a próxima chamada de /ai/vox/intent como override manual quando
+  // o operador clica "Trocar modo" depois de o Kernel já ter respondido com
+  // sugestão. Consumido + zerado pela próxima compile().
+  const overridePendingRef = useRef<boolean>(false)
+  const lastSuggestedModeRef = useRef<VoxMode | null>(null)
+  const setSelectedMode = useCallback((next: VoxOverlaySelectedMode) => {
+    setSelectedModeState((prev) => {
+      // Se o Kernel já tinha sugerido X e o operador agora escolhe Y ≠ X,
+      // isso é um override manual — marca para o próximo compile.
+      const suggestion = lastSuggestedModeRef.current
+      if (
+        next !== 'auto'
+        && suggestion !== null
+        && suggestion !== next
+        && prev !== next
+      ) {
+        overridePendingRef.current = true
+      }
+      return next
+    })
+  }, [])
   const [providerHint, setProviderHint] = useState<VoxProviderHint>('auto')
   const [outputFormat, setOutputFormat] = useState<VoxOutputFormat>('auto')
   const [edgeStatus, setEdgeStatus] = useState<VoxEdgeStatus | null>(null)
@@ -220,10 +299,19 @@ export function useVoxOverlay(
   )
   const [literalConfirmationDraft, setLiteralConfirmationDraft] = useState<string>('')
   const [executionResult, setExecutionResult] = useState<VoxExecuteResponse | null>(null)
+  // V5-B · resposta do operador ao Symbiotic Interlocutor + dismissal local.
+  const [clarificationDraft, setClarificationDraft] = useState<string>('')
+  const [dismissedInterlocutorKey, setDismissedInterlocutorKey] = useState<string | null>(null)
   const [hotkeyStatus, setHotkeyStatus] = useState<VoxHotkeyStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<boolean>(false)
   const [sttError, setSttError] = useState<{ code: string; message: string } | null>(null)
+  // V6-PF · contador de elapsed durante estados produtivos lentos
+  // (`transcribing`, `compiling`, `executing`). Reset a cada entrada na fase.
+  // Bumps a cada 1000 ms, mantendo render stable (sem jitter dentro do segundo).
+  // Não polui Detalhes avançados — é o número que a superfície humaniza em
+  // "transcrevendo… 8s".
+  const [phaseElapsedMs, setPhaseElapsedMs] = useState<number>(0)
 
   const mode: VoxOverlayMode = isTauriRuntime() ? 'tauri' : 'unavailable'
 
@@ -296,6 +384,33 @@ export function useVoxOverlay(
     return () => {
       cancelled = true
     }
+  }, [state])
+
+  // V6-PF · feedback humano durante fases produtivas longas.
+  //
+  // Sem este tick a UI fica congelada em "transcrevendo…" mesmo após 30 s, e
+  // o operador não sabe se travou. O effect inicia/zera apenas nas fases
+  // explícitas; outros estados não recebem re-render por causa dele.
+  //
+  // Tick fixo de 1000 ms (legível, sem jitter sub-segundo). Janitor obrigatório
+  // no cleanup pra não vazar timer entre transições.
+  useEffect(() => {
+    const SLOW_PHASES: VoxOverlayState[] = ['transcribing', 'compiling', 'executing', 'finishing']
+    if (!SLOW_PHASES.includes(state)) {
+      if (phaseElapsedMs !== 0) setPhaseElapsedMs(0)
+      return
+    }
+    const startedAt = Date.now()
+    setPhaseElapsedMs(0)
+    const id = window.setInterval(() => {
+      setPhaseElapsedMs(Date.now() - startedAt)
+    }, 1000)
+    return () => {
+      window.clearInterval(id)
+    }
+    // phaseElapsedMs propositalmente fora — só queremos reagir a mudança de
+    // fase; o ticker é quem move o número dentro da fase.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state])
 
   // Subscribe to Rust-side vox:// events so the overlay state reflects what
@@ -377,6 +492,8 @@ export function useVoxOverlay(
     setTranscript(null)
     setTranscriptDraft('')
     setSession(null)
+    setClarificationDraft('')
+    setDismissedInterlocutorKey(null)
     activeTranscriptionRef.current = null
     setState('idle')
   }, [])
@@ -426,6 +543,14 @@ export function useVoxOverlay(
           cancelledTranscriptionsRef.current.delete(key)
           return
         }
+        // V6-ES-E · drop também se o estado local não está mais aguardando
+        // transcrição (ex.: usuário fechou overlay ou começou nova sessão).
+        // Sem isso, um resultado tardio pode sujar o draft de uma sessão
+        // recém-iniciada.
+        const liveState = stateRef.current
+        if (liveState !== 'transcribing' && liveState !== 'finishing') {
+          return
+        }
         setTranscript(response.transcript)
         setTranscriptDraft(response.transcript.text ?? '')
         if (response.modelStatus) setModelStatus(response.modelStatus)
@@ -433,6 +558,12 @@ export function useVoxOverlay(
       } catch (e) {
         if (cancelledTranscriptionsRef.current.has(key)) {
           cancelledTranscriptionsRef.current.delete(key)
+          return
+        }
+        // V6-ES-E · mesmo guard pra erros tardios: se o operador já cancelou
+        // ou pulou pra outra fase, NÃO escreve sttError numa sessão nova.
+        const liveState = stateRef.current
+        if (liveState !== 'transcribing' && liveState !== 'finishing') {
           return
         }
         if (e instanceof VoxAudioTranscribeError) {
@@ -449,6 +580,15 @@ export function useVoxOverlay(
         // working session and force a restart.
         setState('transcript_ready')
       } finally {
+        // V6-ES-E · libera o key independentemente do desfecho. Sem isso o
+        // ref ficava "preso" no último (sessionId, audioHandle) e bloquearia
+        // re-tentativas no mesmo handle (caso patológico, mas possível em
+        // testes/dev). cancelledTranscriptionsRef também limpa pra não
+        // acumular keys mortos entre sessões.
+        if (activeTranscriptionRef.current === key) {
+          activeTranscriptionRef.current = null
+        }
+        cancelledTranscriptionsRef.current.delete(key)
         setBusy(false)
       }
     },
@@ -465,12 +605,44 @@ export function useVoxOverlay(
     setState('closed')
   }, [])
 
+  // V6-ES-E · marca a transcrição em andamento (se houver) como cancelada
+  // sem aguardar resposta. Movida pra cá pra ficar acessível ao `start()`
+  // (que usa pra invalidar sessão anterior antes de iniciar nova).
+  const markActiveTranscriptionCancelled = useCallback(() => {
+    const key = activeTranscriptionRef.current
+    if (key) cancelledTranscriptionsRef.current.add(key)
+    activeTranscriptionRef.current = null
+  }, [])
+
   const start = useCallback(async () => {
     if (mode !== 'tauri') {
-      setError('Vox Mac Edge indisponível neste modo; abra no app desktop/Tauri.')
+      setError('Atlas Vox precisa do app desktop para gravar. Abra o Atlas Desktop.')
       setState('error')
       return
     }
+    // V6-D · duplicate-session guard. Ambient launch (boot signal) e hotkey
+    // global (Wave 6.5) podem disparar `start()` em paralelo. Sem essa
+    // barreira o segundo chamador entraria em `voxEdgeStartSession` antes
+    // do primeiro terminar, deixando a Rust com duas sessões pendentes para
+    // o mesmo audio_handle. Bloqueamos por estado: qualquer fase produtiva
+    // ativa cede silenciosamente.
+    if (busyRef.current) return
+    {
+      const cur = stateRef.current
+      if (
+        cur === 'starting'
+        || cur === 'listening'
+        || cur === 'finishing'
+        || cur === 'transcribing'
+      ) {
+        return
+      }
+    }
+    // V6-ES-E · qualquer transcrição pendente da sessão anterior fica
+    // marcada como cancelada. Se o resultado chegar enquanto a nova sessão
+    // está rodando, o `runTranscribe` solta o resultado em vez de sujar o
+    // draft novo. Idempotente: no-op quando não há key ativo.
+    markActiveTranscriptionCancelled()
     setError(null)
     setSttError(null)
     setTranscript(null)
@@ -479,6 +651,8 @@ export function useVoxOverlay(
     setConfirmationRequest(null)
     setLiteralConfirmationDraft('')
     setExecutionResult(null)
+    setClarificationDraft('')
+    setDismissedInterlocutorKey(null)
     // V3.10 (Claude AD) · zombie-session guard.
     //   Whatever the previous state was, the previous session handle is now
     //   dead from the Rust side (eclipse wiped it, finish consumed it, the
@@ -489,9 +663,17 @@ export function useVoxOverlay(
     setBusy(true)
     setState('starting')
     try {
+      // V4 · Edge layer (Rust) só fala VoxMode canônica. 'auto' é decisão de
+      // Kernel — informamos 'dictation' à Rust apenas como rótulo de sessão
+      // (metadata), porque a transcrição é independente do modo final. O
+      // VoxAutoModeRouter no Kernel reclassifica durante /ai/vox/intent.
+      const edgeMode: VoxMode =
+        selectedModeRef.current === 'auto'
+          ? 'dictation'
+          : selectedModeRef.current
       const request: VoxStartSessionRequest = {
         source: 'desktop_overlay',
-        modeRequested: selectedModeRef.current,
+        modeRequested: edgeMode,
         language: 'pt-BR',
         consent: {
           audioCapture: true,
@@ -499,13 +681,38 @@ export function useVoxOverlay(
           debugKeepAudio: false,
         },
       }
-      const next = await voxEdgeStartSession(request)
+      let next
+      try {
+        next = await voxEdgeStartSession(request)
+      } catch (e) {
+        // V6-G · Zombie session recovery silencioso.
+        //   Se o Rust ainda guarda uma sessão antiga (crash anterior, hotkey
+        //   disparado em paralelo, eclipse parcial), a primeira tentativa
+        //   devolve "vox session already active". A UX V6 não pode expor isso
+        //   ao Vitor — fazemos eclipse + retry uma vez e seguimos como se
+        //   tivesse sido a primeira gravação. Só se o retry falhar é que
+        //   propagamos o erro pra UI.
+        const msg = e instanceof Error ? e.message : String(e)
+        const looksLikeZombie =
+          /already\s+active|session_already|vox\s+session\s+(?:already|in\s+progress)|active session|sessão.*ativa|session_already_active|busy/i.test(
+            msg,
+          )
+        if (!looksLikeZombie) {
+          throw e
+        }
+        try {
+          await voxEdgeEclipse()
+        } catch {
+          /* eclipse best-effort; segue pro retry mesmo se falhar */
+        }
+        next = await voxEdgeStartSession(request)
+      }
       setSession(next)
       setState('listening')
     } catch (e) {
       const msg =
         e instanceof VoxBridgeUnavailable
-          ? 'Vox Mac Edge indisponível neste modo; abra no app desktop/Tauri.'
+          ? 'Atlas Vox precisa do app desktop para gravar. Abra o Atlas Desktop.'
           : e instanceof Error
             ? e.message
             : String(e)
@@ -514,9 +721,104 @@ export function useVoxOverlay(
     } finally {
       setBusy(false)
     }
-  }, [mode])
+  }, [mode, markActiveTranscriptionCancelled])
+
+  // ── V6-A · Atlas Vox Ambient Launch (Mac) ─────────────────────────────
+  //
+  // No boot do app, Rust detecta `--vox-start-listening` / env e guarda o
+  // sinal num state single-shot. Esse effect roda uma única vez por mount,
+  // consome o sinal via Tauri e — se ativo — abre o overlay + dispara
+  // start(). Reload do webview NÃO reativa gravação (single-shot no Rust).
+  //
+  // Salvaguardas:
+  //   * Só roda em runtime Tauri (browser/dev mode segue inerte).
+  //   * Não dispara se overlay já não estiver `closed`/`idle` (evita
+  //     corrida com hotkey pressionada entre boot e mount).
+  //   * Não duplica sessão: avalia stateRef/busyRef no momento real.
+  //   * Microfone bloqueado / Edge indisponível → start() já cai no
+  //     banner humanizado pelo VoxOverlay (humanizeOverlayError).
+  const ambientLaunchAttemptedRef = useRef<boolean>(false)
+  // V6-E · `launchSource` é informado ao auto-dogfood. Default `app` (operador
+  // clicou no botão Gravar). Vira `ambient_launch` se o boot foi por V6-A
+  // (CLI/env), `hotkey` se a sessão real subiu via Mac Edge hotkey, ou
+  // `ambient_helper` se algum dia o helper sinalizar isso (V7).
+  const [launchSource, setLaunchSource] = useState<
+    'hotkey' | 'ambient_helper' | 'ambient_launch' | 'app' | 'unknown'
+  >('app')
+  useEffect(() => {
+    if (mode !== 'tauri') return
+    if (ambientLaunchAttemptedRef.current) return
+    let cancelled = false
+    // Marcado antes do await para evitar dupla execução em StrictMode
+    // dev (mount-unmount-mount). O Rust consume() também é single-shot,
+    // então mesmo se vazasse só o primeiro ganharia.
+    ambientLaunchAttemptedRef.current = true
+    void (async () => {
+      const snap = await voxAmbientConsumePendingLaunch()
+      if (cancelled) return
+      if (!snap.startListening) return
+      // V6-E · marca a fonte real do boot para o diário: `cli`/`env`/`cli_and_env`
+      // todos viraram `ambient_launch` para o operador. Se um helper V6-B
+      // injetar `ambient_helper` no futuro, basta o boot signal trazer.
+      setLaunchSource('ambient_launch')
+      const cur = stateRef.current
+      if (cur !== 'closed' && cur !== 'idle') return
+      if (busyRef.current) return
+      if (cur === 'closed') setState('idle')
+      try {
+        await start()
+      } catch {
+        /* start() já reporta setError; nada a fazer aqui. */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [mode, start])
+
+  // V6-E · sessão criada via mac_edge_hotkey marca launchSource=hotkey
+  // (a menos que ambient já tenha vencido). Isso preserva a precedência:
+  // ambient_launch > hotkey > app.
+  useEffect(() => {
+    if (!session) return
+    if (session.source !== 'mac_edge_hotkey') return
+    setLaunchSource((prev) => (prev === 'ambient_launch' ? prev : 'hotkey'))
+  }, [session])
+
+  // V6-E · operador atualiza o `clicked_action` ao tocar em
+  // insert/send/confirm/cancel. Lido pelo auto-dogfood no estado terminal.
+  const [clickedAction, setClickedAction] = useState<
+    'insert' | 'send' | 'confirm' | 'cancel' | 'none'
+  >('none')
+  const markClickedAction = useCallback(
+    (action: 'insert' | 'send' | 'confirm' | 'cancel' | 'none') => {
+      setClickedAction(action)
+    },
+    [],
+  )
+
+  const autoDogfood = useVoxAutoDogfood({
+    state,
+    selectedMode,
+    session,
+    transcript,
+    transcriptDraft,
+    kernelResponse,
+    sttError,
+    launchSource,
+    clickedAction,
+  })
 
   const finish = useCallback(async () => {
+    // V6-ES-E · double-finish guard. Enter + Option+Space disparados em
+    // sequência podiam entrar duas vezes na rotina antes do primeiro await
+    // terminar. Bloqueamos por `busyRef` no topo (síncrono).
+    if (busyRef.current) return
+    // Outro guard: chamar finish fora de listening (estado já avançou
+    // sozinho via evento `session-ready-for-stt`) é no-op silencioso, não
+    // erro — evita botão morto se o Enter atrasou.
+    const liveState = stateRef.current
+    if (liveState !== 'listening') return
     let activeSessionId = sessionRef.current?.sessionId ?? null
     if (!activeSessionId && mode === 'tauri') {
       const status = await voxEdgeStatus()
@@ -526,8 +828,10 @@ export function useVoxOverlay(
       }
     }
     if (!activeSessionId) {
-      setError('nenhuma sessão Vox ativa para finalizar')
-      setState('error')
+      // V6-ES-E · sem sessão ativa: cai pra idle silenciosamente em vez de
+      // virar erro. Vitor consegue Gravar de novo imediatamente.
+      setSession(null)
+      setState('idle')
       return
     }
     setBusy(true)
@@ -557,14 +861,21 @@ export function useVoxOverlay(
     }
   }, [mode, runTranscribe])
 
-  const markActiveTranscriptionCancelled = useCallback(() => {
-    const key = activeTranscriptionRef.current
-    if (key) cancelledTranscriptionsRef.current.add(key)
-    activeTranscriptionRef.current = null
-  }, [])
-
   const cancel = useCallback(async () => {
     markActiveTranscriptionCancelled()
+    // V6-ES-E · cancel em estado já-cancelado/idle/eclipsed/closed/error é
+    // no-op silente. Garantia: operador clicando "Cancelar" várias vezes
+    // não engatilha erros nem busy loops. Mantemos o setSession(null) por
+    // segurança defensiva.
+    {
+      const liveState = stateRef.current
+      const noopStates: VoxOverlayState[] = ['idle', 'cancelled', 'eclipsed', 'closed']
+      if (noopStates.includes(liveState)) {
+        setSession(null)
+        if (liveState !== 'cancelled') setState('cancelled')
+        return
+      }
+    }
     let activeSessionId = sessionRef.current?.sessionId ?? null
     if (!activeSessionId && mode === 'tauri') {
       const status = await voxEdgeStatus()
@@ -589,13 +900,14 @@ export function useVoxOverlay(
       // "vox session not found" error on the next cancel/finish call.
       setSession(null)
       setState('cancelled')
-    } catch (e) {
-      // If Rust says "not found" we still drop the local handle: the
-      // session is unrecoverable either way. Surface the message so the
-      // operator knows, but don't keep a corpse around.
+    } catch (_e) {
+      // V6-ES-E · cancel JAMAIS vira error. Mesmo que o Rust diga "not
+      // found" / "already cancelled" / qualquer coisa, o canon do canon é
+      // "se Vitor pediu pra cancelar, está cancelado". Limpamos local e
+      // seguimos. O erro original some pra não confundir; o operador tem
+      // sessão limpa e pode Gravar de novo na mesma hora.
       setSession(null)
-      setError(e instanceof Error ? e.message : String(e))
-      setState('error')
+      setState('cancelled')
     } finally {
       setBusy(false)
     }
@@ -603,26 +915,31 @@ export function useVoxOverlay(
 
   const eclipse = useCallback(async () => {
     markActiveTranscriptionCancelled()
+    // V6-ES-E · "Parar tudo" é botão de pânico — INDESTRUTÍVEL. Limpa local
+    // primeiro, depois tenta pedir eclipse ao Rust. Se Rust falhar (modo
+    // não-Tauri, IPC quebrado, eclipse já rodou), seguimos no estado limpo
+    // local — Vitor consegue Gravar de novo sem ver erro.
+    setBusy(true)
+    setSession(null)
+    setTranscript(null)
+    setTranscriptDraft('')
+    setSttError(null)
+    setKernelResponse(null)
+    setConfirmationRequest(null)
+    setLiteralConfirmationDraft('')
+    setExecutionResult(null)
+    setClarificationDraft('')
+    setDismissedInterlocutorKey(null)
+    setError(null)
+    setState('eclipsed')
     if (mode !== 'tauri') {
-      setError('Eclipse exige Vox Mac Edge (Tauri).')
-      setState('error')
+      setBusy(false)
       return
     }
-    setBusy(true)
     try {
       await voxEdgeEclipse()
-      // V3.10 · `voxEdgeEclipse` wipes every session on the Rust side,
-      // including the one we were holding. Drop our local pointer + any
-      // transient artefacts that referenced it — they're all dead now.
-      setSession(null)
-      setTranscript(null)
-      setTranscriptDraft('')
-      setSttError(null)
-      setState('eclipsed')
-    } catch (e) {
-      setSession(null)
-      setError(e instanceof Error ? e.message : String(e))
-      setState('error')
+    } catch (_e) {
+      // best-effort. Estado local já está limpo; não sinalizamos erro.
     } finally {
       setBusy(false)
     }
@@ -678,7 +995,7 @@ export function useVoxOverlay(
 
   const applyDebugTranscript = useCallback(async (rawText: string) => {
     if (mode !== 'tauri') {
-      setError('Vox debug exige Tauri (dicionário pessoal local).')
+      setError('O caminho de texto manual exige o app desktop.')
       setState('error')
       return
     }
@@ -706,7 +1023,7 @@ export function useVoxOverlay(
 
   const compile = useCallback(async () => {
     if (!transcript) {
-      setError('sem transcript para compilar')
+      setError('Não há texto para o Atlas entender. Pressione Gravar primeiro.')
       return
     }
     // The user may have edited the transcript. Propagate that edit so the
@@ -721,35 +1038,56 @@ export function useVoxOverlay(
     setExecutionResult(null)
     setConfirmationRequest(null)
     setLiteralConfirmationDraft('')
+    // V5-B · cada novo compile zera o dismissal anterior: a próxima
+    // intervenção que o Kernel devolver deve aparecer honestamente.
+    setDismissedInterlocutorKey(null)
     try {
       const mode = selectedModeRef.current
-      // intent_compile and governed_execute both benefit from context refs;
-      // dictation/prompt_polish stay free of any surface context.
+      // V4 · 'auto' também ganha contexto: o Auto Mode Router beneficia-se do
+      // snapshot (dêixis "esse arquivo" / "essa tela"). intent_compile e
+      // governed_execute continuam recebendo context_refs como antes.
       const enrichWithContext =
-        mode === 'intent_compile' || mode === 'governed_execute'
+        mode === 'intent_compile'
+        || mode === 'governed_execute'
+        || mode === 'auto'
       const ctxRefs =
         enrichWithContext && contextRefsProvider
           ? contextRefsProvider() ?? []
           : []
-      // V4 · structured snapshot só faz sentido nos modos que vão usar contexto.
-      // dictation/prompt_polish continuam estritamente locais.
       const ctxSnapshot =
         enrichWithContext && contextSnapshotProvider
           ? contextSnapshotProvider() ?? null
           : null
       // provider/output hints make sense for V2 and V3 (V3 wraps V2 packet).
+      // Em 'auto', o Kernel decide e a UI pode sugerir provider depois.
       const useHints =
         mode === 'intent_compile' || mode === 'governed_execute'
+      // V4 · consome (e zera) o flag de override pendente. Backend usa só
+      // para telemetria — não muda execução.
+      const manualOverride = overridePendingRef.current
+      overridePendingRef.current = false
       const response = await voxKernelIntent({
         transcript: finalTranscript,
         source: 'desktop_overlay',
-        modeRequested: mode,
+        // 'auto' é overlay-only; quando operador deixou no auto, Kernel decide.
+        modeRequested: mode === 'auto' ? undefined : mode,
         providerHint: useHints ? providerHintRef.current : undefined,
         outputFormat: useHints ? outputFormatRef.current : undefined,
         contextRefs: ctxRefs.length > 0 ? ctxRefs : undefined,
         contextSnapshot: ctxSnapshot,
+        manualOverride: manualOverride ? true : undefined,
       })
       setKernelResponse(response)
+      // V4 · quando o cliente enviou 'auto', refletimos no estado local o modo
+      // concreto que o Kernel escolheu. Sem isso a UI mostraria "Auto" em
+      // vez de "Ditado/Criar prompt/…". Também guardamos a sugestão para
+      // detectar override no próximo setSelectedMode.
+      if (response.status === 'ok' && response.suggestedMode) {
+        lastSuggestedModeRef.current = response.suggestedMode
+        if (mode === 'auto') {
+          setSelectedModeState(response.suggestedMode)
+        }
+      }
       // If the Kernel issued a confirmation_request, lift it into its own
       // state and hold the overlay at `awaiting_confirmation` so the UI can
       // render the literal-confirmation panel before any execute call.
@@ -798,7 +1136,7 @@ export function useVoxOverlay(
     async (decision: VoxExecuteDecision): Promise<void> => {
       const req = confirmationRequest
       if (!req || !req.confirmationToken || !req.receiptId || !req.intentId) {
-        setError('Sem confirmation_request válido — Vitor precisa recompilar a intenção.')
+        setError('Não há pedido de confirmação válido. Grave de novo para retomar.')
         setState('error')
         return
       }
@@ -825,7 +1163,7 @@ export function useVoxOverlay(
         // State transition is driven by action_outcome — the Kernel is the
         // source of truth; we never invent `completed`.
         if (response.status !== 'ok') {
-          setError(response.message ?? 'Kernel Vox V3 indisponível')
+          setError(response.message ?? 'Servidor Atlas indisponível agora. Tente de novo em alguns instantes.')
           setState('error')
           return
         }
@@ -838,7 +1176,7 @@ export function useVoxOverlay(
             break
           case 'failed':
             setState('error')
-            setError(response.message ?? 'Vox V3 reportou falha sem detalhes.')
+            setError(response.message ?? 'O Atlas reportou falha sem mais detalhes.')
             break
           case 'aborted':
           case 'cancelled':
@@ -865,10 +1203,14 @@ export function useVoxOverlay(
 
   const executeConfirmed = useCallback(async () => {
     if (!canExecute) return
+    // V6-E · marca ação de confirmação para o auto-dogfood.
+    setClickedAction('confirm')
     await submitDecision('execute')
   }, [canExecute, submitDecision])
 
   const cancelExecution = useCallback(async () => {
+    // V6-E · cancelamento é sinal claro de ação primária para o diário.
+    setClickedAction('cancel')
     // No active confirmation · just reset local UI to `compiled` so the
     // operator can re-evaluate without losing the receipt/preview block.
     if (!confirmationRequest) {
@@ -885,9 +1227,81 @@ export function useVoxOverlay(
     setLiteralConfirmationDraft('')
     setExecutionResult(null)
     setError(null)
+    setClarificationDraft('')
+    setDismissedInterlocutorKey(null)
     if (transcript) setState('transcript_ready')
     else setState('idle')
   }, [transcript])
+
+  // ── V5-B · Symbiotic Interlocutor actions ────────────────────────────────
+  //
+  // O Kernel V5-A devolve `interlocutor` em /ai/vox/intent. Estas ações
+  // permitem ao operador responder honestamente a cada tipo de intervenção:
+  //
+  //   submitClarification        → anexa a resposta ao transcript e recompila
+  //   applyInterlocutorSuggestion → usa `suggested_edit` para reescrever o
+  //                                 transcript draft (volta a `transcript_ready`)
+  //   dismissInterlocutor        → esconde localmente a intervenção atual
+  //                                 ("Manter original" / "Continuar mesmo assim")
+  //
+  // Nenhuma dessas ações forja resposta do Kernel; quando o operador escolhe
+  // recompilar, é uma chamada nova ao Kernel com transcript atualizado.
+
+  const submitClarification = useCallback(async () => {
+    if (busyRef.current) return
+    if (!transcript) return
+    const reply = clarificationDraft.trim()
+    if (reply === '') return
+    const enriched = composeInterlocutorReply(transcriptDraft || transcript.text || '', reply)
+    setTranscriptDraft(enriched)
+    setClarificationDraft('')
+    setDismissedInterlocutorKey(null)
+    setKernelResponse(null)
+    setConfirmationRequest(null)
+    setLiteralConfirmationDraft('')
+    setError(null)
+    setState('transcript_ready')
+    // Aguarda o tick para o setTranscriptDraft entrar em transcript.text
+    // antes do compile (compile usa transcriptDraft via state).
+    await compile()
+  }, [clarificationDraft, transcript, transcriptDraft, compile])
+
+  const applyInterlocutorSuggestion = useCallback(() => {
+    const decision: VoxInterlocutorDecision | null =
+      kernelResponse?.interlocutor ?? null
+    if (!decision) return
+    const original = transcriptDraft || transcript?.text || ''
+    const template = composeStructuredPromptTemplate(decision, original)
+    if (template === null || template.trim() === '') {
+      // Sem `suggested_edit` utilizável; só sai do bloqueio para o operador
+      // editar o transcript manualmente.
+      setKernelResponse(null)
+      setConfirmationRequest(null)
+      setLiteralConfirmationDraft('')
+      setClarificationDraft('')
+      setDismissedInterlocutorKey(null)
+      setError(null)
+      if (transcript) setState('transcript_ready')
+      return
+    }
+    setTranscriptDraft(template)
+    setKernelResponse(null)
+    setConfirmationRequest(null)
+    setLiteralConfirmationDraft('')
+    setClarificationDraft('')
+    setDismissedInterlocutorKey(null)
+    setError(null)
+    if (transcript) setState('transcript_ready')
+  }, [kernelResponse, transcript, transcriptDraft])
+
+  const dismissInterlocutor = useCallback(() => {
+    const decision: VoxInterlocutorDecision | null =
+      kernelResponse?.interlocutor ?? null
+    if (!decision || decision.intervention === 'none') return
+    if (decision.blocking) return // bloqueio nunca pode ser "dismissado" localmente
+    const key = interlocutorDismissalKey(decision, kernelResponse?.receiptId ?? null)
+    if (key) setDismissedInterlocutorKey(key)
+  }, [kernelResponse])
 
   const copyText = useCallback(
     async (text: string): Promise<{ ok: boolean; error?: string }> => {
@@ -908,6 +1322,8 @@ export function useVoxOverlay(
   const insertText = useCallback(
     (text: string) => {
       if (text.trim() === '') return
+      // V6-E · sinaliza inserção bem-sucedida para o auto-dogfood.
+      setClickedAction('insert')
       onInsertIntoComposer?.(text)
     },
     [onInsertIntoComposer],
@@ -1051,6 +1467,24 @@ export function useVoxOverlay(
   const sttAvailable =
     mode === 'tauri' && Boolean(modelStatus && modelStatus.engineAvailable)
 
+  // V5-B · honest visibility flag for the Interlocutor card. Hidden when the
+  // Kernel said "none", when the operator dismissed it locally, OR when the
+  // current dismissal key matches the live decision key.
+  const interlocutorDecision = kernelResponse?.interlocutor ?? null
+  const currentInterlocutorKey = interlocutorDismissalKey(
+    interlocutorDecision,
+    kernelResponse?.receiptId ?? null,
+  )
+  const interlocutorDismissed = Boolean(
+    currentInterlocutorKey
+      && dismissedInterlocutorKey === currentInterlocutorKey,
+  )
+  const interlocutorVisible = Boolean(
+    interlocutorDecision
+      && interlocutorDecision.intervention !== 'none'
+      && !interlocutorDismissed,
+  )
+
   return {
     state,
     mode,
@@ -1072,10 +1506,15 @@ export function useVoxOverlay(
     kernelResponse,
     confirmationRequest,
     literalConfirmationDraft,
+    clarificationDraft,
+    interlocutorDismissed,
+    interlocutorVisible,
     executionResult,
     canExecute,
     error,
     busy,
+    phaseElapsedMs,
+    sttSlow: state === 'transcribing' && phaseElapsedMs > 30_000,
     open,
     toggleRecording,
     close,
@@ -1085,6 +1524,10 @@ export function useVoxOverlay(
     eclipse,
     setTranscriptDraft,
     setLiteralConfirmationDraft,
+    setClarificationDraft,
+    submitClarification,
+    applyInterlocutorSuggestion,
+    dismissInterlocutor,
     executeConfirmed,
     cancelExecution,
     resetForRecompile,
@@ -1096,5 +1539,7 @@ export function useVoxOverlay(
     insertText,
     refreshDictionary,
     addDictionaryCorrection,
+    autoDogfood,
+    markClickedAction,
   }
 }

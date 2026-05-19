@@ -204,7 +204,17 @@ export function VoxSetupAssistant({
                 >
                   <div className="vox-setup-action-head">
                     <span className="vox-setup-action-label">{item.label}</span>
-                    <span className="vox-setup-action-status">{item.status}</span>
+                    <span className="vox-setup-action-status">
+                      {item.status === 'blocked'
+                        ? 'bloqueado'
+                        : item.status === 'warning'
+                          ? 'atenção'
+                          : item.status === 'passed'
+                            ? 'pronto'
+                            : item.status === 'unavailable'
+                              ? 'indisponível'
+                              : 'verificando'}
+                    </span>
                   </div>
                   {item.detail ? (
                     <p className="vox-setup-action-detail">{item.detail}</p>

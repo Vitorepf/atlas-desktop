@@ -487,9 +487,49 @@ async function stepUnitTests() {
   // Run the two pure TS test files we shipped (Wave 7.8 + 7.9). tsx is
   // already in the dev deps used by other smoke scripts; we invoke it
   // via npx so missing-local-bin failure is honest.
+  //
+  // V6 Regression Wall (Onda V6-REGRESSION-WALL-FINAL) acrescentou três
+  // anti-regressões críticas, todas puras (sem Vite, sem rede):
+  //   - voxKernelIntentPayload      → session_id na raiz, sem wrapper legado,
+  //                                    sem token vazado, schema canônico.
+  //   - voxOverlayHumanization      → erro 422/AudioInputInvalid/rms/peak/
+  //                                    stack-trace SEMPRE viram PT-BR humano.
+  //   - voxRegressionWall           → 12 invariantes estáticas do repo
+  //                                    (signingIdentity camelCase, identifier,
+  //                                    NSMicrophoneUsageDescription,
+  //                                    entitlement audio-input, builder
+  //                                    canônico, humanizer exportado, Rust
+  //                                    raw_pcm=false, manifests sem token,
+  //                                    Voice RT intocada, mobile intocado,
+  //                                    V7 unlock=false, scripts canônicos).
   const targets = [
     { id: 'vox_readiness_tests', file: 'src/lib/__tests__/voxReadiness.test.ts' },
     { id: 'vox_setup_tests', file: 'src/lib/__tests__/voxSetupAssistant.test.ts' },
+    {
+      id: 'vox_payload_regression',
+      file: 'src/lib/__tests__/voxKernelIntentPayload.test.ts',
+    },
+    {
+      id: 'vox_humanization_regression',
+      file: 'src/components/vox/__tests__/voxOverlayHumanization.test.ts',
+    },
+    {
+      id: 'vox_regression_wall',
+      file: 'src/lib/__tests__/voxRegressionWall.test.ts',
+    },
+    {
+      // V6.5 · parser tolerante de flow_decision + view-model do Smart Preview.
+      // Pinos compatibilidade com backend antigo + estados clarification/R4/low.
+      id: 'vox_flow_decision',
+      file: 'src/lib/__tests__/voxFlowDecision.test.ts',
+    },
+    {
+      // V6.5-CONTRACT-COMPATIBILITY-GUARD · prova que bridge.ts parseia
+      // response V6 puro (sem additive) e V6.5 cheio (flow_decision +
+      // prompt_quality) sem regredir; payload root mantido; 422 humanizado.
+      id: 'vox_response_back_compat',
+      file: 'src/lib/__tests__/voxResponseBackCompat.test.ts',
+    },
   ]
   for (const t of targets) {
     const abs = join(ROOT, t.file)
@@ -1024,7 +1064,21 @@ function printSummary(report) {
   if (report.next_actions.length > 0) {
     console.log('\nPróximos passos:')
     for (const a of report.next_actions) {
-      console.log(`  • [${a.check_id}] ${a.action}`)
+      const action = a.action
+      // `action` pode ser string (legacy) OU `{title, body}` (estruturado).
+      // Nunca deixar `[object Object]` vazar pro operador.
+      if (action && typeof action === 'object' && typeof action.title === 'string') {
+        console.log(`  • [${a.check_id}] ${action.title}`)
+        if (typeof action.body === 'string' && action.body.length > 0) {
+          for (const line of action.body.split('\n')) {
+            console.log(`      ${line}`)
+          }
+        }
+      } else if (typeof action === 'string') {
+        console.log(`  • [${a.check_id}] ${action}`)
+      } else {
+        console.log(`  • [${a.check_id}] (sem detalhe)`)
+      }
     }
   }
   printBootSequence(report)
@@ -1094,6 +1148,112 @@ function printBootSequence(report) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// V6-D · Atlas Vox Ambient audit (read-only).
+//
+// Pega o veredito determinístico de `voxAmbient.mjs::collectAmbientAudit()`
+// e folda nas checks. Quando o LaunchAgent não está instalado isso é warn
+// (Vox funciona com app aberto); identifier/entitlement/mic ausentes são
+// fail (a build assinada não vai conseguir microfone).
+// ──────────────────────────────────────────────────────────────────────────
+
+async function stepAmbientAudit() {
+  let audit
+  try {
+    const mod = await import('./voxAmbient.mjs')
+    audit = mod.collectAmbientAudit()
+  } catch (err) {
+    addCheck({
+      id: 'ambient-audit',
+      title: 'Atlas Vox Ambient · auditoria de boot e LaunchAgent',
+      status: 'fail',
+      summary: `não consegui importar voxAmbient.mjs: ${err?.message ?? err}`,
+      detail: null,
+      next_action: {
+        title: 'Confira o módulo voxAmbient.mjs',
+        body: 'O release-check importa o helper para conferir identifier, entitlement e mic. Erro de import bloqueia a release.',
+      },
+    })
+    return
+  }
+
+  const hardIssues = []
+  const softIssues = []
+  if (!audit.identifier?.ok) {
+    hardIssues.push(audit.identifier?.actual
+      ? `identifier ${audit.identifier.actual} ≠ ${audit.identifier.expected}`
+      : 'identifier não lido de tauri.conf.json')
+  }
+  if (!audit.info_plist_mic_usage?.present) {
+    hardIssues.push(`Info.plist sem ${audit.info_plist_mic_usage?.expected_key}`)
+  }
+  if (!audit.entitlement_audio_input?.present) {
+    hardIssues.push(`entitlements sem ${audit.entitlement_audio_input?.expected_key}`)
+  }
+  if (!audit.helper_binary_present) {
+    softIssues.push('helper Rust ainda não foi buildado (Atlas funciona com app aberto)')
+  }
+  if (!audit.bundle_present) {
+    softIssues.push('bundle Atlas Code.app ausente (rode tauri:build antes de instalar o LaunchAgent)')
+  }
+  if (!audit.launch_agent_plist_present) {
+    softIssues.push('LaunchAgent não instalado (Option+Space com app fechado fica indisponível)')
+  } else if (audit.launch_agent_loaded === false) {
+    softIssues.push('LaunchAgent instalado mas não carregado pelo launchctl')
+  }
+
+  let status = 'pass'
+  if (hardIssues.length > 0) status = 'fail'
+  else if (softIssues.length > 0) status = 'warn'
+
+  const summary = status === 'pass'
+    ? 'identifier=com.atlas.code, mic+entitlement presentes, helper Rust+LaunchAgent prontos.'
+    : status === 'warn'
+      ? `canon ok; pendências não-bloqueantes: ${softIssues.join('; ')}.`
+      : `canon quebrado: ${hardIssues.join('; ')}.`
+
+  /** @type {{title:string, body:string} | null} */
+  let nextAction = null
+  if (status === 'fail') {
+    nextAction = {
+      title: 'Restaure canon do Atlas Code.app',
+      body: [
+        '# tauri.conf.json deve declarar identifier=com.atlas.code',
+        '# Info.plist deve conter NSMicrophoneUsageDescription',
+        '# entitlements.plist deve conter com.apple.security.device.audio-input',
+        'sed -n 1,40p crates/atlas-tauri/tauri.conf.json',
+        'cat crates/atlas-tauri/Info.plist',
+        'cat crates/atlas-tauri/entitlements.plist',
+      ].join('\n'),
+    }
+  } else if (status === 'warn') {
+    nextAction = {
+      title: 'Atlas Vox Ambient — completar setup local',
+      body: [
+        '# Build do helper (~6 s, sem rede):',
+        'cargo build -p atlas-vox-ambient-helper --release',
+        '# Build do app (gera o bundle .app):',
+        'npm run tauri:build:vox --workspace=@atlas/desktop',
+        '# Instalar o LaunchAgent (imprime plist antes de gravar):',
+        'npm run vox:ambient:install --workspace=@atlas/desktop',
+        '# Confirmar a gravação:',
+        'npm run vox:ambient:install --workspace=@atlas/desktop -- --yes',
+        '# Status:',
+        'npm run vox:ambient:status --workspace=@atlas/desktop',
+      ].join('\n'),
+    }
+  }
+
+  addCheck({
+    id: 'ambient-audit',
+    title: 'Atlas Vox Ambient · auditoria de boot e LaunchAgent',
+    status,
+    summary,
+    detail: audit,
+    next_action: nextAction,
+  })
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Main
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -1107,6 +1267,10 @@ async function main() {
   await stepUnitTests()
   await stepCargo('atlas-platform')
   await stepCargo('atlas-tauri')
+  // V6-D · Atlas Vox Ambient layer audit. Pega bundle identifier,
+  // entitlement audio-input, NSMicrophoneUsageDescription e a presença do
+  // helper Rust + LaunchAgent. Read-only: nunca instala/carrega nada.
+  await stepAmbientAudit()
   // V3.10 (Claude AD) · enterprise runtime readiness. Static checks that
   // prove the Tauri build can actually link whisper.cpp and that the
   // `vox:dev` orchestrator is wired.

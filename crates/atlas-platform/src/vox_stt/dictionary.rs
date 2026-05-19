@@ -135,33 +135,67 @@ pub enum DictionaryError {
 
 /// Atlas V0 vocabulary. Each entry has a preferred canonical form plus a
 /// handful of common STT mishearings (goiano accent + general PT-BR drift).
+///
+/// V6-ES-B doctrine:
+///   - NUNCA cadastrar variante que seja palavra comum em PT-BR (ex.: "código",
+///     "box", "terminal", "prompt"). Isso destrói texto comum do operador.
+///   - Variantes valem só pra erros de STT/sotaque, não pra sinônimos.
+///   - Variantes multi-palavra (com espaço) são seguras por construção:
+///     o operador raramente fala duas palavras técnicas juntas por acaso.
 fn pre_populated_entries() -> Vec<DictionaryEntry> {
     let raw: &[(&str, &[&str], &str)] = &[
-        ("Atlas", &["átlas", "atlas"], "Atlas"),
-        ("Atlas Vox", &["atlas vox", "atlas vocs", "atlas box"], "Atlas Vox"),
-        ("Vox", &["vocs", "box", "vox"], "Vox"),
-        ("Codex", &["codes", "código", "codigo", "codecs", "códex"], "Codex"),
-        ("Claude", &["claud", "clóudi", "claude", "claudi"], "Claude"),
-        ("Tauri", &["tauri", "tauly", "tauri", "tauri"], "Tauri"),
-        ("LiveKit", &["live kit", "livekit", "live keat", "livecat"], "LiveKit"),
-        ("Decision Receipt", &["decision receipt", "decision receit"], "Decision Receipt"),
-        ("Evidence Ledger", &["evidence ledger", "evidence leger"], "Evidence Ledger"),
-        ("Kernel", &["kernal", "kernel"], "Kernel"),
-        ("Forge", &["forge", "forj"], "Forge"),
-        ("Rivals", &["rivals", "rivais"], "Rivals"),
-        ("MacBook", &["macbook", "mac book"], "MacBook"),
-        ("Desktop", &["desktop", "desktopy"], "Desktop"),
-        ("Terminal", &["terminal", "terminaw"], "Terminal"),
-        ("Laravel", &["laravel", "laravell", "lara vel"], "Laravel"),
-        ("Whisper", &["whisper", "uisper", "uísper"], "Whisper"),
-        ("Cartografia", &["cartografia", "cartografía"], "Cartografia"),
-        ("Inbox", &["inbox", "in box"], "Inbox"),
-        ("Workbench", &["workbench", "work bench"], "Workbench"),
-        ("Atlas Desktop", &["atlas desktop"], "Atlas Desktop"),
+        // Núcleo Atlas
+        ("Atlas", &["átlas", "atilas", "atlais", "átles"], "Atlas"),
+        ("Atlas Vox", &["atlas vox", "atlas vocs", "atlas box", "átlas vox", "atilas vox"], "Atlas Vox"),
+        ("Atlas Code", &["atlas code", "atlas cod", "atilas code"], "Atlas Code"),
+        ("Atlas Desktop", &["atlas desktop", "átlas desktop"], "Atlas Desktop"),
         ("Atlas Server", &["atlas server", "atlas servidor"], "Atlas Server"),
-        ("Prompt Compiler", &["prompt compiler", "prompt compilador"], "Prompt Compiler"),
-        ("Voice Realtime", &["voice realtime", "voys realtime", "voice real time"], "Voice Realtime"),
-        ("GATE V3", &["gate v3", "gate vê três", "gate v three"], "GATE V3"),
+        ("Atlas Vox dogfood", &["atlas vox dogfood", "atlas vox dog food", "atlas vox dog fude"], "Atlas Vox dogfood"),
+
+        // Vox stand-alone — variantes ESTRITAS pra evitar destruir "box"
+        // sozinho em texto comum. Pegamos só formas que NÃO confundem com
+        // palavras corriqueiras.
+        ("Vox", &["átlas vox sozinho", "vocs atlas"], "Vox"),
+
+        // IAs externas — variantes só de mishearing real.
+        ("Codex", &["codes", "códex", "códecs", "codecs atlas"], "Codex"),
+        ("Claude", &["claud", "clóudi", "claudi", "clauld", "clóude"], "Claude"),
+        ("ChatGPT", &["chat gpt", "chat g p t", "chatgepete", "chat-gpt"], "ChatGPT"),
+
+        // Framework / runtime
+        ("Tauri", &["tauly", "taurí", "talri", "tau ri"], "Tauri"),
+        ("LiveKit", &["live kit", "live keat", "livecat", "laivkit", "laiv kit"], "LiveKit"),
+        ("Whisper", &["uísper", "uisper", "uíspe", "uispe", "uispér", "whyspe"], "Whisper"),
+        ("whisper.cpp", &["whisper cpp", "uísper cpp", "uisper cpp", "whisper c plus plus", "uísper c plus plus"], "whisper.cpp"),
+        ("Laravel", &["laravell", "lara vel", "lala vel"], "Laravel"),
+        ("MacBook", &["mac book", "mecbook", "macibook"], "MacBook"),
+
+        // Conceitos Atlas
+        ("Kernel", &["kernal", "kérnel", "kérnal"], "Kernel"),
+        ("Forge", &["fórdgi", "fórdj", "forg", "fórgi"], "Forge"),
+        ("Inbox", &["in box", "inbóx", "ímbox"], "Inbox"),
+        ("Workbench", &["work bench", "uorquibench", "uorque bench", "uork bench"], "Workbench"),
+        ("Cartografia", &["cartografía", "cartografia atlas"], "Cartografia"),
+
+        // Decisão / governança
+        ("Decision Receipt", &["decision receipt", "decision receit", "decision rissipt"], "Decision Receipt"),
+        ("Evidence Ledger", &["evidence ledger", "evidence leger", "evidence lédger"], "Evidence Ledger"),
+        ("Voice Realtime", &["voice realtime", "voys realtime", "voice real time", "vóis realtaim"], "Voice Realtime"),
+        ("Prompt Compiler", &["prompt compiler", "prompt compilador", "prompt compailer"], "Prompt Compiler"),
+        ("GATE V3", &["gate vê três", "gate v three", "gate v3 atlas"], "GATE V3"),
+
+        // Plataforma / sistema
+        ("LaunchAgent", &["launch agent", "lánchi agent", "lonch agent", "lonchi agent"], "LaunchAgent"),
+        ("Option Space", &["option space", "ópishon space", "ópitan space", "opção espaço", "opção mais espaço"], "Option Space"),
+
+        // Idioma / sotaque (referências que o operador menciona em meta-fala)
+        ("PT-BR", &["pê tê bê erre", "pê tê bê érri", "português do brasil"], "PT-BR"),
+        ("goiano", &["goyano", "goiâno"], "goiano"),
+
+        // dogfood — só mishearings claros, NUNCA "dog food" puro
+        // (palavra ambígua: ração de cachorro vira falso positivo).
+        // Quem fala "dog food" literalmente sobre Atlas usa "Atlas Vox dogfood".
+        ("dogfood", &["dog fude", "dogfude", "dogue fude"], "dogfood"),
     ];
 
     raw.iter()
@@ -216,18 +250,55 @@ mod tests {
 
     #[test]
     fn pre_populated_has_required_atlas_vocabulary() {
+        // Lista canônica V6-ES-B: núcleo Atlas + IAs + framework + conceitos +
+        // sistema + idioma. NUNCA inclui termos cujas variantes destruiriam
+        // texto comum (Desktop/Terminal/Rivals isolados saíram de propósito —
+        // os multi-palavra "Atlas Desktop" / "Atlas Server" cobrem o uso real).
         let dict = PersonalDictionary::pre_populated();
         for required in [
-            "Atlas", "Atlas Vox", "Vox", "Codex", "Claude", "Tauri", "LiveKit",
-            "Decision Receipt", "Evidence Ledger", "Kernel", "Forge", "Rivals",
-            "MacBook", "Desktop", "Terminal", "Laravel", "Whisper", "Cartografia",
-            "Inbox", "Workbench", "Atlas Desktop", "Atlas Server",
-            "Prompt Compiler", "Voice Realtime", "GATE V3",
+            "Atlas", "Atlas Vox", "Atlas Code", "Atlas Desktop", "Atlas Server",
+            "Atlas Vox dogfood",
+            "Vox",
+            "Codex", "Claude", "ChatGPT",
+            "Tauri", "LiveKit", "Whisper", "whisper.cpp", "Laravel", "MacBook",
+            "Kernel", "Forge", "Inbox", "Workbench", "Cartografia",
+            "Decision Receipt", "Evidence Ledger", "Voice Realtime",
+            "Prompt Compiler", "GATE V3",
+            "LaunchAgent", "Option Space",
+            "PT-BR", "goiano",
+            "dogfood",
         ] {
             assert!(
                 dict.entries.iter().any(|e| e.preferred == required),
                 "required vocab term missing: {required}"
             );
+        }
+    }
+
+    #[test]
+    fn pre_populated_has_no_destructive_variants() {
+        // V6-ES-B · regression guard: variantes que coincidem com palavras
+        // PT-BR comuns destruem texto do operador. Lista canon do que NÃO pode
+        // estar em variantes de NENHUMA entrada.
+        let dict = PersonalDictionary::pre_populated();
+        let banned: &[&str] = &[
+            "código", "codigo", "box", "código fonte",
+            "prompt", "terminal", "desktop", "kit",
+            "dog", "food", "atlas", // 'atlas' sozinho não pode reescrever
+            "vox", // mesmo motivo
+        ];
+        for entry in &dict.entries {
+            for variant in &entry.variants {
+                let v = variant.to_lowercase();
+                for needle in banned {
+                    assert!(
+                        v != *needle,
+                        "entrada {:?} cadastrou variante destrutiva {:?}",
+                        entry.preferred,
+                        variant,
+                    );
+                }
+            }
         }
     }
 }

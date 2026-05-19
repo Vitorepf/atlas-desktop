@@ -23,7 +23,9 @@ pub mod hotkey;
 pub mod session;
 pub mod types;
 
-pub use audio::{capture_available, AudioCaptureError, RealRecorder};
+pub use audio::{
+    capture_available, describe_default_input, AudioCaptureError, AudioInputSnapshot, RealRecorder,
+};
 pub use hotkey::{
     hotkey_available, pending_hotkey_capability, HotkeyError, VoxHotkeyEvent, VoxHotkeyRuntime,
     VoxHotkeyStatus, DEFAULT_HOTKEY_DESCRIPTION, ESCAPE_DOUBLE_TAP_WINDOW,

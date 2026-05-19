@@ -12,6 +12,7 @@ members = [
   "crates/atlas-bridge",
   "crates/atlas-receipts",
   "crates/atlas-canon",
+  "crates/atlas-vox-ambient-helper",
 ]
 
 [workspace.package]

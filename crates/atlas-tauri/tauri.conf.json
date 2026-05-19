@@ -29,7 +29,7 @@
     "active": true,
     "targets": ["app", "dmg"],
     "macOS": {
-      "signing-identity": "Atlas Local Code Signing",
+      "signingIdentity": "Atlas Local Code Signing",
       "entitlements": "entitlements.plist"
     },
     "icon": [

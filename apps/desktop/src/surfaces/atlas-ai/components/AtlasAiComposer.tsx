@@ -8,6 +8,7 @@ import {
   type UploadOutput,
 } from '../../../lib/rich-input'
 import type { VoxOverlayState } from '../../../components/vox/useVoxOverlay'
+import { useYoutubePrewarm } from '../useYoutubePrewarm'
 import type { AtlasAiMode, AtlasAiProviderChoice, AtlasAiTask } from '../types'
 
 export interface AtlasAiComposerSendExtras {
@@ -64,6 +65,11 @@ export function AtlasAiComposer({
   voxState = 'closed',
 }: AtlasAiComposerProps) {
   const attachments = useAtlasRichInputAttachments()
+
+  // YouTube paste-time prewarm: a partir do momento que o link aparece no
+  // draft, o backend dispara ProcessYouTubeIngestionJob. Silent: falha
+  // não atrapalha composer. Doutrina: docs/rich-input/youtube-canon.md.
+  useYoutubePrewarm(draft, { disabled: sending })
 
   async function handleSend(payload: AtlasUnifiedComposerSendPayload) {
     await onSend({

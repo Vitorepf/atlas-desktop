@@ -15,6 +15,7 @@ import type {
   AtlasAiInteractionResponse,
   AtlasAiRouterBootstrap,
   AtlasAiRouterReadiness,
+  AtlasAiRuntimeReadiness,
   AtlasDevPlanRequest,
   AtlasDevPlanResult,
 } from './types'
@@ -221,6 +222,32 @@ export async function getAtlasAiRouterBootstrap(): Promise<AtlasAiRouterBootstra
       return body.bootstrap
     }
     return body as AtlasAiRouterBootstrap
+  } catch {
+    return null
+  }
+}
+
+/**
+ * GET /atlas/ai/runtime-readiness — Atlas AI Runtime Readiness & Release Gate.
+ * Mesma filosofia silent dos demais readiness endpoints: 404/erro = null, e
+ * a Desktop continua funcionando — apenas não exibe o painel de runtime.
+ */
+export async function getAtlasAiRuntimeReadiness(): Promise<AtlasAiRuntimeReadiness | null> {
+  if (MODE === 'offline') return null
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    }
+    const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
+    if (token) headers['X-Atlas-Token'] = token
+    const response = await fetch(apiUrl('/atlas/ai/runtime-readiness'), {
+      method: 'GET',
+      headers,
+    })
+    if (!response.ok) return null
+
+    return (await response.json()) as AtlasAiRuntimeReadiness
   } catch {
     return null
   }

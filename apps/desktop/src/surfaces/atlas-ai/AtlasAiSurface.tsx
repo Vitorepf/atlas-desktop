@@ -27,14 +27,16 @@ import { useVoxContextSnapshot } from '../../components/vox/useVoxContextSnapsho
 import { isVoxContextSnapshotEmpty } from '../../components/vox/voxContextSnapshot'
 import type { VoxContextRef } from '../../lib/bridge'
 import '../../components/vox/vox.css'
-import { AtlasAiComposer } from './components/AtlasAiComposer'
+import { AtlasAiComposer, type AtlasAiComposerSendExtras } from './components/AtlasAiComposer'
 import { AtlasAiConversation } from './components/AtlasAiConversation'
 import { AtlasAiEmpty } from './components/AtlasAiEmpty'
 import { AtlasAiHero } from './components/AtlasAiHero'
 import { AtlasAiPromotionPanel } from './components/AtlasAiPromotionPanel'
+import { AtlasAiRuntimeStatusPill } from './components/AtlasAiRuntimeStatusPill'
 import { AtlasAiSidePanel } from './components/AtlasAiSidePanel'
 import { AtlasAiThreadContextMenu, type ContextMenuPos } from './components/AtlasAiThreadContextMenu'
 import { AtlasAiThreadList } from './components/AtlasAiThreadList'
+import { useRuntimeReadiness } from './useRuntimeReadiness'
 import { useAtlasAiColumnSizing } from './layout/useAtlasAiColumnSizing'
 import { serializeThreadAsMarkdown } from './threadExport'
 import { useAtlasAi } from './useAtlasAi'
@@ -82,6 +84,7 @@ export function AtlasAiSurface({
 }: AtlasAiSurfaceProps) {
   const resolvedWorkspaceSlug = activeWorkspaceSlug ?? activeWorkspace?.slug ?? defaultWorkspaceSlug ?? 'atlas'
   const atlas = useAtlasAi(resolvedWorkspaceSlug, activeWorkspace?.workspacePath || null)
+  const runtimeReadiness = useRuntimeReadiness()
   const { calmaria, toggle: toggleCalmaria } = useCalmaria()
   const composerSize = useComposerSize()
   const [composerDraft, setComposerDraft] = useState<string>('')
@@ -359,6 +362,10 @@ export function AtlasAiSurface({
               <p className="atlas-ai-header-bar-sub">uma única inteligência</p>
             )}
           </div>
+          <AtlasAiRuntimeStatusPill
+            readiness={runtimeReadiness}
+            onOpenContext={!rightCollapsed ? undefined : toggleRight}
+          />
         </div>
         <div className="atlas-ai-header-bar-meta">
           <button
@@ -498,10 +505,15 @@ export function AtlasAiSurface({
                 handleSend({
                   newThread: extras?.newThread ?? atlas.selectedThreadId === null,
                   attachments: extras?.attachments,
+                  richInputCanonical: extras?.richInputCanonical,
                 })
               }
               onSendInNew={(extras) =>
-                handleSend({ newThread: true, attachments: extras?.attachments })
+                handleSend({
+                  newThread: true,
+                  attachments: extras?.attachments,
+                  richInputCanonical: extras?.richInputCanonical,
+                })
               }
               onVoxClick={handleVoxToggle}
               voxState={vox.state}

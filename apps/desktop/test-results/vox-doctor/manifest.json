@@ -1,0 +1,122 @@
+{
+  "schema": "atlas.vox.doctor.v1",
+  "status": "pass",
+  "generated_at": "2026-05-19T17:58:00.154Z",
+  "duration_ms": 35,
+  "totals": {
+    "total": 11,
+    "pass": 11,
+    "warn": 0,
+    "fail": 0
+  },
+  "checks": [
+    {
+      "id": "atlas_server_vivo",
+      "title": "atlas-server está rodando",
+      "status": "pass",
+      "message": "Respondeu em http://127.0.0.1:8001/ai/vox/health (status 200).",
+      "detail": {
+        "url": "http://127.0.0.1:8001/ai/vox/health",
+        "status": 200,
+        "version": "0.2.0"
+      },
+      "next_action": null
+    },
+    {
+      "id": "desktop_server_url",
+      "title": "Desktop sabe onde o atlas-server está",
+      "status": "pass",
+      "message": "VITE_ATLAS_SERVER_URL=http://127.0.0.1:8001",
+      "detail": {
+        "value": "http://127.0.0.1:8001"
+      },
+      "next_action": null
+    },
+    {
+      "id": "atlas_token_presente",
+      "title": "Token de acesso disponível",
+      "status": "pass",
+      "message": "Token presente (origem: atlas-server/.env). O valor nunca aparece em log.",
+      "detail": {
+        "source": "atlas-server/.env",
+        "value_present": true
+      },
+      "next_action": null
+    },
+    {
+      "id": "modelo_whisper",
+      "title": "Modelo de voz local (Whisper large-v3) presente",
+      "status": "pass",
+      "message": "Encontrado em ~/.atlas/vox/models/ggml-large-v3.bin (2952 MB).",
+      "detail": {
+        "size_mb": 2952
+      },
+      "next_action": null
+    },
+    {
+      "id": "build_whisper_cpp",
+      "title": "Build do app desktop suporta voz local",
+      "status": "pass",
+      "message": "Cargo encaminha a feature whisper-cpp para atlas-platform.",
+      "detail": null,
+      "next_action": null
+    },
+    {
+      "id": "macos_info_plist",
+      "title": "Permissão de microfone declarada (Info.plist)",
+      "status": "pass",
+      "message": "NSMicrophoneUsageDescription + Acessibilidade + Monitoramento de Entrada presentes (todas em PT-BR).",
+      "detail": null,
+      "next_action": null
+    },
+    {
+      "id": "macos_entitlements",
+      "title": "Entitlement de áudio do app desktop",
+      "status": "pass",
+      "message": "com.apple.security.device.audio-input habilitado.",
+      "detail": null,
+      "next_action": null
+    },
+    {
+      "id": "macos_signing",
+      "title": "Assinatura estável do app desktop",
+      "status": "pass",
+      "message": "Identidade declarada: \"Atlas Local Code Signing\".",
+      "detail": {
+        "signing_identity": "Atlas Local Code Signing"
+      },
+      "next_action": null
+    },
+    {
+      "id": "app_bundle_estavel",
+      "title": "App empacotado estável (.app assinado)",
+      "status": "pass",
+      "message": "Atlas Code.app empacotado em ~/develop/Atlas/atlas-desktop/target/release/bundle/macos/Atlas Code.app.",
+      "detail": {
+        "app_bundle_path": "~/develop/Atlas/atlas-desktop/target/release/bundle/macos/Atlas Code.app"
+      },
+      "next_action": null
+    },
+    {
+      "id": "microfone_atual",
+      "title": "Microfone selecionado no macOS",
+      "status": "pass",
+      "message": "O Atlas Vox usa SEMPRE a entrada de áudio selecionada no macOS — incluindo AirPods.",
+      "detail": {
+        "airpods_supported": true,
+        "how_to_check": "Abra Ajustes do Sistema → Som → Entrada. O dispositivo destacado é o que o Atlas Vox vai usar."
+      },
+      "next_action": null
+    },
+    {
+      "id": "hotkey_option_space",
+      "title": "Atalho ⌥ Espaço configurado no app",
+      "status": "pass",
+      "message": "Atalho ⌥ Espaço registrado pelo runtime do Atlas Code (funciona com o app aberto).",
+      "detail": null,
+      "next_action": null
+    }
+  ],
+  "next_actions": [],
+  "hint": "Comando recomendado para abrir Atlas Vox: npm run vox:dev --workspace=@atlas/desktop"
+}

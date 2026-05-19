@@ -12,12 +12,27 @@
  * Auto Mode Router do backend não devolve sugestão, mostramos "modo sugerido
  * indisponível" — nunca inventamos decisão como se fosse do Kernel.
  */
-import { useEffect, useRef, useState } from 'react'
-import { isVoxTerminalProposal } from '../../lib/bridge'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  isVoxTerminalProposal,
+  voxReplyPhraseForState,
+  voxSettingsGet,
+  voxSettingsUpdate,
+  voxSpeakShort,
+  type VoxShortPhraseKey,
+  type VoxVoiceMode,
+} from '../../lib/bridge'
+import {
+  composeSmartPreview,
+  smartPreviewInputsFromKernel,
+  VOX_SMART_PREVIEW_ACTION_LABEL,
+  type VoxSmartPreviewViewModel,
+} from '../../lib/voxSmartPreview'
 import type { UseVoxOverlayResult, VoxOverlayState } from './useVoxOverlay'
 import { VoxDogfoodPanel } from './VoxDogfoodPanel'
 import { VoxGatePanel } from './VoxGatePanel'
 import { VoxSessionCloseout } from './VoxSessionCloseout'
+import { VoxAutoDogfoodChip } from './VoxAutoDogfoodChip'
 import { VoxReadinessPanel } from './VoxReadinessPanel'
 
 /**
@@ -31,33 +46,62 @@ function detectVoxDevMode(): boolean {
 
 const VOX_DEV_MODE = detectVoxDevMode()
 
+/**
+ * V6 · Reply Surface · texto curto mostrado na cabine "Atlas respondeu".
+ * Sempre visível em texto; voz é opcional (voice_mode='short' liga `say`).
+ * Whitelist canônica — espelha o Rust 1:1, sem fala arbitrária.
+ */
+const VOX_REPLY_PHRASE_TEXT: Record<VoxShortPhraseKey, string> = {
+  understood: 'Entendi.',
+  need_detail: 'Preciso de um detalhe.',
+  blocked_safety: 'Bloqueei por segurança.',
+  prompt_ready: 'Prompt pronto.',
+}
+
 interface VoxOverlayProps {
   controller: UseVoxOverlayResult
 }
 
 const STATE_LABEL: Record<VoxOverlayState, string> = {
-  closed: 'fechado',
-  idle: 'pronto',
-  starting: 'iniciando…',
-  listening: 'ouvindo',
-  finishing: 'finalizando…',
-  transcribing: 'transcrevendo…',
-  transcript_ready: 'transcrição pronta',
-  compiling: 'Atlas entendendo…',
-  compiled: 'Atlas entendeu',
-  awaiting_confirmation: 'aguardando confirmação',
-  executing: 'executando…',
-  executed: 'executado',
-  blocked: 'bloqueado',
-  cancelled: 'cancelado',
-  eclipsed: 'modo seguro ativo',
-  error: 'erro',
+  closed: 'Fechado',
+  idle: 'Pronto',
+  starting: 'Iniciando…',
+  listening: 'Ouvindo',
+  finishing: 'Finalizando…',
+  transcribing: 'Transcrevendo…',
+  transcript_ready: 'Revise o texto',
+  compiling: 'Pensando…',
+  compiled: 'Revise o texto',
+  awaiting_confirmation: 'Confirme antes de executar',
+  executing: 'Executando…',
+  executed: 'Executado',
+  blocked: 'Bloqueado',
+  cancelled: 'Cancelado',
+  eclipsed: 'Sessão encerrada',
+  error: 'Erro',
+}
+
+/** V6-G · traduz `action_outcome` cru do Kernel pra PT-BR humano. */
+const EXECUTION_OUTCOME_LABEL: Record<string, string> = {
+  completed: 'Pronto',
+  blocked: 'Bloqueado',
+  failed: 'Algo deu errado',
+  aborted: 'Interrompido',
+  cancelled: 'Cancelado',
+  pending: 'Em andamento…',
+  unavailable: 'Indisponível agora',
+}
+
+function humanExecutionOutcome(outcome: string | null | undefined, status: string | null | undefined): string {
+  const key = (outcome ?? status ?? '').toString().toLowerCase()
+  return EXECUTION_OUTCOME_LABEL[key] ?? 'Concluído'
 }
 
 const MODE_LABEL: Record<
   import('./useVoxOverlay').UseVoxOverlayResult['selectedMode'],
   string
 > = {
+  auto: 'Automático',
   dictation: 'Ditado',
   prompt_polish: 'Melhorar',
   intent_compile: 'Criar prompt',
@@ -68,6 +112,7 @@ const MODE_HINT: Record<
   import('./useVoxOverlay').UseVoxOverlayResult['selectedMode'],
   string
 > = {
+  auto: 'o Atlas escolhe o modo certo pra você',
   dictation: 'transcreve sua fala como texto literal',
   prompt_polish: 'limpa e melhora o texto antes de inserir',
   intent_compile: 'transforma sua fala num prompt mais forte',
@@ -128,12 +173,18 @@ function labelFromMap(map: Record<string, string>, value: string | null | undefi
   return map[value] ?? value
 }
 
+// V6-MIC-AIRPODS-FINAL · qualquer mensagem do Rust que vaze rms/peak/
+// active_ratio/AudioInputInvalid é técnica demais para a UI principal.
+// A UI principal mostra UMA frase humana; detalhes técnicos só no painel
+// "Detalhes avançados".
+const TECH_LEAK_PATTERN = /(rms|peak|active_ratio|AudioInputInvalid|audio_input_invalid|silent or unintelligible)/i
+
 function userFriendlySttMessage(code: string, message: string): string {
   if (code === 'audio_input_invalid') {
-    if (/microfone|rms=0|peak=0|active_ratio=0/i.test(message)) {
-      return 'O Atlas não recebeu áudio do microfone. Libere o microfone para Atlas Code e grave de novo.'
-    }
-    return 'Não consegui ouvir sua fala com clareza. Fale um pouco mais perto do microfone e grave de novo.'
+    // V6-MIC-AIRPODS-FINAL · cobre os dois casos canônicos (capture vazia e
+    // captura curta/baixo volume) com a mesma frase pedida no brief: foco em
+    // ação concreta (escolher microfone certo no macOS), sem jargão técnico.
+    return 'Não recebi áudio. Confira se o microfone certo está selecionado no macOS e tente de novo.'
   }
   if (code === 'model_missing' || code === 'model_missing_or_engine_unavailable') {
     return 'O modelo de voz local não está pronto. Abra pelo comando Vox correto e tente de novo.'
@@ -141,8 +192,18 @@ function userFriendlySttMessage(code: string, message: string): string {
   if (code === 'engine_binding_pending') {
     return 'O Atlas Vox não foi aberto no modo correto de desktop. Feche esta janela e abra pelo comando Vox.'
   }
+  // Catch-all: nunca devolve string crua do Rust se ela vazar termos técnicos.
+  if (message && TECH_LEAK_PATTERN.test(message)) {
+    return 'Não recebi áudio. Confira se o microfone certo está selecionado no macOS e tente de novo.'
+  }
   return message || 'Não consegui transcrever essa gravação. Tente gravar de novo.'
 }
+
+// V6 · humanização vive em módulo isolado (`voxOverlayHumanize.ts`) sem
+// JSX nem `import.meta.env` para que possa ser testada sem Vite. Re-exportamos
+// daqui para preservar compatibilidade com consumidores antigos.
+export { humanizeOverlayError } from './voxOverlayHumanize'
+import { humanizeOverlayError } from './voxOverlayHumanize'
 
 /**
  * V4 · descreve em PT-BR o que o Atlas entendeu, a partir do modo selecionado
@@ -161,6 +222,9 @@ function describeUnderstanding(
     ?? kernelResponse?.previewWhatIUnderstood
     ?? kernelResponse?.intentText
     ?? null
+  if (mode === 'auto') {
+    return goal ? `Ainda decidindo · ${goal}` : 'Atlas escolhendo o melhor caminho'
+  }
   if (mode === 'dictation') {
     return 'Ditado para o composer'
   }
@@ -197,10 +261,14 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     kernelResponse,
     confirmationRequest,
     literalConfirmationDraft,
+    clarificationDraft,
+    interlocutorVisible,
     executionResult,
     canExecute,
     error,
     busy,
+    phaseElapsedMs,
+    sttSlow,
     close,
     start,
     finish,
@@ -208,6 +276,10 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     eclipse,
     setTranscriptDraft,
     setLiteralConfirmationDraft,
+    setClarificationDraft,
+    submitClarification,
+    applyInterlocutorSuggestion,
+    dismissInterlocutor,
     executeConfirmed,
     cancelExecution,
     resetForRecompile,
@@ -218,6 +290,26 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     refreshDictionary,
     addDictionaryCorrection,
   } = controller
+
+  // V6.5-SMART-PREVIEW · view-model determinístico do bloco "Ouvi / Entendi /
+  // Vou fazer". Memoizado pra evitar recomputar a cada tick de elapsed
+  // (state mexe a cada 1 s durante transcribing/compiling/executing).
+  const smartPreviewVm: VoxSmartPreviewViewModel = useMemo(
+    () =>
+      composeSmartPreview(
+        smartPreviewInputsFromKernel(
+          kernelResponse,
+          kernelResponse?.suggestedMode ?? null,
+          kernelResponse?.modeResolution === 'auto_router',
+          transcriptDraft || transcript?.text || null,
+        ),
+      ),
+    [
+      kernelResponse,
+      transcriptDraft,
+      transcript,
+    ],
+  )
 
   const [debugRaw, setDebugRaw] = useState<string>('')
   const [copyStatus, setCopyStatus] = useState<string | null>(null)
@@ -234,6 +326,13 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     message: string
   } | null>(null)
   const [fallbackOpen, setFallbackOpen] = useState<boolean>(false)
+  // V6 · Reply Surface · preferência local + dedupe de fala.
+  // `replyPhrase` é DERIVADO durante o render (não useState) para que SSR
+  // renderize o card "Atlas respondeu" honestamente sem precisar rodar
+  // useEffect. O `spokenRepliesRef` evita re-disparar `say` em re-renders.
+  const [voiceMode, setVoiceMode] = useState<VoxVoiceMode>('off')
+  const [voiceSettingsBusy, setVoiceSettingsBusy] = useState<boolean>(false)
+  const spokenRepliesRef = useRef<Set<string>>(new Set())
   const panelRef = useRef<HTMLDivElement | null>(null)
 
   // V4 · evita disparar compile() repetidamente para a mesma combinação
@@ -271,6 +370,35 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     compileKey,
     compile,
   ])
+
+  // V6 · carrega preferência local quando o overlay abre. Em browser/dev
+  // devolve default conservador (off) e nunca grava no disco.
+  useEffect(() => {
+    if (state === 'closed') return
+    let cancelled = false
+    void (async () => {
+      const settings = await voxSettingsGet()
+      if (cancelled) return
+      setVoiceMode(settings.voiceMode)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [state])
+
+
+  const handleVoiceModeChange = async (next: VoxVoiceMode) => {
+    if (next === voiceMode || voiceSettingsBusy) return
+    setVoiceSettingsBusy(true)
+    try {
+      const updated = await voxSettingsUpdate(next)
+      setVoiceMode(updated.voiceMode)
+    } catch (e) {
+      console.warn('[VoxOverlay] voxSettingsUpdate falhou', e)
+    } finally {
+      setVoiceSettingsBusy(false)
+    }
+  }
 
   // V4 · troca de modo na cabine de confirmação. resetForRecompile zera o
   // kernel response e leva o estado de volta a `transcript_ready`; o useEffect
@@ -385,6 +513,14 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     || state === 'error'
   const canCancelLive =
     state === 'listening' || state === 'starting' || state === 'finishing'
+  // V6-ES-D · saídas garantidas em estados de espera (transcribing/compiling)
+  // e no transcript_ready estático: o operador nunca fica sem botão. Em
+  // transcribing/compiling a saída é "Parar tudo" (eclipse) — drop limpo na
+  // Rust. Em transcript_ready, "Gravar de novo" reabre fresh sem fechar o
+  // overlay (sempre disponível, não só quando confidence é baixa).
+  const canExitWait =
+    state === 'transcribing' || state === 'compiling'
+  const canRerecordFromTranscript = state === 'transcript_ready'
   const originalText = transcriptDraft || transcript?.text || ''
   const canInsertOriginal = originalText.trim() !== ''
   const compiledPrompt = kernelResponse?.compiledPrompt ?? null
@@ -414,7 +550,69 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
   const confirmPayload = canInsertCompiled
     ? (compiledPrompt ?? '')
     : (canInsertOriginal ? originalText : '')
-  const canConfirm = confirmPayload.trim() !== ''
+
+  // V5-A · Symbiotic Interlocutor. Camada conversacional vinda do Kernel.
+  // Renderizamos somente se vier do backend (parser devolve `null` quando o
+  // Kernel é velho ou o payload está malformado) e somente quando o policy
+  // decidiu intervir (`intervention !== 'none'`). `blocking` desabilita o
+  // botão Confirmar — bloqueio só acontece em risco/política dura, nunca
+  // em opinião.
+  // V5-B · `interlocutorVisible` já fatora "intervention !== none" + dismissal
+  // local do operador. `interlocutorBlocks` continua olhando blocking direto
+  // do payload — bloqueio nunca é dismissível.
+  const interlocutor = kernelResponse?.interlocutor ?? null
+  const interlocutorActive = Boolean(interlocutorVisible && interlocutor)
+  const interlocutorBlocks = Boolean(interlocutor?.blocking)
+  const canConfirm =
+    confirmPayload.trim() !== '' && !interlocutorBlocks
+  const hasInterlocutorSuggestedEdit = Boolean(
+    interlocutor
+      && interlocutor.suggestedEdit
+      && (interlocutor.intervention === 'suggest_better_prompt'
+        || (interlocutor.intervention === 'disagree'
+          && typeof interlocutor.suggestedEdit.safer_path === 'string'
+          && (interlocutor.suggestedEdit.safer_path as string).trim() !== '')),
+  )
+
+  // V6 · Reply Surface · frase curta canônica derivada do estado atual.
+  // Computada durante o render para que SSR renderize honestamente sem
+  // depender de useEffect. Voz é disparada num side-effect separado.
+  const replyPhrase: VoxShortPhraseKey | null = (() => {
+    const isReplyState =
+      state === 'compiled'
+      || state === 'awaiting_confirmation'
+      || state === 'executed'
+      || state === 'blocked'
+    if (!isReplyState || !kernelOk) return null
+    return voxReplyPhraseForState({
+      intervention: interlocutor ? interlocutor.intervention : null,
+      blocking: Boolean(interlocutor?.blocking),
+      // V6 · `selectedMode='auto'` é decisão pendente; o Reply Surface só
+      // fala em cima dos 4 modos concretos (Wave 6.5 canon).
+      mode: selectedMode === 'auto' ? null : selectedMode,
+      hasCompiledPrompt: canInsertCompiled,
+    })
+  })()
+
+  // V6 · side-effect de fala. (receipt, phrase) é único — `say` dispara
+  // uma vez só por sessão. Cooldown global anti-flood vive no Rust. Falha
+  // do `say` jamais quebra o fluxo (fire-and-forget).
+  const replySpeakKey = replyPhrase
+    ? `${
+        kernelResponse?.receiptId
+        ?? executionResult?.receiptId
+        ?? confirmationRequest?.receiptId
+        ?? session?.sessionId
+        ?? 'vox-reply-no-receipt'
+      }::${replyPhrase}`
+    : ''
+  useEffect(() => {
+    if (!replyPhrase || voiceMode !== 'short') return
+    if (replySpeakKey === '') return
+    if (spokenRepliesRef.current.has(replySpeakKey)) return
+    spokenRepliesRef.current.add(replySpeakKey)
+    void voxSpeakShort(replyPhrase)
+  }, [replyPhrase, replySpeakKey, voiceMode])
 
   const flashCopy = (msg: string) => {
     setCopyStatus(msg)
@@ -463,7 +661,35 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     || state === 'executed'
     || state === 'blocked'
     || state === 'error'
-  const primaryRecordLabel = hasAnyResult ? 'Gravar de novo' : 'Gravar'
+  // V6-ES-A · label da ação primária por estado.
+  //   idle fresco              → "Começar"     (Vitor está abrindo o app)
+  //   error                    → "Tentar novamente" (ensina o próximo passo)
+  //   cancelled / eclipsed /
+  //   executed / blocked       → "Gravar de novo" (já houve sessão útil)
+  const primaryRecordLabel =
+    state === 'error'
+      ? 'Tentar novamente'
+      : hasAnyResult || state === 'cancelled' || state === 'eclipsed'
+        ? 'Gravar de novo'
+        : 'Começar'
+
+  // V6-ES-A · label da ação primária no estado "compiled". Depende do modo
+  // efetivo: ditado/melhorar inserem texto direto no composer; criar prompt
+  // envia o resultado curado para o Atlas. governed_execute usa fluxo R2+
+  // próprio, então mantém "Confirmar" como label canônico.
+  const confirmActionLabel: string = (() => {
+    switch (selectedMode) {
+      case 'dictation':
+      case 'prompt_polish':
+        return 'Inserir texto'
+      case 'intent_compile':
+        return 'Enviar ao Atlas'
+      case 'governed_execute':
+        return 'Confirmar'
+      default:
+        return 'Inserir texto'
+    }
+  })()
 
   return (
     <div
@@ -476,7 +702,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
       <header className="vox-overlay-header">
         <div className="vox-overlay-title">
           <span className="vox-overlay-eyebrow">Atlas Vox</span>
-          <span className="vox-overlay-session" hidden={!advancedOpen}>
+          <span className="vox-overlay-session" aria-live="polite">
             {STATE_LABEL[state]}
           </span>
         </div>
@@ -492,12 +718,26 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
       </header>
 
       {state === 'listening' ? (
-        <div className="vox-listening-pill" role="status" aria-live="assertive">
-          <span className="vox-listening-dot" aria-hidden="true" />
-          <span className="vox-listening-label">Atlas ouvindo</span>
-          <span className="vox-listening-hint">
-            Enter ou Option+Space finaliza · Esc cancela
-          </span>
+        <div className="vox-listening">
+          <div className="vox-listening-pill" role="status" aria-live="assertive">
+            <span className="vox-listening-dot" aria-hidden="true" />
+            <span className="vox-listening-label">Atlas ouvindo</span>
+          </div>
+          {/* V6-ES-A · ação primária explícita. O atalho continua no rodapé;
+              o botão é o canal óbvio pro operador parar de falar. */}
+          <button
+            type="button"
+            className="vox-btn-primary vox-listening-stop"
+            onClick={() => void finish()}
+            disabled={busy}
+          >
+            Finalizar
+          </button>
+          <p className="vox-listening-hint">
+            Aperte <kbd className="vox-hotkey-hint-key">⌥ Space</kbd> ou <kbd className="vox-hotkey-hint-key">Enter</kbd> para finalizar
+            <span aria-hidden="true"> · </span>
+            <kbd className="vox-hotkey-hint-key">esc</kbd> cancela
+          </p>
         </div>
       ) : null}
 
@@ -515,10 +755,13 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
         </div>
       ) : edgeStatus && !edgeStatus.available ? (
         <div className="vox-overlay-banner vox-overlay-banner-warn">
-          O controle local do Mac ainda não está totalmente disponível.
-          {edgeStatus.pendingCapabilities.length > 0 ? (
-            <> Pendências: {edgeStatus.pendingCapabilities.join(', ')}.</>
-          ) : null}
+          {/* V6-UX-FINAL · sem listar enums técnicos como
+              "accessibility, input_monitoring" — manda o operador
+              direto pro caminho de Ajustes do macOS. */}
+          O Atlas Vox precisa de permissões do macOS para começar. Abra
+          {' '}<strong>Ajustes do Sistema → Privacidade e Segurança</strong>{' '}
+          e libere microfone, acessibilidade e monitoramento de entrada
+          para o Atlas Code.
         </div>
       ) : null}
 
@@ -529,7 +772,9 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
       ) : null}
 
       {error ? (
-        <div className="vox-overlay-banner vox-overlay-banner-error">{error}</div>
+        <div className="vox-overlay-banner vox-overlay-banner-error">
+          {humanizeOverlayError(error)}
+        </div>
       ) : null}
 
       {/* V4 · Estado pronto. Único elemento dominante: Gravar.
@@ -545,10 +790,25 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
             {primaryRecordLabel}
           </button>
           <p className="vox-v4-record-hint">
-            <kbd className="vox-hotkey-hint-key">⌥ Space</kbd> grava / parar
+            {/* V6-UX-FINAL · frase única, sóbrio. */}
+            Aperte <kbd className="vox-hotkey-hint-key">⌥ Space</kbd> para começar ou parar
             <span className="vox-v4-record-hint-sep" aria-hidden="true">·</span>
             <kbd className="vox-hotkey-hint-key">esc</kbd> cancela
           </p>
+          {/* V6-G · Recuperação infalível: pós-sessão (executed/blocked/
+              cancelled/eclipsed/error), oferecer "Parar tudo" pra limpar
+              estado local SEM atrapalhar o fluxo principal de gravar de novo. */}
+          {hasAnyResult && !tauriUnavailable ? (
+            <button
+              type="button"
+              className="vox-btn-ghost vox-btn-eclipse vox-v4-record-stop"
+              onClick={() => void eclipse()}
+              disabled={busy}
+              title="Limpa a sessão atual e libera tudo pra começar do zero"
+            >
+              Parar tudo
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -562,24 +822,62 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
         </div>
       ) : null}
 
-      {/* V4 · Ouvi. Aparece em transcribing/transcript_ready/compiling/
-          compiled/awaiting_confirmation. */}
+      {/* V4 · "Texto ouvido". Aparece em transcribing/transcript_ready/
+          compiling/compiled/awaiting_confirmation. */}
       {state === 'transcribing'
         || state === 'transcript_ready'
         || state === 'compiling'
         || state === 'compiled'
         || state === 'awaiting_confirmation' ? (
         <section className="vox-overlay-section">
-          <h3 className="vox-overlay-section-title">Ouvi</h3>
+          <h3 className="vox-overlay-section-title">Texto ouvido</h3>
           {state === 'transcribing' ? (
-            <div className="vox-overlay-transcribing" role="status" aria-live="polite">
-              <span className="vox-overlay-transcribing-dot" aria-hidden="true" />
-              <span>Transcrevendo localmente com Whisper…</span>
-            </div>
+            <>
+              <div className="vox-overlay-transcribing" role="status" aria-live="polite">
+                <span className="vox-overlay-transcribing-dot" aria-hidden="true" />
+                <span>
+                  Transcrevendo localmente
+                  {phaseElapsedMs >= 2000 ? `… ${Math.floor(phaseElapsedMs / 1000)}s` : '…'}
+                </span>
+              </div>
+              {sttSlow ? (
+                <p
+                  className="vox-overlay-hint vox-overlay-hint-warn"
+                  role="status"
+                  aria-live="polite"
+                >
+                  Está demorando mais que o esperado. Se quiser, use “Parar tudo”
+                  e grave uma fala mais curta.
+                </p>
+              ) : null}
+            </>
           ) : null}
 
           {transcript ? (
             <>
+              {/* V6-ES-B · aviso humano de baixa confiança. Não força nada:
+                  só sugere regravar quando o sinal cru ficou fraco (áudio
+                  fraco ou fala muito curta). Default conservador: aparece
+                  apenas se confidence ∈ (0, 0.55]. */}
+              {typeof transcript.confidence === 'number'
+                && transcript.confidence > 0
+                && transcript.confidence <= 0.55 ? (
+                <p
+                  className="vox-overlay-hint vox-overlay-hint-warn vox-overlay-lowconf-hint"
+                  role="status"
+                >
+                  Ficou curto ou baixinho. Quer{' '}
+                  <button
+                    type="button"
+                    className="vox-overlay-lowconf-link"
+                    onClick={() => void start()}
+                    disabled={busy || tauriUnavailable}
+                  >
+                    gravar de novo
+                  </button>
+                  ?
+                </p>
+              ) : null}
               <textarea
                 className="vox-overlay-transcript"
                 value={transcriptDraft}
@@ -701,20 +999,198 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
           de confirmação R2+ (que tem sua própria UI).  */}
       {state === 'compiling' ? (
         <section className="vox-overlay-section vox-v4-understanding">
-          <h3 className="vox-overlay-section-title">Atlas entendendo</h3>
+          <h3 className="vox-overlay-section-title">O Atlas está pensando</h3>
           <div className="vox-overlay-transcribing" role="status" aria-live="polite">
             <span className="vox-overlay-transcribing-dot" aria-hidden="true" />
-            <span>Mandando para o Kernel Vox…</span>
+            <span>Analisando o que você disse…</span>
           </div>
         </section>
       ) : null}
 
       {state === 'compiled' && kernelOk && kernelResponse ? (
         <section className="vox-overlay-section vox-v4-understanding">
-          <h3 className="vox-overlay-section-title">Atlas entendeu</h3>
-          <p className="vox-v4-understanding-line">
-            {understandingLine ?? describeUnderstanding(selectedMode, kernelResponse, providerHint)}
-          </p>
+          <h3 className="vox-overlay-section-title">O que o Atlas vai fazer</h3>
+          {smartPreviewVm.kind !== 'fallback' ? (
+            <SmartPreviewBlock
+              vm={smartPreviewVm}
+              clarificationDraft={clarificationDraft}
+              setClarificationDraft={setClarificationDraft}
+              onSubmitClarification={() => void submitClarification()}
+              onRerecord={() => void start()}
+              busy={busy}
+            />
+          ) : (
+            <p className="vox-v4-understanding-line">
+              {understandingLine ?? describeUnderstanding(selectedMode, kernelResponse, providerHint)}
+            </p>
+          )}
+
+          {/* V6 · Atlas respondeu — texto curto canônico. Sempre visível.
+              Voz só sai se voice_mode='short' (gate no Rust). */}
+          {replyPhrase ? (
+            <p
+              className="vox-v4-reply"
+              data-reply-phrase={replyPhrase}
+              data-voice-mode={voiceMode}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="vox-v4-reply-eyebrow">Atlas respondeu</span>
+              <span className="vox-v4-reply-text">{VOX_REPLY_PHRASE_TEXT[replyPhrase]}</span>
+              {voiceMode === 'short' ? (
+                <span className="vox-v4-reply-voice-tag" aria-hidden="true">voz curta</span>
+              ) : null}
+            </p>
+          ) : null}
+
+          {/* V5-A · Symbiotic Interlocutor. Aparece somente quando o Kernel
+              respondeu com intervention !== 'none'. Tom é PT-BR, útil e direto:
+              clarify pergunta, caution adverte, disagree discorda (bloqueia
+              Confirmar quando blocking=true), suggest_better_prompt convida
+              a estruturar melhor o pedido. */}
+          {interlocutorActive && interlocutor ? (
+            <div
+              className={`vox-v4-interlocutor vox-v4-interlocutor-${interlocutor.intervention}${
+                interlocutor.blocking ? ' vox-v4-interlocutor-blocking' : ''
+              }`}
+              role={interlocutor.blocking ? 'alert' : 'note'}
+              aria-live="polite"
+            >
+              <p className="vox-v4-interlocutor-eyebrow">
+                {interlocutor.intervention === 'clarify'
+                  ? 'Antes de seguir'
+                  : 'Atlas respondeu'}
+              </p>
+              <p className="vox-v4-interlocutor-message">
+                {interlocutor.messagePtBr}
+              </p>
+              {interlocutor.questionPtBr ? (
+                <p className="vox-v4-interlocutor-question">
+                  {interlocutor.questionPtBr}
+                </p>
+              ) : null}
+              {interlocutor.blocking ? (
+                <p className="vox-v4-interlocutor-blocking-note">
+                  Ação bloqueada por política de segurança. Use
+                  <strong> Editar intenção</strong> ou <strong>Cancelar</strong> para seguir.
+                </p>
+              ) : null}
+
+              {/* V5-B · clarify: campo de resposta curta + botão Responder. */}
+              {interlocutor.intervention === 'clarify' ? (
+                <div className="vox-v4-interlocutor-clarify-form">
+                  <label className="vox-v4-interlocutor-clarify-label">
+                    <span className="vox-v4-interlocutor-clarify-label-text">
+                      Sua resposta
+                    </span>
+                    <input
+                      type="text"
+                      className="vox-v4-interlocutor-clarify-input"
+                      value={clarificationDraft}
+                      onChange={(e) => setClarificationDraft(e.target.value)}
+                      placeholder="Responda em poucas palavras"
+                      maxLength={240}
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={busy}
+                    />
+                  </label>
+                  <div className="vox-v4-interlocutor-actions">
+                    <button
+                      type="button"
+                      className="vox-btn-secondary"
+                      onClick={() => void submitClarification()}
+                      disabled={busy || clarificationDraft.trim() === ''}
+                      title="Anexa sua resposta à fala e pede para o Atlas avaliar de novo"
+                    >
+                      Responder
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* V5-B · caution: avisão sem botão extra; o Confirmar do bloco
+                  principal serve de "continuar mesmo assim". */}
+              {interlocutor.intervention === 'caution' ? (
+                <div className="vox-v4-interlocutor-actions">
+                  <button
+                    type="button"
+                    className="vox-btn-ghost"
+                    onClick={() => dismissInterlocutor()}
+                    disabled={busy}
+                    title="Esconde este aviso. Você ainda revisou o risco antes de confirmar."
+                  >
+                    Continuar mesmo assim
+                  </button>
+                </div>
+              ) : null}
+
+              {/* V5-B · disagree: bloqueante → Editar intenção. Não bloqueante →
+                  Usar caminho mais seguro + Manter original. */}
+              {interlocutor.intervention === 'disagree' ? (
+                <div className="vox-v4-interlocutor-actions">
+                  {hasInterlocutorSuggestedEdit ? (
+                    <button
+                      type="button"
+                      className="vox-btn-secondary"
+                      onClick={() => applyInterlocutorSuggestion()}
+                      disabled={busy}
+                      title="Usa o caminho mais seguro como ponto de partida pra você revisar e gravar de novo"
+                    >
+                      Usar caminho mais seguro
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="vox-btn-secondary"
+                    onClick={() => resetForRecompile()}
+                    disabled={busy}
+                    title="Volta para o texto ouvido para você editar a intenção"
+                  >
+                    Editar intenção
+                  </button>
+                  {!interlocutor.blocking ? (
+                    <button
+                      type="button"
+                      className="vox-btn-ghost"
+                      onClick={() => dismissInterlocutor()}
+                      disabled={busy}
+                      title="Mantém o pedido original e segue para Confirmar"
+                    >
+                      Manter original
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* V5-B · suggest_better_prompt: aplica o template estruturado OU
+                  mantém o original. Nada bloqueante. */}
+              {interlocutor.intervention === 'suggest_better_prompt' ? (
+                <div className="vox-v4-interlocutor-actions">
+                  {hasInterlocutorSuggestedEdit ? (
+                    <button
+                      type="button"
+                      className="vox-btn-secondary"
+                      onClick={() => applyInterlocutorSuggestion()}
+                      disabled={busy}
+                      title="Preenche o texto com uma estrutura: Objetivo / Contexto / Restrições / Critério de aceite"
+                    >
+                      Usar sugestão
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="vox-btn-ghost"
+                    onClick={() => dismissInterlocutor()}
+                    disabled={busy}
+                    title="Mantém o pedido como está e segue para Confirmar"
+                  >
+                    Manter original
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Sugestão do Auto Mode Router · só renderiza quando backend devolve
               `suggested_mode` diferente do modo atual. Quando o campo é null,
@@ -745,14 +1221,17 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
           {canInsertCompiled ? (
             <details className="vox-v4-prompt-details" hidden={!canInsertCompiled}>
               <summary className="vox-v4-prompt-details-summary">
-                {selectedMode === 'intent_compile' ? 'Prompt poderoso' : 'Prompt polido'}
+                {/* V6-UX-FINAL · copy sóbrio: "Ver prompt" / "Ver texto"
+                    em vez de "Prompt poderoso/polido" (palavras de
+                    marketing soavam exageradas para tom enterprise). */}
+                {selectedMode === 'intent_compile' ? 'Ver prompt completo' : 'Ver texto completo'}
               </summary>
               <pre
                 className="vox-overlay-compiled-prompt"
                 aria-label={
                   selectedMode === 'intent_compile'
-                    ? 'Prompt poderoso criado pelo Atlas'
-                    : 'Prompt polido pelo Atlas'
+                    ? 'Prompt criado pelo Atlas'
+                    : 'Texto melhorado pelo Atlas'
                 }
               >
                 {compiledPrompt}
@@ -769,19 +1248,19 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
                   onClick={() =>
                     void handleCopy(
                       compiledPrompt ?? '',
-                      selectedMode === 'intent_compile' ? 'prompt poderoso' : 'prompt polido',
+                      selectedMode === 'intent_compile' ? 'prompt' : 'texto',
                     )
                   }
                   disabled={!canInsertCompiled}
                 >
-                  {selectedMode === 'intent_compile' ? 'Copiar poderoso' : 'Copiar polido'}
+                  {selectedMode === 'intent_compile' ? 'Copiar prompt' : 'Copiar texto'}
                 </button>
               </div>
             </details>
           ) : polishMissing ? (
             <p className="vox-overlay-hint vox-overlay-hint-warn">
               {selectedMode === 'intent_compile'
-                ? 'O Atlas ainda não devolveu o prompt poderoso para esta intenção.'
+                ? 'O Atlas ainda não devolveu o prompt para esta intenção.'
                 : 'O Atlas ainda não devolveu o texto melhorado para esta intenção.'}
             </p>
           ) : null}
@@ -849,9 +1328,15 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
               className="vox-btn-primary"
               onClick={handleConfirmCompiled}
               disabled={busy || !canConfirm}
-              title="Insere o resultado no composer"
+              title={
+                interlocutorBlocks
+                  ? 'Ação bloqueada: o Atlas detectou risco destrutivo. Troque o modo ou cancele.'
+                  : confirmActionLabel === 'Enviar ao Atlas'
+                    ? 'Envia o prompt preparado para o Atlas'
+                    : 'Insere o texto no composer'
+              }
             >
-              Confirmar
+              {confirmActionLabel}
             </button>
             <button
               type="button"
@@ -867,9 +1352,9 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
               className="vox-btn-ghost"
               onClick={() => void start()}
               disabled={busy || tauriUnavailable}
-              title="Descarta e grava de novo"
+              title="Descarta o resultado e grava de novo"
             >
-              Cancelar
+              Gravar de novo
             </button>
             {copyStatus ? (
               <span className="vox-overlay-flash" role="status">
@@ -878,12 +1363,12 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
             ) : null}
           </div>
 
-          {/* Seletor de modo compacto · só aparece quando o operador pede. */}
+          {/* Seletor de modo compacto · só aparece quando o operador pede.
+              V6-VISUAL-POLISH-FINAL · 4 modos canônicos no segmented (sem
+              "Automático", que é o default implícito) + link discreto
+              "Voltar ao automático" quando o operador trancou um modo. */}
           {modeSwitcherOpen ? (
             <div className="vox-v4-mode-switcher" aria-label="Trocar modo do Atlas Vox">
-              <p className="vox-v4-mode-switcher-hint">
-                Atual: <strong>{MODE_LABEL[selectedMode]}</strong> · {MODE_HINT[selectedMode]}
-              </p>
               <div className="vox-mode-seg" role="radiogroup" aria-label="Modo Vox">
                 <button
                   type="button"
@@ -930,15 +1415,31 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
                   {MODE_LABEL.governed_execute}
                 </button>
               </div>
+              <p className="vox-v4-mode-switcher-hint">
+                {MODE_HINT[selectedMode]}
+                {selectedMode !== 'auto' ? (
+                  <>
+                    {' · '}
+                    <button
+                      type="button"
+                      className="vox-v4-mode-switcher-reset"
+                      onClick={() => handleSwitchMode('auto')}
+                      disabled={busy}
+                      title="Deixa o Atlas escolher o modo certo automaticamente"
+                    >
+                      voltar ao automático
+                    </button>
+                  </>
+                ) : null}
+              </p>
             </div>
           ) : null}
         </section>
       ) : state === 'compiled' && kernelResponse && kernelResponse.status === 'unavailable' ? (
         <section className="vox-overlay-section vox-v4-understanding">
-          <h3 className="vox-overlay-section-title">Atlas entendendo</h3>
+          <h3 className="vox-overlay-section-title">O Atlas está pensando</h3>
           <p className="vox-overlay-hint vox-overlay-hint-warn">
-            Atlas Vox ainda indisponível.{' '}
-            {kernelResponse.message ?? '/ai/vox/intent não respondeu.'}
+            O Atlas está indisponível agora. Tente de novo em alguns instantes.
           </p>
           <div className="vox-v4-actions">
             <button
@@ -961,9 +1462,9 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
         </section>
       ) : state === 'compiled' && kernelResponse && kernelResponse.status === 'error' ? (
         <section className="vox-overlay-section vox-v4-understanding">
-          <h3 className="vox-overlay-section-title">Atlas entendendo</h3>
+          <h3 className="vox-overlay-section-title">O Atlas está pensando</h3>
           <p className="vox-overlay-hint vox-overlay-hint-error">
-            Atlas Vox respondeu com erro: {kernelResponse.message ?? 'sem detalhes'}
+            Não consegui montar a resposta dessa vez. Tente de novo.
           </p>
           <div className="vox-v4-actions">
             <button
@@ -1010,7 +1511,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
               aria-label="Confirmação antes da execução"
             >
               <h3 className="vox-overlay-section-title">
-                Confirmar execução · risco <span className={`vox-risk vox-risk-${risk}`}>{risk}</span>
+                Confirme antes de executar · risco <span className={`vox-risk vox-risk-${risk}`}>{risk}</span>
               </h3>
               {cr.preview ? (
                 <p className="vox-overlay-intent-text">{cr.preview}</p>
@@ -1116,7 +1617,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
         return (
           <section className="vox-overlay-section" aria-label="Resultado da execução">
             <h3 className="vox-overlay-section-title">
-              Resultado · {executionResult.actionOutcome ?? executionResult.status}
+              Resultado · {humanExecutionOutcome(executionResult.actionOutcome, executionResult.status)}
             </h3>
             {executionResult.status === 'unavailable' ? (
               <p className="vox-overlay-hint vox-overlay-hint-warn">
@@ -1221,7 +1722,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
       {/* Comprovante · só quando real */}
       {kernelOk && kernelResponse ? (
         <section className="vox-overlay-section" hidden={!advancedOpen}>
-          <h3 className="vox-overlay-section-title">Comprovante</h3>
+          <h3 className="vox-overlay-section-title">Diagnóstico técnico</h3>
           <dl className="vox-overlay-receipt">
             {kernelResponse.receiptId ? (
               <>
@@ -1275,6 +1776,45 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
         </div>
       ) : null}
 
+      {/* V6-ES-D · saída garantida durante estados de espera. transcribing
+          e compiling normalmente duram < 2 s, mas se travar o operador
+          tem como sair pelo eclipse limpo. */}
+      {canExitWait ? (
+        <div className="vox-overlay-footer vox-v4-footer-controls">
+          <button
+            type="button"
+            className="vox-btn-ghost vox-btn-eclipse"
+            onClick={() => void eclipse()}
+            disabled={busy || tauriUnavailable}
+            title="Interrompe a operação atual e volta para o início"
+          >
+            Parar tudo
+          </button>
+        </div>
+      ) : null}
+
+      {/* V6-ES-D · transcript_ready transient: enquanto o compile automático
+          dispara, o operador já pode trocar de gravação se o texto saiu
+          torto. Botão discreto, não bloqueia o auto-compile. */}
+      {canRerecordFromTranscript ? (
+        <div className="vox-overlay-footer vox-v4-footer-controls">
+          <button
+            type="button"
+            className="vox-btn-ghost"
+            onClick={() => void start()}
+            disabled={busy || tauriUnavailable}
+            title="Descarta este texto e abre uma nova gravação"
+          >
+            Gravar de novo
+          </button>
+        </div>
+      ) : null}
+
+      {/* V6-E · chip do dogfood automático. Aparece em todo fim de sessão
+          real (executed/blocked/cancelled/error). Não mostra formulário —
+          só "Sessão registrada" + Funcionou bem / Marcar como ruim. */}
+      <VoxAutoDogfoodChip autoDogfood={controller.autoDogfood} />
+
       {/* Wave V3.9 · Session Closeout. Em "Detalhes avançados" para não poluir
           o fluxo principal. */}
       {advancedOpen && (state === 'compiled'
@@ -1291,7 +1831,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
             ?? session?.sessionId
             ?? 'closeout-no-session'
           }
-          mode={selectedMode}
+          mode={selectedMode === 'auto' ? 'intent_compile' : selectedMode}
           voxSessionId={session?.sessionId ?? null}
           startedAt={session?.startedAt ?? null}
           durationMs={
@@ -1344,7 +1884,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
           aria-expanded={advancedOpen}
         >
           <span>Detalhes avançados</span>
-          <span className="vox-overlay-dict-meta">diagnóstico, métricas e dicionário</span>
+          <span className="vox-overlay-dict-meta">diagnóstico, progresso e dicionário</span>
           <span className="vox-overlay-dict-chevron" aria-hidden="true">
             {advancedOpen ? '▾' : '▸'}
           </span>
@@ -1353,6 +1893,41 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
 
       {advancedOpen ? (
         <>
+          {/* V6 · Reply Surface · preferência local de voz. Default é
+              "desligada" — o Atlas nunca fala sem o operador pedir. Quando
+              "curta", apenas frases whitelistadas (≤ 30 chars cada) saem
+              via macOS `say`, com cooldown anti-flood no Rust. */}
+          <div className="vox-overlay-controls vox-overlay-voice-prefs" aria-label="Voz do Atlas Vox">
+            <fieldset className="vox-voice-mode-group">
+              <legend className="vox-voice-mode-legend">Voz</legend>
+              <label className="vox-voice-mode-option">
+                <input
+                  type="radio"
+                  name="vox-voice-mode"
+                  value="off"
+                  checked={voiceMode === 'off'}
+                  disabled={voiceSettingsBusy}
+                  onChange={() => void handleVoiceModeChange('off')}
+                />
+                <span>desligada</span>
+              </label>
+              <label className="vox-voice-mode-option">
+                <input
+                  type="radio"
+                  name="vox-voice-mode"
+                  value="short"
+                  checked={voiceMode === 'short'}
+                  disabled={voiceSettingsBusy}
+                  onChange={() => void handleVoiceModeChange('short')}
+                />
+                <span>curta</span>
+              </label>
+              <p className="vox-voice-mode-hint">
+                Texto sempre aparece. Voz curta fala só frases canônicas (≤ 30 chars).
+              </p>
+            </fieldset>
+          </div>
+
           {/* Provider / output controles vivem aqui em V4. */}
           {(selectedMode === 'intent_compile' || selectedMode === 'governed_execute') ? (
             <div className="vox-overlay-controls" aria-label="Configuração avançada do Vox">
@@ -1418,8 +1993,8 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
               onClick={() => setGateOpen((v) => !v)}
               aria-expanded={gateOpen}
             >
-              <span>Métricas V3</span>
-              <span className="vox-overlay-dict-meta">uso real e comparações</span>
+              <span>Progresso</span>
+              <span className="vox-overlay-dict-meta">uso real e comparativos</span>
               <span className="vox-overlay-dict-chevron" aria-hidden="true">
                 {gateOpen ? '▾' : '▸'}
               </span>
@@ -1535,4 +2110,157 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
       ) : null}
     </div>
   )
+}
+
+// ─── V6.5 · SmartPreviewBlock ────────────────────────────────────────────
+//
+// Bloco "Ouvi / Entendi / Vou fazer" alimentado pelo view-model
+// determinístico vindo de `composeSmartPreview()`. NUNCA expõe campos crus
+// (schema, risk_class, confidence raw, receipt id, kernel). Estados:
+//
+//   - clarification        → pergunta + campo de resposta + "Gravar de novo".
+//   - low_confidence       → aviso "Não tenho certeza" + sugere editar/regravar.
+//   - blocked_destructive  → bloco de risco em PT-BR, sem botão Executar.
+//   - ready                → triplet completo + safe_fallback discreto.
+//
+// O componente é puro: recebe callbacks já wirados pelo overlay (compile,
+// rerecord, submitClarification). Não toca em nenhum estado novo.
+
+interface SmartPreviewBlockProps {
+  vm: VoxSmartPreviewViewModel
+  clarificationDraft: string
+  setClarificationDraft: (text: string) => void
+  onSubmitClarification: () => void
+  onRerecord: () => void
+  busy: boolean
+}
+
+function SmartPreviewBlock({
+  vm,
+  clarificationDraft,
+  setClarificationDraft,
+  onSubmitClarification,
+  onRerecord,
+  busy,
+}: SmartPreviewBlockProps) {
+  // Eyebrow discreto pra quando o Auto Mode escolheu pelo operador.
+  const modeHint = vm.modeSuggestionHint
+  // Linhas opcionais: nem todo flow vem com triplet completo (clarification
+  // omite `willDo`, R4 omite `willDo`, etc).
+  const lines: Array<{ label: string; value: string }> = []
+  if (vm.heard) lines.push({ label: 'Ouvi', value: vm.heard })
+  if (vm.understood) lines.push({ label: 'Entendi', value: vm.understood })
+  if (vm.willDo) lines.push({ label: 'Vou fazer', value: vm.willDo })
+
+  return (
+    <div
+      className={`vox-smart-preview vox-smart-preview-${vm.kind}`}
+      data-vox-smart-kind={vm.kind}
+      data-vox-smart-destination={vm.destination ?? 'none'}
+    >
+      {modeHint ? (
+        <p className="vox-smart-preview-eyebrow" aria-label="Modo escolhido pelo Atlas">
+          {modeHint}
+        </p>
+      ) : null}
+
+      {lines.length > 0 ? (
+        <dl className="vox-smart-preview-triplet">
+          {lines.map((line) => (
+            <div key={line.label} className="vox-smart-preview-line">
+              <dt className="vox-smart-preview-line-label">{line.label}</dt>
+              <dd className="vox-smart-preview-line-value">{line.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
+      {vm.kind === 'clarification' && vm.clarifyingQuestion ? (
+        <div
+          className="vox-smart-preview-clarification"
+          role="region"
+          aria-label="Pergunta antes de seguir"
+        >
+          <p className="vox-smart-preview-question">{vm.clarifyingQuestion}</p>
+          <label className="vox-smart-preview-clarify-label">
+            <span className="vox-smart-preview-clarify-label-text">Sua resposta</span>
+            <input
+              type="text"
+              className="vox-smart-preview-clarify-input"
+              value={clarificationDraft}
+              onChange={(e) => setClarificationDraft(e.target.value)}
+              placeholder="Responda em poucas palavras"
+              maxLength={240}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={busy}
+            />
+          </label>
+          <div className="vox-smart-preview-actions">
+            <button
+              type="button"
+              className="vox-btn-secondary"
+              onClick={onSubmitClarification}
+              disabled={busy || clarificationDraft.trim() === ''}
+              title="Anexa sua resposta à fala e pede pro Atlas pensar de novo"
+            >
+              {VOX_SMART_PREVIEW_ACTION_LABEL.answer_clarification}
+            </button>
+            <button
+              type="button"
+              className="vox-btn-ghost"
+              onClick={onRerecord}
+              disabled={busy}
+            >
+              {VOX_SMART_PREVIEW_ACTION_LABEL.rerecord}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {vm.kind === 'low_confidence' && vm.lowConfidenceNote ? (
+        <p
+          className="vox-overlay-hint vox-overlay-hint-warn vox-smart-preview-low-conf"
+          role="status"
+        >
+          {vm.lowConfidenceNote}
+        </p>
+      ) : null}
+
+      {vm.kind === 'blocked_destructive' && vm.blockedReason ? (
+        <p
+          className="vox-overlay-hint vox-overlay-hint-error vox-smart-preview-block-reason"
+          role="alert"
+        >
+          {vm.blockedReason}
+        </p>
+      ) : null}
+
+      {vm.safeFallbackLabel ? (
+        <p className="vox-smart-preview-safe-fallback" aria-label="Caminho seguro alternativo">
+          Caminho seguro: {humanSafeFallback(vm.safeFallbackLabel)}.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * V6.5 · Humaniza o keyword `safe_fallback` que o backend envia (`copy_text`,
+ * `ask_clarification`, `cancel`, `dictation`) — UI principal nunca mostra o
+ * slug cru.
+ */
+function humanSafeFallback(keyword: string): string {
+  switch (keyword) {
+    case 'copy_text':
+      return 'copiar o texto e seguir manualmente'
+    case 'ask_clarification':
+      return 'me peça pra reformular a fala'
+    case 'cancel':
+      return 'cancelar e tentar de novo'
+    case 'dictation':
+      return 'usar o texto como ditado'
+    default:
+      return keyword
+  }
 }

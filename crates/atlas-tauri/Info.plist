@@ -4,5 +4,13 @@
 <dict>
   <key>NSMicrophoneUsageDescription</key>
   <string>Atlas Vox usa o microfone para transformar sua fala em texto dentro do Atlas.</string>
+  <!-- V6-RUNTIME-FINAL · justificativas em PT-BR para as caixas de diálogo
+       do macOS quando o Atlas registra o atalho global ⌥ Espaço. O TCC
+       (framework de privacidade do macOS) pede Acessibilidade e/ou
+       Monitoramento de Entrada para hotkeys que funcionam fora da janela. -->
+  <key>NSAccessibilityUsageDescription</key>
+  <string>Atlas Code precisa de Acessibilidade para registrar o atalho ⌥ Espaço globalmente. Sem isso, o atalho só funciona com o Atlas em foco.</string>
+  <key>NSInputMonitoringUsageDescription</key>
+  <string>Atlas Code precisa de Monitoramento de Entrada para escutar o atalho ⌥ Espaço enquanto outra janela está em foco. Nenhuma outra tecla é capturada nem registrada.</string>
 </dict>
 </plist>

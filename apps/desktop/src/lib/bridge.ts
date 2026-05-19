@@ -154,18 +154,22 @@ declare global {
   }
 }
 
+const ENV = ((import.meta as ImportMeta & {
+  env?: Record<string, string | undefined>
+}).env ?? {})
+
 export function detectMode(): BridgeMode {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
     return 'tauri'
   }
-  if (import.meta.env.VITE_ATLAS_SERVER_URL) {
+  if (ENV.VITE_ATLAS_SERVER_URL) {
     return 'http'
   }
   return 'offline'
 }
 
 const MODE: BridgeMode = detectMode()
-const HTTP_BASE = (import.meta.env.VITE_ATLAS_SERVER_URL as string | undefined) ?? ''
+const HTTP_BASE = ENV.VITE_ATLAS_SERVER_URL ?? ''
 
 // ──────────────────────────────────────────────────────────────────────────
 // Tauri / HTTP / Offline dispatch helpers
@@ -183,7 +187,7 @@ async function fetchHttp<T>(
     'Content-Type': 'application/json',
     Accept: 'application/json',
   }
-  const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
+  const token = ENV.VITE_ATLAS_TOKEN
   if (token) headers['X-Atlas-Token'] = token
 
   const response = await fetch(`${HTTP_BASE}${path}`, {
@@ -6373,6 +6377,51 @@ async function voxInvoke<T>(
   return tauri.invoke<T>(cmd, args)
 }
 
+/**
+ * V6-A · Atlas Vox Ambient Launch. Lê (e consome) o sinal de boot que o
+ * processo Tauri detectou (`--vox-start-listening` na linha de comando ou
+ * `ATLAS_VOX_START_LISTENING=1` no env). É single-shot: a próxima chamada
+ * sempre devolve `startListening=false` mesmo que o webview faça reload.
+ *
+ * Quando o app está rodando no navegador / sem Tauri, devolve um snapshot
+ * idle honesto em vez de quebrar. O overlay nunca dispara gravação a partir
+ * de um payload inventado — só quando Rust confirma o sinal.
+ */
+export interface VoxAmbientLaunchSnapshot {
+  schema: 'atlas.vox.ambient_launch.v1'
+  startListening: boolean
+  /** `none` quando nada pediu; `cli`/`env`/`cli_and_env` quando pediu. */
+  source: 'none' | 'cli' | 'env' | 'cli_and_env'
+}
+
+export async function voxAmbientConsumePendingLaunch(): Promise<VoxAmbientLaunchSnapshot> {
+  const idle: VoxAmbientLaunchSnapshot = {
+    schema: 'atlas.vox.ambient_launch.v1',
+    startListening: false,
+    source: 'none',
+  }
+  if (MODE !== 'tauri') return idle
+  try {
+    const raw = await voxInvoke<unknown>('vox_ambient_consume_pending_launch')
+    if (!raw || typeof raw !== 'object') return idle
+    const r = raw as Record<string, unknown>
+    const start = r.startListening === true
+    const sourceRaw = (r.source ?? 'none') as unknown
+    const source: VoxAmbientLaunchSnapshot['source'] =
+      sourceRaw === 'cli' || sourceRaw === 'env' || sourceRaw === 'cli_and_env'
+        ? sourceRaw
+        : 'none'
+    return {
+      schema: 'atlas.vox.ambient_launch.v1',
+      startListening: start,
+      source,
+    }
+  } catch (e) {
+    console.warn('[bridge] voxAmbientConsumePendingLaunch', e)
+    return idle
+  }
+}
+
 export async function voxEdgeStatus(): Promise<VoxEdgeStatus | null> {
   if (MODE !== 'tauri') return null
   try {
@@ -6659,6 +6708,229 @@ export async function voxDictionaryUpdate(
   return voxInvoke<VoxPersonalDictionary>('vox_dictionary_update', { next })
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// V6 · Reply Surface · settings + macOS `say` (texto curto)
+//
+// Persistido em `~/.atlas/vox/settings.json` (atlas.vox.settings.v1). O
+// overlay lê com `voxSettingsGet`, atualiza com `voxSettingsUpdate`, e
+// dispara fala com `voxSpeakShort(phraseKey)`. A whitelist canônica de
+// 4 frases vive no Rust — payload daqui NUNCA injeta texto cru.
+// ──────────────────────────────────────────────────────────────────────────
+
+export type VoxVoiceMode = 'off' | 'short'
+
+export interface VoxSettings {
+  schemaVersion: string
+  settingsVersion: string
+  voiceMode: VoxVoiceMode
+  voiceCooldownMs: number
+  updatedAt: string
+}
+
+/** Keys aceitas pelo `vox_speak_short`. Espelha exatamente
+ * `VoxShortPhrase::key()` no Rust. Qualquer key fora desta lista é
+ * rejeitada com `phrase_not_in_whitelist`. */
+export type VoxShortPhraseKey =
+  | 'understood'
+  | 'need_detail'
+  | 'blocked_safety'
+  | 'prompt_ready'
+
+export interface VoxSpeakResult {
+  ok: boolean
+  spoken: boolean
+  phraseKey: string
+  phraseText: string | null
+  platform: string
+  voiceMode: string
+  reason: string | null
+  cooldownRemainingMs: number | null
+}
+
+const VOX_VOICE_MODE_VALUES: readonly VoxVoiceMode[] = ['off', 'short']
+
+function parseVoxVoiceMode(raw: unknown): VoxVoiceMode {
+  if (typeof raw === 'string' && (VOX_VOICE_MODE_VALUES as readonly string[]).includes(raw)) {
+    return raw as VoxVoiceMode
+  }
+  return 'off'
+}
+
+function defaultVoxSettings(): VoxSettings {
+  return {
+    schemaVersion: 'atlas.vox.settings.v1',
+    settingsVersion: '0.1.0',
+    voiceMode: 'off',
+    voiceCooldownMs: 5_000,
+    updatedAt: '',
+  }
+}
+
+function normaliseVoxSettings(raw: unknown): VoxSettings {
+  if (!raw || typeof raw !== 'object') return defaultVoxSettings()
+  const r = raw as Record<string, unknown>
+  const schemaVersion =
+    typeof r.schema_version === 'string'
+      ? r.schema_version
+      : typeof r.schemaVersion === 'string'
+        ? r.schemaVersion
+        : 'atlas.vox.settings.v1'
+  const settingsVersion =
+    typeof r.settings_version === 'string'
+      ? r.settings_version
+      : typeof r.settingsVersion === 'string'
+        ? r.settingsVersion
+        : '0.1.0'
+  const voiceMode = parseVoxVoiceMode(r.voice_mode ?? r.voiceMode)
+  const voiceCooldownRaw = r.voice_cooldown_ms ?? r.voiceCooldownMs
+  const voiceCooldownMs =
+    typeof voiceCooldownRaw === 'number' && Number.isFinite(voiceCooldownRaw)
+      ? Math.max(1_000, Math.min(60_000, Math.floor(voiceCooldownRaw)))
+      : 5_000
+  const updatedAt =
+    typeof r.updated_at === 'string'
+      ? r.updated_at
+      : typeof r.updatedAt === 'string'
+        ? r.updatedAt
+        : ''
+  return { schemaVersion, settingsVersion, voiceMode, voiceCooldownMs, updatedAt }
+}
+
+/** Carrega settings local. Fora do runtime Tauri (browser dev) devolve
+ * default conservador (voz desligada) — o overlay só persiste/escreve em
+ * Tauri. */
+export async function voxSettingsGet(): Promise<VoxSettings> {
+  if (MODE !== 'tauri') return defaultVoxSettings()
+  try {
+    const raw = await voxInvoke<unknown>('vox_settings_get')
+    return normaliseVoxSettings(raw)
+  } catch (e) {
+    console.warn('[bridge] voxSettingsGet', e)
+    return defaultVoxSettings()
+  }
+}
+
+/** Atualiza `voice_mode` no disco. Devolve a settings persistida. */
+export async function voxSettingsUpdate(voiceMode: VoxVoiceMode): Promise<VoxSettings> {
+  if (MODE !== 'tauri') {
+    // dev/browser: devolve default sem persistir (não temos onde gravar).
+    return { ...defaultVoxSettings(), voiceMode }
+  }
+  if (!(VOX_VOICE_MODE_VALUES as readonly string[]).includes(voiceMode)) {
+    throw new Error(`voxSettingsUpdate: voice_mode inválido: ${voiceMode}`)
+  }
+  const raw = await voxInvoke<unknown>('vox_settings_update', { voiceMode })
+  return normaliseVoxSettings(raw)
+}
+
+function normaliseVoxSpeakResult(raw: unknown): VoxSpeakResult {
+  const r = (raw ?? {}) as Record<string, unknown>
+  return {
+    ok: r.ok === true,
+    spoken: r.spoken === true,
+    phraseKey: typeof r.phraseKey === 'string'
+      ? r.phraseKey
+      : typeof r.phrase_key === 'string' ? (r.phrase_key as string) : '',
+    phraseText:
+      typeof r.phraseText === 'string'
+        ? r.phraseText
+        : typeof r.phrase_text === 'string'
+          ? (r.phrase_text as string)
+          : null,
+    platform: typeof r.platform === 'string' ? r.platform : 'unknown',
+    voiceMode: typeof r.voiceMode === 'string'
+      ? r.voiceMode
+      : typeof r.voice_mode === 'string' ? (r.voice_mode as string) : 'unknown',
+    reason:
+      typeof r.reason === 'string' ? r.reason : null,
+    cooldownRemainingMs:
+      typeof r.cooldownRemainingMs === 'number'
+        ? r.cooldownRemainingMs
+        : typeof r.cooldown_remaining_ms === 'number'
+          ? (r.cooldown_remaining_ms as number)
+          : null,
+  }
+}
+
+/** Dispara fala curta no macOS via `say`. Whitelist canônica:
+ *   - `understood`     → "Entendi."
+ *   - `need_detail`    → "Preciso de um detalhe."
+ *   - `blocked_safety` → "Bloqueei por segurança."
+ *   - `prompt_ready`   → "Prompt pronto."
+ *
+ * NUNCA falha o fluxo do overlay: erros do `say` viram `{ok:false, spoken:false}`.
+ * Cooldown global é gerido no Rust — não precisa debounce no frontend. */
+export async function voxSpeakShort(phraseKey: VoxShortPhraseKey): Promise<VoxSpeakResult> {
+  if (MODE !== 'tauri') {
+    return {
+      ok: false,
+      spoken: false,
+      phraseKey,
+      phraseText: null,
+      platform: 'browser',
+      voiceMode: 'off',
+      reason: 'tauri_unavailable',
+      cooldownRemainingMs: null,
+    }
+  }
+  try {
+    const raw = await voxInvoke<unknown>('vox_speak_short', { phraseKey })
+    return normaliseVoxSpeakResult(raw)
+  } catch (e) {
+    console.warn('[bridge] voxSpeakShort', e)
+    return {
+      ok: false,
+      spoken: false,
+      phraseKey,
+      phraseText: null,
+      platform: 'unknown',
+      voiceMode: 'off',
+      reason: e instanceof Error ? e.message : String(e),
+      cooldownRemainingMs: null,
+    }
+  }
+}
+
+/** Mapeia estado V5/V4 do overlay para a frase curta canônica que faz
+ * sentido falar/exibir naquele momento. Devolve `null` em estados onde
+ * NÃO deve haver fala (opinião pura, transitório, sem produto entregue).
+ *
+ * Regras:
+ *   - intervention=disagree blocking          → 'blocked_safety'
+ *   - intervention=clarify                    → 'need_detail'
+ *   - sem intervenção + compiled_prompt pronto (intent_compile/prompt_polish) → 'prompt_ready'
+ *   - sem intervenção + dictation/governed sem prompt → 'understood'
+ *   - qualquer outro estado                   → null  (não fala)
+ */
+export function voxReplyPhraseForState(input: {
+  intervention: VoxInterlocutorIntervention | null
+  blocking: boolean
+  mode: VoxMode | null
+  hasCompiledPrompt: boolean
+}): VoxShortPhraseKey | null {
+  if (input.intervention === 'disagree' && input.blocking) {
+    return 'blocked_safety'
+  }
+  if (input.intervention === 'clarify') {
+    return 'need_detail'
+  }
+  // Opinião pura (suggest_better_prompt / caution / disagree não-bloqueante)
+  // NÃO ganha fala — texto basta.
+  if (
+    input.intervention === 'suggest_better_prompt'
+    || input.intervention === 'caution'
+    || input.intervention === 'disagree'
+  ) {
+    return null
+  }
+  // Sem intervenção: depende de ter prompt compilado.
+  if (input.hasCompiledPrompt) return 'prompt_ready'
+  if (input.mode === 'dictation' || input.mode === 'governed_execute') {
+    return 'understood'
+  }
+  return null
+}
+
 export async function voxSttTranscribeDebugText(request: {
   rawText: string
   sessionId?: string
@@ -6739,8 +7011,10 @@ function normalizeSttErrorPayload(payload: {
   if (zeroSignal) {
     return {
       code: 'audio_input_invalid',
+      // V6-MIC-AIRPODS-FINAL · canon: ação primeiro (escolher microfone),
+      // sem jargão técnico (rms/peak/active_ratio nunca aparecem aqui).
       message:
-        'O Atlas não recebeu sinal do microfone. Verifique a permissão do microfone para Atlas Code e grave de novo.',
+        'Não recebi áudio. Confira se o microfone certo está selecionado no macOS e tente de novo.',
       modelStatus: payload.modelStatus,
     }
   }
@@ -6882,8 +7156,9 @@ export interface VoxKernelIntentRequest {
   transcript: VoxTranscript
   /** Optional source hint propagated into VoxIntentPacket. */
   source?: VoxSource
-  /** Optional mode override; defaults to `dictation` for V0. */
-  modeRequested?: VoxMode
+  /** Optional mode override; defaults to `dictation` for V0. V4 accepts
+   * `'auto'` para deixar o VoxAutoModeRouter escolher no Kernel. */
+  modeRequested?: VoxMode | 'auto'
   /** Operator-selected provider bias for `intent_compile`. */
   providerHint?: VoxProviderHint
   /** Operator-selected output format for `intent_compile`. */
@@ -6898,6 +7173,84 @@ export interface VoxKernelIntentRequest {
    * bridge.ts decoupled from the snapshot type — the canonical shape lives
    * in components/vox/voxContextSnapshot.ts. */
   contextSnapshot?: Record<string, unknown> | null
+  /** V4 · `true` quando o operador trocou o modo manualmente DEPOIS de o
+   * Atlas ter sugerido outro (clicou "Trocar modo" na cabine "Atlas
+   * entendeu"). Apenas telemetria — o Kernel registra um evento, não muda
+   * comportamento. `false`/`undefined` na primeira chamada. */
+  manualOverride?: boolean
+}
+
+export function buildVoxKernelIntentPayload(
+  request: VoxKernelIntentRequest,
+): Record<string, unknown> {
+  const transcript = request.transcript
+  const body: Record<string, unknown> = {
+    schema: transcript.schema,
+    session_id: transcript.sessionId,
+    transcript_id: transcript.transcriptId,
+    audio_handle: transcript.audioHandle,
+    language: transcript.language,
+    engine: transcript.engine,
+    engine_invocation_id: transcript.engineInvocationId,
+    text: transcript.text,
+    text_raw: transcript.textRaw,
+    confidence: transcript.confidence,
+    words: transcript.words,
+    personal_dictionary_applied: transcript.personalDictionaryApplied,
+    post_corrections: transcript.postCorrections,
+    latency_ms: transcript.latencyMs,
+    noise_signals: transcript.noiseSignals ?? undefined,
+    raw_pcm_persisted: transcript.rawPcmPersisted,
+    eclipse_check: transcript.eclipseCheck,
+    source: request.source,
+    mode_requested: request.modeRequested ?? 'auto',
+  }
+  if (request.providerHint && request.providerHint !== 'auto') {
+    body.provider_hint = request.providerHint
+  }
+  if (request.outputFormat && request.outputFormat !== 'auto') {
+    body.output_format = request.outputFormat
+  }
+  if (request.contextRefs && request.contextRefs.length > 0) {
+    body.context_refs = request.contextRefs.map((c) => ({
+      kind: c.kind,
+      ref: c.ref,
+      resolved: c.resolved,
+    }))
+  }
+  // V4 · forward the structured context snapshot when the surface produced one.
+  // The Kernel uses it to resolve dêixis. We forward as-is so the snapshot
+  // schema stays owned by the canonical builder, not by the bridge.
+  if (request.contextSnapshot && typeof request.contextSnapshot === 'object') {
+    body.context_snapshot = request.contextSnapshot
+  }
+  // V4 · operator-driven mode override flag (telemetry only on backend).
+  if (request.manualOverride === true) {
+    body.manual_override = true
+  }
+  return body
+}
+
+/** V4 · canonical Auto Mode Decision shape returned by the Kernel
+ * (`atlas.vox.auto_mode_decision.v1`). Surface this so the overlay can show
+ * confidence + alternatives honestly without re-inferring from `suggestedMode`. */
+export interface VoxAutoModeAlternative {
+  mode: VoxMode
+  confidence: number
+  reasonPtBr: string
+}
+
+export interface VoxAutoModeDecision {
+  selectedMode: VoxMode
+  confidence: number
+  reasonPtBr: string
+  needsConfirmation: boolean
+  alternatives: VoxAutoModeAlternative[]
+  /** R4 marker label when the router routed to governed_execute because of a
+   * destructive token (rm -rf, sudo, drop database, …). `null` otherwise. */
+  r4Marker: string | null
+  /** Schema version stamp from the Kernel (`0.1.0` at V4 W2). */
+  routerVersion: string | null
 }
 
 /** V3 Governed Executor · confirmation request returned by /ai/vox/intent
@@ -6994,6 +7347,355 @@ export interface VoxKernelIntentResponse {
   /** Short human-readable reason the Kernel chose `suggestedMode`. Optional,
    * only used to enrich the V4 confirmation card. */
   suggestedModeReason: string | null
+  /** V4 · full Auto Mode Decision payload (confidence, alternatives, R4
+   * marker). `null` when backend didn't ship it yet — overlay falls back to
+   * `suggestedMode`/`suggestedModeReason` and stays honest. */
+  autoModeDecision: VoxAutoModeDecision | null
+  /** V4 · how the effective compile mode was resolved on the Kernel side.
+   *   `auto_router` · cliente pediu mode_requested=auto e o router decidiu.
+   *   `manual_override` · cliente pinou um modo DIFERENTE da sugestão e
+   *      passou manual_override=true.
+   *   `manual_diverges_from_suggestion` · cliente pinou um modo diferente
+   *      sem flag de override (ainda V3 puro).
+   *   `manual_matches_suggestion` · cliente pinou um modo que bate com a
+   *      sugestão (caminho mais comum).
+   *   `null` em backends antigos. */
+  modeResolution:
+    | 'auto_router'
+    | 'manual_override'
+    | 'manual_diverges_from_suggestion'
+    | 'manual_matches_suggestion'
+    | null
+  // ── V5-A · Symbiotic Interlocutor (deterministic conversational layer)
+  /** Decisão conversacional do policy V5-A. `null` quando o backend ainda
+   * não publicou o campo (compatibilidade com Kernels antigos). Quando vier,
+   * `intervention === 'none'` significa "policy decidiu não falar" — UI não
+   * renderiza nada. */
+  interlocutor: VoxInterlocutorDecision | null
+  // ── V6.5 · Smart Flow Decision (deterministic preview layer)
+  /** Decisão de fluxo inteligente. `null` quando o backend ainda não publicou
+   * — UI continua funcionando via `describeUnderstanding()` legado. Quando
+   * vier, dirige o preview principal (Ouvi/Entendi/Vou fazer + clarification
+   * + risco). **NUNCA exposto cru na UI** — apenas o view-model composto. */
+  flowDecision: VoxFlowDecision | null
+  // ── V6.5 · Prompt Self-Critic envelope (additive opcional + nullable).
+  /** Diagnóstico determinístico do `compiled_prompt`. Vem de
+   * `atlas.vox.prompt_quality.v1` (backend `VoxPromptSelfCritic`). `null`
+   * quando o backend antigo (V6 inicial) ainda não emite o envelope — UI
+   * continua funcionando sem ele. Quando vier, alimenta painéis de
+   * diagnóstico interno; UI principal nunca renderiza o objeto cru.
+   *
+   * **Opcional** (`?:`) intencionalmente: construtores legados de response
+   * (testes V6, hooks pré-V6.5) continuam compilando sem precisar declarar
+   * o campo. Código consumidor lê via `response.promptQuality ?? null`. */
+  promptQuality?: VoxPromptQuality | null
+}
+
+/**
+ * V6.5 · Prompt Self-Critic envelope (`atlas.vox.prompt_quality.v1`).
+ *
+ * Determinístico, sem LLM. Emitido pelo backend dentro de
+ * `intent_packet.prompt_quality` (também espelhado em
+ * `compiler_telemetry.prompt_quality`). Campos novos podem aparecer
+ * — o parser ignora tudo que não conhece, então adições futuras
+ * permanecem additive.
+ */
+export interface VoxPromptQuality {
+  schema: 'atlas.vox.prompt_quality.v1'
+  version: string
+  /** `pass | warn | fail` — derivado do `score`. */
+  status: 'pass' | 'warn' | 'fail'
+  /** Score em [0, 1]. */
+  score: number
+  /** Códigos curtos dos critérios que falharam (ex.: `boilerplate_detected`,
+   *  `negations_lost`). UI nunca mostra cru. */
+  issues: string[]
+  /** `true` quando ≥ 1 critério hard falhou (negação perdida, risco
+   *  suavizado, ação não autorizada) — operador precisa investigar. */
+  needsReview: boolean
+  /** `true` quando o backend patchou determinísticamente o prompt
+   *  (remoção de boilerplate, restauração de bloco canônico). */
+  repaired: boolean
+}
+
+/**
+ * V6.5 · Smart Flow Decision (`atlas.vox.flow_decision.v1`).
+ *
+ * Camada determinística — sem LLM, sem rede — emitida pelo backend Atlas Vox
+ * em `/ai/vox/intent`. Substitui a derivação manual do destino/risco que o
+ * desktop fazia. **Nunca renderizada crua**: o overlay só consome via
+ * `composeSmartPreview()`.
+ */
+/**
+ * Destinos canônicos emitidos pelo `VoxFlowOrchestrator` (backend).
+ *
+ * Pin direto contra o enum PHP `DESTINATION_*` — qualquer divergência aqui
+ * faria o parser cair no fallback e perderia preview rico. Os valores são
+ * **deliberadamente** curtos (sem sufixo `_cli`) porque o backend trata
+ * "Codex" / "Claude" como destinos humanos, não como executors.
+ */
+export type VoxFlowDestination =
+  | 'clipboard'
+  | 'atlas'
+  | 'codex'
+  | 'claude'
+  | 'terminal_proposal'
+  | 'note'
+  | 'none'
+
+export type VoxFlowConfidence = 'high' | 'medium' | 'low'
+
+export interface VoxFlowDecision {
+  /** Schema canônico — pinado pra detectar drift. */
+  schema: 'atlas.vox.flow_decision.v1'
+  /** Versão do policy que produziu a decisão (audit). */
+  version: string
+  /** Modo efetivo escolhido pelo backend (espelha `suggestedMode` do
+   *  `auto_mode_decision` quando o operador deixou em auto). */
+  mode: VoxMode | null
+  /** Onde a resposta vai parar: Codex/Claude CLI, terminal proposal,
+   *  clipboard local, Atlas Inbox, ou auto-contido. */
+  destination: VoxFlowDestination | null
+  /** Risk class final que decide o tom do preview. UI nunca mostra
+   *  "R0/R4" cru — só usa para escolher copy. */
+  riskClass: VoxRiskClass | null
+  /** Confiança da classificação. Quando `low`, UI mostra "Não tenho
+   *  certeza" + opções de editar/regravar. */
+  confidence: VoxFlowConfidence | null
+  /** `true` quando o backend precisa que o operador responda algo antes de
+   *  prosseguir (ambiguidade real). */
+  needsClarification: boolean
+  /** Pergunta curta em PT-BR — só populada quando `needsClarification=true`. */
+  clarifyingQuestion: string | null
+  /** Triplet humano canônico. */
+  whatIHeard: string | null
+  whatIUnderstood: string | null
+  whatIWillDo: string | null
+  /** Justificativa curta em PT-BR — entra em "Detalhes avançados". */
+  whyThisFlow: string | null
+  /** Caminho seguro alternativo descrito em PT-BR (ex.: "salvar como nota").
+   *  Aparece como fallback quando o operador quer recuar. */
+  safeFallback: string | null
+}
+
+/**
+ * V5-A · Symbiotic Interlocutor decision.
+ *
+ * Camada determinística (sem LLM, sem rede) que decide se o Atlas deve
+ * perguntar, advertir, discordar ou sugerir prompt melhor antes da execução.
+ * O frontend só renderiza algo quando `intervention !== 'none'`. `blocking`
+ * só vai a `true` em risco/política dura (R4 ou marker destrutivo crítico).
+ */
+export type VoxInterlocutorIntervention =
+  | 'none'
+  | 'clarify'
+  | 'caution'
+  | 'disagree'
+  | 'suggest_better_prompt'
+
+export type VoxInterlocutorReasonCode =
+  | 'ambiguous_reference'
+  | 'destructive_risk'
+  | 'missing_context'
+  | 'weak_prompt'
+  | 'safer_path_available'
+  | 'none'
+
+export interface VoxInterlocutorDecision {
+  schema: 'atlas.vox.interlocutor_decision.v1'
+  intervention: VoxInterlocutorIntervention
+  /** Mensagem curta em PT-BR — útil, direta, sem julgamento emocional. */
+  messagePtBr: string
+  /** Pergunta em PT-BR (vazia para `caution` / `none`). */
+  questionPtBr: string
+  /** `true` só em risco destrutivo R4 ou política dura. Confirmar deve ficar
+   * desabilitado no overlay quando este flag estiver ativo. */
+  blocking: boolean
+  reasonCode: VoxInterlocutorReasonCode
+  /** Edits sugeridos (ex.: safer_path, add_sections). `null` quando nenhum. */
+  suggestedEdit: Record<string, unknown> | null
+  /** Versão do policy que produziu a decisão — útil para audit no overlay. */
+  policyVersion: string
+}
+
+const VOX_INTERLOCUTOR_INTERVENTIONS: readonly VoxInterlocutorIntervention[] = [
+  'none',
+  'clarify',
+  'caution',
+  'disagree',
+  'suggest_better_prompt',
+] as const
+
+const VOX_INTERLOCUTOR_REASONS: readonly VoxInterlocutorReasonCode[] = [
+  'ambiguous_reference',
+  'destructive_risk',
+  'missing_context',
+  'weak_prompt',
+  'safer_path_available',
+  'none',
+] as const
+
+/**
+ * V5-A · pure parser do payload `interlocutor` retornado por `/ai/vox/intent`.
+ *
+ * Quando o backend não envia o campo (Kernels antigos), devolve `null` para
+ * que a UI possa esconder o painel honestamente em vez de inventar um
+ * `intervention=none`. Aceita `snake_case` e `camelCase`; campos ausentes
+ * caem em defaults conservadores.
+ */
+export function parseInterlocutorDecision(
+  raw: unknown,
+): VoxInterlocutorDecision | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const interventionRaw = (r.intervention ?? null) as unknown
+  if (typeof interventionRaw !== 'string') return null
+  const intervention =
+    (VOX_INTERLOCUTOR_INTERVENTIONS as readonly string[]).includes(interventionRaw)
+      ? (interventionRaw as VoxInterlocutorIntervention)
+      : null
+  if (!intervention) return null
+  const reasonRaw = (r.reasonCode ?? r.reason_code ?? null) as unknown
+  const reasonCode =
+    typeof reasonRaw === 'string'
+    && (VOX_INTERLOCUTOR_REASONS as readonly string[]).includes(reasonRaw)
+      ? (reasonRaw as VoxInterlocutorReasonCode)
+      : 'none'
+  const messageRaw = (r.messagePtBr ?? r.message_pt_br ?? '') as unknown
+  const questionRaw = (r.questionPtBr ?? r.question_pt_br ?? '') as unknown
+  const policyVersionRaw = (r.policyVersion ?? r.policy_version ?? '') as unknown
+  const suggestedEditRaw = (r.suggestedEdit ?? r.suggested_edit ?? null) as unknown
+  const suggestedEdit =
+    suggestedEditRaw && typeof suggestedEditRaw === 'object'
+      ? (suggestedEditRaw as Record<string, unknown>)
+      : null
+  return {
+    schema: 'atlas.vox.interlocutor_decision.v1',
+    intervention,
+    messagePtBr: typeof messageRaw === 'string' ? messageRaw : '',
+    questionPtBr: typeof questionRaw === 'string' ? questionRaw : '',
+    blocking: r.blocking === true,
+    reasonCode,
+    suggestedEdit,
+    policyVersion: typeof policyVersionRaw === 'string' ? policyVersionRaw : '',
+  }
+}
+
+// V4 · `parseVoxAutoModeDecision` mora num módulo puro
+// (`./voxAutoModeDecision`) para poder ser testado sem depender de
+// `import.meta.env` / Vite runtime. Importamos local e re-exportamos pela
+// compat da API existente (`import { parseVoxAutoModeDecision } from '.../bridge'`).
+import { parseVoxAutoModeDecisionShape as parseVoxAutoModeDecisionImpl } from './voxAutoModeDecision'
+export const parseVoxAutoModeDecision = parseVoxAutoModeDecisionImpl
+
+/**
+ * V6.5 · parser tolerante para `flow_decision`. Aceita snake_case ou
+ * camelCase, devolve `null` quando o campo está ausente ou inválido —
+ * compatível com backends antigos.
+ */
+export function parseVoxFlowDecision(raw: unknown): VoxFlowDecision | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+
+  const modeAllowed: VoxMode[] = ['dictation', 'prompt_polish', 'intent_compile', 'governed_execute']
+  const destAllowed: VoxFlowDestination[] = [
+    'clipboard',
+    'atlas',
+    'codex',
+    'claude',
+    'terminal_proposal',
+    'note',
+    'none',
+  ]
+  const riskAllowed: VoxRiskClass[] = ['R0', 'R1', 'R2', 'R3', 'R4']
+  const confidenceAllowed: VoxFlowConfidence[] = ['high', 'medium', 'low']
+
+  const pick = (...keys: string[]): unknown => {
+    for (const k of keys) {
+      if (k in r && r[k] !== undefined) return r[k]
+    }
+    return undefined
+  }
+  const pickStr = (...keys: string[]): string | null => {
+    const v = pick(...keys)
+    return typeof v === 'string' ? v : null
+  }
+  const pickEnum = <T extends string>(allowed: readonly T[], ...keys: string[]): T | null => {
+    const v = pickStr(...keys)
+    return v && (allowed as readonly string[]).includes(v) ? (v as T) : null
+  }
+
+  // schema é obrigatório pra confirmar canon; rejeita silenciosamente quando
+  // não bate (evita renderizar dado de outro contrato).
+  const schema = pickStr('schema')
+  if (schema && schema !== 'atlas.vox.flow_decision.v1') return null
+
+  const needsClarification = pick('needs_clarification', 'needsClarification') === true
+
+  return {
+    schema: 'atlas.vox.flow_decision.v1',
+    version: pickStr('version') ?? '0.1.0',
+    mode: pickEnum(modeAllowed, 'mode'),
+    destination: pickEnum(destAllowed, 'destination'),
+    riskClass: pickEnum(riskAllowed, 'risk_class', 'riskClass'),
+    confidence: pickEnum(confidenceAllowed, 'confidence'),
+    needsClarification,
+    clarifyingQuestion: pickStr('clarifying_question', 'clarifyingQuestion'),
+    whatIHeard: pickStr('what_i_heard', 'whatIHeard'),
+    whatIUnderstood: pickStr('what_i_understood', 'whatIUnderstood'),
+    whatIWillDo: pickStr('what_i_will_do', 'whatIWillDo'),
+    whyThisFlow: pickStr('why_this_flow', 'whyThisFlow'),
+    safeFallback: pickStr('safe_fallback', 'safeFallback'),
+  }
+}
+
+/**
+ * V6.5 · parser tolerante para `prompt_quality`. Aceita snake_case ou
+ * camelCase em qualquer nível conhecido (root, `intent_packet`,
+ * `compiler_telemetry`). Devolve `null` quando o backend antigo (V6
+ * inicial) não emite o envelope. Hardening:
+ *   - status inválido → fallback `'warn'`
+ *   - score fora de [0, 1] → clamp
+ *   - issues que não são string → filtradas
+ * Tudo isso para que clientes V6.5 nunca quebrem mesmo se o envelope
+ * vier malformado em backends transitórios.
+ */
+export function parseVoxPromptQuality(raw: unknown): VoxPromptQuality | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const schema = r.schema
+  if (schema !== 'atlas.vox.prompt_quality.v1') return null
+
+  const statusRaw = r.status
+  const status: VoxPromptQuality['status'] =
+    statusRaw === 'pass' || statusRaw === 'warn' || statusRaw === 'fail'
+      ? statusRaw
+      : 'warn'
+
+  let score = typeof r.score === 'number' && Number.isFinite(r.score) ? r.score : 0
+  if (score < 0) score = 0
+  if (score > 1) score = 1
+
+  const issuesRaw = Array.isArray(r.issues) ? r.issues : []
+  const issues = issuesRaw.filter((x): x is string => typeof x === 'string')
+
+  const needsReview = Boolean((r.needs_review ?? r.needsReview) === true)
+  const repaired = Boolean(r.repaired === true)
+
+  const versionRaw = r.version
+  const version = typeof versionRaw === 'string' && versionRaw !== ''
+    ? versionRaw
+    : '0.0.0'
+
+  return {
+    schema: 'atlas.vox.prompt_quality.v1',
+    version,
+    status,
+    score,
+    issues,
+    needsReview,
+    repaired,
+  }
 }
 
 export async function voxKernelIntent(
@@ -7034,6 +7736,11 @@ export async function voxKernelIntent(
     confirmationRequest: null,
     suggestedMode: null,
     suggestedModeReason: null,
+    autoModeDecision: null,
+    modeResolution: null,
+    interlocutor: null,
+    flowDecision: null,
+    promptQuality: null,
   })
 
   if (!HTTP_BASE && MODE !== 'http') {
@@ -7042,33 +7749,10 @@ export async function voxKernelIntent(
       'Kernel Vox HTTP endpoint não configurado (VITE_ATLAS_SERVER_URL ausente).',
     )
   }
-  // Body uses snake_case for the canonical fields so the Kernel doesn't have
-  // to translate. The `transcript` is forwarded as-is (it already follows the
-  // VoxTranscript.v1 wire shape).
-  const body: Record<string, unknown> = {
-    transcript: request.transcript,
-    source: request.source,
-    mode_requested: request.modeRequested,
-  }
-  if (request.providerHint && request.providerHint !== 'auto') {
-    body.provider_hint = request.providerHint
-  }
-  if (request.outputFormat && request.outputFormat !== 'auto') {
-    body.output_format = request.outputFormat
-  }
-  if (request.contextRefs && request.contextRefs.length > 0) {
-    body.context_refs = request.contextRefs.map((c) => ({
-      kind: c.kind,
-      ref: c.ref,
-      resolved: c.resolved,
-    }))
-  }
-  // V4 · forward the structured context snapshot when the surface produced one.
-  // The Kernel uses it to resolve dêixis. We forward as-is so the snapshot
-  // schema stays owned by the canonical builder, not by the bridge.
-  if (request.contextSnapshot && typeof request.contextSnapshot === 'object') {
-    body.context_snapshot = request.contextSnapshot
-  }
+  // /ai/vox/intent validates VoxTranscript.v1 fields at the root. Keep this
+  // conversion explicit so React state can stay camelCase while the Kernel
+  // receives canonical snake_case.
+  const body = buildVoxKernelIntentPayload(request)
   try {
     const raw = await fetchHttp<unknown>('/ai/vox/intent', {
       method: 'POST',
@@ -7209,6 +7893,24 @@ export async function voxKernelIntent(
         || (confirmationRequest && confirmationRequest.confirmationToken),
     )
 
+    // V4 · auto_mode_decision parsing (snake/camel tolerant). When the
+    // Kernel didn't ship the field, parseVoxAutoModeDecision returns null
+    // so the UI can render the honest "modo sugerido indisponível" path.
+    const autoModeDecision = parseVoxAutoModeDecision(r)
+
+    const modeResolutionRaw = (r.mode_resolution ?? r.modeResolution) as unknown
+    const modeResolutionAllowed = [
+      'auto_router',
+      'manual_override',
+      'manual_diverges_from_suggestion',
+      'manual_matches_suggestion',
+    ] as const
+    const modeResolution =
+      typeof modeResolutionRaw === 'string'
+      && (modeResolutionAllowed as readonly string[]).includes(modeResolutionRaw)
+        ? (modeResolutionRaw as VoxKernelIntentResponse['modeResolution'])
+        : null
+
     return {
       status: (r.status as VoxKernelIntentResponse['status']) ?? 'ok',
       receiptId: pickStr(['receiptId', 'receipt_id']),
@@ -7243,14 +7945,40 @@ export async function voxKernelIntent(
       actionsAvailable: pickList(['actionsAvailable', 'actions_available']),
       confirmationRequired,
       confirmationRequest,
-      suggestedMode: pickEnum<VoxMode>(
-        ['dictation', 'prompt_polish', 'intent_compile', 'governed_execute'] as const,
-        ['suggestedMode', 'suggested_mode'],
-        ['autoMode', 'auto_mode'],
-      ),
-      suggestedModeReason: pickStr(
-        ['suggestedModeReason', 'suggested_mode_reason'],
-        ['autoModeReason', 'auto_mode_reason'],
+      suggestedMode:
+        autoModeDecision?.selectedMode
+        ?? pickEnum<VoxMode>(
+          ['dictation', 'prompt_polish', 'intent_compile', 'governed_execute'] as const,
+          ['suggestedMode', 'suggested_mode'],
+          ['autoMode', 'auto_mode'],
+        ),
+      suggestedModeReason:
+        autoModeDecision?.reasonPtBr
+        ?? pickStr(
+          ['suggestedModeReason', 'suggested_mode_reason'],
+          ['autoModeReason', 'auto_mode_reason'],
+        ),
+      autoModeDecision,
+      modeResolution,
+      interlocutor: parseInterlocutorDecision(r.interlocutor),
+      // V6.5 · backend novo emite `flow_decision`; antigos não emitem — null
+      // mantém o overlay no fallback legado.
+      flowDecision: parseVoxFlowDecision(r.flow_decision ?? r.flowDecision),
+      // V6.5 · Self-Critic envelope. Vive primeiro em
+      // `intent_packet.prompt_quality`, com cópia em
+      // `compiler_telemetry.prompt_quality`. Olhamos os dois — o primeiro
+      // que vier vence; backends antigos não emitem nada → `null`.
+      promptQuality: parseVoxPromptQuality(
+        (intentPacketRaw && (intentPacketRaw as Record<string, unknown>)['prompt_quality'])
+          ?? r.prompt_quality
+          ?? r.promptQuality
+          ?? (intentPacketRaw
+            && ((intentPacketRaw as Record<string, unknown>)['compiler_telemetry'] as
+              | Record<string, unknown>
+              | undefined)
+            && ((intentPacketRaw as Record<string, unknown>)['compiler_telemetry'] as
+              Record<string, unknown>)['prompt_quality'])
+          ?? null,
       ),
     }
   } catch (e) {
@@ -7263,8 +7991,18 @@ export async function voxKernelIntent(
         'Kernel Vox V0 ainda não publicou /ai/vox/intent (Onda 2 / Claude C).',
       )
     }
-    return emptyResponse('error', msg)
+    return emptyResponse('error', humanVoxKernelIntentError(msg))
   }
+}
+
+function humanVoxKernelIntentError(message: string): string {
+  if (/\b422\b/.test(message) && /session id field is required/i.test(message)) {
+    return 'O Atlas recebeu a transcrição incompleta. Grave de novo ou tente enviar novamente.'
+  }
+  if (/\b422\b/.test(message) && /field is required/i.test(message)) {
+    return 'O Atlas recusou a transcrição por falta de dados obrigatórios. Grave de novo e tente novamente.'
+  }
+  return message
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -7577,6 +8315,11 @@ export type VoxEdgeEventName =
   | 'vox://hotkey-open-overlay'
   | 'vox://hotkey-eclipse'
   | 'vox://hotkey-status-changed'
+  // V6-A · ambient launch ping. Rust emits ONCE no boot quando detecta
+  // `--vox-start-listening` / `ATLAS_VOX_START_LISTENING=1`. O overlay também
+  // pode buscar via `voxAmbientConsumePendingLaunch` — o evento é só economia
+  // de uma round-trip pro caso comum.
+  | 'vox://ambient-launch-requested'
 
 /** V6.5 · status of the global hotkey runtime. The Rust side emits a
  * `vox://hotkey-status-changed` event with this shape so the UI can show
@@ -7998,6 +8741,61 @@ export interface VoxDogfoodSessionCreateRequest {
   eclipseUsed?: boolean
   /** Operator-typed note. Backend caps at 1000 chars — UI enforces matching. */
   note?: string | null
+  /** V6-E · envelope automático opcional. O backend sanitiza qualquer campo
+   * fora da whitelist canon antes de persistir. Não inclui transcript,
+   * prompt body, áudio nem clipboard — só sinais estruturais. */
+  autoEvent?: VoxDogfoodAutoEvent | null
+}
+
+/**
+ * V6-E · `atlas.vox.dogfood_event.v1` — sinais automáticos coletados pelo
+ * overlay no fim de cada sessão real. Tudo opcional, tudo
+ * estrutural/booleano. NUNCA contém transcript, prompt, áudio ou clipboard.
+ */
+export interface VoxDogfoodAutoEvent {
+  /** Modo sugerido pelo Auto Mode Router (V4) — `null` quando o backend
+   * não emitiu sugestão. */
+  suggestedMode?: VoxMode | null
+  /** Modo final que de fato compilou (operador pode ter trocado). */
+  finalMode?: VoxMode | null
+  /** True quando operador escolheu modo diferente da sugestão. */
+  manualOverride?: boolean
+  /** Confiança 0..1 do Auto Mode Router; backend clampeia se vier fora do
+   * intervalo. */
+  autoRouterConfidence?: number | null
+  /** True quando Symbiotic Interlocutor (V5) interveio. */
+  interventionPresent?: boolean
+  /** Tipo da intervenção (none/clarify/caution/disagree/suggest_better_prompt). */
+  interventionKind?:
+    | 'none'
+    | 'clarify'
+    | 'caution'
+    | 'disagree'
+    | 'suggest_better_prompt'
+  /** True se a sessão terminou sem texto transcrito (silêncio/cancel). */
+  emptyTranscript?: boolean
+  /** True se o STT engine falhou (modelo ausente, runtime error, etc). */
+  sttFailed?: boolean
+  /** Última ação do operador antes do fim. */
+  clickedAction?: 'insert' | 'send' | 'confirm' | 'cancel' | 'none'
+  /** Como a sessão foi disparada. `ambient_launch` quando V6-A consumiu o
+   * sinal; `ambient_helper` quando V6-B trampolinou; `hotkey` quando
+   * Option+Space veio do runtime in-process; `app` quando foi clique no
+   * botão Gravar dentro da janela. */
+  launchSource?: 'hotkey' | 'ambient_helper' | 'ambient_launch' | 'app' | 'unknown'
+  /** Código curto da última falha, se houver. Texto livre PT-BR ≤80 chars. */
+  errorKind?: string | null
+  /** Sempre `false` (canon V6 · áudio cru nunca persiste). UI pode omitir;
+   * backend força `false` antes de gravar. Mantido aqui para auditoria. */
+  rawAudioPersisted?: false
+}
+
+export interface VoxDogfoodFeedbackResponse {
+  status: VoxResponseStatus
+  /** Dogfood session id ecoado quando ok; null em erro/unavailable/not_found. */
+  dogfoodSessionId: string | null
+  regretFlag: boolean | null
+  message: string | null
 }
 
 export interface VoxDogfoodSessionPayload {
@@ -8043,6 +8841,65 @@ export interface VoxDogfoodReportResponse {
  * without an extra round-trip. */
 export const VOX_DOGFOOD_NOTE_MAX_CHARS = 1000
 
+/**
+ * V6-E · serializa o `VoxDogfoodAutoEvent` para o wire snake_case que o
+ * controller Laravel valida. Mantém a única-fonte da nomenclatura aqui;
+ * qualquer evolução do schema entra neste local.
+ *
+ * Garantias:
+ *   • `raw_audio_persisted` é hard-coded `false` (V6 canon, áudio cru
+ *     nunca persiste — mesmo que o caller envie outro valor).
+ *   • Campos não whitelistados são silentemente dropados ANTES de chegar
+ *     ao backend; o backend também sanitiza por segurança em dupla camada.
+ */
+function serializeVoxDogfoodAutoEvent(
+  ev: VoxDogfoodAutoEvent,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    raw_audio_persisted: false,
+  }
+  if (ev.suggestedMode !== undefined && ev.suggestedMode !== null) {
+    out.suggested_mode = ev.suggestedMode
+  }
+  if (ev.finalMode !== undefined && ev.finalMode !== null) {
+    out.final_mode = ev.finalMode
+  }
+  if (typeof ev.manualOverride === 'boolean') {
+    out.manual_override = ev.manualOverride
+  }
+  if (typeof ev.autoRouterConfidence === 'number'
+      && Number.isFinite(ev.autoRouterConfidence)) {
+    // Clamp client-side também — o backend re-clampeia, mas evitamos uma
+    // round-trip de validação para casos triviais.
+    out.auto_router_confidence = Math.max(
+      0,
+      Math.min(1, ev.autoRouterConfidence),
+    )
+  }
+  if (typeof ev.interventionPresent === 'boolean') {
+    out.intervention_present = ev.interventionPresent
+  }
+  if (ev.interventionKind) {
+    out.intervention_kind = ev.interventionKind
+  }
+  if (typeof ev.emptyTranscript === 'boolean') {
+    out.empty_transcript = ev.emptyTranscript
+  }
+  if (typeof ev.sttFailed === 'boolean') {
+    out.stt_failed = ev.sttFailed
+  }
+  if (ev.clickedAction) {
+    out.clicked_action = ev.clickedAction
+  }
+  if (ev.launchSource) {
+    out.launch_source = ev.launchSource
+  }
+  if (typeof ev.errorKind === 'string' && ev.errorKind.length > 0) {
+    out.error_kind = ev.errorKind.slice(0, 80)
+  }
+  return out
+}
+
 /** Canonical dogfood outcomes for select/radio inputs. */
 export const VOX_DOGFOOD_OUTCOMES: readonly VoxDogfoodOutcome[] = [
   'success',
@@ -8083,6 +8940,9 @@ export async function voxDogfoodSessionCreate(
   if (request.note !== undefined && request.note !== null && request.note !== '') {
     // UI also enforces this — keep the bridge belt-and-braces.
     body.notes = request.note.slice(0, VOX_DOGFOOD_NOTE_MAX_CHARS)
+  }
+  if (request.autoEvent && typeof request.autoEvent === 'object') {
+    body.auto_event = serializeVoxDogfoodAutoEvent(request.autoEvent)
   }
 
   try {
@@ -8132,6 +8992,76 @@ export async function voxDogfoodSessionCreate(
       }
     }
     return { status: 'error', session: null, message: msg }
+  }
+}
+
+/**
+ * V6-E · POST /ai/vox/dogfood/session/{id}/feedback — pisca regret_flag.
+ *
+ * Usado pelo chip "Funcionou bem" (regretFlag=false) e "Marcar como ruim"
+ * (regretFlag=true) que aparece logo após o dogfood automático ser
+ * registrado. Idempotente: chamar duas vezes com o mesmo valor mantém o
+ * estado coerente.
+ *
+ * Falhas (404, network, etc.) NUNCA travam o overlay — o chamador trata o
+ * `status` e mostra apenas um chip discreto se algo der errado. Nunca
+ * mostra stack trace.
+ */
+export async function voxDogfoodSessionFeedback(
+  dogfoodSessionId: string,
+  regretFlag: boolean,
+): Promise<VoxDogfoodFeedbackResponse> {
+  if (!HTTP_BASE && MODE !== 'http') {
+    return {
+      status: 'unavailable',
+      dogfoodSessionId: null,
+      regretFlag: null,
+      message: 'Kernel HTTP base não configurado (VITE_ATLAS_SERVER_URL).',
+    }
+  }
+  if (!dogfoodSessionId || dogfoodSessionId.trim() === '') {
+    return {
+      status: 'error',
+      dogfoodSessionId: null,
+      regretFlag: null,
+      message: 'dogfood_session_id ausente',
+    }
+  }
+  try {
+    const raw = await fetchHttp<unknown>(
+      `/ai/vox/dogfood/session/${encodeURIComponent(dogfoodSessionId)}/feedback`,
+      { method: 'POST', body: { regret_flag: regretFlag } },
+    )
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    const sessionRaw = (r.session ?? {}) as Record<string, unknown>
+    const statusRaw = asNullableString(pickAny(r, ['status']))
+    if (statusRaw === 'not_found') {
+      return {
+        status: 'unavailable',
+        dogfoodSessionId: null,
+        regretFlag: null,
+        message: asNullableString(pickAny(r, ['message'])) ?? 'sessão não encontrada',
+      }
+    }
+    return {
+      status: 'ok',
+      dogfoodSessionId: asNullableString(
+        pickAny(sessionRaw, ['dogfoodSessionId', 'dogfood_session_id']),
+      ),
+      regretFlag: pickAny(sessionRaw, ['regretFlag', 'regret_flag']) === true,
+      message: asNullableString(pickAny(r, ['message'])),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/\b404\b/.test(msg)) {
+      return {
+        status: 'unavailable',
+        dogfoodSessionId: null,
+        regretFlag: null,
+        message: 'Kernel ainda não publicou /ai/vox/dogfood/session/{id}/feedback.',
+      }
+    }
+    return { status: 'error', dogfoodSessionId: null, regretFlag: null, message: msg }
   }
 }
 

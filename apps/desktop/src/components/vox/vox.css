@@ -34,7 +34,9 @@
   position: absolute;
   bottom: calc(100% + 10px);
   right: 0;
-  width: min(440px, calc(100% - 24px));
+  /* V6-VISUAL-POLISH-FINAL · respeita também o viewport (não só o pai).
+     Em viewport estreito o overlay encolhe sem overflow horizontal feio. */
+  width: min(440px, calc(100% - 24px), calc(100vw - 32px));
   max-height: 70vh;
   overflow-y: auto;
   background: var(--cc-surface-raised, #232f37);
@@ -50,6 +52,15 @@
   z-index: 40;
   color: var(--cc-text, #d6dde3);
   font-family: var(--cc-font-sans);
+}
+
+/* V6-VISUAL-POLISH-FINAL · em telas estreitas, mode segmented quebra em
+   duas linhas iguais (2x2) pra evitar texto cortado. */
+@media (max-width: 380px) {
+  .vox-mode-seg-btn {
+    flex-basis: calc(50% - 1px);
+    flex-grow: 0;
+  }
 }
 
 .vox-overlay-header {
@@ -238,6 +249,29 @@
 .vox-overlay-hint-warn { color: var(--cc-accent, #d4a85a); }
 .vox-overlay-hint-error { color: #f0c0c0; }
 
+/* V6-ES-B · dica de baixa confiança · link inline discreto */
+.vox-overlay-lowconf-hint {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.vox-overlay-lowconf-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.vox-overlay-lowconf-link:hover:not(:disabled) {
+  color: var(--cc-accent-strong, #e8b800);
+}
+.vox-overlay-lowconf-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .vox-overlay-transcript,
 .vox-overlay-debug-input {
   font-family: var(--cc-font-sans);
@@ -384,6 +418,15 @@
   opacity: 0.6;
 }
 
+/* V6-G · botão discreto de recovery pós-sessão. Vive logo abaixo da CTA
+   principal e fica à direita, fora do peso visual do "Gravar de novo". */
+.vox-v4-record-stop {
+  align-self: flex-end;
+  margin-top: 4px;
+  font-size: 11.5px;
+  padding: 4px 10px;
+}
+
 .vox-v4-understanding {
   gap: 8px;
 }
@@ -396,6 +439,144 @@
   color: var(--cc-text-strong, #ecf0f3);
   font-variation-settings: 'wght' 540;
   letter-spacing: 0;
+}
+
+/* V6.5 · Smart Preview block — substitui a linha legada quando o backend
+   envia `flow_decision`. Layout limpo, sem overflow, sem jargão. */
+.vox-smart-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vox-smart-preview-eyebrow {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-smart-preview-triplet {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.vox-smart-preview-line {
+  display: contents;
+}
+
+.vox-smart-preview-line-label {
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-text-muted, #b3bcc4);
+  letter-spacing: 0;
+  align-self: start;
+  padding-top: 1px;
+}
+
+.vox-smart-preview-line-value {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 520;
+  letter-spacing: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.vox-smart-preview-clarification {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(212, 168, 90, 0.06);
+  border-left: 2px solid var(--cc-accent, #d4a85a);
+}
+
+.vox-smart-preview-question {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 540;
+}
+
+.vox-smart-preview-clarify-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vox-smart-preview-clarify-label-text {
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-smart-preview-clarify-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--cc-surface-mute, #1a242b);
+  border: 1px solid var(--cc-border-muted, #2a3640);
+  color: var(--cc-text-strong, #ecf0f3);
+  font-family: var(--cc-font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.vox-smart-preview-clarify-input:focus {
+  outline: 2px solid var(--cc-accent, #d4a85a);
+  outline-offset: 1px;
+}
+
+.vox-smart-preview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vox-smart-preview-low-conf,
+.vox-smart-preview-block-reason {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.vox-smart-preview-safe-fallback {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+  letter-spacing: 0;
+}
+
+/* Estado destrutivo ganha contraste extra na borda esquerda. */
+.vox-smart-preview-blocked_destructive {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 2px solid #d97070;
+  background: rgba(217, 112, 112, 0.06);
+}
+
+.vox-smart-preview-low_confidence {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 2px solid var(--cc-accent, #d4a85a);
+  background: rgba(212, 168, 90, 0.04);
 }
 
 .vox-v4-suggestion {
@@ -496,28 +677,56 @@
   padding-top: 4px;
 }
 
+/* V6-VISUAL-POLISH-FINAL · flat — não é card-dentro-de-card. */
 .vox-v4-mode-switcher {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(233, 238, 242, 0.10);
-  margin-top: 2px;
+  padding: 8px 0 0;
+  margin-top: 4px;
+  border-top: 1px solid rgba(233, 238, 242, 0.06);
+  background: transparent;
+  border-radius: 0;
 }
 
 .vox-v4-mode-switcher-hint {
   margin: 0;
   font-size: 11px;
-  color: var(--cc-text-muted, #b3bcc4);
+  color: var(--cc-text-faint, #8a98a4);
   font-family: var(--cc-font-sans);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .vox-v4-mode-switcher-hint strong {
-  color: var(--cc-accent, #d4a85a);
+  color: var(--cc-text-muted, #b3bcc4);
   font-variation-settings: 'wght' 600;
+}
+
+.vox-v4-mode-switcher-reset {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--cc-accent, #d4a85a);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.vox-v4-mode-switcher-reset:hover:not(:disabled) {
+  color: var(--cc-accent-strong, #e0b770);
+}
+
+.vox-v4-mode-switcher-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.28);
+  border-radius: 3px;
+}
+
+.vox-v4-mode-switcher-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .vox-v4-footer-controls {
@@ -526,32 +735,284 @@
   gap: 6px;
 }
 
+/* ───────────────────────────────────────────────────────────── */
+/* V5-A · Symbiotic Interlocutor                                  */
+/* Cabine conversacional curta dentro da seção "Atlas entendeu".  */
+/* Sem card-dentro-de-card: bloco horizontal sóbrio com borda     */
+/* esquerda colorida por tipo de intervenção.                     */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-v4-interlocutor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 8px 12px;
+  border-left: 3px solid rgba(212, 168, 90, 0.45);
+  background: rgba(212, 168, 90, 0.06);
+  border-radius: 0 6px 6px 0;
+  margin-top: 2px;
+}
+
+.vox-v4-interlocutor-message {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--cc-text-strong, #ecf0f3);
+}
+
+.vox-v4-interlocutor-question {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-variation-settings: 'wght' 540;
+}
+
+.vox-v4-interlocutor-blocking-note {
+  margin: 2px 0 0;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: #f0c0c0;
+  letter-spacing: 0;
+}
+
+.vox-v4-interlocutor-blocking-note strong {
+  color: #f5d5d5;
+  font-variation-settings: 'wght' 620;
+}
+
+.vox-v4-interlocutor-clarify {
+  border-left-color: rgba(120, 180, 240, 0.45);
+  background: rgba(120, 180, 240, 0.05);
+}
+
+.vox-v4-interlocutor-caution {
+  border-left-color: rgba(220, 160, 90, 0.55);
+  background: rgba(220, 160, 90, 0.05);
+}
+
+.vox-v4-interlocutor-suggest_better_prompt {
+  border-left-color: rgba(212, 168, 90, 0.55);
+  background: rgba(212, 168, 90, 0.05);
+}
+
+.vox-v4-interlocutor-disagree {
+  border-left-color: rgba(220, 110, 110, 0.55);
+  background: rgba(220, 110, 110, 0.06);
+}
+
+.vox-v4-interlocutor-blocking {
+  border-left-color: rgba(220, 90, 90, 0.7);
+  background: rgba(220, 90, 90, 0.08);
+  box-shadow: 0 0 0 1px rgba(220, 90, 90, 0.18);
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* V6 · Reply Surface · "Atlas respondeu" + Voz pref             */
+/* ───────────────────────────────────────────────────────────── */
+
+.vox-v4-reply {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-left: 2px solid rgba(212, 168, 90, 0.35);
+  background: transparent;
+  font-family: var(--cc-font-sans);
+}
+
+.vox-v4-reply-eyebrow {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint, #8a98a4);
+  font-variation-settings: 'wght' 600;
+}
+
+.vox-v4-reply-text {
+  font-size: 12.5px;
+  color: var(--cc-text-strong, #ecf0f3);
+  font-variation-settings: 'wght' 540;
+  letter-spacing: 0;
+}
+
+.vox-v4-reply-voice-tag {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--cc-accent, #d4a85a);
+  border: 1px solid rgba(212, 168, 90, 0.32);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.vox-v4-reply[data-reply-phrase="blocked_safety"] {
+  border-left-color: rgba(220, 90, 90, 0.55);
+}
+
+.vox-v4-reply[data-reply-phrase="need_detail"] {
+  border-left-color: rgba(120, 180, 240, 0.55);
+}
+
+.vox-v4-reply[data-reply-phrase="prompt_ready"] {
+  border-left-color: rgba(212, 168, 90, 0.55);
+}
+
+.vox-v4-reply[data-reply-phrase="understood"] {
+  border-left-color: rgba(160, 200, 160, 0.5);
+}
+
+.vox-overlay-voice-prefs {
+  display: flex;
+  flex-direction: column;
+}
+
+.vox-voice-mode-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid rgba(233, 238, 242, 0.10);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.vox-voice-mode-legend {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  color: var(--cc-text-faint, #8a98a4);
+  padding: 0 4px;
+}
+
+.vox-voice-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text, #d6dde3);
+  cursor: pointer;
+}
+
+.vox-voice-mode-option input[type="radio"] {
+  accent-color: var(--cc-accent, #d4a85a);
+  cursor: pointer;
+}
+
+.vox-voice-mode-option input[type="radio"]:disabled {
+  cursor: progress;
+}
+
+.vox-voice-mode-hint {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+  font-family: var(--cc-font-sans);
+  font-size: 11px;
+  color: var(--cc-text-faint, #8a98a4);
+  line-height: 1.45;
+}
+
+.vox-v4-interlocutor-eyebrow {
+  margin: 0;
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+  font-variation-settings: 'wght' 580;
+}
+
+.vox-v4-interlocutor-clarify-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.vox-v4-interlocutor-clarify-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vox-v4-interlocutor-clarify-label-text {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+.vox-v4-interlocutor-clarify-input {
+  font-family: var(--cc-font-sans);
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(233, 238, 242, 0.12);
+  color: var(--cc-text-strong, #ecf0f3);
+  outline: none;
+}
+
+.vox-v4-interlocutor-clarify-input:focus-visible {
+  border-color: rgba(120, 180, 240, 0.55);
+  box-shadow: 0 0 0 2px rgba(120, 180, 240, 0.18);
+}
+
+.vox-v4-interlocutor-clarify-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vox-v4-interlocutor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 
 /* ───────────────────────────────────────────────────────────── */
 /* Mode segmented selector · Dictation / Prompt Polish             */
 /* ───────────────────────────────────────────────────────────── */
 
+/* V6-VISUAL-POLISH-FINAL · 4 modos canônicos sem overflow em viewport
+   estreito (≤ 380 px). Flex equal-width pra alinhamento perfeito + wrap
+   honesto quando o conteúdo realmente não couber em uma linha. */
 .vox-mode-seg {
-  display: inline-flex;
-  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  align-self: stretch;
   padding: 2px;
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(233, 238, 242, 0.08);
   border-radius: 8px;
   gap: 2px;
+  width: 100%;
 }
 
 .vox-mode-seg-btn {
   font-family: var(--cc-font-sans);
   font-size: 11.5px;
   font-variation-settings: 'wght' 560;
-  padding: 4px 10px;
+  padding: 5px 8px;
   border-radius: 6px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--cc-text-muted, #b3bcc4);
   cursor: pointer;
   transition: all 160ms ease;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .vox-mode-seg-btn:hover:not(:disabled) {
@@ -613,6 +1074,10 @@
   gap: 8px;
 }
 
+/* V6-VISUAL-POLISH-FINAL · "Detalhes avançados" e amigos lêem como
+   secundários: tipografia menor, sem caixa-alta agressiva, cinza sóbrio.
+   A intenção é que o operador veja primeiro o fluxo principal, não os
+   toggles. */
 .vox-overlay-dict-toggle {
   display: flex;
   align-items: baseline;
@@ -625,16 +1090,16 @@
   cursor: pointer;
   font-family: var(--cc-font-sans);
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--cc-text-faint, #8a98a4);
-  font-variation-settings: 'wght' 600;
+  font-variation-settings: 'wght' 540;
   border-radius: 4px;
   transition: color 160ms ease;
 }
 
 .vox-overlay-dict-toggle:hover {
-  color: var(--cc-text-strong, #ecf0f3);
+  color: var(--cc-text-muted, #b3bcc4);
 }
 
 .vox-overlay-dict-toggle:focus-visible {
@@ -848,6 +1313,17 @@
   margin-top: 4px;
 }
 
+/* V6-VISUAL-POLISH-FINAL · dentro do painel de confirmação, blocos de
+   código/prompt achatam pra não virar card-em-card. Conteúdo continua
+   identificável (mono + leve fundo) sem mais um anel de borda. */
+.vox-confirm-panel .vox-overlay-compiled-prompt,
+.vox-confirm-panel .vox-terminal-proposal {
+  background: rgba(0, 0, 0, 0.18);
+  border-color: transparent;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
 .vox-confirm-low {
   border-color: rgba(120, 180, 240, 0.22);
   background: rgba(120, 180, 240, 0.05);
@@ -895,18 +1371,39 @@
 
 /* ───────────────────────────────────────────────────────────── */
 /* V6.5 · "Atlas ouvindo" indicador grande e sóbrio                */
+/* V6-ES-A · agora com botão Finalizar primário sob o pill         */
 /* ───────────────────────────────────────────────────────────── */
 
-.vox-listening-pill {
+/* V6-VISUAL-POLISH-FINAL · estado ouvindo: pill grande + Finalizar full
+   width pra dar peso visual e tornar a ação primária inequívoca. */
+.vox-listening {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 6px 0 2px;
+}
+
+.vox-listening-stop {
+  align-self: stretch;
+  font-size: 13.5px;
+  padding: 10px 16px;
+  letter-spacing: 0.01em;
+}
+
+.vox-listening-pill {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 999px;
   background: rgba(212, 168, 90, 0.10);
   border: 1px solid rgba(212, 168, 90, 0.32);
   color: var(--cc-text-strong, #ecf0f3);
-  font-size: 12.5px;
+  font-size: 13px;
+  align-self: stretch;
+  justify-content: center;
 }
 
 .vox-listening-dot {
@@ -940,7 +1437,7 @@
   font-size: 11px;
   color: var(--cc-text-muted, #b3bcc4);
   font-family: var(--cc-font-mono);
-  margin-left: auto;
+  margin: 0;
   letter-spacing: 0;
 }
 
@@ -1900,6 +2397,101 @@
 }
 
 .vox-setup-feedback {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   V6-E · Auto Dogfood Chip
+   Chip discreto que confirma "Sessão registrada" + 2 botões opcionais.
+   Sem cards aninhados, sem formulário. Aparece logo abaixo do fluxo
+   principal e some sozinho depois do operador agir.
+   ───────────────────────────────────────────────────────────────── */
+.vox-auto-dogfood {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: var(--cc-radius-6, 6px);
+  background: rgba(212, 168, 90, 0.06);
+  border: 1px solid rgba(212, 168, 90, 0.18);
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  color: var(--cc-text, #d7d8d2);
+}
+.vox-auto-dogfood-submitting {
+  background: transparent;
+  border-color: transparent;
+  color: var(--cc-text-muted, #b3bcc4);
+}
+.vox-auto-dogfood-unavailable,
+.vox-auto-dogfood-failed {
+  background: transparent;
+  border-color: rgba(180, 180, 180, 0.18);
+  color: var(--cc-text-muted, #b3bcc4);
+}
+.vox-auto-dogfood-resolved {
+  background: rgba(120, 160, 100, 0.08);
+  border-color: rgba(120, 160, 100, 0.24);
+}
+.vox-auto-dogfood-text {
+  flex: 1 1 auto;
+}
+.vox-auto-dogfood-outcome {
+  color: var(--cc-text-muted, #b3bcc4);
+  font-family: var(--cc-font-mono);
+}
+.vox-auto-dogfood-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cc-text-muted, #b3bcc4);
+  animation: vox-auto-dogfood-blink 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vox-auto-dogfood-dot { animation: none; }
+}
+@keyframes vox-auto-dogfood-blink {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.vox-auto-dogfood-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+.vox-auto-dogfood-btn {
+  padding: 4px 10px;
+  border-radius: var(--cc-radius-4, 4px);
+  border: 1px solid rgba(180, 180, 180, 0.22);
+  background: transparent;
+  color: var(--cc-text, #d7d8d2);
+  font-family: var(--cc-font-sans);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.vox-auto-dogfood-btn:hover:not(:disabled) {
+  border-color: rgba(212, 168, 90, 0.5);
+}
+.vox-auto-dogfood-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 168, 90, 0.24);
+}
+.vox-auto-dogfood-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.vox-auto-dogfood-btn-good:hover:not(:disabled) {
+  background: rgba(120, 160, 100, 0.14);
+}
+.vox-auto-dogfood-btn-bad:hover:not(:disabled) {
+  background: rgba(200, 110, 90, 0.14);
+}
+.vox-auto-dogfood-feedback-error {
+  width: 100%;
   font-family: var(--cc-font-mono);
   font-size: 10.5px;
   color: var(--cc-text-muted, #b3bcc4);

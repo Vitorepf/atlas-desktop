@@ -5044,3 +5044,262 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   .atlas-ai-tree-branches { flex-direction: column; gap: 12px; }
   .atlas-ai-tree-question-text { white-space: normal; }
 }
+
+/* ─── Response Audit · auditoria editorial colapsável ─────────────── */
+
+.atlas-ai-response-audit {
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--cc-radius-md, 6px);
+  background: rgba(255, 255, 255, 0.012);
+  overflow: hidden;
+}
+.atlas-ai-response-audit > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.atlas-ai-response-audit > summary::-webkit-details-marker {
+  display: none;
+}
+.atlas-ai-response-audit-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-family: var(--cc-font-sans, system-ui);
+  font-size: 11.5px;
+  color: var(--cc-text-muted, rgba(232, 226, 213, 0.55));
+  letter-spacing: 0.02em;
+  transition: background-color 120ms var(--cc-ease-out, ease-out);
+}
+.atlas-ai-response-audit-summary:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.atlas-ai-response-audit-mark {
+  color: var(--cc-accent, #d4a85a);
+  font-size: 11px;
+  opacity: 0.8;
+}
+.atlas-ai-response-audit-label {
+  font-style: normal;
+}
+.atlas-ai-response-audit-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-text-mute, rgba(232, 226, 213, 0.32));
+  font-size: 10.5px;
+}
+.atlas-ai-response-audit-body {
+  padding: 6px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.atlas-ai-response-audit-section + .atlas-ai-response-audit-section {
+  margin-top: 8px;
+}
+.atlas-ai-response-audit-section-label {
+  margin: 6px 0 4px;
+  font-family: var(--cc-font-sans, system-ui);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cc-text-mute, rgba(232, 226, 213, 0.42));
+}
+.atlas-ai-response-audit-list {
+  margin: 0;
+  padding-left: 14px;
+  list-style: disc;
+  color: var(--cc-text, #e8e2d5);
+  font-family: var(--cc-font-sans, system-ui);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.atlas-ai-response-audit-list li {
+  margin: 2px 0;
+  word-break: break-word;
+}
+
+/* ============================================================ */
+/* Runtime Status Pill — UX leve no header (slate dark canon).
+   Mostra status/blocker/missão/aprovação/handoff sem JSON cru.
+   Clique abre o painel lateral (Context/Trace/Audit).            */
+/* ============================================================ */
+.atlas-ai-runtime-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  padding: 0 10px;
+  margin-left: 12px;
+  background: var(--cc-surface-raised, transparent);
+  border: 1px solid var(--cc-border-faint);
+  border-radius: 999px;
+  color: var(--cc-text-muted);
+  font-family: var(--cc-font-sans);
+  font-size: 12px;
+  font-variation-settings: 'wght' 480;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: border-color 200ms var(--cc-ease-out), color 200ms var(--cc-ease-out), background 200ms var(--cc-ease-out);
+}
+.atlas-ai-runtime-pill:hover {
+  border-color: var(--cc-border);
+  color: var(--cc-text);
+  background: var(--cc-surface-raised, rgba(255,255,255,0.02));
+}
+.atlas-ai-runtime-pill:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 2px;
+}
+.atlas-ai-runtime-pill.is-blocked {
+  color: var(--cc-status-error, var(--cc-text));
+  border-color: var(--cc-status-error-border, var(--cc-border));
+}
+.atlas-ai-runtime-pill.is-partial {
+  color: var(--cc-status-warn, var(--cc-text));
+}
+.atlas-ai-runtime-pill-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cc-text-faint);
+  flex-shrink: 0;
+}
+.atlas-ai-runtime-pill-dot.is-ready    { background: var(--cc-status-ok,    #6aa07a); }
+.atlas-ai-runtime-pill-dot.is-partial  { background: var(--cc-status-warn,  #c9a155); }
+.atlas-ai-runtime-pill-dot.is-blocked  { background: var(--cc-status-error, #c0625a); }
+.atlas-ai-runtime-pill-dot.is-loading,
+.atlas-ai-runtime-pill-dot.is-unavailable { background: var(--cc-text-faint); }
+.atlas-ai-runtime-pill-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+.atlas-ai-runtime-pill-next {
+  color: var(--cc-text-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.atlas-ai-runtime-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--cc-accent-soft, rgba(212,168,90,0.18));
+  color: var(--cc-accent);
+  font-size: 10.5px;
+  font-variation-settings: 'wght' 560;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.atlas-ai-runtime-pill-handoff {
+  color: var(--cc-accent);
+  font-size: 11px;
+  font-variation-settings: 'wght' 540;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/*  YouTube canonical source badge — 3-dimension honest status              */
+/*  (ingestion / transcript / translation). See                              */
+/*  atlas-server/docs/rich-input/youtube-canon.md                            */
+/* ──────────────────────────────────────────────────────────────────────── */
+.atlas-ai-youtube-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md, 6px);
+  background: var(--cc-surface-raised, var(--cc-surface));
+}
+.atlas-ai-youtube-badge-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--cc-muted);
+}
+.atlas-ai-youtube-badge.tone-success .atlas-ai-youtube-badge-dot {
+  background: var(--cc-status-success, var(--cc-accent));
+}
+.atlas-ai-youtube-badge.tone-pending .atlas-ai-youtube-badge-dot {
+  background: var(--cc-status-pending, var(--cc-accent));
+}
+.atlas-ai-youtube-badge.tone-danger .atlas-ai-youtube-badge-dot {
+  background: var(--cc-status-danger, #c46a5c);
+}
+.atlas-ai-youtube-badge-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.atlas-ai-youtube-badge-source {
+  font-size: 11px;
+  font-variation-settings: 'wght' 560;
+  letter-spacing: 0.02em;
+  color: var(--cc-ink);
+}
+.atlas-ai-youtube-badge.tone-success .atlas-ai-youtube-badge-source {
+  color: var(--cc-status-success, var(--cc-accent));
+}
+.atlas-ai-youtube-badge.tone-pending .atlas-ai-youtube-badge-source {
+  color: var(--cc-status-pending, var(--cc-accent));
+}
+.atlas-ai-youtube-badge.tone-danger .atlas-ai-youtube-badge-source {
+  color: var(--cc-status-danger, #c46a5c);
+}
+.atlas-ai-youtube-badge-detail {
+  font-size: 11px;
+  color: var(--cc-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.atlas-ai-youtube-badge-track {
+  margin-top: 4px;
+  width: 100%;
+  height: 2px;
+  background: var(--cc-border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.atlas-ai-youtube-badge-fill {
+  display: block;
+  height: 100%;
+  background: var(--cc-accent);
+  transition: width 240ms ease-out;
+}
+.atlas-ai-youtube-badge.tone-success .atlas-ai-youtube-badge-fill {
+  background: var(--cc-status-success, var(--cc-accent));
+}
+.atlas-ai-youtube-badge.tone-danger .atlas-ai-youtube-badge-fill {
+  background: var(--cc-status-danger, #c46a5c);
+}
+.atlas-ai-youtube-badge-pill {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--cc-accent-soft, rgba(212, 168, 90, 0.18));
+  color: var(--cc-accent);
+  font-size: 10px;
+  font-variation-settings: 'wght' 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}

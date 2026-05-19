@@ -12,6 +12,11 @@ export default defineConfig(() => ({
     alias: {
       '@atlas/domain': fileURLToPath(new URL('../../packages/atlas-domain/src/index.ts', import.meta.url)),
       '@atlas/ui': fileURLToPath(new URL('../../packages/atlas-ui/src/index.ts', import.meta.url)),
+      // Top-level shared canon (lives outside atlas-desktop so atlas-app
+      // can depend on the same source). See packages/atlas-rich-input-canon.
+      '@atlas/rich-input-canon': fileURLToPath(
+        new URL('../../../packages/atlas-rich-input-canon/src/index.ts', import.meta.url),
+      ),
     },
   },
 

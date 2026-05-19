@@ -12,6 +12,7 @@
  * useAtlasAiAttachments.ts` apontando para esta função.
  */
 import { useCallback, useState } from 'react'
+import { buildSourceManifestFromDrafts } from '@atlas/rich-input-canon'
 import { chunkedUploadAsset } from './chunkedUploader'
 import { processImage } from './imageProcessor'
 import { processPdf } from './pdfProcessor'
@@ -24,7 +25,6 @@ import {
   SUPPORTED_PDF_MIME,
   SUPPORTED_TEXT_MIME_PREFIXES,
   type AtlasRichInputPayload,
-  type AtlasRichInputSourceManifestEntry,
   type AtlasRichInputTextBlockPayload,
   type AtlasRichInputUrlAttachmentPayload,
   type AttachmentDraft,
@@ -428,28 +428,16 @@ export function useAtlasRichInputAttachments(): AtlasRichInputAttachmentsApi {
   const uploadAllCanonical = useCallback(
     async (signal?: AbortSignal): Promise<AtlasRichInputPayload> => {
       const legacy = await uploadAll(signal)
-      // Build the source_manifest from the currently-known drafts so the
-      // canonical payload audits every attachment by kind + uploaded_id.
-      const manifest: AtlasRichInputSourceManifestEntry[] = drafts
-        .filter((d) => d.status === 'ready' || d.status === 'uploaded')
-        .map((d): AtlasRichInputSourceManifestEntry => ({
-          id: d.id,
-          kind: d.kind,
-          file_name: d.fileName,
-          mime_type: d.mimeType,
-          size: d.size,
-          uploaded_id: d.uploadedId,
-          source_hash: null,
-          source: d.source,
-        }))
-
+      // Manifest is built via the canon helper (single source of truth in
+      // `@atlas/rich-input-canon`). Output is byte-identical to the historic
+      // inline implementation — verified by the cross-platform contract test.
       return {
         schema_version: ATLAS_RICH_INPUT_PAYLOAD_SCHEMA,
         uploaded_image_ids: legacy.uploaded_image_ids,
         uploaded_document_ids: legacy.uploaded_document_ids,
         text_blocks: legacy.text_blocks,
         url_attachments: legacy.url_attachments,
-        source_manifest: manifest,
+        source_manifest: buildSourceManifestFromDrafts(drafts),
       }
     },
     [drafts, uploadAll],

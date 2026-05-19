@@ -216,3 +216,70 @@ fn run_capture_loop(
 pub fn capture_available() -> bool {
     cpal::default_host().default_input_device().is_some()
 }
+
+/// Snapshot of the system's currently-selected audio input. Read-only —
+/// `describe_default_input` never opens a CoreAudio stream and never
+/// triggers the macOS microphone TCC prompt. Used by the doctor / setup
+/// assistant to tell the operator "your AirPods are the active mic" or
+/// "built-in MacBook microphone is active" without surprising them with
+/// a permission dialog every time the UI mounts.
+#[derive(Debug, Clone)]
+pub struct AudioInputSnapshot {
+    pub device_name: Option<String>,
+    pub sample_rate_hz: Option<u32>,
+    pub channels: Option<u16>,
+}
+
+/// Read-only inspection of the macOS default input device. Returns `None`
+/// fields when cpal cannot enumerate (no permission, no device, headless
+/// CI). NEVER builds a stream — safe to call from doctor / read-only UI.
+pub fn describe_default_input() -> AudioInputSnapshot {
+    let host = cpal::default_host();
+    let Some(device) = host.default_input_device() else {
+        return AudioInputSnapshot {
+            device_name: None,
+            sample_rate_hz: None,
+            channels: None,
+        };
+    };
+    let device_name = device.name().ok();
+    let (sample_rate_hz, channels) = match device.default_input_config() {
+        Ok(c) => (Some(c.sample_rate().0), Some(c.channels())),
+        Err(_) => (None, None),
+    };
+    AudioInputSnapshot {
+        device_name,
+        sample_rate_hz,
+        channels,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn describe_default_input_never_panics() {
+        // Pode rodar em CI sem áudio. O contrato é "não panica e devolve
+        // Option vazio quando não há device" — não a presença do device.
+        let snapshot = describe_default_input();
+        // Coerência: se temos sample_rate, temos channels (vêm do mesmo
+        // `default_input_config()`).
+        match (&snapshot.sample_rate_hz, &snapshot.channels) {
+            (Some(sr), Some(ch)) => {
+                assert!(*sr >= 8_000, "sample_rate sanity: {sr}");
+                assert!(*ch >= 1 && *ch <= 8, "channels sanity: {ch}");
+            }
+            (None, None) => {}
+            other => panic!(
+                "sample_rate e channels devem ser ambos Some ou ambos None, got {:?}",
+                other
+            ),
+        }
+    }
+
+    #[test]
+    fn capture_available_does_not_panic() {
+        let _ = capture_available();
+    }
+}

@@ -24,6 +24,7 @@ import {
   updateAiThread,
 } from './client'
 import { buildInteractionPayload, defaultTaskForMode, isTaskAllowedForMode } from './contract'
+import type { AtlasRichInputPayload } from '../../lib/rich-input'
 import type {
   AiThreadDetail,
   AiThreadSummary,
@@ -115,6 +116,8 @@ export interface AtlasAiState {
         thumbnail_url: string | null
         ref_id: string | null
       }>
+      /** Universal Rich Input Payload canon (`atlas.rich_input.payload.v1`). */
+      richInputPayload?: AtlasRichInputPayload
     },
   ) => Promise<AiTrace | null>
 
@@ -408,6 +411,14 @@ export function useAtlasAi(
           thumbnail_url: string | null
           ref_id: string | null
         }>
+        /**
+         * Universal Rich Input Payload canon (`atlas.rich_input.payload.v1`).
+         * Vem do `AtlasUnifiedComposer` via `uploadAllCanonical()` e carrega
+         * schema_version + source_manifest + hashes. Quando presente é enviado
+         * no body como `rich_input_payload` — backend Hyperflow + Forge intake
+         * preservam para auditoria e re-projeção.
+         */
+        richInputPayload?: AtlasRichInputPayload
       },
     ): Promise<AiTrace | null> => {
       if (mode === 'offline') {
@@ -579,11 +590,19 @@ export function useAtlasAi(
           include_semantic_context: true,
           context_note_limit: 5,
           payload: enrichedPayload,
+          // Legacy top-level fields — mantidos por compat com backend que ainda
+          // consome os arrays diretos. Backend trata `rich_input_payload` (canon)
+          // como fonte preferencial quando ambos estão presentes.
           ...(options?.uploadedImageIds?.length
             ? { uploaded_images: options.uploadedImageIds }
             : {}),
           ...(options?.uploadedDocumentIds?.length
             ? { uploaded_documents: options.uploadedDocumentIds }
+            : {}),
+          // Canonical Universal Rich Input Payload — `atlas.rich_input.payload.v1`.
+          // Inclui source_manifest + hashes para Hyperflow + Forge intake.
+          ...(options?.richInputPayload
+            ? { rich_input_payload: options.richInputPayload }
             : {}),
         })
 

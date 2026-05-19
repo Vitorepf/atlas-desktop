@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { estimateRichInputTokens, summarizeRichInputDrafts, type AttachmentDraft } from '../../../lib/rich-input'
+import { youtubeBadgeText } from '@atlas/rich-input-canon'
 
 /**
  * Atlas Code · shared Rich Input controls.
@@ -51,7 +52,7 @@ function kindBadge(draft: AttachmentDraft): string {
     case 'code':
       return 'COD'
     case 'url':
-      return draft.urlKind === 'youtube' ? 'YT' : 'URL'
+      return draft.urlKind === 'youtube' ? youtubeBadgeText({ short: true }) : 'URL'
     default:
       return '✦'
   }
@@ -146,7 +147,9 @@ export function RichInputControls({
             {[
               summary.images && `${summary.images} img`,
               summary.pdfs && `${summary.pdfs} pdf`,
-              summary.text && `${summary.text} txt`,
+              // Canon splits `text` vs `code`; preserve historic "txt"
+              // pill behavior by aggregating both here.
+              summary.text + summary.code > 0 && `${summary.text + summary.code} txt`,
               summary.urls && `${summary.urls} url`,
             ].filter(Boolean).join(' · ')}
             {' · '}

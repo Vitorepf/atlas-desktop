@@ -609,7 +609,10 @@ export function AtlasUnifiedComposer({
                     {[
                       attachmentSummary.images && `${attachmentSummary.images} img`,
                       attachmentSummary.pdfs && `${attachmentSummary.pdfs} pdf`,
-                      attachmentSummary.text && `${attachmentSummary.text} txt`,
+                      // Canon splits `text` vs `code`; preserve historic
+                      // "txt" pill behavior by aggregating both here.
+                      attachmentSummary.text + attachmentSummary.code > 0 &&
+                        `${attachmentSummary.text + attachmentSummary.code} txt`,
                       attachmentSummary.urls && `${attachmentSummary.urls} url`,
                     ]
                       .filter(Boolean)

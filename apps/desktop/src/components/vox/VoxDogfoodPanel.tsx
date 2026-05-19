@@ -95,18 +95,19 @@ export function VoxDogfoodPanel({
       setFlash(null)
       const response = await submitRivalsCase(payload)
       if (response.status === 'ok') {
-        setFlash({ kind: 'ok', message: 'Registrado.' })
+        setFlash({ kind: 'ok', message: 'Anotado.' })
         setMode('done')
         onSubmitted?.()
       } else if (response.status === 'unavailable') {
         setFlash({
           kind: 'warn',
-          message: response.message ?? 'Rivals ainda indisponível no Kernel.',
+          message:
+            response.message ?? 'Ainda coletando uso — registro vai abrir quando houver mais sessões.',
         })
       } else {
         setFlash({
           kind: 'err',
-          message: response.message ?? 'Falha ao registrar caso.',
+          message: response.message ?? 'Não consegui registrar agora. Tente de novo.',
         })
       }
       window.setTimeout(() => setFlash(null), 3600)
@@ -170,7 +171,7 @@ export function VoxDogfoodPanel({
     // fake a success — even via a rivals case with a special note — because
     // the spec is explicit: "Se não houver endpoint, não fakear."
     setEclipseFlash(
-      'Marcar Eclipse testado ainda indisponível: Kernel não publicou endpoint dedicado.',
+      'Marcar "Parar tudo testado" ainda não está disponível nesta fase.',
     )
     window.setTimeout(() => setEclipseFlash(null), 4200)
   }, [])
@@ -193,13 +194,13 @@ export function VoxDogfoodPanel({
 
       {mode === 'done' ? (
         <p className="vox-overlay-hint">
-          Caso registrado — V3 Gate atualizado.{' '}
+          Anotado. Obrigado pelo retorno.{' '}
           <button
             type="button"
             className="vox-dogfood-link"
             onClick={() => setMode('idle')}
           >
-            registrar outro
+            registrar outra
           </button>
         </p>
       ) : (
@@ -211,7 +212,7 @@ export function VoxDogfoodPanel({
                 className="vox-dogfood-chip vox-dogfood-chip-good"
                 onClick={submitBom}
                 disabled={submitting}
-                title="Sessão útil · registra quality +1"
+                title="A sessão foi útil"
               >
                 Bom
               </button>
@@ -220,16 +221,16 @@ export function VoxDogfoodPanel({
                 className="vox-dogfood-chip vox-dogfood-chip-bad"
                 onClick={() => setMode('regret')}
                 disabled={submitting}
-                title="Sessão ruim · vai pedir o que deu errado e registrar regret"
+                title="A sessão foi ruim — vou pedir o que deu errado"
               >
-                Ruim / regret
+                Ruim
               </button>
               <button
                 type="button"
                 className="vox-dogfood-chip"
                 onClick={() => setMode('compare')}
                 disabled={submitting}
-                title="Comparar com baseline (Wispr / Provider / Manual)"
+                title="Comparar com Wispr, com o provider direto ou com o que eu faria manualmente"
               >
                 Comparar
               </button>
@@ -238,9 +239,9 @@ export function VoxDogfoodPanel({
                 className="vox-dogfood-chip"
                 onClick={onEclipseTest}
                 disabled={submitting}
-                title="Marcar Eclipse testado · backend ainda não suporta"
+                title="Marcar Parar tudo (Eclipse) testado · ainda não disponível"
               >
-                Eclipse testado
+                Parar tudo testado
               </button>
               <button
                 type="button"
@@ -257,12 +258,12 @@ export function VoxDogfoodPanel({
           {mode === 'regret' ? (
             <div className="vox-dogfood-form">
               <label className="vox-overlay-dict-field">
-                <span>o que deu errado?</span>
+                <span>O que deu errado?</span>
                 <textarea
                   className="vox-overlay-debug-input vox-dogfood-note"
                   value={regretNote}
                   onChange={(e) => setRegretNote(e.target.value)}
-                  placeholder="opcional, mas ajuda futuras decisões (máx. 280)"
+                  placeholder="Opcional, mas ajuda em sessões futuras (até 280 caracteres)"
                   rows={2}
                   maxLength={280}
                   spellCheck={false}
@@ -276,7 +277,7 @@ export function VoxDogfoodPanel({
                   onClick={submitRuim}
                   disabled={submitting}
                 >
-                  {submitting ? 'enviando…' : 'registrar regret'}
+                  {submitting ? 'registrando…' : 'Marcar como ruim'}
                 </button>
                 <button
                   type="button"
@@ -284,7 +285,7 @@ export function VoxDogfoodPanel({
                   onClick={() => setMode('idle')}
                   disabled={submitting}
                 >
-                  voltar
+                  Voltar
                 </button>
               </div>
             </div>
@@ -294,7 +295,7 @@ export function VoxDogfoodPanel({
             <div className="vox-dogfood-form">
               <div className="vox-dogfood-fields">
                 <label className="vox-overlay-dict-field">
-                  <span>baseline</span>
+                  <span>Comparar com</span>
                   <select
                     value={baselineKind}
                     onChange={(e) =>
@@ -310,7 +311,7 @@ export function VoxDogfoodPanel({
                   </select>
                 </label>
                 <label className="vox-overlay-dict-field">
-                  <span>quem ganhou</span>
+                  <span>Quem ganhou</span>
                   <select
                     value={preference}
                     onChange={(e) =>
@@ -326,7 +327,7 @@ export function VoxDogfoodPanel({
                   </select>
                 </label>
                 <label className="vox-overlay-dict-field">
-                  <span>quality</span>
+                  <span>Nota de qualidade</span>
                   <select
                     value={String(promptQualityVote)}
                     onChange={(e) =>
@@ -346,7 +347,7 @@ export function VoxDogfoodPanel({
                 className="vox-overlay-debug-input vox-dogfood-note"
                 value={compareNote}
                 onChange={(e) => setCompareNote(e.target.value)}
-                placeholder="nota curta (opcional, máx. 280)"
+                placeholder="Nota curta (opcional, até 280 caracteres)"
                 rows={2}
                 maxLength={280}
                 spellCheck={false}
@@ -359,7 +360,7 @@ export function VoxDogfoodPanel({
                   onClick={submitCompare}
                   disabled={submitting}
                 >
-                  {submitting ? 'enviando…' : 'registrar comparação'}
+                  {submitting ? 'registrando…' : 'Registrar comparação'}
                 </button>
                 <button
                   type="button"
@@ -367,7 +368,7 @@ export function VoxDogfoodPanel({
                   onClick={() => setMode('idle')}
                   disabled={submitting}
                 >
-                  voltar
+                  Voltar
                 </button>
               </div>
             </div>

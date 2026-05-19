@@ -262,11 +262,12 @@ impl SttEngine for WhisperCppEngine {
             total: input.capture_to_stt_start_ms + prep_ms + stt_ms + pc_ms,
         };
 
-        // Confidence estimate: whisper.cpp doesn't expose a clean per-call
-        // confidence in this binding. Report `nan-protected` 0.85 as a
-        // deterministic placeholder so the contract stays in [0,1]; a real
-        // confidence model is part of a later wave.
-        let confidence = 0.85f32;
+        // V6-ES-B · confidence honesta derivada de sinais reais.
+        // whisper.cpp não expõe confiança por chamada, então a derivamos do
+        // áudio + texto: fala curta com áudio fraco → baixa; fala normal com
+        // áudio bom → alta. O UI usa esse número pra sugerir regravar quando
+        // está abaixo de 0.55.
+        let confidence = derive_confidence(&quality, &raw_text);
 
         let mut transcript = VoxTranscript::new(
             input.session_id,
@@ -375,6 +376,109 @@ fn analyze_audio_quality(samples: &[f32], sample_rate: u32) -> AudioQuality {
         active_ratio,
         vad_segments,
     }
+}
+
+/// V6-ES-B · estima confiança em [0,1] determinística a partir do áudio
+/// + texto bruto. A UI usa esse número pra decidir se sugere "Gravar de
+/// novo" sem forçar nada.
+///
+/// Sinais combinados (pesos calibrados pra dogfood real, não pra metrics):
+///   - duração do áudio acima do mínimo de fala (700 ms): +
+///   - RMS médio bem acima do floor (rms ≥ 4× MIN_SPEECH_RMS): +
+///   - active_ratio bem acima do floor (≥ 6%): +
+///   - texto com pelo menos 8 chars trimados: +
+///   - texto multi-palavra (≥ 3 palavras): +
+///
+/// Falas curtas com áudio fraco ficam ≤ 0.55 e disparam aviso humano no UI.
+/// Falas normais ficam ≥ 0.70. Nunca fabrica "1.0" sem evidência.
+#[cfg_attr(
+    not(all(target_os = "macos", feature = "whisper-cpp")),
+    allow(dead_code)
+)]
+fn derive_confidence(quality: &AudioQuality, raw_text: &str) -> f32 {
+    let trimmed = raw_text.trim();
+    if trimmed.is_empty() {
+        return 0.0;
+    }
+    let char_count = trimmed.chars().count();
+    let word_count = trimmed
+        .split_whitespace()
+        .filter(|w| !w.is_empty())
+        .count();
+
+    // Cada sinal contribui entre 0.0 e 1.0; média ponderada vira a confiança.
+    // Duração — 700 ms vira o "ok" mínimo (=0.5); acima de 3 s já satura.
+    let duration_signal = if quality.duration_ms < MIN_SPEECH_DURATION_MS {
+        0.2
+    } else if quality.duration_ms >= 3_000 {
+        1.0
+    } else {
+        // ramp linear 700 ms → 3 s.
+        let ramp = (quality.duration_ms - MIN_SPEECH_DURATION_MS) as f32
+            / (3_000 - MIN_SPEECH_DURATION_MS) as f32;
+        (0.5 + 0.5 * ramp).clamp(0.0, 1.0)
+    };
+
+    // RMS — 1×min vira 0.4; 4×min vira 1.0.
+    let rms_signal = if quality.rms <= MIN_SPEECH_RMS {
+        0.3
+    } else if quality.rms >= MIN_SPEECH_RMS * 4.0 {
+        1.0
+    } else {
+        let ramp = (quality.rms - MIN_SPEECH_RMS) / (MIN_SPEECH_RMS * 3.0);
+        (0.4 + 0.6 * ramp).clamp(0.0, 1.0)
+    };
+
+    // active_ratio — chão é 1.5%, alvo confortável é 6%.
+    let active_signal = if quality.active_ratio < MIN_ACTIVE_RATIO {
+        0.3
+    } else if quality.active_ratio >= 0.06 {
+        1.0
+    } else {
+        let ramp = (quality.active_ratio - MIN_ACTIVE_RATIO) / (0.06 - MIN_ACTIVE_RATIO);
+        (0.4 + 0.6 * ramp).clamp(0.0, 1.0)
+    };
+
+    // Comprimento do texto — < 4 chars é provável false positive de fala curta;
+    // ≥ 24 chars é fala bem articulada.
+    let text_length_signal = if char_count < 4 {
+        0.25
+    } else if char_count >= 24 {
+        1.0
+    } else {
+        let ramp = (char_count - 4) as f32 / 20.0;
+        (0.4 + 0.6 * ramp).clamp(0.0, 1.0)
+    };
+
+    // Multi-palavra — 1 palavra ainda pode ser válida (ex: "Cancelar"), mas
+    // ≥ 3 palavras dá conforto adicional.
+    let word_signal = if word_count >= 3 {
+        1.0
+    } else if word_count == 2 {
+        0.75
+    } else {
+        0.5
+    };
+
+    let raw_confidence = 0.25 * duration_signal
+        + 0.25 * rms_signal
+        + 0.20 * active_signal
+        + 0.20 * text_length_signal
+        + 0.10 * word_signal;
+
+    let mut confidence = raw_confidence.clamp(0.10, 0.98);
+
+    // Tiny-text gate: texto < 4 chars OU 1 palavra com áudio < 1.5 s sugere
+    // whisper-hallucination/fala incompleta. Confiança trava em 0.55 pra UI
+    // sugerir "Gravar de novo" sem forçar.
+    if char_count < 4 {
+        confidence = confidence.min(0.55);
+    }
+    if word_count <= 1 && quality.duration_ms < 1_500 {
+        confidence = confidence.min(0.55);
+    }
+
+    confidence
 }
 
 /// Compose a short initial-prompt biasing string from the operator's
@@ -537,11 +641,13 @@ mod tests {
     fn text_pipeline_emits_transcript_with_corrections_and_raw_pcm_false() {
         let dict = PersonalDictionary::pre_populated();
         let input = VoxSttInput::empty(Uuid::new_v4(), Uuid::new_v4());
-        let transcript = run_text_pipeline(&input, "manda pro código olhar o live kit", &dict);
+        // V6-ES-B · usa variantes seguras de mishearing ("codes"/"live kit"),
+        // não palavras PT-BR comuns como "código".
+        let transcript = run_text_pipeline(&input, "manda pro codes olhar o live kit", &dict);
 
         assert!(transcript.text.contains("Codex"));
         assert!(transcript.text.contains("LiveKit"));
-        assert_eq!(transcript.text_raw, "manda pro código olhar o live kit");
+        assert_eq!(transcript.text_raw, "manda pro codes olhar o live kit");
         assert!(!transcript.raw_pcm_persisted);
         assert_eq!(transcript.engine, "whisper.cpp@large-v3");
         assert_eq!(transcript.language, "pt-BR");
@@ -553,6 +659,123 @@ mod tests {
             .post_corrections
             .iter()
             .any(|c| c.to == "LiveKit" && c.rule == "personal_dictionary"));
+    }
+
+    /// V6-ES-B · garantia de fronteira: palavras PT-BR comuns NUNCA podem ser
+    /// reescritas pelo dicionário Atlas. Se algum dia voltarem variantes
+    /// destrutivas, este teste pega.
+    #[test]
+    fn text_pipeline_does_not_rewrite_common_pt_br_words() {
+        let dict = PersonalDictionary::pre_populated();
+        let input = VoxSttInput::empty(Uuid::new_v4(), Uuid::new_v4());
+        let safe_phrases = [
+            "preciso revisar o código antes do deploy",
+            "abre uma caixa de box e separa os itens",
+            "abre o terminal e roda os testes",
+            "esse prompt já está bem escrito",
+            "tenho um cachorro que come dog food premium",
+            "guarde no desktop a apresentação",
+        ];
+        for phrase in safe_phrases {
+            let transcript = run_text_pipeline(&input, phrase, &dict);
+            assert_eq!(
+                transcript.text, phrase,
+                "fala comum foi alterada agressivamente: '{}' → '{}'",
+                phrase, transcript.text,
+            );
+            assert!(
+                transcript.post_corrections.is_empty(),
+                "fala comum disparou correção: {:?}",
+                transcript.post_corrections,
+            );
+        }
+    }
+
+    /// V6-ES-B · confiança derivada plausível: áudio bom + texto longo → alta;
+    /// áudio fraco + texto curto → ≤ 0.55 pra UI sugerir regravar.
+    #[test]
+    fn derived_confidence_high_for_strong_audio_and_text() {
+        let quality = AudioQuality {
+            duration_ms: 4_000,
+            rms: MIN_SPEECH_RMS * 5.0,
+            peak: MIN_SPEECH_PEAK * 5.0,
+            active_ratio: 0.12,
+            vad_segments: 5,
+        };
+        let conf = derive_confidence(
+            &quality,
+            "investigar o módulo Voice do Atlas em modo leitura sem editar nada",
+        );
+        assert!(conf >= 0.85, "esperava conf alta, recebeu {}", conf);
+    }
+
+    #[test]
+    fn derived_confidence_low_for_weak_audio_or_tiny_text() {
+        // Áudio bom mas texto de 1 char → confiança baixa.
+        let strong_quality = AudioQuality {
+            duration_ms: 1_500,
+            rms: MIN_SPEECH_RMS * 4.0,
+            peak: MIN_SPEECH_PEAK * 3.0,
+            active_ratio: 0.05,
+            vad_segments: 2,
+        };
+        let conf_short = derive_confidence(&strong_quality, "oi");
+        assert!(conf_short < 0.65, "texto curto ainda apareceu confiante: {}", conf_short);
+
+        // Áudio fraco mas texto longo → confiança média/baixa.
+        let weak_quality = AudioQuality {
+            duration_ms: 800,
+            rms: MIN_SPEECH_RMS * 1.1,
+            peak: MIN_SPEECH_PEAK * 1.1,
+            active_ratio: MIN_ACTIVE_RATIO * 1.05,
+            vad_segments: 1,
+        };
+        let conf_weak = derive_confidence(
+            &weak_quality,
+            "texto longo gravado em condição de áudio bem fraquinha",
+        );
+        assert!(conf_weak <= 0.70, "áudio fraco ficou confiante demais: {}", conf_weak);
+    }
+
+    #[test]
+    fn derived_confidence_clamps_to_range() {
+        let quality = AudioQuality {
+            duration_ms: 0,
+            rms: 0.0,
+            peak: 0.0,
+            active_ratio: 0.0,
+            vad_segments: 0,
+        };
+        // Texto vazio é 0.0 explícito.
+        assert_eq!(derive_confidence(&quality, ""), 0.0);
+        // Qualquer outro caso fica em [0.10, 0.98].
+        let c = derive_confidence(&quality, "x");
+        assert!((0.10..=0.98).contains(&c), "fora da faixa: {}", c);
+    }
+
+    /// V6-ES-B · variantes de sotaque goiano/PT-BR comuns disparam canon.
+    #[test]
+    fn text_pipeline_corrects_goiano_variants_canonically() {
+        let dict = PersonalDictionary::pre_populated();
+        let input = VoxSttInput::empty(Uuid::new_v4(), Uuid::new_v4());
+        let cases: &[(&str, &str)] = &[
+            ("manda pro uíspe processar isso", "Whisper"),
+            ("o uorquibench tá lento hoje", "Workbench"),
+            ("abre o tauly e faz o build", "Tauri"),
+            ("pede pro clauld revisar", "Claude"),
+            ("usa o live kit pro chat", "LiveKit"),
+            ("usa o launch agent pra subir no boot", "LaunchAgent"),
+            ("aperta option space pra começar", "Option Space"),
+            ("isso vira dog fude semana que vem", "dogfood"),
+        ];
+        for (raw, canon) in cases {
+            let t = run_text_pipeline(&input, raw, &dict);
+            assert!(
+                t.text.contains(canon),
+                "variante {:?} deveria virar {:?}, recebeu {:?}",
+                raw, canon, t.text,
+            );
+        }
     }
 
     /// Smoke test for the real whisper.cpp binding. Skipped by default;

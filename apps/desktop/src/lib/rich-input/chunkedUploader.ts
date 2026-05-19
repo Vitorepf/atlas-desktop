@@ -11,6 +11,7 @@
  * (não multipart); backend valida `strlen(decoded) === bytes`. Retry
  * exponencial 3 tentativas por chunk; backoff 280ms × 2^attempt.
  */
+import { withRetry } from '@atlas/rich-input-canon'
 import { ATTACHMENT_LIMITS } from './types'
 
 interface BridgeEnvShape {
@@ -119,11 +120,11 @@ export async function chunkedUploadAsset(opts: ChunkedUploadOptions): Promise<st
     const buf = new Uint8Array(await slice.arrayBuffer())
     const b64 = bytesToBase64(buf)
 
-    let attempt = 0
-    let lastErr: unknown = null
-    while (attempt < 3) {
-      try {
-        await safeFetchJson<ChunkResp>(
+    // Canon retry policy: 3 attempts, 280ms × 2^(attempt-1) backoff,
+    // aborts on signal — single source of truth in @atlas/rich-input-canon.
+    await withRetry(
+      () =>
+        safeFetchJson<ChunkResp>(
           apiUrl(`/ai/uploads/chunks/${encodeURIComponent(uploadId)}/chunk`),
           {
             method: 'POST',
@@ -137,18 +138,9 @@ export async function chunkedUploadAsset(opts: ChunkedUploadOptions): Promise<st
             }),
             signal,
           },
-        )
-        lastErr = null
-        break
-      } catch (e) {
-        lastErr = e
-        attempt += 1
-        if (signal?.aborted) throw e
-        const backoffMs = 280 * Math.pow(2, attempt - 1)
-        await new Promise((r) => window.setTimeout(r, backoffMs))
-      }
-    }
-    if (lastErr) throw lastErr
+        ),
+      { maxAttempts: 3, baseDelayMs: 280, signal },
+    )
 
     onProgress?.((i + 1) / totalChunks)
   }

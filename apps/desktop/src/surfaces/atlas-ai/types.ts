@@ -95,6 +95,72 @@ export interface AtlasAiRouterReadiness {
   blockers?: ReadonlyArray<{ code: string; message: string }> | null
 }
 
+/**
+ * `atlas.ai.runtime_readiness.v1` — aggregate gate from backend
+ * `GET /atlas/ai/runtime-readiness`. All fields are optional because the
+ * Desktop renders only what is present; absent endpoint = no panel section.
+ */
+export interface AtlasAiRuntimeReadinessCheck {
+  id: string
+  label: string
+  status: 'passed' | 'warn' | 'failed' | string
+  severity: 'critical' | 'warn' | string
+  source_service?: string | null
+  evidence_refs?: ReadonlyArray<string> | null
+  detail?: Record<string, unknown> | null
+}
+
+export interface AtlasAiRuntimeReadiness {
+  schema_version?: string
+  status?: 'ready' | 'partial' | 'blocked' | string
+  generated_at?: string | null
+  summary?: {
+    total?: number
+    passed?: number
+    partial?: number
+    failed?: number
+    critical_failed?: number
+    warn_failed?: number
+  } | null
+  checks?: ReadonlyArray<AtlasAiRuntimeReadinessCheck> | null
+  blockers?: ReadonlyArray<string> | null
+  warnings?: ReadonlyArray<string> | null
+  evidence_refs?: ReadonlyArray<string> | null
+  required_commands?: ReadonlyArray<string> | null
+  claim_policy?: {
+    declares_benchmark?: boolean
+    declares_rivals?: boolean
+    declares_superiority?: boolean
+    declares_teos_certification?: boolean
+    invokes_provider?: boolean
+    scope?: string | null
+    forbidden_claims?: ReadonlyArray<string> | null
+  } | null
+  release_scope?: string | null
+  certification_hash?: string | null
+  /**
+   * Lightweight UX bundle (dynamic state, NOT included in certification_hash).
+   * Powers the runtime status pill — never exposed as raw JSON.
+   */
+  ux_bundle?: {
+    schema_version?: string
+    active_mission?: {
+      id?: string
+      title?: string
+      status?: string
+      mission_type?: string | null
+      next_action?: string | null
+    } | null
+    pending_approvals_count?: number
+    latest_handoff?: {
+      target?: string
+      reason?: string
+      status?: string
+      created_at?: string | null
+    } | null
+  } | null
+}
+
 /** Mantido em sync com `provider` enum em StoreAiInteractionRequest. */
 export type AtlasAiProvider =
   | 'claude_cli'
@@ -228,6 +294,13 @@ export interface AiJob {
   timeout_seconds: number | null
   worker_id: string | null
   metadata: Record<string, unknown> | null
+  /**
+   * Job payload — opaque to the desktop surface in general, but the
+   * YouTube canonical capability reads `payload.youtube_ingestion.videos[]`
+   * to render `AtlasAiYouTubeSourceBadge`. Other consumers should treat as
+   * unknown and only read narrowly-typed slices.
+   */
+  payload?: Record<string, unknown> | null
   attempt_history?: AiJobAttempt[]
 }
 
@@ -453,7 +526,7 @@ export interface AtlasAiInteractionRequest {
    * aceita ambos. Mobile já envia este campo desde 2026-05-19; Desktop alinhou
    * em paralelo.
    */
-  rich_input_payload?: import('../../lib/rich-input').AtlasRichInputPayload
+  rich_input_payload?: import('../../lib/rich-input/types').AtlasRichInputPayload
 }
 
 export interface AtlasAiInteractionResponse {

@@ -374,12 +374,12 @@ function itemWhisperModel(probes: VoxReadinessProbes): VoxReadinessItem {
 
 function itemSttEngine(probes: VoxReadinessProbes): VoxReadinessItem {
   if (probes.bridgeMode !== 'tauri') {
-    return notAvailableOutsideTauri('stt_engine', 'STT engine')
+    return notAvailableOutsideTauri('stt_engine', 'Motor de voz local')
   }
   if (!probes.stt) {
     return {
       id: 'stt_engine',
-      label: 'STT engine',
+      label: 'Motor de voz local',
       status: 'unavailable',
       detail: 'vox_stt_status não respondeu.',
       nextAction: null,
@@ -388,7 +388,7 @@ function itemSttEngine(probes: VoxReadinessProbes): VoxReadinessItem {
   if (probes.stt.engineAvailable) {
     return {
       id: 'stt_engine',
-      label: 'STT engine',
+      label: 'Motor de voz local',
       status: 'passed',
       detail: `${probes.stt.modelId} pronto para inferência local.`,
       nextAction: null,
@@ -396,14 +396,14 @@ function itemSttEngine(probes: VoxReadinessProbes): VoxReadinessItem {
   }
   return {
     id: 'stt_engine',
-    label: 'STT engine',
+    label: 'Motor de voz local',
     status: 'warning',
     detail: probes.stt.nextAction?.message
-      ?? 'Engine indisponível neste build · transcript real não roda.',
+      ?? 'Motor de voz indisponível neste build · transcrição real não roda.',
     nextAction:
       probes.stt.nextAction?.code === 'engine_binding_pending'
         ? 'Recompile o desktop com `--features whisper-cpp` em macOS (precisa de cmake).'
-        : 'Dictation real pausada — fallback de debug text continua disponível.',
+        : 'Ditado em voz pausado — caminho de texto manual continua disponível.',
   }
 }
 
@@ -411,27 +411,27 @@ function itemKernelUrl(probes: VoxReadinessProbes): VoxReadinessItem {
   if (probes.kernel.ok) {
     return {
       id: 'kernel_url',
-      label: 'Kernel URL',
+      label: 'Conexão com servidor Atlas',
       status: 'passed',
-      detail: 'Conexão com atlas-server estabelecida.',
+      detail: 'Conexão estabelecida.',
       nextAction: null,
     }
   }
   if (probes.kernel.reason === 'kernel_url_missing') {
     return {
       id: 'kernel_url',
-      label: 'Kernel URL',
+      label: 'Conexão com servidor Atlas',
       status: 'blocked',
-      detail: 'VITE_ATLAS_SERVER_URL não configurado · sem conexão com atlas-server.',
-      nextAction: 'Inicie atlas-server ou configure VITE_ATLAS_SERVER_URL.',
+      detail: 'Endereço do servidor Atlas não configurado · sem conexão.',
+      nextAction: 'Inicie o servidor Atlas (atlas-server) ou configure VITE_ATLAS_SERVER_URL.',
     }
   }
   return {
     id: 'kernel_url',
-    label: 'Kernel URL',
+    label: 'Conexão com servidor Atlas',
     status: 'warning',
-    detail: probes.kernel.detail ?? 'Kernel HTTP não respondeu.',
-    nextAction: 'Verifique se atlas-server está rodando.',
+    detail: probes.kernel.detail ?? 'O servidor Atlas não respondeu.',
+    nextAction: 'Verifique se o servidor Atlas está rodando.',
   }
 }
 
@@ -439,34 +439,34 @@ function itemKernelHealth(probes: VoxReadinessProbes): VoxReadinessItem {
   if (!probes.kernel.ok) {
     return {
       id: 'kernel_health',
-      label: '/ai/vox/health',
+      label: 'Status do servidor Atlas',
       status: probes.kernel.reason === 'kernel_url_missing' ? 'unavailable' : 'warning',
       detail:
         probes.kernel.reason === 'kernel_url_missing'
-          ? 'Kernel URL ausente — health não verificado.'
-          : probes.kernel.detail ?? 'Kernel não respondeu /ai/vox/health.',
+          ? 'Endereço do servidor ausente — status não verificado.'
+          : probes.kernel.detail ?? 'O servidor Atlas não respondeu ao status do Vox.',
       nextAction:
         probes.kernel.reason === 'kernel_url_missing'
           ? null
-          : 'Confirme que atlas-server está respondendo /ai/vox/health.',
+          : 'Confirme que o servidor Atlas está respondendo.',
     }
   }
   const h = probes.kernel.health
   if (h.status === 'available') {
     return {
       id: 'kernel_health',
-      label: '/ai/vox/health',
+      label: 'Status do servidor Atlas',
       status: 'passed',
-      detail: `Backend Vox disponível · modo "${h.mode ?? '—'}".`,
+      detail: 'Servidor Atlas disponível para o Vox.',
       nextAction: null,
     }
   }
   return {
     id: 'kernel_health',
-    label: '/ai/vox/health',
+    label: 'Status do servidor Atlas',
     status: 'warning',
-    detail: `Status do backend: "${h.status}".`,
-    nextAction: 'Investigue logs do atlas-server.',
+    detail: `Status do servidor: "${h.status}".`,
+    nextAction: 'Investigue os logs do servidor Atlas.',
   }
 }
 
@@ -474,27 +474,27 @@ function itemGovernedExecute(probes: VoxReadinessProbes): VoxReadinessItem {
   if (!probes.kernel.ok) {
     return {
       id: 'governed_execute',
-      label: 'Governed Execute (V3)',
+      label: 'Execução governada',
       status: 'unavailable',
-      detail: 'Kernel não verificável — suporte V3 desconhecido.',
+      detail: 'Servidor Atlas não verificável — suporte a execução desconhecido.',
       nextAction: null,
     }
   }
   if (probes.kernel.health.supports.governedExecute) {
     return {
       id: 'governed_execute',
-      label: 'Governed Execute (V3)',
+      label: 'Execução governada',
       status: 'passed',
-      detail: 'Backend suporta governed_execute.',
+      detail: 'Servidor Atlas suporta execução governada.',
       nextAction: null,
     }
   }
   return {
     id: 'governed_execute',
-    label: 'Governed Execute (V3)',
+    label: 'Execução governada',
     status: 'warning',
-    detail: 'Backend ainda não anuncia suporte a governed_execute.',
-    nextAction: 'V0-V2 seguem funcionando. V3 entra em wave futura.',
+    detail: 'Servidor Atlas ainda não anuncia suporte a execução governada.',
+    nextAction: 'Ditar, melhorar e criar prompt continuam funcionando.',
   }
 }
 
@@ -800,10 +800,10 @@ export function deriveItemActions(
       return [
         {
           kind: 'instruction',
-          label: 'STT engine indisponível',
+          label: 'Motor de voz indisponível',
           detail:
             item.nextAction
-            ?? 'STT real exige a feature `whisper-cpp` e o modelo presente. Use o fallback debug enquanto isso.',
+            ?? 'O motor de voz local precisa ser recompilado com whisper-cpp. Até lá, use o caminho de texto manual.',
         },
         { kind: 'refresh', label: 'Verificar novamente' },
       ]
@@ -812,13 +812,13 @@ export function deriveItemActions(
       return [
         {
           kind: 'copy_text',
-          label: 'Copiar nome da variável',
+          label: 'Copiar endereço padrão',
           text: 'VITE_ATLAS_SERVER_URL=http://127.0.0.1:8001',
-          successMessage: 'Variável copiada · cole no seu .env',
+          successMessage: 'Endereço copiado · cole no seu .env',
         },
         {
           kind: 'instruction',
-          label: 'Subir atlas-server',
+          label: 'Subir o servidor Atlas',
           detail:
             'Em /Users/vitorepf/develop/Atlas/atlas-server rode `/opt/homebrew/bin/php artisan serve --port=8001` e configure VITE_ATLAS_SERVER_URL.',
         },
@@ -829,10 +829,10 @@ export function deriveItemActions(
       return [
         {
           kind: 'instruction',
-          label: 'Investigar Kernel',
+          label: 'Investigar servidor Atlas',
           detail:
             item.nextAction
-            ?? 'Atlas-server respondeu, mas /ai/vox/health não retornou status=available. Verifique logs.',
+            ?? 'O servidor Atlas respondeu, mas o status do Vox não voltou pronto. Verifique os logs.',
         },
         { kind: 'refresh', label: 'Verificar novamente' },
       ]
@@ -846,7 +846,7 @@ export function deriveItemActions(
           label: 'Executor indisponível',
           detail:
             item.nextAction
-            ?? 'Instale e autentique o CLI correspondente. V0-V2 seguem funcionando.',
+            ?? 'Instale e autentique o CLI correspondente. Ditar, melhorar e criar prompt continuam funcionando.',
         },
         { kind: 'refresh', label: 'Verificar novamente' },
       ]
@@ -855,9 +855,9 @@ export function deriveItemActions(
       return [
         {
           kind: 'instruction',
-          label: 'Stop-the-line · invariante quebrada',
+          label: 'Falha de segurança · pare antes de continuar',
           detail:
-            'Backend está aceitando raw_audio. Não use Vox até o backend reafirmar raw_audio_accepted=false. Investigue antes de continuar.',
+            'O servidor Atlas voltou a aceitar áudio cru. Não use o Vox até o servidor recusar áudio cru de novo.',
         },
         { kind: 'refresh', label: 'Verificar novamente' },
       ]
@@ -929,10 +929,10 @@ export function deriveUsageTiers(summary: VoxReadinessSummary | null): VoxUsageR
   const empty: VoxUsageReadiness = {
     anyTierAvailable: false,
     tiers: [
-      tierShell('dictation', 'Dictation'),
-      tierShell('prompt_polish', 'Prompt Polish'),
-      tierShell('intent_compile', 'Intent Compile'),
-      tierShell('governed_execute', 'Governed Execute'),
+      tierShell('dictation', 'Ditado'),
+      tierShell('prompt_polish', 'Melhorar'),
+      tierShell('intent_compile', 'Criar prompt'),
+      tierShell('governed_execute', 'Executar'),
     ],
   }
   if (!summary) return empty
@@ -1008,41 +1008,41 @@ export function deriveUsageTiers(summary: VoxReadinessSummary | null): VoxUsageR
   const tiers: VoxUsageTier[] = [
     {
       mode: 'dictation',
-      label: 'Dictation',
+      label: 'Ditado',
       available: dictationAvailable,
       blockerIds: dedupe(dictationBlockers),
       detail: dictationAvailable
         ? 'Microfone ok · texto puro disponível agora.'
-        : 'Resolva os itens listados para falar com Vox.',
+        : 'Resolva os itens listados para falar com o Atlas.',
     },
     {
       mode: 'prompt_polish',
-      label: 'Prompt Polish',
+      label: 'Melhorar',
       available: polishAvailable && !polishBlockers.includes('raw_audio_invariant'),
       blockerIds: dedupe(polishBlockers),
       detail:
         polishAvailable && !polishBlockers.includes('raw_audio_invariant')
-          ? 'Backend ok · polish PT-BR determinístico disponível.'
-          : 'Necessita Kernel HTTP e microfone para rodar Prompt Polish.',
+          ? 'Servidor Atlas ok · melhorar texto disponível.'
+          : 'Precisa do servidor Atlas e do microfone para melhorar texto.',
     },
     {
       mode: 'intent_compile',
-      label: 'Intent Compile',
+      label: 'Criar prompt',
       available: compileAvailable && !compileBlockers.includes('raw_audio_invariant'),
       blockerIds: dedupe(compileBlockers),
       detail:
         compileAvailable && !compileBlockers.includes('raw_audio_invariant')
-          ? 'Backend ok · intent compiler determinístico disponível.'
-          : 'Necessita Kernel HTTP e microfone para rodar Intent Compile.',
+          ? 'Servidor Atlas ok · criar prompt forte disponível.'
+          : 'Precisa do servidor Atlas e do microfone para criar prompt.',
     },
     {
       mode: 'governed_execute',
-      label: 'Governed Execute',
+      label: 'Executar',
       available: governedAvailable,
       blockerIds: dedupe(governedBlockers),
       detail: governedAvailable
-        ? 'Backend governa e pelo menos um executor disponível.'
-        : 'Governed Execute exige Kernel + executor (Codex ou Claude CLI).',
+        ? 'Servidor Atlas ok e pelo menos um executor disponível.'
+        : 'Executar exige servidor Atlas + um executor (Codex ou Claude).',
     },
   ]
 

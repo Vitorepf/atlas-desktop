@@ -1,10 +1,10 @@
 {
   "schema": "atlas.vox.visual_smoke.v1",
   "status": "pass",
-  "generated_at": "2026-05-19T11:33:20.804Z",
+  "generated_at": "2026-05-19T18:33:34.467Z",
   "totals": {
-    "total": 14,
-    "pass": 14,
+    "total": 27,
+    "pass": 27,
     "warn": 0,
     "fail": 0
   },
@@ -22,9 +22,29 @@
     {
       "id": "overlay_listening_shows_atlas_ouvindo",
       "status": "pass",
-      "summary": "Estado listening exibe \"Atlas ouvindo\"",
+      "summary": "Estado listening exibe \"Atlas ouvindo\" + Finalizar",
       "detail": {
         "artifact": "overlay-listening.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_error_offers_tentar_novamente",
+      "status": "pass",
+      "summary": "Estado error oferece \"Tentar novamente\"",
+      "detail": {
+        "artifact": "overlay-error.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_idle_fresh_shows_comecar",
+      "status": "pass",
+      "summary": "Idle fresh exibe \"Começar\" como primary",
+      "detail": {
+        "artifact": "overlay-idle-fresh.html"
       },
       "next_action": null,
       "artifact": null
@@ -52,7 +72,7 @@
     {
       "id": "overlay_prompt_polish_shows_compiled",
       "status": "pass",
-      "summary": "Prompt Polish exibe \"Prompt polido\" com compiled_prompt",
+      "summary": "Modo Melhorar exibe \"Ver texto completo\" com texto melhorado",
       "detail": {
         "artifact": "overlay-prompt-polish.html"
       },
@@ -80,13 +100,103 @@
       "artifact": null
     },
     {
+      "id": "overlay_interlocutor_clarify",
+      "status": "pass",
+      "summary": "V5 clarify mostra pergunta + input + botão Responder",
+      "detail": {
+        "artifact": "overlay-interlocutor-clarify.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_interlocutor_caution",
+      "status": "pass",
+      "summary": "V5 caution mostra aviso + Continuar mesmo assim",
+      "detail": {
+        "artifact": "overlay-interlocutor-caution.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_interlocutor_disagree_blocking",
+      "status": "pass",
+      "summary": "V5 disagree blocking trava Confirmar + Editar intenção",
+      "detail": {
+        "artifact": "overlay-interlocutor-disagree-blocking.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_interlocutor_suggest_better_prompt",
+      "status": "pass",
+      "summary": "V5 suggest_better_prompt oferece Usar sugestão + Manter original",
+      "detail": {
+        "artifact": "overlay-interlocutor-suggest-better-prompt.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_interlocutor_none_hidden",
+      "status": "pass",
+      "summary": "V5 intervention=none não renderiza o card",
+      "detail": {
+        "artifact": "overlay-interlocutor-none.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_v6_reply_prompt_ready",
+      "status": "pass",
+      "summary": "V6 reply card mostra \"Prompt pronto.\" no compiled",
+      "detail": {
+        "artifact": "overlay-v6-reply-prompt-ready.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_v6_reply_blocked_safety",
+      "status": "pass",
+      "summary": "V6 reply card mostra \"Bloqueei por segurança.\" em disagree blocking",
+      "detail": {
+        "artifact": "overlay-v6-reply-blocked-safety.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_v6_reply_need_detail",
+      "status": "pass",
+      "summary": "V6 reply card mostra \"Preciso de um detalhe.\" em clarify",
+      "detail": {
+        "artifact": "overlay-v6-reply-need-detail.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "overlay_v6_reply_suppressed_for_caution",
+      "status": "pass",
+      "summary": "V6 reply card NÃO aparece em caution (opinião pura)",
+      "detail": {
+        "artifact": "overlay-v6-reply-suppressed-caution.html"
+      },
+      "next_action": null,
+      "artifact": null
+    },
+    {
       "id": "gate_panel_renders_open",
       "status": "pass",
       "summary": "VoxGatePanel renderiza com open=true (loading inicial honesto)",
       "detail": {
         "artifact": "gate-panel-open.html",
         "detail": {
-          "bytes": 704
+          "bytes": 715
         }
       },
       "next_action": null,
@@ -117,7 +227,7 @@
       "detail": {
         "artifact": "dogfood-panel.html",
         "detail": {
-          "bytes": 851
+          "bytes": 850
         }
       },
       "next_action": null,
@@ -146,6 +256,22 @@
       "detail": null,
       "next_action": null,
       "artifact": null
+    },
+    {
+      "id": "main_flow_has_no_forbidden_terms_visible",
+      "status": "pass",
+      "summary": "Fluxo principal não exibe jargão técnico ao operador (filtra hidden=\"\"))",
+      "detail": null,
+      "next_action": null,
+      "artifact": null
+    },
+    {
+      "id": "every_main_state_has_an_exit_action",
+      "status": "pass",
+      "summary": "Cada estado principal tem ao menos uma ação/saída visível ao operador",
+      "detail": null,
+      "next_action": null,
+      "artifact": null
     }
   ],
   "artifacts": [
@@ -157,37 +283,92 @@
     {
       "name": "overlay-listening",
       "path": "test-results/vox-visual-smoke/overlay-listening.html",
-      "bytes": 1219
+      "bytes": 1496
+    },
+    {
+      "name": "overlay-error",
+      "path": "test-results/vox-visual-smoke/overlay-error.html",
+      "bytes": 1228
+    },
+    {
+      "name": "overlay-idle-fresh",
+      "path": "test-results/vox-visual-smoke/overlay-idle-fresh.html",
+      "bytes": 1045
     },
     {
       "name": "overlay-transcribing",
       "path": "test-results/vox-visual-smoke/overlay-transcribing.html",
-      "bytes": 993
+      "bytes": 1197
     },
     {
       "name": "overlay-transcript-ready",
       "path": "test-results/vox-visual-smoke/overlay-transcript-ready.html",
-      "bytes": 1428
+      "bytes": 1623
     },
     {
       "name": "overlay-prompt-polish",
       "path": "test-results/vox-visual-smoke/overlay-prompt-polish.html",
-      "bytes": 3234
+      "bytes": 3519
     },
     {
       "name": "overlay-intent-compile",
       "path": "test-results/vox-visual-smoke/overlay-intent-compile.html",
-      "bytes": 3686
+      "bytes": 3971
     },
     {
       "name": "overlay-r4-awaiting",
       "path": "test-results/vox-visual-smoke/overlay-r4-awaiting.html",
-      "bytes": 3241
+      "bytes": 3279
+    },
+    {
+      "name": "overlay-interlocutor-clarify",
+      "path": "test-results/vox-visual-smoke/overlay-interlocutor-clarify.html",
+      "bytes": 4900
+    },
+    {
+      "name": "overlay-interlocutor-caution",
+      "path": "test-results/vox-visual-smoke/overlay-interlocutor-caution.html",
+      "bytes": 4201
+    },
+    {
+      "name": "overlay-interlocutor-disagree-blocking",
+      "path": "test-results/vox-visual-smoke/overlay-interlocutor-disagree-blocking.html",
+      "bytes": 4994
+    },
+    {
+      "name": "overlay-interlocutor-suggest-better-prompt",
+      "path": "test-results/vox-visual-smoke/overlay-interlocutor-suggest-better-prompt.html",
+      "bytes": 4489
+    },
+    {
+      "name": "overlay-interlocutor-none",
+      "path": "test-results/vox-visual-smoke/overlay-interlocutor-none.html",
+      "bytes": 3938
+    },
+    {
+      "name": "overlay-v6-reply-prompt-ready",
+      "path": "test-results/vox-visual-smoke/overlay-v6-reply-prompt-ready.html",
+      "bytes": 3954
+    },
+    {
+      "name": "overlay-v6-reply-blocked-safety",
+      "path": "test-results/vox-visual-smoke/overlay-v6-reply-blocked-safety.html",
+      "bytes": 4705
+    },
+    {
+      "name": "overlay-v6-reply-need-detail",
+      "path": "test-results/vox-visual-smoke/overlay-v6-reply-need-detail.html",
+      "bytes": 4800
+    },
+    {
+      "name": "overlay-v6-reply-suppressed-caution",
+      "path": "test-results/vox-visual-smoke/overlay-v6-reply-suppressed-caution.html",
+      "bytes": 4144
     },
     {
       "name": "gate-panel-open",
       "path": "test-results/vox-visual-smoke/gate-panel-open.html",
-      "bytes": 704
+      "bytes": 715
     },
     {
       "name": "readiness-panel-open",
@@ -197,7 +378,7 @@
     {
       "name": "dogfood-panel",
       "path": "test-results/vox-visual-smoke/dogfood-panel.html",
-      "bytes": 851
+      "bytes": 850
     }
   ]
 }

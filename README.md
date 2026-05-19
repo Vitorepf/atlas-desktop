@@ -113,3 +113,16 @@ npm run tauri:build         # production .app + .dmg
 | `docs/architecture/0003-cartography-surface.md` | Cartography screen contract, API, states and roadmap |
 | `docs/atlas-ai-ultra-premium-polish-spec.md` | ~80 polish fixes aplicados em Atlas AI (referência prática) |
 | `docs/anti-patterns/` | Galeria visual de violações canon (cream em surface não-Cartografia, etc.) |
+
+## Atlas Vox V6 · uso diário
+
+> Mac/Desktop, local-first, sem API paga, sem áudio bruto persistido.
+> Entrada humana canônica em PT-BR:
+> **`apps/desktop/docs/vox-daily-use.md`** (abre, grava, modos, AirPods,
+> microfone, segurança, checklist final).
+>
+> Para a primeira instalação (Whisper, PHP, cmake, permissões macOS):
+> `apps/desktop/docs/vox-first-use.md`.
+>
+> Comando de uso diário:
+> `npm run vox:dev --workspace=@atlas/desktop`

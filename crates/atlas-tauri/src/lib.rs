@@ -23,9 +23,11 @@ mod commands_vox;
 mod commands_vox_benchmark;
 mod commands_vox_edge;
 mod commands_vox_hotkey;
+mod commands_vox_reply;
 mod commands_vox_setup;
 mod kernel_manager;
 mod native_menu;
+mod vox_ambient_launch;
 
 use kernel_manager::{KernelManagerState, KernelStatusReport};
 
@@ -153,6 +155,22 @@ pub fn run() {
     let pty_manager: Arc<PtyManager> = PtyManager::new();
     let vox_edge: Arc<VoxEdge> = Arc::new(VoxEdge::new(VoxEdgeConfig::production()));
 
+    // V6-A · Atlas Vox Ambient Launch. Lê `--vox-start-listening` da linha de
+    // comando ou `ATLAS_VOX_START_LISTENING=1` antes de tudo. Single-shot: o
+    // overlay consome o sinal uma única vez quando o webview monta.
+    let vox_ambient: Arc<vox_ambient_launch::VoxAmbientLaunchState> =
+        vox_ambient_launch::VoxAmbientLaunchState::from_process();
+    {
+        let snap = vox_ambient.peek();
+        if snap.start_listening {
+            tracing::info!(
+                target: "vox-ambient",
+                source = ?snap.source,
+                "atlas vox ambient launch: pedido para abrir já ouvindo detectado"
+            );
+        }
+    }
+
     let app = tauri::Builder::default()
         .menu(native_menu::atlas_menu)
         .on_menu_event(native_menu::handle_menu_event)
@@ -169,6 +187,25 @@ pub fn run() {
                 app.manage(Arc::clone(&kernel_state));
                 app.manage(Arc::clone(&pty_manager));
                 app.manage(Arc::clone(&vox_edge));
+                app.manage(Arc::clone(&vox_ambient));
+                // V6 · Reply Surface cooldown state (anti-flood do `say`).
+                app.manage(commands_vox_reply::VoxReplyState::new());
+
+                // V6-A · emite o pedido ambient logo após o setup. O frontend
+                // pode subscrever via `vox://ambient-launch-requested` para
+                // reagir antes de chamar `vox_ambient_consume_pending_launch`.
+                // O comando é a fonte canônica; o evento é só um "ping" para
+                // economizar uma round-trip no caso comum.
+                {
+                    let snap: vox_ambient_launch::VoxAmbientLaunchSnapshot =
+                        vox_ambient.peek().into();
+                    if snap.start_listening {
+                        let _ = app.handle().emit(
+                            "vox://ambient-launch-requested",
+                            &snap,
+                        );
+                    }
+                }
 
                 // Wave 6.5: install the Vox global-hotkey runtime
                 // (Option+Space toggle + Cmd+Shift+Space open overlay)
@@ -289,11 +326,16 @@ pub fn run() {
             commands_vox_edge::vox_edge_eclipse,
             commands_vox_hotkey::vox_hotkey_status,
             commands_vox_hotkey::vox_hotkey_record_escape,
+            vox_ambient_launch::vox_ambient_consume_pending_launch,
             commands_vox_benchmark::vox_stt_benchmark_status,
             commands_vox_benchmark::vox_stt_benchmark_record_sample,
             commands_vox_benchmark::vox_stt_benchmark_run,
             commands_vox_benchmark::vox_stt_benchmark_report_latest,
             commands_vox_setup::vox_open_system_settings,
+            commands_vox_setup::vox_audio_input_describe,
+            commands_vox_reply::vox_settings_get,
+            commands_vox_reply::vox_settings_update,
+            commands_vox_reply::vox_speak_short,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Atlas Code");

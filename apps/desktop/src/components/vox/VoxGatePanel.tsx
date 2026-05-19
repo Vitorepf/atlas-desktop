@@ -41,10 +41,14 @@ interface VoxGatePanelProps {
   rivalsCaptureAvailable?: boolean
 }
 
+// V6-OBSERVABILITY-FINAL · labels humanos.
+// Schema técnico (blocked/warming_up/ready_for_vitor_review) continua no
+// JSON do Kernel; a UI fala em PT-BR direto. "warming_up" não é erro —
+// é "coletando uso", aderente ao canon do produto.
 const GATE_LABEL: Record<NonNullable<VoxGateV3Response['gateStatus']>, string> = {
-  blocked: 'bloqueado',
-  warming_up: 'em rodagem',
-  ready_for_vitor_review: 'pronto · aguarda revisão Vitor',
+  blocked: 'Bloqueado · resolver antes',
+  warming_up: 'Coletando uso',
+  ready_for_vitor_review: 'Pronto · aguardando sua revisão',
 }
 
 const BASELINE_OPTIONS: Array<{ value: VoxRivalsBaselineKind; label: string }> = [
@@ -92,9 +96,11 @@ function hardGateClass(value: number): string {
 }
 
 function summarizeBlockers(blockers: VoxGateV3Response['blockers']): string {
-  if (blockers.length === 0) return 'Sem blockers reportados.'
+  if (blockers.length === 0) return 'Sem bloqueios — siga usando.'
   const head = blockers.slice(0, 3).map((b) => b.message || b.code).join(' · ')
-  return blockers.length > 3 ? `${head} (+${blockers.length - 3})` : head
+  return blockers.length > 3
+    ? `${head} (e mais ${blockers.length - 3})`
+    : head
 }
 
 export function VoxGatePanel({
@@ -151,9 +157,11 @@ export function VoxGatePanel({
       setRegret(false)
       setPromptQualityVote(0)
     } else if (response.status === 'unavailable') {
-      setSubmitFlash('Rivals ainda indisponível no Kernel.')
+      setSubmitFlash('Ainda coletando uso — registro abre quando houver sessões reais.')
     } else {
-      setSubmitFlash(`Falhou: ${response.message ?? 'erro desconhecido'}`)
+      setSubmitFlash(
+        `Não consegui registrar agora: ${response.message ?? 'tente novamente em instantes'}.`,
+      )
     }
     window.setTimeout(() => setSubmitFlash(null), 3200)
   }, [
@@ -185,10 +193,10 @@ export function VoxGatePanel({
         <p className="vox-overlay-hint vox-overlay-hint-error">{loadError}</p>
       ) : null}
 
-      {/* GATE status + refresh */}
+      {/* Estado humano · primeira linha responde "como está o uso real?" */}
       <div className="vox-gate-row">
         <span className={statusPillClass(gate?.gateStatus ?? null)}>
-          {gate?.gateStatus ? GATE_LABEL[gate.gateStatus] : 'gate · status indisponível'}
+          {gate?.gateStatus ? GATE_LABEL[gate.gateStatus] : 'Coletando uso'}
         </span>
         <button
           type="button"
@@ -202,42 +210,49 @@ export function VoxGatePanel({
 
       {gateUnavailable && !loadError ? (
         <p className="vox-overlay-hint">
-          GATE V3 ainda indisponível no Kernel ({gate?.message ?? 'sem detalhes'}).
+          Ainda coletando uso — abra o overlay e fale algumas vezes para o
+          Atlas começar a medir.
         </p>
       ) : (
         <p className="vox-overlay-hint">{blockersLine}</p>
       )}
 
-      {/* Métricas principais */}
-      {metricsUnavailable ? (
-        <p className="vox-overlay-hint vox-overlay-hint-warn">
-          Métricas ainda indisponíveis ({metrics?.message ?? 'sem detalhes'}).
-        </p>
-      ) : metrics ? (
-        <MetricsBlock metrics={metrics} />
-      ) : null}
-
-      {/* Rivals summary */}
+      {/* Comparativos · resumo humano */}
       <div className="vox-gate-row vox-gate-row-tight">
-        <span className="vox-gate-key">Rivals</span>
+        <span className="vox-gate-key">Comparativos</span>
         {reportUnavailable ? (
           <span className="vox-gate-val vox-gate-val-faint">
-            relatório ainda indisponível
+            ainda coletando
           </span>
         ) : report ? (
           <span className="vox-gate-val">
-            {report.summary.totalCases} casos · Vox {report.summary.voxWins} ·
-            Baseline {report.summary.baselineWins} · Empate {report.summary.draws} ·
-            Regret {report.summary.regrets}
+            {report.summary.totalCases} comparação(ões) · Vox {report.summary.voxWins} ·
+            Alternativa {report.summary.baselineWins} · Empate {report.summary.draws} ·
+            Arrependimentos {report.summary.regrets}
           </span>
         ) : null}
       </div>
 
-      {/* V4 promotion stance · explicit non-button */}
+      {/* Próxima fase · explicação humana, sem botão */}
       <p className="vox-gate-v4-note">
-        V4 só promove com aprovação explícita do operador.
-        Esta wave NÃO oferece botão de promoção.
+        Próxima fase só destrava com aprovação explícita do operador. Esta
+        cabine não oferece botão de promoção.
       </p>
+
+      {/* Detalhes técnicos · colapsados por padrão.
+          Cobertos pelos sinais brutos quando o operador precisar inspecionar. */}
+      {metricsUnavailable ? (
+        <p className="vox-overlay-hint">
+          Sinais de uso ainda indisponíveis ({metrics?.message ?? 'sem detalhes'}).
+        </p>
+      ) : metrics ? (
+        <details className="vox-gate-tech-details">
+          <summary className="vox-overlay-fallback-summary">
+            Detalhes técnicos (sinais brutos)
+          </summary>
+          <MetricsBlock metrics={metrics} />
+        </details>
+      ) : null}
 
       {/* Rivals quick entry */}
       {rivalsCaptureAvailable ? (
@@ -245,7 +260,7 @@ export function VoxGatePanel({
           <summary className="vox-overlay-fallback-summary">Registrar comparação</summary>
           <div className="vox-gate-rivals-form">
             <label className="vox-overlay-dict-field">
-              <span>baseline</span>
+              <span>Comparar com</span>
               <select
                 value={baselineKind}
                 onChange={(e) => setBaselineKind(e.target.value as VoxRivalsBaselineKind)}
@@ -259,7 +274,7 @@ export function VoxGatePanel({
               </select>
             </label>
             <label className="vox-overlay-dict-field">
-              <span>preferência</span>
+              <span>Quem ganhou</span>
               <select
                 value={preference}
                 onChange={(e) => setPreference(e.target.value as VoxRivalsPreference)}
@@ -273,7 +288,7 @@ export function VoxGatePanel({
               </select>
             </label>
             <label className="vox-overlay-dict-field">
-              <span>quality</span>
+              <span>Nota de qualidade</span>
               <select
                 value={String(promptQualityVote)}
                 onChange={(e) =>
@@ -295,13 +310,13 @@ export function VoxGatePanel({
                 onChange={(e) => setRegret(e.target.checked)}
                 disabled={submitting}
               />
-              <span>isso foi ruim (regret)</span>
+              <span>marcar como ruim (voltei atrás)</span>
             </label>
             <textarea
               className="vox-overlay-debug-input vox-gate-rivals-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="nota curta (opcional)"
+              placeholder="Nota curta (opcional)"
               rows={2}
               maxLength={280}
               spellCheck={false}
@@ -314,7 +329,7 @@ export function VoxGatePanel({
                 onClick={() => void handleSubmit()}
                 disabled={submitting}
               >
-                {submitting ? 'enviando…' : 'registrar'}
+                {submitting ? 'registrando…' : 'Registrar comparação'}
               </button>
               {submitFlash ? (
                 <span
@@ -345,29 +360,29 @@ function MetricsBlock({ metrics }: MetricsBlockProps) {
   return (
     <>
       <div className="vox-gate-row vox-gate-row-tight">
-        <span className="vox-gate-key">sessões</span>
+        <span className="vox-gate-key">Sessões reais</span>
         <span className="vox-gate-val">{fmtCount(metrics.realSessions, metrics.realSessionsTarget)}</span>
-        <span className="vox-gate-key">dias</span>
+        <span className="vox-gate-key">Dias de uso</span>
         <span className="vox-gate-val">{fmtCount(metrics.daysOfRealUse, metrics.daysOfRealUseTarget)}</span>
       </div>
       <div className="vox-gate-row vox-gate-row-tight">
-        <span className="vox-gate-key">prompt quality</span>
+        <span className="vox-gate-key">Qualidade dos prompts</span>
         <span className="vox-gate-val">{fmtNumber(metrics.promptQualityDelta)}</span>
-        <span className="vox-gate-key">regret</span>
+        <span className="vox-gate-key">Arrependimentos</span>
         <span className="vox-gate-val">{fmtNumber(metrics.actionRegretScore)}</span>
-        <span className="vox-gate-key">rivals×</span>
+        <span className="vox-gate-key">Vantagem vs alternativas</span>
         <span className="vox-gate-val">{fmtNumber(metrics.rivalsVoiceMultiplier)}</span>
       </div>
       <div className="vox-gate-hard">
-        <span className="vox-gate-key">safety</span>
+        <span className="vox-gate-key">Segurança</span>
         <span className={hardGateClass(hg.rawAudioPersistedCount)}>
-          raw audio: {hg.rawAudioPersistedCount}
+          Áudio bruto persistido: {hg.rawAudioPersistedCount}
         </span>
         <span className={hardGateClass(hg.confirmationBypassCount)}>
-          confirmation bypass: {hg.confirmationBypassCount}
+          Confirmação pulada: {hg.confirmationBypassCount}
         </span>
         <span className={hardGateClass(hg.destructiveActionWithoutReceipt)}>
-          destrutivo s/ receipt: {hg.destructiveActionWithoutReceipt}
+          Ação destrutiva sem registro: {hg.destructiveActionWithoutReceipt}
         </span>
         <span
           className={
@@ -376,7 +391,7 @@ function MetricsBlock({ metrics }: MetricsBlockProps) {
               : 'vox-gate-hard-bad'
           }
         >
-          eclipse: {hg.eclipseTestSuccessCount} / {hg.eclipseTestRequiredCount || 3}
+          Parar tudo testado: {hg.eclipseTestSuccessCount} / {hg.eclipseTestRequiredCount || 3}
         </span>
       </div>
     </>

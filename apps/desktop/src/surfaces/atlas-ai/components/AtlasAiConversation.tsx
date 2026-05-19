@@ -16,12 +16,15 @@ import { AtlasAiErrorBanner } from './AtlasAiErrorBanner'
 import { AtlasAiLiveActivity } from './AtlasAiLiveActivity'
 import { AtlasAiMessageActions } from './AtlasAiMessageActions'
 import { AtlasAiMessageBody } from './AtlasAiMessageBody'
+import { projectPresentation } from '../presentationContract'
+import { AtlasAiResponseAudit } from './AtlasAiResponseAudit'
 import { AtlasAiOpenBrainBadge } from './AtlasAiOpenBrainBadge'
 import { AtlasAiPlanIndicators } from './AtlasAiPlanIndicators'
 import { AtlasAiQualityBadge } from './AtlasAiQualityBadge'
 import { AtlasAiReasoningDrawer } from './AtlasAiReasoningDrawer'
 import { AtlasAiThinkingState } from './AtlasAiThinkingState'
 import { AtlasAiToolReceipts } from './AtlasAiToolReceipts'
+import { AtlasAiYouTubeSourceBadge } from './AtlasAiYouTubeSourceBadge'
 import { formatRelativeLong } from '../timeFormat'
 import type { AiThreadDetail, AiThreadMessage, AiTrace, AtlasDevPlanResult } from '../types'
 
@@ -77,6 +80,16 @@ function MessageBubble({
 }) {
   const tone = message.role === 'user' || message.role === 'operator' ? 'operator' : 'atlas'
   const isAtlas = tone === 'atlas'
+  const rawContent = message.content ?? ''
+  // Sanitização editorial: turnos do Atlas passam pelo PresentationContract,
+  // que separa cabeçalhos técnicos crus (SOURCE_REFS, UNCERTAINTY, etc.) do
+  // corpo. Mensagens do operador renderizam intactas. Metadata cai no painel.
+  const presentation = useMemo(() => {
+    if (!isAtlas) return null
+    if (!rawContent) return null
+    return projectPresentation(rawContent)
+  }, [isAtlas, rawContent])
+  const bodyContent = presentation?.body || rawContent || '(sem conteúdo)'
   return (
     <article className={`atlas-ai-message tone-${tone}`}>
       <header className="atlas-ai-message-header">
@@ -103,7 +116,15 @@ function MessageBubble({
         </div>
       ) : null}
 
-      <AtlasAiMessageBody content={message.content ?? '(sem conteúdo)'} />
+      <AtlasAiMessageBody content={bodyContent} />
+
+      {isAtlas && trace ? <AtlasAiYouTubeSourceBadge trace={trace} /> : null}
+
+      {isAtlas && presentation && Object.keys(presentation.metadata.sections).length > 0 ? (
+        <div className="atlas-calmaria-hide">
+          <AtlasAiResponseAudit sections={presentation.metadata.sections} />
+        </div>
+      ) : null}
 
       {isAtlas && trace?.tool_events && trace.tool_events.length > 0 ? (
         <div className="atlas-calmaria-hide">
@@ -227,7 +248,7 @@ function StreamingBubble({
       {/* Streaming text aparece token-by-token via SSE — Claude.ai/Cursor school. */}
       {hasStreamingText ? (
         <div className="atlas-ai-message-body atlas-ai-streaming-text" aria-live="polite">
-          <AtlasAiMessageBody content={streamingText} />
+          <AtlasAiMessageBody content={projectPresentation(streamingText ?? '').body || (streamingText ?? '')} />
           <span className="atlas-ai-streaming-caret" aria-hidden="true" />
         </div>
       ) : null}

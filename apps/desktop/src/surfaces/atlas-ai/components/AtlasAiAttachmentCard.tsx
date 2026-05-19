@@ -12,6 +12,7 @@
  * thumbnail maior, código rendered, URL com thumbnail).
  */
 import { useState } from 'react'
+import { youtubeBadgeText } from '@atlas/rich-input-canon'
 import type { AttachmentDraft } from '../attachments/types'
 
 interface AtlasAiAttachmentCardProps {
@@ -105,7 +106,7 @@ export function AtlasAiAttachmentCard({ draft, onRemove }: AtlasAiAttachmentCard
                 : draft.kind === 'url'
                   ? [
                       draft.urlKind === 'youtube'
-                        ? 'YouTube'
+                        ? youtubeBadgeText({ short: false })
                         : draft.urlKind === 'vimeo'
                           ? 'Vimeo'
                           : draft.urlKind === 'github'

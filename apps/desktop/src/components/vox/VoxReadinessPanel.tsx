@@ -22,11 +22,15 @@ interface VoxReadinessPanelProps {
   open: boolean
 }
 
+// V6-OBSERVABILITY-FINAL · labels humanos.
+// Estados técnicos (ready/partial/blocked/unavailable) continuam no schema
+// JSON, mas a UI fala em PT-BR direto. "unavailable" não é erro — é
+// "Coletando informações", aderente ao canon do produto.
 const AGGREGATE_LABEL: Record<VoxReadinessAggregateStatus, string> = {
-  ready: 'pronto para uso real',
-  partial: 'parcial · pode usar com ressalvas',
-  blocked: 'bloqueado · resolver antes',
-  unavailable: 'indisponível · sem sinais para checar',
+  ready: 'Tudo certo · pronto para usar',
+  partial: 'Precisa de atenção · dá pra usar com ressalvas',
+  blocked: 'Bloqueado · resolver antes de gravar',
+  unavailable: 'Coletando informações',
 }
 
 const ITEM_GLYPH: Record<VoxReadinessItemStatus, string> = {
@@ -38,10 +42,10 @@ const ITEM_GLYPH: Record<VoxReadinessItemStatus, string> = {
 }
 
 const ITEM_LABEL: Record<VoxReadinessItemStatus, string> = {
-  passed: 'pronto',
-  warning: 'atenção',
+  passed: 'tudo certo',
+  warning: 'precisa de atenção',
   blocked: 'bloqueado',
-  unavailable: 'indisponível',
+  unavailable: 'sem sinal',
   checking: 'verificando',
 }
 
@@ -66,7 +70,7 @@ export function VoxReadinessPanel({ open }: VoxReadinessPanelProps) {
                 {AGGREGATE_LABEL[summary.status]}
               </span>
               <span className="vox-readiness-counts">
-                {summary.passed} prontos · {summary.warnings} atenção · {summary.blocked} bloqueados · {summary.total} totais
+                {summary.passed} tudo certo · {summary.warnings} precisa de atenção · {summary.blocked} bloqueado · {summary.total} no total
               </span>
             </>
           ) : (
@@ -87,7 +91,7 @@ export function VoxReadinessPanel({ open }: VoxReadinessPanelProps) {
 
       {error ? (
         <p className="vox-readiness-error">
-          Falha ao verificar prontidão: {error}
+          Não consegui verificar a prontidão agora: {error}
         </p>
       ) : null}
 

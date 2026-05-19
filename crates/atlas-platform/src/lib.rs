@@ -15,8 +15,13 @@
 pub mod fswatch;
 pub mod pty;
 pub mod vox;
+pub mod vox_settings;
 pub mod vox_stt;
 
 pub use fswatch::{FsEvent, FsWatchHandle, watch_path};
 pub use pty::{PtyHandle, PtyManager, PtyOpenRequest, PtySpawnedEvent};
 pub use vox::{VoxEdge, VoxEdgeConfig, VoxEdgeError, VoxEdgeSession, VoxEdgeStatus};
+pub use vox_settings::{
+    clamp_cooldown, VoiceMode, VoxSettings, VoxSettingsError, VoxSettingsStore, VoxShortPhrase,
+    DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS, MIN_COOLDOWN_MS, SETTINGS_SCHEMA, SETTINGS_VERSION,
+};

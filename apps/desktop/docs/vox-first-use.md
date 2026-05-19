@@ -1,350 +1,143 @@
-# Atlas Vox · first use
+# Atlas Vox V6 · primeira execução
 
-Runbook para usar Atlas Vox a primeira vez. Siga em ordem. Cada comando é copiável.
+Pré-requisitos e diagnóstico para a primeira vez que o Mac vai rodar o
+Atlas Vox V6. Para uso diário, leia primeiro `vox-daily-use.md` — é mais
+curto e cobre 90% do dia.
 
 ---
 
-## Sequência canônica (1 comando · Wave V3.10)
-
-> A partir da Wave V3.10 existe um orquestrador profissional que sobe
-> tudo. Vitor não precisa mais abrir 3 terminais.
-
-Pré-requisitos uma única vez:
+## 1. Pré-requisitos (uma única vez)
 
 ```sh
-# (uma vez, na vida da máquina)
-brew install cmake
-mkdir -p ~/.atlas/vox/models
-# baixe ggml-large-v3.bin (~3.1 GB) de huggingface.co/ggerganov/whisper.cpp/tree/main
-# mova:  mv ~/Downloads/ggml-large-v3.bin ~/.atlas/vox/models/
+# Homebrew PHP + cmake (necessário para whisper.cpp)
+brew install php cmake
 
-# (uma vez por checkout, idempotente)
+# Modelo Whisper large-v3 (~3.1 GB, download manual — o Atlas NÃO baixa)
+mkdir -p ~/.atlas/vox/models
+# Baixe ggml-large-v3.bin de:
+#   https://huggingface.co/ggerganov/whisper.cpp/tree/main
+mv ~/Downloads/ggml-large-v3.bin ~/.atlas/vox/models/
+
+# Migrations do atlas-server (idempotente)
 cd /Users/vitorepf/develop/Atlas/atlas-server
 /opt/homebrew/bin/php artisan migrate
 
+# Dependências do desktop
 cd /Users/vitorepf/develop/Atlas/atlas-desktop
 npm install
 ```
 
-Cada sessão de uso:
+Depois disso, o uso diário é `npm run vox:dev --workspace=@atlas/desktop`.
+
+---
+
+## 2. Como abrir
+
+Caminho oficial — um comando:
 
 ```sh
 cd /Users/vitorepf/develop/Atlas/atlas-desktop
 npm run vox:dev --workspace=@atlas/desktop
 ```
 
-`vox:dev` faz tudo em ordem:
+O `vox:dev`:
 
-1. Preflight (PHP / cmake / modelo Whisper / Cargo feature `whisper-cpp`).
-2. Boota `atlas-server` em background, log em `apps/desktop/test-results/vox-dev/atlas-server.log`.
-3. Aguarda `/ai/vox/health` responder 200.
-4. Lança `tauri dev --features whisper-cpp` (Whisper.cpp real linkado).
-5. Em Ctrl+C, encerra o atlas-server.
-
-Recusa de iniciar se algo essencial está faltando — sem fallback silencioso.
-
-Override knobs:
-
-```sh
-ATLAS_SERVER_PORT=8002   npm run vox:dev   # outro porto
-ATLAS_SKIP_SERVER=1      npm run vox:dev   # já tem o server rodando
-VITE_ATLAS_VOX_DEV=1     npm run vox:dev   # expõe debug fallback (developer mode)
-```
-
-Antes de qualquer release ou auditoria:
-
-```sh
-npm run vox:release-check --workspace=@atlas/desktop
-```
+1. Confere PHP, cmake, modelo Whisper, feature de voz no Cargo.
+2. Sobe o `atlas-server` em background (log em
+   `apps/desktop/test-results/vox-dev/atlas-server.log`).
+3. Espera `/ai/vox/health` responder OK.
+4. Abre o Atlas Code com `whisper-cpp` ativo.
+5. Encerra o servidor no Ctrl+C.
 
 ---
 
-## Sequência manual (legado · só se vox:dev quebrar)
+## 3. Permissões do macOS
 
-> Estes 5 passos são o que `vox:dev` faz automaticamente. Use só se o
-> orquestrador quebrar e você quiser isolar o problema.
+O macOS controla três permissões que afetam o Atlas Vox:
 
-```sh
-# 1. Suba o atlas-server (se já estiver rodando, pule)
-cd /Users/vitorepf/develop/Atlas/atlas-server
-/opt/homebrew/bin/php artisan serve --port=8001
-
-# 2. Em outro terminal · materialize as tabelas Vox (idempotente)
-cd /Users/vitorepf/develop/Atlas/atlas-server
-/opt/homebrew/bin/php artisan migrate
-
-# 3. Aponte o Desktop para o atlas-server e exporte ATLAS_TOKEN
-#    O ATLAS_TOKEN precisa ser EXATAMENTE igual ao de atlas-server/.env.
-#    O valor não aparece em logs, manifest ou console do release check.
-export VITE_ATLAS_SERVER_URL=http://127.0.0.1:8001
-export ATLAS_TOKEN="$(grep ^ATLAS_TOKEN= ../atlas-server/.env | cut -d= -f2-)"
-
-# 4. Posicione o modelo Whisper large-v3 (download manual; o release check NÃO baixa)
-mkdir -p ~/.atlas/vox/models
-# baixe ggml-large-v3.bin (~3 GB) de huggingface.co/ggerganov/whisper.cpp/tree/main
-# e mova:  mv ~/Downloads/ggml-large-v3.bin ~/.atlas/vox/models/
-
-# 5. Suba o Tauri com Whisper real linkado
-cd /Users/vitorepf/develop/Atlas/atlas-desktop
-npm run tauri:dev:vox --workspace=@atlas/desktop
-```
-
-Status canônicos:
-
-- **PASS** → abra `npm run tauri:dev --workspace=@atlas/desktop` e use **Option+Space**.
-- **WARN** → ainda dá pra usar; o release check listou exatamente o que falta.
-- **FAIL** → algo essencial quebrou (build/test/runtime). Corrija antes.
-
----
-
-## 0. Objetivo do teste
-
-Validar a cadeia inteira (modelo → backend → desktop → hotkey → STT → Kernel → confirmação) com **zero** risco operacional:
-
-- Ditar texto e ver ele aparecer.
-- Polir um prompt e copiar.
-- Compilar uma intenção e ler o resultado.
-- Propor um comando shell **sem executar**.
-
-Sem chamar provider em produção. Sem comando destrutivo. Sem dado sensível.
-
----
-
-## 1. Pré-requisitos
-
-| | requisito |
-|---|---|
-| OS | macOS (M1+) |
-| PHP | 8.4+ (`/opt/homebrew/bin/php`) |
-| Node | 20+ + `npm` |
-| Rust | toolchain estável (instalado por `rustup`) |
-| Repos | `atlas-server` e `atlas-desktop` lado a lado |
-| Permissões macOS | Microphone + Accessibility (libera depois, passo 6) |
-
-Instalação one-shot, na raiz do `atlas-desktop`:
-
-```sh
-npm install
-```
-
----
-
-## 2. Modelo Whisper
-
-STT real é local via `whisper.cpp`. Sem o modelo, o overlay continua abrindo, mas `Ouvi` cai num fallback debug e o smoke retorna `warn`.
-
-```sh
-mkdir -p ~/.atlas/vox/models
-curl -L \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin \
-  -o ~/.atlas/vox/models/ggml-large-v3.bin
-```
-
-Arquivo final: `~/.atlas/vox/models/ggml-large-v3.bin` (~3,1 GB).
-
----
-
-## 3. Subir backend
-
-Em um terminal, na raiz do `atlas-server`:
-
-```sh
-cd /Users/vitorepf/develop/Atlas/atlas-server
-/opt/homebrew/bin/php artisan serve --host=127.0.0.1 --port=8000
-```
-
-Deixe esse terminal rodando.
-
-Endpoints que o desktop consome:
-
-- `GET  /ai/vox/health`
-- `GET  /ai/vox/readiness`
-- `POST /ai/vox/intent`
-- `POST /ai/vox/execute`
-- `GET  /ai/vox/gate-v3`
-- `GET  /ai/vox/metrics`
-- `GET  /ai/vox/rivals/report`
-- `POST /ai/vox/rivals/case`
-- `GET  /ai/vox/dogfood/report`
-- `POST /ai/vox/dogfood/session`
-
----
-
-## 4. Subir desktop
-
-Em outro terminal, na raiz do `atlas-desktop`:
-
-```sh
-cd /Users/vitorepf/develop/Atlas/atlas-desktop
-export VITE_ATLAS_SERVER_URL=http://127.0.0.1:8000
-npm run tauri:dev --workspace=@atlas/desktop
-```
-
-A primeira execução compila o Rust (`crates/atlas-tauri`) — leva alguns minutos.
-
----
-
-## 5. Rodar smoke
-
-Em um terceiro terminal:
-
-```sh
-cd /Users/vitorepf/develop/Atlas/atlas-desktop
-VITE_ATLAS_SERVER_URL=http://127.0.0.1:8000 npm run vox:smoke --workspace=@atlas/desktop
-```
-
-Saída esperada:
-
-- `✓ PASS` → tudo pronto.
-- `⚠ WARN` → dá pra usar; falta peça honesta (modelo, env, etc).
-- `✗ FAIL` → repo inconsistente; **não siga** — corrija o que o "Próximos passos" listou.
-
-Relatório completo em `apps/desktop/test-results/vox-first-use-smoke/manifest.json` (schema `atlas.vox.first_use_smoke.v1`).
-
----
-
-## 6. Permissões macOS
-
-A primeira vez que o app pedir hotkey global ou microfone, libere em **System Settings → Privacy & Security**:
-
-1. **Microphone** → habilite Atlas Code/Tauri.
-2. **Accessibility** (ou **Input Monitoring**, depende do macOS) → adicione Atlas Code/Tauri.
-
-Se o overlay mostrar banner `Atalho global pendente: libere Accessibility/Input Monitoring`, libere no Settings e **reinicie** o Tauri (Ctrl+C no terminal do passo 4, rode `npm run tauri:dev` de novo).
-
----
-
-## Teste seguro recomendado
-
-Use estas duas frases. Nenhuma delas executa nada, nem toca dado sensível.
-
-Frase A (intent_compile):
-
-> "Atlas, transforma isso em um prompt para o Codex investigar o VoxOverlay sem editar nada, só me dar diagnóstico."
-
-Frase B (governed_execute · propose-only):
-
-> "Atlas, gera o comando para listar arquivos modificados no git, mas não executa."
-
-Frase B vai cair em `terminal_propose` no Kernel. O desktop **nunca** roda o comando — só te entrega o texto pra você copiar e decidir.
-
----
-
-## 7. Primeiro teste · Dictation
-
-1. Foque qualquer app texto (Notes, terminal, editor).
-2. **Option+Space** → overlay abre, `Atlas ouvindo` aparece.
-3. Fale: *"compras de mercado: pão, café, ovos."*
-4. **Enter** (no overlay) ou **Option+Space** de novo → finaliza.
-5. STT roda local. `Ouvi` mostra o texto.
-6. Modo: **Dictation** (default R0).
-7. **⌘+Enter** ou **Compilar intenção** → desktop copia/insere o texto literal.
-
-Esperado: texto literal foi parar no clipboard (ou inserido no campo focado, dependendo da config).
-
----
-
-## 8. Segundo teste · Prompt Polish
-
-1. **Option+Space** → fale: *"escreve um prompt para o claude explicar arquitetura desse repo em 3 parágrafos."*
-2. Finalize com **Enter**.
-3. Modo: **Prompt Polish**.
-4. **⌘+Enter** → Kernel devolve `compiled_prompt` limpo.
-5. O overlay oferece **Copy compiled** / **Copy original**.
-
-Esperado: prompt polido, com estrutura clara, sem ruído de "uhm, então".
-
----
-
-## 9. Terceiro teste · Intent Compile
-
-1. **Option+Space** → fale a **Frase A** (acima).
-2. Finalize com **Enter**.
-3. Modo: **Intent Compile**.
-4. **⌘+Enter** → Kernel devolve `IntentPacket` com goal / constraints / risk_class / compiled_prompt.
-
-Esperado: pacote estruturado. `risk_class` baixo (R0 ou R1). Nada é executado.
-
----
-
-## 10. Quarto teste · Governed Execute seguro
-
-1. **Option+Space** → fale a **Frase B** (acima).
-2. Finalize com **Enter**.
-3. Modo: **Governed Execute**.
-4. **⌘+Enter** → Kernel devolve `confirmation_request`.
-5. Overlay mostra:
-   - texto do comando proposto (`git status` / `git diff --name-only` / similar).
-   - botões `Executar com receipt` · `Cancelar` · `Editar intenção`.
-6. Clique **Executar com receipt**.
-7. Kernel grava o outcome com `metadata.command_executed=false`. Desktop **não roda** o comando — só te entrega a string.
-
-### Regras de segurança (não relaxar no primeiro uso)
-
-- **terminal_propose nunca executa** — só propõe. Você roda manualmente se quiser.
-- **R4 exige literal** — se um teste cair em R4 (não deveria com a Frase B), só libera Executar quando você digitar exatamente o `literal_confirmation_text`. Sem typo, sem case-insensitive.
-- **Não dite comandos destrutivos no primeiro uso** — `rm -rf`, `git push --force`, `drop database`, `sudo …` caem no hard-veto, mas evite testar o veto agora.
-- **Não dite credenciais nem dados sensíveis** — STT é local, mas o transcript vai pro atlas-server.
-- **Áudio cru não é persistido por default** — Edge processa em memória e descarta. Não habilite flag de persistência sem motivo.
-
-### Eclipse (parada de emergência)
-
-Em qualquer momento: pressione **Esc Esc** (dois Esc rápidos, atalho global) → sessão é abortada, marcada como rejeitada, evento `VOX_ACTION_BLOCKED` gravado.
-
----
-
-## 11. Registrar dogfood/rivals
-
-Depois de cada sessão que chega num estado terminal (compiled / executed / cancelled), o overlay mostra **dois mini-blocos** complementares:
-
-**Bloco A · "Registrar uso real?"** (Wave V3.9 · closeout do diário)
-
-- `Sucesso` · `Parcial` · `Falhou` · `Cancelado` · `Ignorar`.
-- Checkbox `marcar regret` + nota curta (≤1000 chars) opcionais.
-- Flags `used_hotkey` / `used_real_stt` / `used_governed_execute` / `eclipse_used` são auto-inferidas a partir do estado da sessão.
-- Um clique grava no diário via `POST /ai/vox/dogfood/session`.
-
-**Bloco B · "Como foi?"** (Wave 7.6 · rivals comparison)
-
-- `Bom` · `Ruim` · `Comparar` · `Eclipse testado` · `Ignorar`.
-- Um clique grava um rivals case via `POST /ai/vox/rivals/case`.
-
-Os dois alimentam o V3 Gate por ângulos diferentes (uso real vs. comparação com baseline). Use um, outro, ou os dois.
-
-Verificar agregados:
-
-```sh
-curl -s http://127.0.0.1:8000/ai/vox/dogfood/report | jq
-curl -s http://127.0.0.1:8000/ai/vox/rivals/report | jq
-curl -s http://127.0.0.1:8000/ai/vox/gate-v3 | jq '.status, .blockers'
-```
-
----
-
-## 12. Troubleshooting
-
-| Sintoma | Causa provável | Ação |
+| Permissão | Para quê | Onde liberar |
 |---|---|---|
-| `Atalho global pendente` no overlay | macOS Accessibility/Input Monitoring negado | Libere no Settings → reinicie `npm run tauri:dev` |
-| `STT real indisponível` + `Ouvi` vazio | Modelo Whisper ausente ou build sem `whisper-cpp` | Passo 2. Se modelo presente: `cargo build -p atlas-platform --features whisper-cpp` |
-| `Kernel Vox ainda indisponível` em `Entendi` | atlas-server não rodando OU branch sem `/ai/vox/*` | Passo 3. `npm run vox:smoke` aponta se é 404 ou unreachable |
-| Option+Space não dispara overlay, mas botão Vox abre | hotkey runtime sem permissão OS | Mesmo caminho do banner Accessibility |
-| `Executar com receipt` disabled em R4 | literal não confere (typo / case) | Leia a frase do `literal_confirmation_text` e digite literal |
-| "Como foi?" não aparece | Sessão ainda não chegou em estado terminal | Aguarde compilar. `idle`/`listening`/`transcribing` são transitórios |
-| Tauri compila eternamente | Primeira compilação Rust é lenta | Aguarde. Builds seguintes são rápidos |
-| `vox:smoke` reporta `backend_reachability warn` (categoria `backend_url_missing`) | `VITE_ATLAS_SERVER_URL` não exportado no terminal do smoke | `export VITE_ATLAS_SERVER_URL=http://127.0.0.1:8001` antes de rodar |
-| `vox:smoke` reporta `backend_reachability warn` (categoria `backend_unreachable`) | URL exportada mas atlas-server não responde (timeout/connection refused) | Suba o atlas-server (passo 3 da sequência canônica) |
-| `vox:smoke` reporta `backend_reachability warn` (categoria `backend_no_vox_routes`) | atlas-server responde mas todos `/ai/vox/*` retornam 404 | Faça checkout do branch com Vox V0/V3 (rota não publicada) |
-| `vox:smoke` reporta `backend_reachability warn` (categoria `backend_auth_token_missing`) | `ATLAS_TOKEN` não exportado no shell do desktop | `export ATLAS_TOKEN="$(grep ^ATLAS_TOKEN= ../atlas-server/.env \| cut -d= -f2-)"` antes de rodar. O valor não aparece em logs. |
-| `vox:smoke` reporta `backend_reachability warn` (categoria `backend_auth_token_invalid`) | `ATLAS_TOKEN` exportado, mas server rejeitou (valor diferente de `.env` ou server ainda com .env antigo) | Reinicie o `php artisan serve` no atlas-server depois de mudar `.env`; reexporte o `ATLAS_TOKEN` no shell do desktop com o valor canônico |
-| `vox:smoke` reporta `whisper_model_file warn` (categoria `model_missing`) | `~/.atlas/vox/models/ggml-large-v3.bin` ausente | Passo 4 da sequência canônica (download manual) |
-| `vox:smoke` reporta `whisper_model_file warn` (categoria `model_truncated`) | Arquivo <500 MB (download interrompido) | `rm ~/.atlas/vox/models/ggml-large-v3.bin` e re-baixe |
-| Backend respondendo mas overlay V3 reclama de cert/pack | `atlas:vox:doctor` reportou warn/fail no backend | `cd ../../atlas-server && /opt/homebrew/bin/php artisan atlas:vox:doctor` |
+| **Microfone** | Capturar fala | Ajustes do Sistema → Privacidade e Segurança → Microfone |
+| **Acessibilidade** | Registrar o atalho ⌥ Espaço globalmente | Ajustes do Sistema → Privacidade e Segurança → Acessibilidade |
+| **Monitoramento de Entrada** | Detectar ⌥ Espaço com outro app em foco | Ajustes do Sistema → Privacidade e Segurança → Monitoramento de Entrada |
 
-Se nada disso explicar:
+As duas últimas só importam se você usa a camada Ambient (Option+Space
+funciona mesmo com o Atlas Code fechado). Sem elas, o atalho funciona só
+quando o Atlas Code está em foco. Detalhes em `docs/vox/AMBIENT-MAC.md`.
+
+### Se o macOS pede microfone toda hora
+
+O macOS guarda permissão por assinatura. Alternar entre
+`npm run vox:dev` (assinatura dev) e o `Atlas Code.app` da build de
+release (assinatura `Atlas Local Code Signing`) reseta a permissão e o
+sistema pede de novo. Use sempre o mesmo caminho.
+
+**Nunca** rode `sudo tccutil reset Microphone` — apaga a permissão de
+todos os apps do Mac.
+
+---
+
+## 4. Diagnóstico
+
+Comando único em PT-BR:
 
 ```sh
-npm run vox:smoke --workspace=@atlas/desktop
+VITE_ATLAS_SERVER_URL=http://127.0.0.1:8001 npm run vox:doctor --workspace=@atlas/desktop
 ```
 
-Leia `Próximos passos:` no terminal. O smoke audita arquivos reais — ele não inventa pass.
+| Check | O que valida |
+|---|---|
+| `atlas_server_vivo` | `/ai/vox/health` respondeu OK |
+| `desktop_server_url` | `VITE_ATLAS_SERVER_URL` está exportada |
+| `atlas_token_presente` | Token disponível (shell ou `atlas-server/.env`). Valor **nunca** aparece em log |
+| `modelo_whisper` | `~/.atlas/vox/models/ggml-large-v3.bin` no tamanho esperado |
+| `build_whisper_cpp` | Feature `whisper-cpp` declarada no Cargo |
+| `macos_info_plist` | `Info.plist` tem `NSMicrophoneUsageDescription` |
+| `macos_entitlements` | `entitlements.plist` tem `audio-input = true` |
+| `macos_signing` | `tauri.conf.json` declara identidade estável |
+| `hotkey_option_space` | ⌥ Espaço registrado no runtime |
+
+Cada falha vem com a próxima ação concreta. Estados:
+
+- **PASS** — pode gravar.
+- **WARN** — usável; revise.
+- **FAIL** — corrige antes.
+
+Relatório completo em `apps/desktop/test-results/vox-doctor/manifest.json`
+(schema `atlas.vox.doctor.v1`, sem token, sem segredo).
+
+---
+
+## 5. Variáveis que importam
+
+| Variável | Função | Default |
+|---|---|---|
+| `VITE_ATLAS_SERVER_URL` | Onde o desktop fala com o servidor | precisa ser definida |
+| `ATLAS_SERVER_HOST` | Host do servidor que `vox:dev` sobe | `127.0.0.1` |
+| `ATLAS_SERVER_PORT` | Porta do servidor que `vox:dev` sobe | `8001` |
+| `ATLAS_PHP_BIN` | Binário do PHP que `vox:dev` usa | `/opt/homebrew/bin/php` |
+| `ATLAS_TOKEN` | Token de acesso ao servidor | lido de `atlas-server/.env` se ausente |
+| `ATLAS_SKIP_SERVER` | Para quando você já subiu o servidor em outro terminal | desligada |
+
+O `ATLAS_TOKEN` nunca aparece em stdout, log ou relatório. O `vox:dev` lê
+o valor e injeta nas requisições sem imprimir.
+
+---
+
+## 6. Veredito rápido
+
+Uma linha para abrir:
+
+```sh
+cd /Users/vitorepf/develop/Atlas/atlas-desktop && npm run vox:dev --workspace=@atlas/desktop
+```
+
+Uma linha quando algo parecer estranho:
+
+```sh
+cd /Users/vitorepf/develop/Atlas/atlas-desktop && \
+  VITE_ATLAS_SERVER_URL=http://127.0.0.1:8001 npm run vox:doctor --workspace=@atlas/desktop
+```
+
+Para o checklist final (doctor + release-check + v6-certify), volte para
+`vox-daily-use.md` → seção "Checklist final · uso pronto".

@@ -16,6 +16,7 @@
  */
 import { flowIdForMode, providerLabel } from '../contract'
 import { useHyperflowRuntime } from '../useHyperflowRuntime'
+import { useRuntimeReadiness } from '../useRuntimeReadiness'
 import type {
   AiThreadDetail,
   AiTrace,
@@ -63,9 +64,11 @@ export function AtlasAiContextPanel({
   const decisionMode = provider === 'auto' ? 'atlas_decide' : 'manual_override'
   const devRuntime: AtlasDevRuntime | null = pendingTrace?.atlas_dev_runtime ?? null
   const hyperflow = useHyperflowRuntime(pendingTrace)
+  const runtimeReadiness = useRuntimeReadiness()
   const showForgeBlock = hyperflow.isForgeHandoff
   const policyRefs = hyperflow.raw?.policy_refs ?? null
   const evidenceRefs = hyperflow.raw?.evidence_refs ?? null
+  const showRuntimeBlock = runtimeReadiness.status !== 'unavailable' && runtimeReadiness.status !== 'loading'
 
   return (
     <section className="atlas-ai-context" aria-label="Contexto operacional">
@@ -160,6 +163,82 @@ export function AtlasAiContextPanel({
               </li>
             ) : null}
           </ul>
+        </div>
+      ) : null}
+
+      {showRuntimeBlock ? (
+        <div
+          className={`atlas-ai-context-section atlas-ai-context-runtime atlas-ai-context-runtime-${runtimeReadiness.status}`}
+        >
+          <h3>
+            Atlas Runtime
+            <span className="atlas-ai-context-runtime-pill" aria-label={`status ${runtimeReadiness.statusLabel}`}>
+              {runtimeReadiness.statusLabel}
+            </span>
+          </h3>
+          <ul className="atlas-ai-context-list">
+            <li>
+              <span>status</span>
+              <code>{runtimeReadiness.status}</code>
+            </li>
+            {runtimeReadiness.raw?.summary ? (
+              <li>
+                <span>checks</span>
+                <code>
+                  {runtimeReadiness.raw.summary.passed ?? 0}/{runtimeReadiness.raw.summary.total ?? 0} passed
+                </code>
+              </li>
+            ) : null}
+            {runtimeReadiness.criticalFailed > 0 ? (
+              <li>
+                <span>críticos</span>
+                <code>{runtimeReadiness.criticalFailed} failed</code>
+              </li>
+            ) : null}
+            {runtimeReadiness.warnFailed > 0 ? (
+              <li>
+                <span>warnings</span>
+                <code>{runtimeReadiness.warnFailed}</code>
+              </li>
+            ) : null}
+            {runtimeReadiness.certificationHash ? (
+              <li>
+                <span>cert_hash</span>
+                <code>{runtimeReadiness.certificationHash.slice(0, 16)}…</code>
+              </li>
+            ) : null}
+          </ul>
+          {runtimeReadiness.blockers.length > 0 ? (
+            <div className="atlas-ai-context-subblock atlas-ai-context-warning">
+              <p className="atlas-ai-context-subblock-title">
+                blockers · {runtimeReadiness.blockers.length}
+              </p>
+              <ul className="atlas-ai-context-mono-list">
+                {runtimeReadiness.blockers.slice(0, 6).map((id) => (
+                  <li key={`blk-${id}`}>
+                    <code>{id}</code>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {runtimeReadiness.warnings.length > 0 ? (
+            <div className="atlas-ai-context-subblock">
+              <p className="atlas-ai-context-subblock-title">
+                warnings · {runtimeReadiness.warnings.length}
+              </p>
+              <ul className="atlas-ai-context-mono-list">
+                {runtimeReadiness.warnings.slice(0, 6).map((id) => (
+                  <li key={`warn-${id}`}>
+                    <code>{id}</code>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <p className="atlas-ai-context-note atlas-ai-faint" style={{ marginTop: 4 }}>
+            <em>Agregado de Product Cert + Control Plane + Mission + Approval + Learning.</em>
+          </p>
         </div>
       ) : null}
 

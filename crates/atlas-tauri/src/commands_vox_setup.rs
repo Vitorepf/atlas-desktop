@@ -1,14 +1,20 @@
 //! Tauri commands for the Atlas Vox Setup Assistant (Wave 7.9).
 //!
-//! Single command: `vox_open_system_settings(target)`. Opens macOS System
-//! Settings to a specific privacy pane — and only to a known one. The
-//! allowlist lives here (Rust) so a malicious payload from the webview
-//! cannot inject an arbitrary `x-apple.systempreferences:...` URL.
+//! Commands:
+//!   - `vox_open_system_settings(target)` — opens macOS System Settings to
+//!     a specific privacy pane (allowlisted).
+//!   - `vox_audio_input_describe()` — V6-MIC-AIRPODS-FINAL · read-only
+//!     snapshot of the currently-selected macOS audio input (name + sample
+//!     rate + channels). Never opens a stream, never triggers a TCC prompt.
+//!     Used by the doctor and "advanced details" UI to surface "AirPods"
+//!     vs "MacBook Air Microphone" without surprising Vitor.
 //!
-//! Allowed targets:
+//! Allowed targets for `vox_open_system_settings`:
 //!   - `microphone`         → Privacy & Security · Microphone
 //!   - `accessibility`      → Privacy & Security · Accessibility
 //!   - `input_monitoring`   → Privacy & Security · Input Monitoring
+//!   - `sound_input`        → Sound · Input (escolher microfone ativo,
+//!                            ex.: alternar entre AirPods e built-in)
 //!
 //! Anything else is rejected with a structured error. Non-macOS platforms
 //! return `unsupported_platform` honestly so the UI degrades to
@@ -19,7 +25,11 @@
 //!   - No `do shell script`, no AppleScript, no Automation, no Full Disk.
 //!   - The command never spawns processes other than `/usr/bin/open` and
 //!     never reads / writes the filesystem.
+//!   - `vox_audio_input_describe()` is provably permission-free: it only
+//!     calls `device.name()` + `default_input_config()` on the cpal default
+//!     input device, both of which are pure metadata reads on macOS.
 
+use atlas_platform::vox::describe_default_input;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -45,6 +55,10 @@ fn resolve_settings_url(target: &str) -> Option<&'static str> {
         "input_monitoring" => {
             Some("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
         }
+        // V6-MIC-AIRPODS-FINAL · pane "Sound · Input" pra Vitor escolher
+        // qual microfone (AirPods, built-in, Loopback) está ativo no macOS.
+        // O Atlas Vox usa o que o sistema apontar como default input.
+        "sound_input" => Some("x-apple.systempreferences:com.apple.preference.sound?input"),
         _ => None,
     }
 }
@@ -98,15 +112,75 @@ pub async fn vox_open_system_settings(target: String) -> Result<VoxSettingsOpenR
     }
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// V6-MIC-AIRPODS-FINAL · read-only audio input snapshot
+// ────────────────────────────────────────────────────────────────────────
+
+/// Wire shape returned by `vox_audio_input_describe`. Fields are intentionally
+/// optional — when cpal cannot read a device (CI, no mic, no permission yet)
+/// the UI must show "indisponível" instead of inventing a name.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxAudioInputDescription {
+    pub schema: &'static str,
+    pub platform: String,
+    /// Friendly device label as macOS reports it (e.g. "Vitor's AirPods Pro",
+    /// "MacBook Air Microphone", "Loopback Audio"). `None` when no default
+    /// input device is enumerable.
+    pub device_name: Option<String>,
+    pub sample_rate_hz: Option<u32>,
+    pub channels: Option<u16>,
+    /// Stable hint for UI copy. `"airpods"` when the device name contains
+    /// "AirPods" (case-insensitive); `"built_in"` for the MacBook mic;
+    /// `"external"` for everything else with a name; `"none"` when blank.
+    /// Atlas does **not** prefer AirPods — this is purely informational.
+    pub device_kind_hint: &'static str,
+}
+
+fn classify_device_kind(name: Option<&str>) -> &'static str {
+    let Some(n) = name else { return "none" };
+    let lower = n.to_ascii_lowercase();
+    if lower.contains("airpods") {
+        "airpods"
+    } else if lower.contains("macbook")
+        || lower.contains("built-in")
+        || lower.contains("built in")
+        || lower.contains("internal")
+    {
+        "built_in"
+    } else {
+        "external"
+    }
+}
+
+/// Read-only snapshot of the currently-selected audio input. Provably
+/// permission-free on macOS: cpal's `default_input_device()` enumerates
+/// CoreAudio device metadata without opening an AudioUnit. Safe to call
+/// from the doctor + setup assistant on every UI mount.
+#[tauri::command]
+pub fn vox_audio_input_describe() -> VoxAudioInputDescription {
+    let snapshot = describe_default_input();
+    let device_kind_hint = classify_device_kind(snapshot.device_name.as_deref());
+    VoxAudioInputDescription {
+        schema: "atlas.vox.audio_input.v1",
+        platform: std::env::consts::OS.to_string(),
+        device_name: snapshot.device_name,
+        sample_rate_hz: snapshot.sample_rate_hz,
+        channels: snapshot.channels,
+        device_kind_hint,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn allowlist_resolves_three_known_targets() {
+    fn allowlist_resolves_known_targets() {
         assert!(resolve_settings_url("microphone").is_some());
         assert!(resolve_settings_url("accessibility").is_some());
         assert!(resolve_settings_url("input_monitoring").is_some());
+        assert!(resolve_settings_url("sound_input").is_some());
     }
 
     #[test]
@@ -136,5 +210,34 @@ mod tests {
         assert!(ax.contains("Privacy_Accessibility"));
         let im = resolve_settings_url("input_monitoring").unwrap();
         assert!(im.contains("Privacy_ListenEvent"));
+        let snd = resolve_settings_url("sound_input").unwrap();
+        assert!(snd.starts_with("x-apple.systempreferences:"));
+        assert!(snd.contains("com.apple.preference.sound"));
+    }
+
+    #[test]
+    fn classify_device_kind_recognizes_common_names() {
+        assert_eq!(classify_device_kind(Some("Vitor's AirPods Pro")), "airpods");
+        assert_eq!(classify_device_kind(Some("AirPods Max")), "airpods");
+        assert_eq!(classify_device_kind(Some("airpods")), "airpods");
+        assert_eq!(
+            classify_device_kind(Some("MacBook Air Microphone")),
+            "built_in"
+        );
+        assert_eq!(classify_device_kind(Some("Built-in Microphone")), "built_in");
+        assert_eq!(classify_device_kind(Some("Internal Mic")), "built_in");
+        assert_eq!(classify_device_kind(Some("Loopback Audio")), "external");
+        assert_eq!(classify_device_kind(Some("Yeti Stereo Microphone")), "external");
+        assert_eq!(classify_device_kind(None), "none");
+        assert_eq!(classify_device_kind(Some("")), "external");
+    }
+
+    #[test]
+    fn audio_input_describe_returns_canonical_schema() {
+        // Pode rodar em CI sem mic. Só checamos shape canônica.
+        let d = vox_audio_input_describe();
+        assert_eq!(d.schema, "atlas.vox.audio_input.v1");
+        assert!(["macos", "linux", "windows"].contains(&d.platform.as_str()));
+        assert!(["airpods", "built_in", "external", "none"].contains(&d.device_kind_hint));
     }
 }
