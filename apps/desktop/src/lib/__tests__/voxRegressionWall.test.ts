@@ -346,6 +346,26 @@ test('REGRESSION · package.json desktop expõe vox:release-check + vox:v6-certi
   )
 })
 
+test('REGRESSION · clique no microfone usa toggleRecording e já inicia captura', () => {
+  const path = join(
+    DESKTOP_APP_ROOT,
+    'src',
+    'surfaces',
+    'atlas-ai',
+    'AtlasAiSurface.tsx',
+  )
+  const body = readText(path)
+  assert.ok(
+    /const handleVoxToggle = useCallback\(\(\) => \{\s*void vox\.toggleRecording\(\)\s*\}, \[vox\]\)/s.test(body),
+    'o clique no microfone precisa chamar vox.toggleRecording(), não só vox.open()/vox.close(); caso contrário abre overlay parado e exige botão extra',
+  )
+  assert.equal(
+    /const handleVoxToggle = useCallback\(\(\) => \{\s*if \(vox\.state === 'closed'\) vox\.open\(\)/s.test(body),
+    false,
+    'handleVoxToggle voltou ao comportamento quebrado: abrir overlay sem começar gravação',
+  )
+})
+
 // ──────────────────────────────────────────────────────────────────────
 // 12 · V6.5 contract additive · campos novos NUNCA são obrigatórios
 // ──────────────────────────────────────────────────────────────────────
@@ -430,6 +450,388 @@ test('REGRESSION · backend VoxSchema preserva slug atlas.vox.intent_response.v1
   assert.ok(
     body.includes("'atlas.vox.intent_response.v1'"),
     'INTENT_RESPONSE slug renomeado — quebra desktop V6 e V6.5',
+  )
+})
+
+// ──────────────────────────────────────────────────────────────────────
+// 13 · Atlas Realtime experimental não pode voltar como overlay paralelo
+// ──────────────────────────────────────────────────────────────────────
+
+test('REGRESSION · Atlas AI não contém overlay realtime paralelo nem provider local falso', () => {
+  const candidates = [
+    join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'),
+    join(DESKTOP_APP_ROOT, 'src', 'components', 'composer', 'AtlasUnifiedComposer.tsx'),
+    join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'components', 'AtlasAiComposer.tsx'),
+    join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'contract.ts'),
+    join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'types.ts'),
+  ]
+  for (const file of candidates) {
+    const body = readText(file)
+    for (const banned of [
+      'VoxRealtimeOverlay',
+      'vox-realtime',
+      'onVoxRealtime',
+      'jarvis_mlx',
+      'VITE_ATLAS_VOX_REALTIME',
+      'getUserMedia',
+    ]) {
+      assert.equal(
+        body.includes(banned),
+        false,
+        `${file.replace(REPO_ROOT, '<repo>')} reintroduziu "${banned}" — isso recria o realtime paralelo quebrado`,
+      )
+    }
+  }
+})
+
+test('REGRESSION · pasta Vox não usa speechSynthesis nem getUserMedia de browser', () => {
+  const voxFiles = [
+    join(DESKTOP_APP_ROOT, 'src', 'components', 'vox', 'VoxOverlay.tsx'),
+    join(DESKTOP_APP_ROOT, 'src', 'components', 'vox', 'useVoxOverlay.ts'),
+    join(DESKTOP_APP_ROOT, 'src', 'components', 'vox', 'VoxButton.tsx'),
+  ]
+  for (const file of voxFiles) {
+    if (!isFile(file)) continue
+    const body = readText(file)
+    assert.equal(
+      /speechSynthesis|getUserMedia/.test(body),
+      false,
+      `${file.replace(REPO_ROOT, '<repo>')} não pode abrir TTS/microfone via browser; Vox usa runtime canônico`,
+    )
+  }
+})
+
+test('REGRESSION · Atlas Voice usa superfície própria e não o overlay técnico Vox', () => {
+  const surface = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'))
+  const overlayPath = join(
+    DESKTOP_APP_ROOT,
+    'src',
+    'surfaces',
+    'atlas-ai',
+    'components',
+    'AtlasAiVoiceConversationOverlay.tsx',
+  )
+  assert.ok(isFile(overlayPath), 'Atlas Voice precisa ter uma superfície própria de conversa')
+  const overlay = readText(overlayPath)
+
+  assert.ok(
+    surface.includes('voiceReplyEnabled ?') && surface.includes('AtlasAiVoiceConversationOverlay'),
+    'Atlas AI deve renderizar AtlasAiVoiceConversationOverlay quando conversa por voz está ligada',
+  )
+  assert.ok(
+    surface.includes('lastSpokenMessageIdRef.current = latestAtlasMessage?.id ?? null'),
+    'Ao ligar Atlas Voice, mensagens antigas não podem ser faladas como se fossem resposta nova',
+  )
+  for (const required of [
+    'Atlas ouvindo',
+    'Envio automático após pausa',
+    'Interromper e falar',
+    'Parar conversa',
+    'Atlas está falando. Ao terminar, ele volta a escutar.',
+  ]) {
+    assert.ok(overlay.includes(required), `superfície Atlas Voice perdeu texto humano obrigatório: ${required}`)
+  }
+  assert.equal(
+    overlay.includes('Finalizar e enviar'),
+    false,
+    'Atlas Voice não pode voltar a parecer ditado manual; turno de voz envia sozinho por pausa',
+  )
+})
+
+test('REGRESSION · botão Atlas Voice não usa ícone de volume/speaker', () => {
+  const composer = readText(join(DESKTOP_APP_ROOT, 'src', 'components', 'composer', 'AtlasUnifiedComposer.tsx'))
+  assert.ok(composer.includes('atlas-ai-voice-live-btn'), 'botão Atlas Voice precisa de classe própria')
+  assert.ok(composer.includes('Abrir Atlas Voice'), 'botão Atlas Voice precisa ter label humano explícito')
+  assert.equal(
+    composer.includes('M3 6.5h2.4L9 3.8v8.4L5.4 9.5H3Z'),
+    false,
+    'botão Atlas Voice não pode voltar a usar ícone de alto-falante/volume',
+  )
+})
+
+test('REGRESSION · Atlas Voice nunca persiste modo ligado entre launches', () => {
+  const surface = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'))
+  assert.equal(
+    surface.includes('atlas-desktop:atlas-ai-voice-replies'),
+    false,
+    'Atlas Voice não pode persistir ligado em localStorage; microfone/conversa só por clique explícito',
+  )
+  assert.ok(
+    surface.includes('useState<boolean>(false)'),
+    'Atlas Voice deve iniciar desligado sempre que a surface monta',
+  )
+})
+
+test('REGRESSION · Atlas Voice só fala por TTS premium configurado', () => {
+  const voiceReply = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'atlasAiVoiceReply.ts'))
+  const tauri = readText(join(ATLAS_DESKTOP_ROOT, 'crates', 'atlas-tauri', 'src', 'lib.rs'))
+  const native = readText(join(ATLAS_DESKTOP_ROOT, 'crates', 'atlas-tauri', 'src', 'commands_vox_reply.rs'))
+
+  assert.ok(
+    voiceReply.includes("invokeTauri<NativeSpeechResult>('atlas_voice_speak'"),
+    'Atlas Voice precisa chamar atlas_voice_speak no Tauri',
+  )
+  assert.ok(
+    voiceReply.includes("invokeTauri<NativeSpeechResult>('atlas_voice_stop'"),
+    'Parar conversa precisa parar fala nativa via atlas_voice_stop',
+  )
+  assert.ok(
+    tauri.includes('commands_vox_reply::atlas_voice_speak')
+      && tauri.includes('commands_vox_reply::atlas_voice_stop'),
+    'lib.rs precisa registrar comandos nativos atlas_voice_speak/atlas_voice_stop',
+  )
+  assert.ok(
+    tauri.includes('commands_vox_edge::vox_edge_audio_level'),
+    'Atlas Voice precisa registrar vox_edge_audio_level para auto-envio por silêncio, sem botão manual de finalizar',
+  )
+  assert.ok(
+    voiceReply.includes("invokeTauri<NativeSpeechResult>('atlas_voice_speak'"),
+    'Atlas Voice precisa continuar falando por Tauri nativo',
+  )
+  assert.ok(
+    native.includes('std::process::Command::new("/bin/kill")'),
+    'Parar conversa precisa matar o player nativo ativo sem shell',
+  )
+  assert.ok(
+    !native.includes('std::process::Command::new("/usr/bin/say")')
+      && !native.includes('/usr/bin/say')
+      && !native.includes('preferred_atlas_voice')
+      && !native.includes('say_exited_with_status')
+      && !native.includes('say_wait_failed'),
+    'Atlas Voice não pode ter fallback para macOS say',
+  )
+  assert.ok(
+    native.includes('elevenlabs_failed:')
+      && !native.includes('fallback_to_say'),
+    'se ElevenLabs estiver configurado e falhar, Atlas Voice deve reportar erro; nunca cair para macOS say',
+  )
+  assert.ok(
+    native.includes('fn atlas_vox_config_dir()')
+      && native.includes('join(".atlas").join("vox")')
+      && native.includes('atlas_vox_config_dir().join("elevenlabs.json")')
+      && native.includes('atlas_vox_config_dir()')
+      && native.includes('join("cache")')
+      && native.includes('join("tts")')
+      && !native.includes('default_atlas_vox_home().join("elevenlabs.json")'),
+    'Atlas Voice precisa ler ElevenLabs em ~/.atlas/vox/elevenlabs.json e cachear áudio em ~/.atlas/vox/cache/tts',
+  )
+  assert.ok(
+    voiceReply.includes('options.onError?.(')
+      && voiceReply.includes('return false')
+      && !voiceReply.includes('speechSynthesis')
+      && !voiceReply.includes('SpeechSynthesisUtterance'),
+    'se o TTS premium falhar, não pode cair em Web Speech e continuar falando',
+  )
+})
+
+test('REGRESSION · Atlas AI mantém thread ativa sem corrida entre turnos de voz', () => {
+  const hook = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'useAtlasAi.ts'))
+  assert.ok(
+    hook.includes('const selectedThreadIdRef = useRef<string | null>(null)'),
+    'useAtlasAi precisa de selectedThreadIdRef para evitar criar nova thread por stale closure',
+  )
+  assert.ok(
+    hook.includes('let threadId = options?.newThread ? null : selectedThreadIdRef.current'),
+    'send() deve ler thread ativa do ref, não de state possivelmente atrasado',
+  )
+  assert.ok(
+    hook.includes('selectedThreadIdRef.current = threadId'),
+    'quando criar thread, o ref precisa ser atualizado imediatamente antes do próximo turno de voz',
+  )
+  assert.ok(
+    hook.includes('setPendingTrace(null)'),
+    'trace terminal precisa limpar pendingTrace; senão Atlas Voice nunca dispara TTS depois da resposta textual',
+  )
+})
+
+test('REGRESSION · Atlas Voice rearma múltiplos turnos automaticamente', () => {
+  const surface = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'))
+
+  assert.ok(
+    surface.includes('VOICE_REARM_AFTER_REPLY_MS')
+      && surface.includes('VOICE_REARM_WATCHDOG_MS'),
+    'Atlas Voice precisa ter delays explícitos de rearmamento, não depender de timing implícito',
+  )
+  assert.ok(
+    surface.includes('const scheduleVoiceRearm = useCallback('),
+    'Atlas Voice precisa de um rearmador único para iniciar o próximo turno',
+  )
+  assert.ok(
+    surface.includes('voiceRearmTimerRef.current = window.setTimeout'),
+    'rearmamento precisa ser timer controlado e cancelável',
+  )
+  assert.ok(
+    surface.includes('VOICE_REARM_VERIFY_MS')
+      && surface.includes('VOICE_REARM_MAX_ATTEMPTS')
+      && surface.includes('attempt + 1'),
+    'rearmamento precisa ter retry; teste físico mostrou que tentativa única morre no segundo turno',
+  )
+  assert.ok(
+    surface.includes("liveState === 'listening'")
+      && surface.includes('scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS, attempt + 1)'),
+    'depois de chamar start(), Atlas Voice precisa verificar se entrou em captura real e tentar de novo se não entrou',
+  )
+  assert.ok(
+    surface.includes('scheduleVoiceRearm(VOICE_REARM_AFTER_REPLY_MS)'),
+    'após falar a resposta, Atlas Voice deve voltar a ouvir automaticamente',
+  )
+  assert.ok(
+    surface.includes('VOICE_LOOP_HEARTBEAT_MS')
+      && surface.includes('VOICE_SPEAKING_WATCHDOG_MS')
+      && surface.includes('voiceSpeechStartedAtRef')
+      && surface.includes('scheduleVoiceRearm(0)'),
+    'loop contínuo precisa ter heartbeat independente de eventos React/TTS perdidos',
+  )
+  assert.ok(
+    surface.includes('VOICE_MIN_SPEECH_FRAMES')
+      && surface.includes('voiceSpeechFrameCountRef')
+      && surface.includes('VOICE_MIN_CONFIRMED_SPEECH_MS')
+      && surface.includes('voiceSpeechMsRef')
+      && surface.includes('atlasVoiceConfirmsHumanSpeech')
+      && surface.includes('atlasVoiceShouldDropSilentTurn')
+      && !surface.includes('VOICE_UNDETECTED_AUTO_SEND_MS'),
+    'Atlas Voice não pode enviar turno sem fala sustentada; silêncio/ruído fazia STT alucinar texto como tinyurl',
+  )
+  assert.ok(
+    surface.includes('voiceSpeechRunIdRef')
+      && surface.includes('nextVoiceSpeechRunId()')
+      && surface.includes('isCurrentVoiceSpeechRun(speechRunId)')
+      && !surface.includes("onEnd: () => {\n        if (cancelled) return")
+      && !surface.includes("onError: (reason) => {\n        if (cancelled) return"),
+    'TTS não pode depender de flag cancelled em cleanup de useEffect; mudança de streaming/estado cancelava o onEnd e travava em Respondendo',
+  )
+  assert.ok(
+    surface.includes("if (vox.state === 'closed' || vox.state === 'idle' || vox.state === 'cancelled' || vox.state === 'error')"),
+    'watchdog precisa recuperar estados neutros onde a conversa ficou ligada mas não está ouvindo',
+  )
+  assert.ok(
+    surface.includes('clearVoiceRearmTimer()')
+      && surface.includes('stopVoiceConversation'),
+    'parar conversa precisa cancelar timers de rearmamento pendentes',
+  )
+})
+
+test('REGRESSION · Atlas Voice reduz latência sem trocar qualidade da voz', () => {
+  const hook = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'useAtlasAi.ts'))
+  const surface = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'))
+  const voiceReply = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'atlasAiVoiceReply.ts'))
+  const native = readText(join(ATLAS_DESKTOP_ROOT, 'crates', 'atlas-tauri', 'src', 'commands_vox_reply.rs'))
+  const promptBuilder = readText(join(REPO_ROOT, 'atlas-server', 'app', 'Services', 'Ai', 'AiPromptBuilder.php'))
+
+  assert.ok(
+    hook.includes('const TRACE_POLL_INTERVAL_MS = 500')
+      && hook.includes('const TRACE_POLL_INITIAL_DELAY_MS = 250'),
+    'poll do trace precisa ser curto para a voz começar logo depois que o Atlas termina',
+  )
+  assert.ok(
+    hook.includes('window.setTimeout(tick, TRACE_POLL_INITIAL_DELAY_MS)'),
+    'primeira leitura do trace não pode esperar o intervalo cheio',
+  )
+  assert.ok(
+    native.includes('static ELEVENLABS_HTTP_CLIENT: OnceLock<reqwest::Client>'),
+    'ElevenLabs precisa reaproveitar conexão HTTP entre turnos',
+  )
+  assert.ok(
+    native.includes('optimize_streaming_latency={}')
+      && native.includes('default_elevenlabs_streaming_latency() -> u8')
+      && native.includes('config.optimize_streaming_latency.min(4)'),
+    'TTS precisa permitir ajuste controlado de latência sem fallback para voz ruim',
+  )
+  assert.ok(
+    native.includes('elevenlabs_http_client()')
+      && native.includes('.post(url)'),
+    'TTS precisa usar o cliente HTTP persistente',
+  )
+  assert.ok(
+    native.includes('pub struct AtlasVoiceLatencyMs')
+      && native.includes('request: millis_between(started_at, response_at)')
+      && native.includes('download: millis_between(response_at, downloaded_at)')
+      && native.includes('playback: millis_between(written_at, playback_done_at)')
+      && native.includes('audio_bytes'),
+    'Atlas Voice precisa medir onde o tempo foi gasto: request/download/write/playback',
+  )
+  assert.ok(
+    voiceReply.includes("window.dispatchEvent(new CustomEvent('atlas-ai-voice-latency'")
+      && voiceReply.includes('window.__atlasVoiceLastLatencyMs = result.latencyMs')
+      && voiceReply.includes('latencyMs?:'),
+    'frontend precisa emitir e preservar telemetria local de latência da fala sem expor segredo',
+  )
+  assert.ok(
+    surface.includes('const VOICE_REPLY_MAX_CHARS = 420')
+      && surface.includes('VOICE_REPLY_STREAMING_MAX_CHARS')
+      && surface.includes('selectAtlasVoiceStreamingChunk')
+      && surface.includes('const VOICE_SILENCE_MS_TO_SEND = 350')
+      && surface.includes('const VOICE_MIN_TURN_MS = 900')
+      && surface.includes('const VOICE_MIN_CONFIRMED_SPEECH_MS = 700'),
+    'auto-envio por pausa precisa ser rápido, mas não pode aceitar ruído curto como fala',
+  )
+  assert.ok(
+    hook.includes('voiceConversation?: boolean')
+      && hook.includes('voice_response_contract')
+      && hook.includes("mode: 'spoken_concise'")
+      && hook.includes('target_chars: 280')
+      && hook.includes('hard_max_chars: 420'),
+    'turnos do Atlas Voice precisam enviar contrato de resposta falada curta para reduzir geração e TTS',
+  )
+  assert.ok(
+    surface.includes('voiceConversation: true'),
+    'auto-envio do Atlas Voice precisa marcar o turno como conversa por voz',
+  )
+  assert.ok(
+    promptBuilder.includes('voiceResponseInstructions($options)')
+      && promptBuilder.includes('payload.voice_response_contract')
+      && promptBuilder.includes('Contrato de resposta falada Atlas Voice')
+      && promptBuilder.includes('Esta resposta sera falada em voz alta')
+      && promptBuilder.includes('Mira de tamanho'),
+    'backend precisa projetar o contrato de resposta falada no prompt do provider',
+  )
+})
+
+test('REGRESSION · menu de conversa apaga com confirmação própria, sem window.confirm nativo', () => {
+  const menu = readText(join(
+    DESKTOP_APP_ROOT,
+    'src',
+    'surfaces',
+    'atlas-ai',
+    'components',
+    'AtlasAiThreadContextMenu.tsx',
+  ))
+  const surface = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'))
+
+  assert.ok(
+    menu.includes('const [confirmingDelete, setConfirmingDelete] = useState(false)'),
+    'delete precisa de confirmação controlada no próprio menu',
+  )
+  assert.ok(
+    menu.includes('Confirmar apagar'),
+    'menu precisa mostrar segunda etapa explícita antes de apagar',
+  )
+  assert.equal(
+    surface.includes('window.confirm('),
+    false,
+    'AtlasAiSurface não pode depender de window.confirm nativo para apagar thread',
+  )
+})
+
+test('REGRESSION · ações de thread atualizam a lista local após sucesso do backend', () => {
+  const hook = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'useAtlasAi.ts'))
+  const client = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'client.ts'))
+
+  assert.ok(
+    client.includes('export async function deleteAiThread'),
+    'client precisa expor DELETE /ai/threads/{id} para apagar de verdade',
+  )
+  assert.ok(
+    hook.includes('await deleteAiThread(id)'),
+    'closeThread precisa usar DELETE real, não só status=closed escondido',
+  )
+  assert.ok(
+    hook.includes('setThreads((prev) => prev.filter((thread) => thread.id !== id))'),
+    'arquivar/apagar precisam remover a conversa da lista local após sucesso',
+  )
+  assert.ok(
+    hook.includes('prev.map((thread) => (thread.id === id ? { ...thread, title: updated.title ?? title } : thread))'),
+    'renomear precisa refletir o novo título na lista local sem esperar refresh',
   )
 })
 

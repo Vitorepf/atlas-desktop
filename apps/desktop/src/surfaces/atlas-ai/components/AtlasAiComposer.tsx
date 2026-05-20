@@ -45,6 +45,8 @@ interface AtlasAiComposerProps {
   textareaMaxPx?: number
   onVoxClick?: () => void
   voxState?: VoxOverlayState
+  voiceReplyEnabled?: boolean
+  onVoiceReplyToggle?: () => void
 }
 
 export function AtlasAiComposer({
@@ -63,6 +65,8 @@ export function AtlasAiComposer({
   textareaMaxPx,
   onVoxClick,
   voxState = 'closed',
+  voiceReplyEnabled = false,
+  onVoiceReplyToggle,
 }: AtlasAiComposerProps) {
   const attachments = useAtlasRichInputAttachments()
 
@@ -103,6 +107,8 @@ export function AtlasAiComposer({
       onSend={handleSend}
       onVoxClick={onVoxClick}
       voxState={voxState}
+      voiceReplyEnabled={voiceReplyEnabled}
+      onVoiceReplyToggle={onVoiceReplyToggle}
     />
   )
 }

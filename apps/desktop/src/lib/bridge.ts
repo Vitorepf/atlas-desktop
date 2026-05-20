@@ -6432,6 +6432,25 @@ export async function voxEdgeStatus(): Promise<VoxEdgeStatus | null> {
   }
 }
 
+export interface VoxAudioLevel {
+  sessionId: string
+  durationMs: number
+  sampleCount: number
+  recentSampleCount: number
+  rms: number
+  peak: number
+}
+
+export async function voxEdgeAudioLevel(sessionId: string): Promise<VoxAudioLevel | null> {
+  if (MODE !== 'tauri') return null
+  try {
+    return await voxInvoke<VoxAudioLevel | null>('vox_edge_audio_level', { sessionId })
+  } catch (e) {
+    console.warn('[bridge] voxEdgeAudioLevel', e)
+    return null
+  }
+}
+
 export async function voxEdgeStartSession(
   request: VoxStartSessionRequest
 ): Promise<VoxEdgeSession> {
@@ -6709,7 +6728,7 @@ export async function voxDictionaryUpdate(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// V6 · Reply Surface · settings + macOS `say` (texto curto)
+// V6 · Reply Surface · settings + premium speech gate
 //
 // Persistido em `~/.atlas/vox/settings.json` (atlas.vox.settings.v1). O
 // overlay lê com `voxSettingsGet`, atualiza com `voxSettingsUpdate`, e
@@ -6852,13 +6871,13 @@ function normaliseVoxSpeakResult(raw: unknown): VoxSpeakResult {
   }
 }
 
-/** Dispara fala curta no macOS via `say`. Whitelist canônica:
+/** Solicita fala curta. Whitelist canônica:
  *   - `understood`     → "Entendi."
  *   - `need_detail`    → "Preciso de um detalhe."
  *   - `blocked_safety` → "Bloqueei por segurança."
  *   - `prompt_ready`   → "Prompt pronto."
  *
- * NUNCA falha o fluxo do overlay: erros do `say` viram `{ok:false, spoken:false}`.
+ * NUNCA falha o fluxo do overlay: indisponibilidade de TTS vira `{ok:false, spoken:false}`.
  * Cooldown global é gerido no Rust — não precisa debounce no frontend. */
 export async function voxSpeakShort(phraseKey: VoxShortPhraseKey): Promise<VoxSpeakResult> {
   if (MODE !== 'tauri') {

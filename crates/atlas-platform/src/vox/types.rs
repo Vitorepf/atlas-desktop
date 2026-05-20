@@ -114,6 +114,19 @@ pub struct VoxEdgeStatus {
     pub pending_capabilities: Vec<String>,
 }
 
+/// Live audio level for an active recording. Safe for Tauri: it exposes only
+/// aggregate signal stats, never PCM samples.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxAudioLevel {
+    pub session_id: String,
+    pub duration_ms: u64,
+    pub sample_count: usize,
+    pub recent_sample_count: usize,
+    pub rms: f32,
+    pub peak: f32,
+}
+
 /// In-memory audio snapshot handed to the STT module (Claude B).
 ///
 /// Crossing the Tauri boundary with raw PCM is intentionally forbidden:

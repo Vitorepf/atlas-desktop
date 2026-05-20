@@ -93,11 +93,11 @@ pub const MIN_COOLDOWN_MS: u64 = 1_000;
 pub const MAX_COOLDOWN_MS: u64 = 60_000;
 
 /// Frases curtas canônicas para o modo `Short`. A whitelist vive aqui pra
-/// que payload do frontend NUNCA possa injetar texto arbitrário no `say`.
+/// que payload do frontend NUNCA possa injetar texto arbitrário no motor de voz.
 ///
 /// Cada entrada tem uma `key` estável (string que o frontend manda) + um
-/// `text` PT-BR curto (≤ 30 chars). Quem invocar `say` resolve a key contra
-/// esta lista; falha se a key não existir.
+/// `text` PT-BR curto (≤ 30 chars). Quem invocar fala curta resolve a key
+/// contra esta lista; falha se a key não existir.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VoxShortPhrase {
     /// "Entendi." — confirmação de ação concluída sem incidente.
@@ -365,10 +365,9 @@ mod tests {
 
     #[test]
     fn short_phrases_never_contain_shell_specials_or_command_chars() {
-        // Sanidade pra macOS `say`: nenhuma frase whitelist pode ter chars
+        // Sanidade do motor de voz: nenhuma frase whitelist pode ter chars
         // que se beneficiariam de escape (`;`, `|`, `&`, backtick, `$`, etc.).
-        // Mesmo invocando `say` via `Command::new(...).arg(text)` (sem shell)
-        // isto é defesa em profundidade contra payload manipulado.
+        // Isto é defesa em profundidade contra payload manipulado.
         let bad_chars: &[char] = &['`', '$', ';', '|', '&', '<', '>', '"', '\'', '\\', '\n', '\r'];
         for p in VoxShortPhrase::all() {
             for c in p.text().chars() {

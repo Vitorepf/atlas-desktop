@@ -33,6 +33,6 @@ pub use hotkey::{
 };
 pub use session::{parse_session_id, VoxEdge, VoxEdgeConfig, VoxEdgeError, DEFAULT_LANGUAGE};
 pub use types::{
-    VoxAudioSnapshot, VoxConsent, VoxEdgePermissions, VoxEdgeSession, VoxEdgeStatus, VoxMode,
-    VoxSessionState, VoxSource, VoxStartSessionRequest,
+    VoxAudioLevel, VoxAudioSnapshot, VoxConsent, VoxEdgePermissions, VoxEdgeSession,
+    VoxEdgeStatus, VoxMode, VoxSessionState, VoxSource, VoxStartSessionRequest,
 };

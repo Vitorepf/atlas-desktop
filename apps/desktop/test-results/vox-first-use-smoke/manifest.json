@@ -1,7 +1,7 @@
 {
   "schema": "atlas.vox.first_use_smoke.v1",
   "status": "pass",
-  "generated_at": "2026-05-19T18:33:34.036Z",
+  "generated_at": "2026-05-20T14:31:36.737Z",
   "repo_root": "~/develop/Atlas/atlas-desktop",
   "backend_url_present": true,
   "backend_url_redacted": "http://127.0.0.1:8001",
@@ -13,7 +13,7 @@
       "summary": "bridge.ts exporta as 12 APIs Vox principais.",
       "detail": {
         "path": "~/develop/Atlas/atlas-desktop/apps/desktop/src/lib/bridge.ts",
-        "bytes": 401975
+        "bytes": 402429
       },
       "next_action": null,
       "category": null

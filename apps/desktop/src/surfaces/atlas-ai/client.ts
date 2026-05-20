@@ -179,6 +179,13 @@ export async function updateAiThread(
   return result.thread
 }
 
+export async function deleteAiThread(id: string): Promise<void> {
+  ensureOnline('deleteAiThread')
+  await fetchJson<{ ok: boolean; deleted_thread_id: string }>(`/ai/threads/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function createAiInteraction(
   request: AtlasAiInteractionRequest,
 ): Promise<AtlasAiInteractionResponse> {

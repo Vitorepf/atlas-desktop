@@ -15,6 +15,7 @@ import {
   AtlasDevPlanUnavailableError,
   createAiInteraction,
   createAiThread,
+  deleteAiThread,
   getAiThread,
   getAiTrace,
   getAtlasAiRouterBootstrap,
@@ -118,6 +119,7 @@ export interface AtlasAiState {
       }>
       /** Universal Rich Input Payload canon (`atlas.rich_input.payload.v1`). */
       richInputPayload?: AtlasRichInputPayload
+      voiceConversation?: boolean
     },
   ) => Promise<AiTrace | null>
 
@@ -126,13 +128,14 @@ export interface AtlasAiState {
   archiveThread: (id: string) => Promise<void>
   /** Renomeia thread (PATCH /ai/threads/{id}). */
   renameThread: (id: string, title: string) => Promise<void>
-  /** Fecha thread permanentemente (status=closed). */
+  /** Apaga a thread permanentemente (DELETE /ai/threads/{id}). */
   closeThread: (id: string) => Promise<void>
   /** Baixa detalhe completo (com mensagens) para export — não muda estado. */
   fetchThreadDetail: (id: string) => Promise<AiThreadDetail | null>
 }
 
-const TRACE_POLL_INTERVAL_MS = 1500
+const TRACE_POLL_INTERVAL_MS = 500
+const TRACE_POLL_INITIAL_DELAY_MS = 250
 const TRACE_POLL_TIMEOUT_MS = 120_000
 
 export function useAtlasAi(
@@ -150,6 +153,7 @@ export function useAtlasAi(
   const [threadsError, setThreadsError] = useState<string | null>(null)
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
+  const selectedThreadIdRef = useRef<string | null>(null)
   const [threadDetail, setThreadDetail] = useState<AiThreadDetail | null>(null)
   const [threadDetailLoading, setThreadDetailLoading] = useState<boolean>(false)
   const [threadDetailError, setThreadDetailError] = useState<string | null>(null)
@@ -244,6 +248,7 @@ export function useAtlasAi(
 
   const selectThread = useCallback(
     (id: string | null) => {
+      selectedThreadIdRef.current = id
       setSelectedThreadId(id)
       setThreadDetail(null)
       setThreadDetailError(null)
@@ -340,6 +345,7 @@ export function useAtlasAi(
             trace.status === 'cancelled'
           if (terminal) {
             stop()
+            setPendingTrace(null)
             setPendingUserMessage(null)
             // Cleanup SSE stream subscription quando trace finaliza.
             if (streamUnsubRef.current) {
@@ -379,7 +385,7 @@ export function useAtlasAi(
         pollTimerRef.current = window.setTimeout(tick, TRACE_POLL_INTERVAL_MS)
       }
       stop()
-      pollTimerRef.current = window.setTimeout(tick, TRACE_POLL_INTERVAL_MS)
+      pollTimerRef.current = window.setTimeout(tick, TRACE_POLL_INITIAL_DELAY_MS)
     },
     [loadThreadDetail, refreshThreads],
   )
@@ -419,6 +425,7 @@ export function useAtlasAi(
          * preservam para auditoria e re-projeção.
          */
         richInputPayload?: AtlasRichInputPayload
+        voiceConversation?: boolean
       },
     ): Promise<AiTrace | null> => {
       if (mode === 'offline') {
@@ -480,7 +487,7 @@ export function useAtlasAi(
         try {
           const planResult = await postAtlasDevPlan({
             input_text: trimmed,
-            thread_id: options?.newThread ? null : selectedThreadId,
+            thread_id: options?.newThread ? null : selectedThreadIdRef.current,
             surface_id: 'atlas_desktop_ai',
             workspace: atlasDevWorkspace,
             task: composerTask,
@@ -527,7 +534,7 @@ export function useAtlasAi(
       }
 
       try {
-        let threadId = options?.newThread ? null : selectedThreadId
+        let threadId = options?.newThread ? null : selectedThreadIdRef.current
         // Cria thread explicitamente quando não há uma — assim o trace já fica
         // ligado e o histórico atualiza sem corrida.
         if (!threadId) {
@@ -553,6 +560,7 @@ export function useAtlasAi(
             },
           })
           threadId = newThread.id
+          selectedThreadIdRef.current = threadId
           if (mountedRef.current) {
             setSelectedThreadId(threadId)
             setThreadDetail(null)
@@ -572,6 +580,18 @@ export function useAtlasAi(
         // monta o prompt final embutindo esses blocos antes de enviar ao provider.
         const enrichedPayload: Record<string, unknown> = {
           ...(payload ?? {}),
+        }
+        if (options?.voiceConversation) {
+          enrichedPayload.voice_response_contract = {
+            schema_version: 'atlas.voice.response_contract.v1',
+            mode: 'spoken_concise',
+            language: 'pt-BR',
+            max_sentences: 3,
+            target_chars: 280,
+            hard_max_chars: 420,
+            style: 'natural, direto, sem markdown, sem lista longa',
+            preserve_text_answer: true,
+          }
         }
         if (options?.textBlocks?.length) {
           enrichedPayload.attachments_text = options.textBlocks
@@ -640,7 +660,9 @@ export function useAtlasAi(
       try {
         await updateAiThread(id, { status: 'archived' })
         if (!mountedRef.current) return
+        setThreads((prev) => prev.filter((thread) => thread.id !== id))
         if (id === selectedThreadId) {
+          selectedThreadIdRef.current = null
           setSelectedThreadId(null)
           setThreadDetail(null)
         }
@@ -655,8 +677,11 @@ export function useAtlasAi(
   const renameThread = useCallback(
     async (id: string, title: string) => {
       try {
-        await updateAiThread(id, { title })
+        const updated = await updateAiThread(id, { title })
         if (!mountedRef.current) return
+        setThreads((prev) =>
+          prev.map((thread) => (thread.id === id ? { ...thread, title: updated.title ?? title } : thread)),
+        )
         if (id === selectedThreadId) {
           void loadThreadDetail(id)
         }
@@ -671,9 +696,11 @@ export function useAtlasAi(
   const closeThread = useCallback(
     async (id: string) => {
       try {
-        await updateAiThread(id, { status: 'closed' })
+        await deleteAiThread(id)
         if (!mountedRef.current) return
+        setThreads((prev) => prev.filter((thread) => thread.id !== id))
         if (id === selectedThreadId) {
+          selectedThreadIdRef.current = null
           setSelectedThreadId(null)
           setThreadDetail(null)
         }
@@ -702,6 +729,8 @@ export function useAtlasAi(
     try {
       await updateAiThread(selectedThreadId, { status: 'archived' })
       if (!mountedRef.current) return
+      setThreads((prev) => prev.filter((thread) => thread.id !== selectedThreadId))
+      selectedThreadIdRef.current = null
       setSelectedThreadId(null)
       setThreadDetail(null)
       void refreshThreads()

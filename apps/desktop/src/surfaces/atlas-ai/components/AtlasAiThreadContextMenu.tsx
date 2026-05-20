@@ -7,14 +7,14 @@
  *   ⊟ Arquivar chat                (PATCH status=archived)
  *   ⎘ Copiar ID da sessão           (clipboard thread.id)
  *   ⤓ Copiar contexto completo (md) (fetch detail + serializa markdown)
- *   ⊠ Apagar permanentemente        (status=closed, opt-in via confirm)
+ *   ⊠ Apagar permanentemente        (DELETE /ai/threads/{id}, confirmação em 2 cliques)
  *
  * "Copiar contexto completo" é o killer: traz workspace, modo, provider,
  * todas as mensagens com timestamps + role + provider, em markdown. Cole
  * isso em outro Atlas (mobile, outro Desktop, Forge) e ele tem todo o
  * contexto da conversa pronto para continuar.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface ContextMenuPos {
   x: number
@@ -45,6 +45,7 @@ export function AtlasAiThreadContextMenu({
   onClose,
 }: AtlasAiThreadContextMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -134,11 +135,19 @@ export function AtlasAiThreadContextMenu({
       <hr className="atlas-ai-ctxmenu-sep" />
 
       <MenuItem
-        icon="⊠"
-        label="Apagar permanentemente"
-        description="Encerra a thread (status=closed) — pede confirmação"
+        icon={confirmingDelete ? '!' : '⊠'}
+        label={confirmingDelete ? 'Confirmar apagar' : 'Apagar'}
+        description={
+          confirmingDelete
+            ? 'Clique de novo para apagar a conversa e tirar da lista.'
+            : 'Remove esta conversa permanentemente'
+        }
         danger
         onClick={() => {
+          if (!confirmingDelete) {
+            setConfirmingDelete(true)
+            return
+          }
           actions.onDelete()
           onClose()
         }}

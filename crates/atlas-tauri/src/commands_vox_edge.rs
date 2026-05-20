@@ -21,7 +21,7 @@
 use std::sync::Arc;
 
 use atlas_platform::vox::{
-    parse_session_id, VoxEdge, VoxEdgeError, VoxEdgeSession, VoxEdgeStatus,
+    parse_session_id, VoxAudioLevel, VoxEdge, VoxEdgeError, VoxEdgeSession, VoxEdgeStatus,
     VoxStartSessionRequest,
 };
 use serde::Serialize;
@@ -53,6 +53,15 @@ fn emit_error(app: &AppHandle, command: &'static str, error: &str) {
 #[tauri::command]
 pub fn vox_edge_status(edge: State<'_, Arc<VoxEdge>>) -> VoxEdgeStatus {
     edge.status()
+}
+
+#[tauri::command]
+pub fn vox_edge_audio_level(
+    edge: State<'_, Arc<VoxEdge>>,
+    session_id: String,
+) -> Result<Option<VoxAudioLevel>, String> {
+    let parsed = parse_session_id(&session_id).map_err(into_str_err)?;
+    Ok(edge.active_audio_level(parsed))
 }
 
 #[tauri::command]

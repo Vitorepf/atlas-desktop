@@ -48,7 +48,7 @@ const VOX_DEV_MODE = detectVoxDevMode()
 
 /**
  * V6 · Reply Surface · texto curto mostrado na cabine "Atlas respondeu".
- * Sempre visível em texto; voz é opcional (voice_mode='short' liga `say`).
+ * Sempre visível em texto; voz curta é opcional (voice_mode='short').
  * Whitelist canônica — espelha o Rust 1:1, sem fala arbitrária.
  */
 const VOX_REPLY_PHRASE_TEXT: Record<VoxShortPhraseKey, string> = {
@@ -326,10 +326,10 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     message: string
   } | null>(null)
   const [fallbackOpen, setFallbackOpen] = useState<boolean>(false)
-  // V6 · Reply Surface · preferência local + dedupe de fala.
+  // V6 · Reply Surface · preferência local + dedupe de fala curta.
   // `replyPhrase` é DERIVADO durante o render (não useState) para que SSR
   // renderize o card "Atlas respondeu" honestamente sem precisar rodar
-  // useEffect. O `spokenRepliesRef` evita re-disparar `say` em re-renders.
+  // useEffect. O `spokenRepliesRef` evita re-disparar voz em re-renders.
   const [voiceMode, setVoiceMode] = useState<VoxVoiceMode>('off')
   const [voiceSettingsBusy, setVoiceSettingsBusy] = useState<boolean>(false)
   const spokenRepliesRef = useRef<Set<string>>(new Set())
@@ -493,8 +493,6 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     void refreshDictionary()
   }, [dictOpen, dictionary, refreshDictionary])
 
-  if (state === 'closed') return null
-
   const tauriUnavailable = mode === 'unavailable'
   const sttEngineMessage =
     modelStatus && !modelStatus.engineAvailable
@@ -520,7 +518,7 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
   // overlay (sempre disponível, não só quando confidence é baixa).
   const canExitWait =
     state === 'transcribing' || state === 'compiling'
-  const canRerecordFromTranscript = state === 'transcript_ready'
+  const canRerecordFromTranscript = state === 'transcript_ready' && !sttError
   const originalText = transcriptDraft || transcript?.text || ''
   const canInsertOriginal = originalText.trim() !== ''
   const compiledPrompt = kernelResponse?.compiledPrompt ?? null
@@ -594,9 +592,9 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     })
   })()
 
-  // V6 · side-effect de fala. (receipt, phrase) é único — `say` dispara
+  // V6 · side-effect de fala curta. (receipt, phrase) é único — dispara
   // uma vez só por sessão. Cooldown global anti-flood vive no Rust. Falha
-  // do `say` jamais quebra o fluxo (fire-and-forget).
+  // de fala jamais quebra o fluxo (fire-and-forget).
   const replySpeakKey = replyPhrase
     ? `${
         kernelResponse?.receiptId
@@ -613,6 +611,11 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
     spokenRepliesRef.current.add(replySpeakKey)
     void voxSpeakShort(replyPhrase)
   }, [replyPhrase, replySpeakKey, voiceMode])
+
+  // React hook order guard: o overlay fechado ainda precisa executar todos os
+  // hooks acima. Se retornarmos antes deles, abrir o Vox muda a ordem de hooks
+  // e derruba a superfície Atlas AI inteira.
+  if (state === 'closed') return null
 
   const flashCopy = (msg: string) => {
     setCopyStatus(msg)
@@ -1895,8 +1898,8 @@ export function VoxOverlay({ controller }: VoxOverlayProps) {
         <>
           {/* V6 · Reply Surface · preferência local de voz. Default é
               "desligada" — o Atlas nunca fala sem o operador pedir. Quando
-              "curta", apenas frases whitelistadas (≤ 30 chars cada) saem
-              via macOS `say`, com cooldown anti-flood no Rust. */}
+              "curta", apenas frases whitelistadas (≤ 30 chars cada) são
+              elegíveis para fala, com cooldown anti-flood no Rust. */}
           <div className="vox-overlay-controls vox-overlay-voice-prefs" aria-label="Voz do Atlas Vox">
             <fieldset className="vox-voice-mode-group">
               <legend className="vox-voice-mode-legend">Voz</legend>

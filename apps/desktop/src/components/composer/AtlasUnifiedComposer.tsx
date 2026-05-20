@@ -71,6 +71,8 @@ interface AtlasUnifiedComposerProps {
   onSend: (payload: AtlasUnifiedComposerSendPayload) => Promise<void> | void
   onVoxClick?: () => void
   voxState?: VoxOverlayState
+  voiceReplyEnabled?: boolean
+  onVoiceReplyToggle?: () => void
   statusSlot?: ReactNode
 }
 
@@ -148,6 +150,8 @@ export function AtlasUnifiedComposer({
   onSend,
   onVoxClick,
   voxState = 'closed',
+  voiceReplyEnabled = false,
+  onVoiceReplyToggle,
   statusSlot,
 }: AtlasUnifiedComposerProps) {
   void taskOptionsForMode
@@ -570,6 +574,25 @@ export function AtlasUnifiedComposer({
 
           {onVoxClick ? (
             <VoxButton state={voxState} onClick={onVoxClick} disabled={disabled || sending} />
+          ) : null}
+
+          {onVoiceReplyToggle ? (
+            <button
+              type="button"
+              className={`atlas-ai-icon-btn atlas-ai-voice-live-btn${voiceReplyEnabled ? ' is-active' : ''}`}
+              onClick={onVoiceReplyToggle}
+              disabled={disabled}
+              aria-label={voiceReplyEnabled ? 'Parar Atlas Voice' : 'Abrir Atlas Voice'}
+              title={voiceReplyEnabled ? 'Atlas Voice ligado' : 'Abrir Atlas Voice'}
+            >
+              <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5.2 7.8v2.4" />
+                <path d="M9 5.2v7.6" />
+                <path d="M12.8 7.8v2.4" />
+                <path d="M2.3 9a6.7 6.7 0 0 1 13.4 0" />
+                <path d="M3.8 13.2c1.3 1.4 3.1 2.2 5.2 2.2s3.9-.8 5.2-2.2" />
+              </svg>
+            </button>
           ) : null}
 
           <AtlasAiComposerMenu<`mode:${AtlasAiMode}` | `task:${AtlasAiTask}`>

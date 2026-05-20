@@ -188,7 +188,7 @@ pub fn run() {
                 app.manage(Arc::clone(&pty_manager));
                 app.manage(Arc::clone(&vox_edge));
                 app.manage(Arc::clone(&vox_ambient));
-                // V6 · Reply Surface cooldown state (anti-flood do `say`).
+                // V6 · Reply Surface cooldown state (anti-flood de voz curta).
                 app.manage(commands_vox_reply::VoxReplyState::new());
 
                 // V6-A · emite o pedido ambient logo após o setup. O frontend
@@ -320,6 +320,7 @@ pub fn run() {
             commands_vox::vox_stt_transcribe_debug_text,
             commands_vox::vox_stt_transcribe_audio,
             commands_vox_edge::vox_edge_status,
+            commands_vox_edge::vox_edge_audio_level,
             commands_vox_edge::vox_edge_start_session,
             commands_vox_edge::vox_edge_finish_session,
             commands_vox_edge::vox_edge_cancel_session,
@@ -336,6 +337,8 @@ pub fn run() {
             commands_vox_reply::vox_settings_get,
             commands_vox_reply::vox_settings_update,
             commands_vox_reply::vox_speak_short,
+            commands_vox_reply::atlas_voice_speak,
+            commands_vox_reply::atlas_voice_stop,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Atlas Code");

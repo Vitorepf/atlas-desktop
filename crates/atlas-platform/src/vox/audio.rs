@@ -81,6 +81,36 @@ impl RealRecorder {
         self.channels
     }
 
+    /// Non-consuming level probe for live VAD. Reads only the tail of the
+    /// in-memory PCM buffer; never persists or exposes raw samples.
+    pub fn recent_level(&self, max_samples: usize) -> AudioLevelSnapshot {
+        let buf = self.samples.lock();
+        if buf.is_empty() || max_samples == 0 {
+            return AudioLevelSnapshot {
+                sample_count: buf.len(),
+                recent_sample_count: 0,
+                rms: 0.0,
+                peak: 0.0,
+            };
+        }
+        let start = buf.len().saturating_sub(max_samples);
+        let recent = &buf[start..];
+        let mut sum_sq = 0.0f64;
+        let mut peak = 0.0f32;
+        for s in recent {
+            let amp = s.abs();
+            peak = peak.max(amp);
+            sum_sq += (amp as f64) * (amp as f64);
+        }
+        let rms = (sum_sq / recent.len() as f64).sqrt() as f32;
+        AudioLevelSnapshot {
+            sample_count: buf.len(),
+            recent_sample_count: recent.len(),
+            rms,
+            peak,
+        }
+    }
+
     /// Signal the capture thread to stop, wait for it, then return the
     /// captured PCM. The internal buffer is consumed.
     pub fn stop_and_take(mut self) -> Vec<f32> {
@@ -102,6 +132,14 @@ impl RealRecorder {
         let mut buf = self.samples.lock();
         buf.clear();
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AudioLevelSnapshot {
+    pub sample_count: usize,
+    pub recent_sample_count: usize,
+    pub rms: f32,
+    pub peak: f32,
 }
 
 fn run_capture_loop(

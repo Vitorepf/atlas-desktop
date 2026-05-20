@@ -426,6 +426,37 @@ impl VoxEdge {
         None
     }
 
+    /// Non-consuming live audio level for VAD-style UI. Aggregate stats only:
+    /// no raw PCM crosses this boundary.
+    pub fn active_audio_level(&self, session_id: Uuid) -> Option<VoxAudioLevel> {
+        let inner = self.inner.lock();
+        let active = inner.active.as_ref()?;
+        if active.session_id != session_id {
+            return None;
+        }
+        let duration_ms = elapsed_ms(active.started_at_unix_ms);
+        let level = match &active.recorder {
+            Some(recorder) => {
+                let window_samples = (active.sample_rate as usize / 5).max(1);
+                recorder.recent_level(window_samples)
+            }
+            None => audio::AudioLevelSnapshot {
+                sample_count: 0,
+                recent_sample_count: 0,
+                rms: 0.0,
+                peak: 0.0,
+            },
+        };
+        Some(VoxAudioLevel {
+            session_id: active.session_id.to_string(),
+            duration_ms,
+            sample_count: level.sample_count,
+            recent_sample_count: level.recent_sample_count,
+            rms: level.rms,
+            peak: level.peak,
+        })
+    }
+
     fn record_error(&self, msg: &str) {
         let mut inner = self.inner.lock();
         inner.last_error = Some(msg.to_string());
@@ -542,6 +573,25 @@ mod tests {
         assert!(!finished.raw_pcm_persisted);
         let peek = edge.peek_session(id).unwrap();
         assert!(!peek.raw_pcm_persisted);
+    }
+
+    #[test]
+    fn active_audio_level_exposes_only_aggregate_stats() {
+        let edge = VoxEdge::new(VoxEdgeConfig::test_disabled());
+        let started = edge.start_session(ok_request()).unwrap();
+        let id = parse_session_id(&started.session_id).unwrap();
+        let level = edge.active_audio_level(id).expect("level");
+        assert_eq!(level.session_id, started.session_id);
+        assert_eq!(level.sample_count, 0);
+        assert_eq!(level.recent_sample_count, 0);
+        assert_eq!(level.rms, 0.0);
+        assert_eq!(level.peak, 0.0);
+
+        edge.finish_session(id).unwrap();
+        assert!(
+            edge.active_audio_level(id).is_none(),
+            "level probe only applies to active recordings"
+        );
     }
 
     #[test]

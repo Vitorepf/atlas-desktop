@@ -1,0 +1,50 @@
+{
+  "schema": "atlas.voice.loop_check.v1",
+  "status": "pass",
+  "generated_at": "2026-05-20T14:30:56.862Z",
+  "duration_ms": 1849,
+  "checks": [
+    {
+      "label": "regressão cobre 3 turnos consecutivos",
+      "status": "pass"
+    },
+    {
+      "label": "Atlas Code.app instalado",
+      "status": "pass"
+    },
+    {
+      "label": "binário Tauri instalado",
+      "status": "pass"
+    },
+    {
+      "label": "assinatura do app válida",
+      "status": "pass"
+    },
+    {
+      "label": "sem fallback ruim de voz",
+      "status": "pass"
+    },
+    {
+      "label": "ElevenLabs presente no runtime instalado",
+      "status": "pass"
+    }
+  ],
+  "installed_app": "/Applications/Atlas Code.app",
+  "binary": "/Applications/Atlas Code.app/Contents/MacOS/atlas-tauri",
+  "automated_coverage": [
+    "three_turn_regression",
+    "installed_app_presence",
+    "codesign",
+    "bad_voice_fallback_scan",
+    "elevenlabs_runtime_presence"
+  ],
+  "physical_validation_required": {
+    "required": true,
+    "reason": "microphone_and_real_audio_loop_cannot_be_proven_by_static_or_headless_checks",
+    "checklist": [
+      "turn_1_speak_wait_voice_reply",
+      "turn_2_speak_without_reopening_wait_voice_reply",
+      "turn_3_speak_without_reopening_wait_voice_reply"
+    ]
+  }
+}
