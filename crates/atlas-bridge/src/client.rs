@@ -375,6 +375,17 @@ impl AtlasBridge {
             .get("provider")
             .and_then(|value| value.as_str())
             .unwrap_or("auto");
+        let hint_compute_effort = hints
+            .get("computeEffort")
+            .or_else(|| hints.get("compute_effort"))
+            .and_then(|value| value.as_str())
+            .map(normalize_compute_effort)
+            .unwrap_or_else(|| "auto".to_string());
+        let requested_compute_effort = if hint_compute_effort == "auto" {
+            None
+        } else {
+            Some(hint_compute_effort.clone())
+        };
         let hinted_provider = if hint_provider.trim().is_empty() || hint_provider == "auto" {
             None
         } else {
@@ -386,6 +397,7 @@ impl AtlasBridge {
             "mode": hint_mode,
             "task": hint_task,
             "provider": hint_provider,
+            "compute_effort": hint_compute_effort,
             "preserves_surface_flow": true,
             "surface_flow": "programming.forge",
             "provider_selection_effect": if hinted_provider.is_some() {
@@ -394,6 +406,8 @@ impl AtlasBridge {
                 "atlas_decide"
             }
         });
+        payload["payload"]["operator_compute_effort"] =
+            serde_json::Value::String(hint_compute_effort.clone());
         payload["payload"]["decision_mode"] = serde_json::Value::String(
             if hinted_provider.is_some() {
                 "manual_override"
@@ -405,6 +419,14 @@ impl AtlasBridge {
         if let Some(provider) = hinted_provider {
             payload["payload"]["requested_provider"] = serde_json::Value::String(provider.clone());
             payload["payload"]["operator_requested_provider"] = serde_json::Value::String(provider);
+        }
+        if let Some(effort) = requested_compute_effort {
+            payload["payload"]["compute_effort"] = serde_json::Value::String(effort.clone());
+            payload["payload"]["policy_hints"] = serde_json::json!({
+                "compute_effort": effort,
+            });
+            payload["payload"]["dev_execution_plan"]["operator_options"]["compute_effort"] =
+                serde_json::Value::String(hint_compute_effort);
         }
 
         match thread_id.map(str::trim).filter(|id| !id.is_empty()) {
@@ -1118,4 +1140,14 @@ fn encode_path_segment(value: &str) -> String {
         }
     }
     out
+}
+
+fn normalize_compute_effort(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "fast" | "quick" | "low" => "fast".to_string(),
+        "balanced" | "normal" | "medium" => "balanced".to_string(),
+        "deep" | "high" | "think" | "thinking" => "deep".to_string(),
+        "max" | "xhigh" | "maximum" | "ultra" => "max".to_string(),
+        _ => "auto".to_string(),
+    }
 }

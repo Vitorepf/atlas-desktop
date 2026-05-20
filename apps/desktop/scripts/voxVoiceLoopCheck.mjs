@@ -118,6 +118,9 @@ writeFileSync(
     binary: binPath,
     automated_coverage: [
       'three_turn_regression',
+      'deterministic_three_turn_loop_simulation',
+      'natural_pause_endpointing_guard',
+      'stale_transcript_cleanup_guard',
       'installed_app_presence',
       'codesign',
       'bad_voice_fallback_scan',
@@ -128,8 +131,9 @@ writeFileSync(
       reason: 'microphone_and_real_audio_loop_cannot_be_proven_by_static_or_headless_checks',
       checklist: [
         'turn_1_speak_wait_voice_reply',
-        'turn_2_speak_without_reopening_wait_voice_reply',
-        'turn_3_speak_without_reopening_wait_voice_reply',
+        'turn_2_speak_after_voice_reply_without_clicking_or_reopening',
+        'turn_3_speak_after_voice_reply_without_clicking_or_reopening',
+        'natural_pause_inside_sentence_does_not_auto_send',
       ],
     },
   }, null, 2)}\n`,

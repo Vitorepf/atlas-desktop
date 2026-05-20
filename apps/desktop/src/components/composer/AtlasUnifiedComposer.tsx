@@ -7,9 +7,12 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  ATLAS_COMPUTE_EFFORT_OPTIONS,
+  labelAtlasComputeEffortShort,
   estimateRichInputTokens,
   extractUrls,
   summarizeRichInputDrafts,
+  type AtlasComputeEffortChoice,
   type AtlasRichInputAttachmentsApi,
   type AtlasRichInputPayload,
 } from '../../lib/rich-input'
@@ -36,6 +39,7 @@ export interface AtlasUnifiedComposerSendPayload {
   mode: AtlasAiMode
   task: AtlasAiTask
   provider: AtlasAiProviderChoice
+  computeEffort: AtlasComputeEffortChoice
 }
 
 export type AtlasUnifiedComposerModeOptionOverrides = Partial<
@@ -57,6 +61,8 @@ interface AtlasUnifiedComposerProps {
   onTaskChange: (task: AtlasAiTask) => void
   provider: AtlasAiProviderChoice
   onProviderChange: (provider: AtlasAiProviderChoice) => void
+  computeEffort: AtlasComputeEffortChoice
+  onComputeEffortChange: (effort: AtlasComputeEffortChoice) => void
   attachments: AtlasRichInputAttachmentsApi
   sending: boolean
   sendError?: string | null
@@ -136,6 +142,8 @@ export function AtlasUnifiedComposer({
   onTaskChange,
   provider,
   onProviderChange,
+  computeEffort,
+  onComputeEffortChange,
   attachments,
   sending,
   sendError = null,
@@ -353,6 +361,7 @@ export function AtlasUnifiedComposer({
         mode,
         task,
         provider,
+        computeEffort,
       })
       attachments.clear()
       onChange('')
@@ -371,6 +380,7 @@ export function AtlasUnifiedComposer({
     onSend,
     programmingMissingWorkspace,
     provider,
+    computeEffort,
     task,
     taskScopeBlocked,
   ])
@@ -413,6 +423,7 @@ export function AtlasUnifiedComposer({
 
   const currentProvider = PROVIDER_OPTIONS.find((p) => p.value === provider)
   const providerPillLabel = (currentProvider?.label ?? 'auto').toLowerCase().split(' ')[0]
+  const computeEffortPillLabel = labelAtlasComputeEffortShort(computeEffort)
 
   type ModeKey = `mode:${AtlasAiMode}` | `task:${AtlasAiTask}`
   const modeMenuValue: ModeKey = mode === 'programming' ? `task:${task}` : `mode:${mode}`
@@ -616,6 +627,20 @@ export function AtlasUnifiedComposer({
             disabled={disabled || sending}
             align="end"
             ariaLabel="Provider Atlas"
+          />
+
+          <AtlasAiComposerMenu<AtlasComputeEffortChoice>
+            triggerLabel={computeEffortPillLabel}
+            options={ATLAS_COMPUTE_EFFORT_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+              description: option.sub,
+            }))}
+            value={computeEffort}
+            onChange={onComputeEffortChange}
+            disabled={disabled || sending}
+            align="end"
+            ariaLabel="Esforço Atlas"
           />
         </div>
 

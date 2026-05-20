@@ -62,12 +62,20 @@ const turns = []
 
 for (let index = 1; index <= 3; index += 1) {
   output.write(`Turno ${index}\n`)
-  output.write('1. Acione Atlas Voice.\n')
-  output.write('2. Fale uma frase curta.\n')
-  output.write('3. Pare de falar e espere a resposta em voz.\n')
-  output.write('4. Verifique se ele ficou pronto para o próximo turno.\n')
+  if (index === 1) {
+    output.write('1. Acione Atlas Voice uma única vez.\n')
+    output.write('2. Fale uma frase com uma pausa natural no meio.\n')
+    output.write('3. Pare de falar e espere a resposta em voz.\n')
+    output.write('4. Verifique se ele ficou pronto para o próximo turno.\n')
+  } else {
+    output.write('1. Não aperte nenhum botão e não reabra nada.\n')
+    output.write('2. Fale a próxima frase com uma pausa natural quando ele voltar a ouvir.\n')
+    output.write('3. Pare de falar e espere a resposta em voz.\n')
+    output.write('4. Verifique se o ciclo continuou sem intervenção manual.\n')
+  }
 
   const heard = await askYesNo(rl, 'Ele captou sua fala corretamente?')
+  const waited = await askYesNo(rl, 'Ele esperou você terminar, sem cortar na primeira pausa?')
   const sent = await askYesNo(rl, 'Ele enviou automaticamente sem você apertar enviar?')
   const replied = await askYesNo(rl, 'Ele respondeu em voz pelo ElevenLabs?')
   const rearmed = index < 3
@@ -76,11 +84,13 @@ for (let index = 1; index <= 3; index += 1) {
 
   turns.push({
     turn: index,
+    manual_intervention_allowed: index === 1,
     heard,
+    waited,
     sent,
     replied,
     rearmed,
-    status: heard && sent && replied && rearmed ? 'pass' : 'fail',
+    status: heard && waited && sent && replied && rearmed ? 'pass' : 'fail',
   })
 
   output.write('\n')

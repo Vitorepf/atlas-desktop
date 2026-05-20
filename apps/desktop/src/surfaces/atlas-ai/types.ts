@@ -1,3 +1,6 @@
+import type { AtlasComputeEffortChoice } from '../../lib/rich-input'
+export type { AtlasComputeEffortChoice } from '../../lib/rich-input'
+
 /**
  * Atlas AI Conversation Surface · TS contracts.
  *
@@ -735,6 +738,7 @@ export interface AtlasDevPlanRequest {
   workspace?: string | null
   task?: AtlasAiTask
   provider?: AtlasAiProvider
+  compute_effort?: AtlasComputeEffortChoice | null
   decision_mode?: 'atlas_decide' | 'manual_override'
   payload?: Record<string, unknown>
 }

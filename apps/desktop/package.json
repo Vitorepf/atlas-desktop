@@ -16,7 +16,7 @@
     "browser-smoke": "node scripts/browserSmoke.mjs",
     "vox:smoke": "node scripts/voxFirstUseSmoke.mjs",
     "vox:visual-smoke": "node scripts/voxVisualSmoke.mjs",
-    "vox:regression-wall": "npx tsx src/lib/__tests__/voxKernelIntentPayload.test.ts && npx tsx src/components/vox/__tests__/voxOverlayHumanization.test.ts && npx tsx src/lib/__tests__/voxRegressionWall.test.ts && npx tsx src/lib/__tests__/voxResponseBackCompat.test.ts && npx tsx src/surfaces/atlas-ai/__tests__/atlasAiVoiceContinuity.test.ts",
+    "vox:regression-wall": "npx tsx src/lib/__tests__/voxKernelIntentPayload.test.ts && npx tsx src/components/vox/__tests__/voxOverlayHumanization.test.ts && npx tsx src/lib/__tests__/voxRegressionWall.test.ts && npx tsx src/lib/__tests__/voxResponseBackCompat.test.ts && npx tsx src/surfaces/atlas-ai/__tests__/atlasAiVoiceContinuity.test.ts && npx tsx src/surfaces/atlas-ai/__tests__/atlasAiVoiceLoopSimulation.test.ts",
     "vox:release-check": "node scripts/voxReleaseCheck.mjs",
     "vox:voice-loop-check": "node scripts/voxVoiceLoopCheck.mjs",
     "vox:physical-loop-check": "node scripts/voxPhysicalLoopCheck.mjs",

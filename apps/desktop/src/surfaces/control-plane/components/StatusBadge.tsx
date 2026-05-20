@@ -6,7 +6,7 @@ interface StatusBadgeProps {
 }
 
 /**
- * Renders a canonical `ready | degraded | missing | blocked` chip.
+ * Renders a canonical Control Plane status chip.
  *
  * Any unknown / missing value collapses to `unknown` — components never
  * pretend the runtime is ready when the backend was silent.

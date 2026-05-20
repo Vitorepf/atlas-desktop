@@ -12,6 +12,7 @@ interface AtlasAiVoiceConversationOverlayProps {
   sendError: string | null
   onStop: () => void
   onInterrupt: () => void
+  onRecordAgain: () => void
 }
 
 function voicePhaseLabel(
@@ -76,6 +77,7 @@ export function AtlasAiVoiceConversationOverlay({
   sendError,
   onStop,
   onInterrupt,
+  onRecordAgain,
 }: AtlasAiVoiceConversationOverlayProps) {
   const phase = voicePhaseLabel(vox.state, sending, awaitingResponse, streaming, speechState)
   const heard = transcriptText(vox)
@@ -141,7 +143,7 @@ export function AtlasAiVoiceConversationOverlay({
           </div>
         ) : null}
         {canRecordAgain ? (
-          <button type="button" className="atlas-ai-voice-live-primary" onClick={() => void vox.start()}>
+          <button type="button" className="atlas-ai-voice-live-primary" onClick={onRecordAgain}>
             Gravar de novo
           </button>
         ) : null}

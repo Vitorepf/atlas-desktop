@@ -4,6 +4,7 @@ import {
   type AtlasUnifiedComposerSendPayload,
 } from '../../../components/composer/AtlasUnifiedComposer'
 import type { AtlasRichInputAttachmentsApi } from '../../../lib/rich-input'
+import type { AtlasComputeEffortChoice } from '../../../lib/rich-input'
 import { defaultTaskForMode, isTaskAllowedForMode } from '../../atlas-ai/contract'
 import type { AtlasAiMode, AtlasAiProviderChoice, AtlasAiTask } from '../../atlas-ai/types'
 
@@ -11,6 +12,7 @@ export interface CodeComposerHints {
   mode: AtlasAiMode
   task: AtlasAiTask
   provider: AtlasAiProviderChoice
+  computeEffort: AtlasComputeEffortChoice
 }
 
 interface ComposerPanelProps {
@@ -104,6 +106,7 @@ export function ComposerPanel({
   const [mode, setModeRaw] = useState<AtlasAiMode>('auto')
   const [task, setTask] = useState<AtlasAiTask>('auto')
   const [provider, setProvider] = useState<AtlasAiProviderChoice>('auto')
+  const [computeEffort, setComputeEffort] = useState<AtlasComputeEffortChoice>('auto')
   const kind = useMemo(() => classifyChatKind(draft), [draft])
 
   function setMode(next: AtlasAiMode) {
@@ -118,6 +121,7 @@ export function ComposerPanel({
         mode: payload.mode,
         task: payload.task,
         provider: payload.provider,
+        computeEffort: payload.computeEffort,
       },
     })
   }
@@ -132,6 +136,8 @@ export function ComposerPanel({
       onTaskChange={setTask}
       provider={provider}
       onProviderChange={setProvider}
+      computeEffort={computeEffort}
+      onComputeEffortChange={setComputeEffort}
       attachments={attachments}
       sending={busy}
       disabled={!hasObra}

@@ -25,7 +25,7 @@ import {
   updateAiThread,
 } from './client'
 import { buildInteractionPayload, defaultTaskForMode, isTaskAllowedForMode } from './contract'
-import type { AtlasRichInputPayload } from '../../lib/rich-input'
+import type { AtlasComputeEffortChoice, AtlasRichInputPayload } from '../../lib/rich-input'
 import type {
   AiThreadDetail,
   AiThreadSummary,
@@ -63,6 +63,8 @@ export interface AtlasAiState {
   setComposerTask: (task: AtlasAiTask) => void
   composerProvider: AtlasAiProviderChoice
   setComposerProvider: (provider: AtlasAiProviderChoice) => void
+  composerComputeEffort: AtlasComputeEffortChoice
+  setComposerComputeEffort: (effort: AtlasComputeEffortChoice) => void
 
   /** Bootstrap projection from Router Runtime (null if endpoint absent). */
   routerBootstrap: AtlasAiRouterBootstrap | null
@@ -119,6 +121,7 @@ export interface AtlasAiState {
       }>
       /** Universal Rich Input Payload canon (`atlas.rich_input.payload.v1`). */
       richInputPayload?: AtlasRichInputPayload
+      computeEffort?: AtlasComputeEffortChoice
       voiceConversation?: boolean
     },
   ) => Promise<AiTrace | null>
@@ -164,6 +167,7 @@ export function useAtlasAi(
   const [composerMode, setComposerModeRaw] = useState<AtlasAiMode>('auto')
   const [composerTask, setComposerTaskRaw] = useState<AtlasAiTask>('auto')
   const [composerProvider, setComposerProvider] = useState<AtlasAiProviderChoice>('auto')
+  const [composerComputeEffort, setComposerComputeEffort] = useState<AtlasComputeEffortChoice>('auto')
   const [routerBootstrap, setRouterBootstrap] = useState<AtlasAiRouterBootstrap | null>(null)
   const [routerReadiness, setRouterReadiness] = useState<AtlasAiRouterReadiness | null>(null)
 
@@ -425,6 +429,7 @@ export function useAtlasAi(
          * preservam para auditoria e re-projeção.
          */
         richInputPayload?: AtlasRichInputPayload
+        computeEffort?: AtlasComputeEffortChoice
         voiceConversation?: boolean
       },
     ): Promise<AiTrace | null> => {
@@ -480,6 +485,7 @@ export function useAtlasAi(
       // sem trigger no front, sem forçar o flow programação.
       const shouldRunPlanOnly =
         composerMode === 'programming' && (composerTask === 'dev' || composerTask === 'debug')
+      const shouldForceNewThread = options?.newThread && !options?.voiceConversation
       let planOnlyDecision: 'continue' | 'halt' = 'continue'
       if (shouldRunPlanOnly) {
         setAtlasDevPlanLoading(true)
@@ -487,11 +493,12 @@ export function useAtlasAi(
         try {
           const planResult = await postAtlasDevPlan({
             input_text: trimmed,
-            thread_id: options?.newThread ? null : selectedThreadIdRef.current,
+            thread_id: shouldForceNewThread ? null : selectedThreadIdRef.current,
             surface_id: 'atlas_desktop_ai',
             workspace: atlasDevWorkspace,
             task: composerTask,
             provider: composerProvider === 'auto' ? undefined : composerProvider,
+            compute_effort: options?.computeEffort ?? composerComputeEffort,
             decision_mode: composerProvider === 'auto' ? 'atlas_decide' : 'manual_override',
           })
           if (!mountedRef.current) return null
@@ -534,7 +541,7 @@ export function useAtlasAi(
       }
 
       try {
-        let threadId = options?.newThread ? null : selectedThreadIdRef.current
+        let threadId = shouldForceNewThread ? null : selectedThreadIdRef.current
         // Cria thread explicitamente quando não há uma — assim o trace já fica
         // ligado e o histórico atualiza sem corrida.
         if (!threadId) {
@@ -549,6 +556,7 @@ export function useAtlasAi(
             metadata: {
               atlas_focus: composerMode,
               atlas_workflow_mode: composerTask,
+              operator_compute_effort: options?.computeEffort ?? composerComputeEffort,
               routing_task: composerTask === 'auto' ? 'auto' : composerTask,
               routing_domain:
                 composerMode === 'auto'
@@ -573,6 +581,7 @@ export function useAtlasAi(
           mode: composerMode,
           task: composerTask,
           provider: composerProvider,
+          computeEffort: options?.computeEffort ?? composerComputeEffort,
           workspaceSlug,
         })
 
@@ -584,12 +593,12 @@ export function useAtlasAi(
         if (options?.voiceConversation) {
           enrichedPayload.voice_response_contract = {
             schema_version: 'atlas.voice.response_contract.v1',
-            mode: 'spoken_concise',
+            mode: 'spoken_result',
             language: 'pt-BR',
-            max_sentences: 3,
-            target_chars: 280,
-            hard_max_chars: 420,
-            style: 'natural, direto, sem markdown, sem lista longa',
+            max_sentences: 6,
+            target_chars: 650,
+            hard_max_chars: 1_000,
+            style: 'natural, direto, sem markdown, sem lista longa; execute o pedido completo antes de resumir em voz',
             preserve_text_answer: true,
           }
         }
@@ -647,6 +656,7 @@ export function useAtlasAi(
       composerMode,
       composerTask,
       composerProvider,
+      composerComputeEffort,
       workspaceSlug,
       workspacePath,
       selectedThreadId,
@@ -803,6 +813,8 @@ export function useAtlasAi(
     setComposerTask,
     composerProvider,
     setComposerProvider,
+    composerComputeEffort,
+    setComposerComputeEffort,
 
     routerBootstrap,
     routerReadiness,

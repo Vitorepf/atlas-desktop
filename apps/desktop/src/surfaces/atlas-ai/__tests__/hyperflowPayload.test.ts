@@ -34,6 +34,24 @@ test('default auto/auto envia routing_domain=auto + routing_task=auto', () => {
   assert.equal(payload.flow_id, 'auto')
   assert.equal(payload.domain_id, 'auto')
   assert.equal(payload.decision_mode, 'atlas_decide')
+  assert.equal(payload.operator_compute_effort, 'auto')
+  assert.equal('compute_effort' in payload, false)
+})
+
+test('compute effort explícito entra como policy hint sem trocar provider', () => {
+  const { payload, provider } = buildInteractionPayload({
+    mode: 'research',
+    task: 'plan',
+    provider: 'auto',
+    computeEffort: 'deep',
+    workspaceSlug: null,
+  })
+
+  assert.equal(provider, undefined)
+  assert.equal(payload.decision_mode, 'atlas_decide')
+  assert.equal(payload.operator_compute_effort, 'deep')
+  assert.equal(payload.compute_effort, 'deep')
+  assert.deepEqual(payload.policy_hints, { compute_effort: 'deep' })
 })
 
 test('auto mode NÃO arrasta programming_harness nem permission_policy', () => {

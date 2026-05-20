@@ -4,6 +4,7 @@ import {
 } from '../../../components/composer/AtlasUnifiedComposer'
 import {
   useAtlasRichInputAttachments,
+  type AtlasComputeEffortChoice,
   type AtlasRichInputPayload,
   type UploadOutput,
 } from '../../../lib/rich-input'
@@ -22,6 +23,7 @@ export interface AtlasAiComposerSendExtras {
    * `/ai/interactions` como `rich_input_payload`.
    */
   richInputCanonical?: AtlasRichInputPayload
+  computeEffort?: AtlasComputeEffortChoice
 }
 
 interface AtlasAiComposerProps {
@@ -33,6 +35,8 @@ interface AtlasAiComposerProps {
   onTaskChange: (task: AtlasAiTask) => void
   provider: AtlasAiProviderChoice
   onProviderChange: (provider: AtlasAiProviderChoice) => void
+  computeEffort: AtlasComputeEffortChoice
+  onComputeEffortChange: (effort: AtlasComputeEffortChoice) => void
   workspaceSlug: string | null
   sending: boolean
   sendError: string | null
@@ -58,6 +62,8 @@ export function AtlasAiComposer({
   onTaskChange,
   provider,
   onProviderChange,
+  computeEffort,
+  onComputeEffortChange,
   workspaceSlug,
   sending,
   sendError,
@@ -85,6 +91,7 @@ export function AtlasAiComposer({
         url_attachments: payload.richInput.url_attachments,
       },
       richInputCanonical: payload.richInput,
+      computeEffort: payload.computeEffort,
     })
   }
 
@@ -98,6 +105,8 @@ export function AtlasAiComposer({
       onTaskChange={onTaskChange}
       provider={provider}
       onProviderChange={onProviderChange}
+      computeEffort={computeEffort}
+      onComputeEffortChange={onComputeEffortChange}
       attachments={attachments}
       sending={sending}
       sendError={sendError}

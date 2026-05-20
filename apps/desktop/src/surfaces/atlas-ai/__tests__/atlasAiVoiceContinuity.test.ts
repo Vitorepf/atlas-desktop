@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict'
 import {
   atlasVoiceAcceptsSpeechRunEvent,
+  atlasVoiceCanResetStaleTurn,
   atlasVoiceCanStartNextTurn,
   atlasVoiceConfirmsHumanSpeech,
+  atlasVoiceDecideTranscriptDispatch,
+  atlasVoiceEndpointSilenceMs,
   atlasVoiceIsAtlasBusy,
+  atlasVoiceNextSpeechWindow,
+  atlasVoiceShouldRecoverAwaitingReply,
   atlasVoiceShouldDropSilentTurn,
+  atlasVoiceShouldDropTranscript,
+  atlasVoiceShouldFinishTurn,
+  atlasVoiceTranscriptLooksIncomplete,
   ATLAS_VOICE_REARMABLE_VOX_STATES,
+  ATLAS_VOICE_STALE_TURN_VOX_STATES,
 } from '../atlasAiVoiceContinuity'
 
 const cases: Array<{ name: string; run: () => void }> = []
@@ -71,6 +80,38 @@ test('Atlas Voice trata erro transitório como recuperável durante conversa con
   )
 })
 
+test('Atlas Voice pode limpar restos do turno anterior antes de rearmar', () => {
+  for (const voxState of ATLAS_VOICE_STALE_TURN_VOX_STATES) {
+    assert.equal(
+      atlasVoiceCanResetStaleTurn({
+        voiceEnabled: true,
+        atlasBusy: false,
+        speechState: 'idle',
+        voxBusy: false,
+        voxState,
+      }),
+      true,
+      `${voxState} é resto descartável no modo conversa por voz depois do envio`,
+    )
+  }
+})
+
+test('Atlas Voice não limpa resto de turno enquanto Atlas fala/pensa ou Vox trabalha', () => {
+  const base = {
+    voiceEnabled: true,
+    atlasBusy: false,
+    speechState: 'idle' as const,
+    voxBusy: false,
+    voxState: 'transcript_ready',
+  }
+
+  assert.equal(atlasVoiceCanResetStaleTurn({ ...base, voiceEnabled: false }), false)
+  assert.equal(atlasVoiceCanResetStaleTurn({ ...base, atlasBusy: true }), false)
+  assert.equal(atlasVoiceCanResetStaleTurn({ ...base, speechState: 'speaking' }), false)
+  assert.equal(atlasVoiceCanResetStaleTurn({ ...base, voxBusy: true }), false)
+  assert.equal(atlasVoiceCanResetStaleTurn({ ...base, voxState: 'listening' }), false)
+})
+
 test('Fluxo de dois turnos: fala, envia, responde por voz e volta a ouvir sem intervenção manual', () => {
   const timeline = [
     { label: 'turno 1 terminou de falar', voiceEnabled: true, atlasBusy: true, speechState: 'idle' as const, voxBusy: false, voxState: 'closed', canStart: false },
@@ -125,6 +166,45 @@ test('Evento de fim da fala só vale para a execução atual', () => {
   )
 })
 
+test('Atlas Voice recupera turno preso aguardando resposta sem matar a conversa', () => {
+  assert.equal(
+    atlasVoiceShouldRecoverAwaitingReply({
+      awaitingReply: true,
+      awaitingStartedAtMs: 1_000,
+      nowMs: 77_000,
+      maxAwaitingMs: 75_000,
+      atlasBusy: false,
+      speechState: 'idle',
+    }),
+    true,
+    'se o turno ficou aguardando resposta e nada mais está ocupado, precisa voltar a ouvir',
+  )
+  assert.equal(
+    atlasVoiceShouldRecoverAwaitingReply({
+      awaitingReply: true,
+      awaitingStartedAtMs: 1_000,
+      nowMs: 77_000,
+      maxAwaitingMs: 75_000,
+      atlasBusy: true,
+      speechState: 'idle',
+    }),
+    false,
+    'não pode recuperar enquanto o Atlas ainda está pensando',
+  )
+  assert.equal(
+    atlasVoiceShouldRecoverAwaitingReply({
+      awaitingReply: true,
+      awaitingStartedAtMs: 1_000,
+      nowMs: 77_000,
+      maxAwaitingMs: 75_000,
+      atlasBusy: false,
+      speechState: 'speaking',
+    }),
+    false,
+    'não pode recuperar enquanto a voz ainda está falando',
+  )
+})
+
 test('Detector de fala não confirma ruído curto como turno humano', () => {
   assert.equal(
     atlasVoiceConfirmsHumanSpeech({
@@ -152,6 +232,35 @@ test('Detector de fala não confirma ruído curto como turno humano', () => {
   )
 })
 
+test('Janela de fala sustentada zera quando o sinal cai', () => {
+  assert.deepEqual(
+    atlasVoiceNextSpeechWindow({
+      speaking: true,
+      previousFrameCount: 7,
+      previousSpeechMs: 640,
+      pollMs: 80,
+    }),
+    {
+      speechFrameCount: 8,
+      speechMs: 720,
+    },
+    'fala contínua deve acumular frames e duração',
+  )
+  assert.deepEqual(
+    atlasVoiceNextSpeechWindow({
+      speaking: false,
+      previousFrameCount: 7,
+      previousSpeechMs: 640,
+      pollMs: 80,
+    }),
+    {
+      speechFrameCount: 0,
+      speechMs: 0,
+    },
+    'ruídos separados por silêncio não podem acumular até virar turno',
+  )
+})
+
 test('Turno sem fala confirmada é descartado e rearmado, não enviado ao Atlas', () => {
   assert.equal(
     atlasVoiceShouldDropSilentTurn({
@@ -168,6 +277,117 @@ test('Turno sem fala confirmada é descartado e rearmado, não enviado ao Atlas'
       maxTurnMs: 24_000,
     }),
     false,
+  )
+})
+
+test('Endpointing espera mais em frase curta para não cortar pensamento no meio', () => {
+  assert.equal(
+    atlasVoiceEndpointSilenceMs({
+      confirmedSpeechMs: 1_600,
+      shortUtteranceSilenceMs: 3_200,
+      longUtteranceSilenceMs: 2_200,
+      longUtteranceSpeechMs: 4_000,
+    }),
+    3_200,
+    'frase curta precisa tolerar pausa humana maior antes de enviar',
+  )
+})
+
+test('Endpointing permite finalizar fala longa com pausa natural menor', () => {
+  assert.equal(
+    atlasVoiceEndpointSilenceMs({
+      confirmedSpeechMs: 5_200,
+      shortUtteranceSilenceMs: 3_200,
+      longUtteranceSilenceMs: 2_200,
+      longUtteranceSpeechMs: 4_000,
+    }),
+    2_200,
+    'fala longa já confirmada pode finalizar depois de pausa natural menor',
+  )
+})
+
+test('Atlas Voice só finaliza turno quando houve fala e a pausa exigida foi atingida', () => {
+  const base = {
+    heardSpeech: true,
+    durationMs: 4_500,
+    minTurnMs: 900,
+    requiredSilenceMs: 3_200,
+  }
+
+  assert.equal(
+    atlasVoiceShouldFinishTurn({ ...base, silenceMs: 1_200 }),
+    false,
+    'não pode enviar enquanto a pausa ainda é compatível com continuação da frase',
+  )
+  assert.equal(atlasVoiceShouldFinishTurn({ ...base, silenceMs: 2_050 }), false)
+  assert.equal(atlasVoiceShouldFinishTurn({ ...base, silenceMs: 3_250 }), true)
+  assert.equal(
+    atlasVoiceShouldFinishTurn({ ...base, heardSpeech: false, silenceMs: 3_000 }),
+    false,
+    'silêncio sem fala confirmada nunca vira turno do usuário',
+  )
+  assert.equal(
+    atlasVoiceShouldFinishTurn({ ...base, durationMs: 500, silenceMs: 3_000 }),
+    false,
+    'turno menor que o mínimo não pode ser enviado',
+  )
+})
+
+test('Transcript claramente incompleto fica pendente para continuação, não vira resposta prematura', () => {
+  assert.equal(
+    atlasVoiceTranscriptLooksIncomplete({ text: 'Atlas, me disseram que o' }),
+    true,
+    'não pode enviar ao Atlas uma fala cortada no conectivo',
+  )
+  assert.equal(
+    atlasVoiceTranscriptLooksIncomplete({ text: 'Eu preciso que' }),
+    true,
+    'pedido incompleto deve esperar continuação',
+  )
+  assert.equal(
+    atlasVoiceTranscriptLooksIncomplete({ text: 'Me disseram que estava funcionando' }),
+    false,
+    'frase completa pode ser enviada',
+  )
+  assert.equal(
+    atlasVoiceTranscriptLooksIncomplete({ text: 'Faça uma análise completa da documentação do Atlas.' }),
+    false,
+    'pedido completo e longo deve seguir para execução integral',
+  )
+})
+
+test('Decisão de dispatch junta continuação pendente antes de enviar ao Atlas', () => {
+  const first = atlasVoiceDecideTranscriptDispatch({
+    pendingText: null,
+    transcriptText: 'Atlas, me disseram que o',
+  })
+
+  assert.deepEqual(first, {
+    shouldDispatch: false,
+    textToSend: null,
+    pendingText: 'Atlas, me disseram que o',
+  })
+
+  const second = atlasVoiceDecideTranscriptDispatch({
+    pendingText: first.pendingText,
+    transcriptText: 'fluxo de voz estava funcionando melhor agora',
+  })
+
+  assert.deepEqual(second, {
+    shouldDispatch: true,
+    textToSend: 'Atlas, me disseram que o fluxo de voz estava funcionando melhor agora',
+    pendingText: null,
+  })
+})
+
+test('Transcript suspeito de alucinação isolada é descartado, não enviado ao Atlas', () => {
+  assert.equal(atlasVoiceShouldDropTranscript({ text: '' }), true)
+  assert.equal(atlasVoiceShouldDropTranscript({ text: 'www.tinyurl.com.br' }), true)
+  assert.equal(atlasVoiceShouldDropTranscript({ text: 'https://tinyurl.com/abc123' }), true)
+  assert.equal(
+    atlasVoiceShouldDropTranscript({ text: 'Acesse o site www.tinyurl.com.br para mais informações' }),
+    false,
+    'frase humana com URL não deve ser descartada por conter domínio',
   )
 })
 

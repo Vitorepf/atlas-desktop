@@ -13,6 +13,10 @@
  *   errors so the UI never pretends that the Kernel accepted work.
  */
 
+import {
+  atlasComputeEffortForPayload,
+  normalizeAtlasComputeEffort,
+} from '@atlas/rich-input-canon'
 import type {
   AtlasCodeEnterpriseCertificationReport,
   AtlasCodeForgeCompletionClaim,
@@ -249,6 +253,7 @@ export interface AtlasComposerHints {
   mode?: string | null
   task?: string | null
   provider?: string | null
+  computeEffort?: string | null
 }
 
 function atlasCodeForgePayload(
@@ -281,19 +286,36 @@ function atlasCodeForgePayload(
   const hintedProvider = composerHints?.provider && composerHints.provider !== 'auto'
     ? composerHints.provider
     : null
+  const computeEffort = normalizeAtlasComputeEffort(composerHints?.computeEffort)
+  const requestedComputeEffort = atlasComputeEffortForPayload(computeEffort)
   payload.operator_composer_hints = {
     schema_version: 'atlas.unified_composer.hints.v1',
     mode: composerHints?.mode ?? 'auto',
     task: composerHints?.task ?? 'auto',
     provider: composerHints?.provider ?? 'auto',
+    compute_effort: computeEffort,
     preserves_surface_flow: true,
     surface_flow: 'programming.forge',
     provider_selection_effect: hintedProvider ? 'operator_hint_requires_backend_policy' : 'atlas_decide',
   }
+  payload.operator_compute_effort = computeEffort
   payload.decision_mode = hintedProvider ? 'manual_override' : 'atlas_decide'
   if (hintedProvider) {
     payload.requested_provider = hintedProvider
     payload.operator_requested_provider = hintedProvider
+  }
+  if (requestedComputeEffort) {
+    payload.compute_effort = requestedComputeEffort
+    payload.policy_hints = {
+      compute_effort: requestedComputeEffort,
+    }
+    const devExecutionPlan = payload.dev_execution_plan as {
+      operator_options?: Record<string, unknown>
+    }
+    devExecutionPlan.operator_options = {
+      ...(devExecutionPlan.operator_options ?? {}),
+      compute_effort: requestedComputeEffort,
+    }
   }
 
   if (obraId) {

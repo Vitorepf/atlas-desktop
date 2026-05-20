@@ -11,6 +11,11 @@ function read(rel: string): string {
 const shared = read('src/components/composer/AtlasUnifiedComposer.tsx')
 const atlasAiAdapter = read('src/surfaces/atlas-ai/components/AtlasAiComposer.tsx')
 const codeAdapter = read('src/surfaces/code/stage/ComposerPanel.tsx')
+const atlasCodeBridge = read('src/lib/bridge.ts')
+const tauriBridge = fs.readFileSync(
+  path.resolve(root, '../../crates/atlas-bridge/src/client.rs'),
+  'utf8',
+)
 
 assert.match(
   atlasAiAdapter,
@@ -43,6 +48,8 @@ for (const [label, source] of [
 assert.match(shared, /AtlasAiComposerMenu/, 'shared composer must own mode/provider menu rendering')
 assert.match(shared, /PROVIDER_OPTIONS/, 'shared composer must expose the same provider choices everywhere')
 assert.match(shared, /MODE_OPTIONS/, 'shared composer must expose the same mode choices everywhere')
+assert.match(shared, /ATLAS_COMPUTE_EFFORT_OPTIONS/, 'shared composer must expose compute effort choices everywhere')
+assert.match(shared, /computeEffort/, 'shared composer must emit compute effort operator hints')
 assert.match(shared, /allowedModes/, 'shared composer must support surface-scoped mode catalogs')
 assert.match(shared, /modeOptionOverrides/, 'shared composer must support surface-specific labels without forking UI')
 assert.match(shared, /slashCommands/, 'shared composer must scope slash commands to the active surface')
@@ -54,6 +61,9 @@ assert.doesNotMatch(shared, /Nova thread/, 'shared composer must not expose the 
 
 assert.match(codeAdapter, /OBRA_ALLOWED_MODES/, 'Code/Obra must declare its own allowed mode scope')
 assert.match(codeAdapter, /Auto \(Obra\/Forge\)/, 'Code/Obra auto mode must be labeled for its surface')
+assert.match(atlasCodeBridge, /compute_effort/, 'Code/Obra HTTP bridge must forward compute effort')
+assert.match(tauriBridge, /compute_effort/, 'Code/Obra Tauri bridge must forward compute effort')
+assert.match(tauriBridge, /normalize_compute_effort/, 'Code/Obra Tauri bridge must normalize effort aliases')
 assert.doesNotMatch(
   codeAdapter,
   /finance|marketing|personal_development|cyber|automation/,

@@ -4,10 +4,10 @@
  * Mirrors the JSON shape produced by `App\Services\Ai\ControlPlane\*` services
  * and surfaced via `GET /atlas/ai/control-plane/*`. Permissive on purpose: every
  * runtime (mission, domain, policy, evidence, tool, router, approvals,
- * certifications) is wired with `status: missing|degraded|ready|blocked` and
- * may omit detail keys when the runtime is absent. Components MUST treat any
- * non-`ready` status as a degraded state and render an honest message instead
- * of inventing data.
+ * certifications) is wired with a canonical status and may omit detail keys
+ * when the runtime is absent. Components MUST treat any non-ready/healthy
+ * status as operational attention and render an honest message instead of
+ * inventing data.
  *
  * Canon:
  *   - docs/engineering-knowledge-base/atlas-autonomous-control-plane.md
@@ -15,7 +15,13 @@
  *   - app/Services/Ai/ControlPlane/AtlasControlPlaneSnapshotService.php
  */
 
-export type ControlPlaneStatus = 'ready' | 'degraded' | 'missing' | 'blocked'
+export type ControlPlaneStatus =
+  | 'ready'
+  | 'healthy'
+  | 'watch'
+  | 'degraded'
+  | 'missing'
+  | 'blocked'
 
 export interface ControlPlaneComponentSummary {
   component?: string
@@ -58,7 +64,13 @@ export interface ControlPlaneApprovalsSummary {
   status: ControlPlaneStatus
   total: number
   pending?: number
+  approved?: number
+  denied?: number
+  expired?: number
+  auto_approved?: number
   by_status?: Record<string, number>
+  by_mode?: Record<string, number>
+  risk_distribution?: Record<string, number>
   detail?: string
 }
 
@@ -74,6 +86,26 @@ export interface ControlPlaneCertificationsSummary {
   status: ControlPlaneStatus
   evidence_runtime: ControlPlaneCertificationGroup
   mission_foundation: ControlPlaneCertificationGroup
+}
+
+export interface ControlPlaneRuntimeIntelligenceSummary {
+  status: ControlPlaneStatus
+  schema_version?: string
+  summary?: Record<string, number | string | boolean | null>
+  persistent_context?: ControlPlaneComponentSummary
+  aemor?: ControlPlaneComponentSummary
+  intelligence_factory?: ControlPlaneComponentSummary
+  swarm_company?: ControlPlaneComponentSummary
+  external_execution?: ControlPlaneComponentSummary
+  action_queue?: ReadonlyArray<{
+    kind: string
+    status: ControlPlaneStatus
+    detail: string
+    target_id?: string | number | null
+  }>
+  claim_policy?: Record<string, unknown>
+  hash?: string | null
+  detail?: string
 }
 
 export interface ControlPlaneBlockerEntry {
@@ -135,8 +167,10 @@ export interface ControlPlaneSnapshot {
   tools_summary: ControlPlaneComponentSummary
   router_summary: ControlPlaneComponentSummary
   approvals_summary: ControlPlaneApprovalsSummary
+  operator_approvals_summary?: ControlPlaneApprovalsSummary
   blockers_summary: ControlPlaneBlockersSummary
   certifications_summary: ControlPlaneCertificationsSummary
+  runtime_intelligence_summary?: ControlPlaneRuntimeIntelligenceSummary
   recent_events: ReadonlyArray<ControlPlaneRecentEvent>
   next_actions: ReadonlyArray<ControlPlaneNextAction>
 }

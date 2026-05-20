@@ -502,6 +502,14 @@ async function stepUnitTests() {
   //                                    raw_pcm=false, manifests sem token,
   //                                    Voice RT intocada, mobile intocado,
   //                                    V7 unlock=false, scripts canônicos).
+  //   - atlasAiVoiceLoopSimulation  → loop Atlas Voice em 3 turnos:
+  //                                    pausa natural não envia, fim de fala
+  //                                    envia, Atlas pensa/fala sem capturar,
+  //                                    rearmamento sem clique e limpeza de
+  //                                    transcript_ready antigo.
+  //   - atlasAiVoiceContinuity      → regras puras de estado: ocupado,
+  //                                    rearmável, stale-turn reset,
+  //                                    run id de TTS e endpointing.
   const targets = [
     { id: 'vox_readiness_tests', file: 'src/lib/__tests__/voxReadiness.test.ts' },
     { id: 'vox_setup_tests', file: 'src/lib/__tests__/voxSetupAssistant.test.ts' },
@@ -516,6 +524,14 @@ async function stepUnitTests() {
     {
       id: 'vox_regression_wall',
       file: 'src/lib/__tests__/voxRegressionWall.test.ts',
+    },
+    {
+      id: 'atlas_voice_loop_simulation',
+      file: 'src/surfaces/atlas-ai/__tests__/atlasAiVoiceLoopSimulation.test.ts',
+    },
+    {
+      id: 'atlas_voice_continuity',
+      file: 'src/surfaces/atlas-ai/__tests__/atlasAiVoiceContinuity.test.ts',
     },
     {
       // V6.5 · parser tolerante de flow_decision + view-model do Smart Preview.

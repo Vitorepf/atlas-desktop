@@ -93,7 +93,9 @@
   white-space: nowrap;
 }
 
-.cp-status[data-status='ready'] { color: rgba(120, 180, 120, 0.95); }
+.cp-status[data-status='ready'],
+.cp-status[data-status='healthy'] { color: rgba(120, 180, 120, 0.95); }
+.cp-status[data-status='watch'] { color: rgba(214, 177, 96, 0.96); }
 .cp-status[data-status='degraded'] { color: rgba(220, 175, 95, 0.95); }
 .cp-status[data-status='missing'] { color: rgba(180, 150, 120, 0.85); }
 .cp-status[data-status='blocked'] { color: rgba(220, 110, 110, 0.95); }
@@ -257,6 +259,38 @@
   text-align: right;
   color: var(--cc-text, rgba(232, 226, 211, 0.95));
   font-variant-numeric: tabular-nums;
+}
+
+.cp-governance-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--cc-border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.cp-governance-strip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cp-governance-strip .k {
+  color: var(--cc-text-faint, rgba(255, 255, 255, 0.45));
+  font-family: var(--cc-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.cp-governance-strip .v {
+  color: var(--cc-text, rgba(232, 226, 211, 0.92));
+  font-family: var(--cc-font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
 }
 
 /* Boot states */

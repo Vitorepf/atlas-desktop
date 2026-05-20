@@ -1,11 +1,11 @@
 {
   "schema": "atlas.vox.desktop_release_check.v1",
   "status": "pass",
-  "generated_at": "2026-05-20T13:59:51.438Z",
-  "duration_ms": 15164,
+  "generated_at": "2026-05-20T16:02:04.401Z",
+  "duration_ms": 7876,
   "totals": {
-    "total": 17,
-    "pass": 17,
+    "total": 19,
+    "pass": 19,
     "warn": 0,
     "fail": 0
   },
@@ -15,7 +15,7 @@
       "title": "vox:smoke · first-use surface",
       "status": "pass",
       "summary": "5 pass · 0 warn · 0 fail",
-      "duration_ms": 316,
+      "duration_ms": 295,
       "detail": {
         "exit": 0,
         "manifest_path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-first-use-smoke/manifest.json",
@@ -28,7 +28,7 @@
       "title": "vox:visual-smoke · SSR render + leak scan",
       "status": "pass",
       "summary": "27/27 pass · 0 warn · 0 fail",
-      "duration_ms": 500,
+      "duration_ms": 514,
       "detail": {
         "exit": 0,
         "manifest_path": "~/develop/Atlas/atlas-desktop/apps/desktop/test-results/vox-visual-smoke/manifest.json"
@@ -49,7 +49,7 @@
       "title": "unit · src/lib/__tests__/voxReadiness.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 238,
+      "duration_ms": 227,
       "detail": {
         "exit": 0,
         "stdout_tail": "ok  · adaptVoxKernelHealth defaults to false rather than assuming green\n\nall 10 tests passed.\n"
@@ -61,7 +61,7 @@
       "title": "unit · src/lib/__tests__/voxSetupAssistant.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 230,
+      "duration_ms": 232,
       "detail": {
         "exit": 0,
         "stdout_tail": "ok  · only hotkey missing keeps first-use ready\n\nall 20 tests passed.\n"
@@ -73,7 +73,7 @@
       "title": "unit · src/lib/__tests__/voxKernelIntentPayload.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 230,
+      "duration_ms": 233,
       "detail": {
         "exit": 0,
         "stdout_tail": "  PASS  REGRESSION · payload não vaza confirmation_token nem ATLAS_TOKEN para o Kernel\n  PASS  REGRESSION · contract field schema é sempre `atlas.vox.transcript.v1` na raiz\n  PASS  REGRESSION · context_refs e context_snapshot só vão quando o caller forneceu\n"
@@ -85,7 +85,7 @@
       "title": "unit · src/components/vox/__tests__/voxOverlayHumanization.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 261,
+      "duration_ms": 225,
       "detail": {
         "exit": 0,
         "stdout_tail": "  PASS  REGRESSION · stack trace / panic do Rust vira mensagem cobertora honesta\n  PASS  REGRESSION · JSON cru de erro 422 do Laravel jamais aparece literal\n  PASS  Mensagem em PT-BR já humanizada passa direto SEM vazar técnico\n"
@@ -97,10 +97,34 @@
       "title": "unit · src/lib/__tests__/voxRegressionWall.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 304,
+      "duration_ms": 219,
       "detail": {
         "exit": 0,
         "stdout_tail": "  PASS  REGRESSION · Atlas Voice reduz latência sem trocar qualidade da voz\n  PASS  REGRESSION · menu de conversa apaga com confirmação própria, sem window.confirm nativo\n  PASS  REGRESSION · ações de thread atualizam a lista local após sucesso do backend\n"
+      },
+      "next_action": null
+    },
+    {
+      "id": "atlas_voice_loop_simulation",
+      "title": "unit · src/surfaces/atlas-ai/__tests__/atlasAiVoiceLoopSimulation.test.ts",
+      "status": "pass",
+      "summary": "todos os testes passaram",
+      "duration_ms": 231,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "  PASS  Simulação Atlas Voice: 3 turnos contínuos + pausa natural + limpeza de turno velho\n"
+      },
+      "next_action": null
+    },
+    {
+      "id": "atlas_voice_continuity",
+      "title": "unit · src/surfaces/atlas-ai/__tests__/atlasAiVoiceContinuity.test.ts",
+      "status": "pass",
+      "summary": "todos os testes passaram",
+      "duration_ms": 231,
+      "detail": {
+        "exit": 0,
+        "stdout_tail": "  PASS  Transcript claramente incompleto fica pendente para continuação, não vira resposta prematura\n  PASS  Decisão de dispatch junta continuação pendente antes de enviar ao Atlas\n  PASS  Transcript suspeito de alucinação isolada é descartado, não enviado ao Atlas\n"
       },
       "next_action": null
     },
@@ -109,7 +133,7 @@
       "title": "unit · src/lib/__tests__/voxFlowDecision.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 265,
+      "duration_ms": 228,
       "detail": {
         "exit": 0,
         "stdout_tail": "  PASS  composeSmartPreview · destination=codex monta confirm path\n  PASS  composeSmartPreview · \"Modo sugerido\" só aparece quando Auto escolheu\n  PASS  smartPreviewInputsFromKernel · monta inputs a partir de KernelResponse parcial\n"
@@ -121,7 +145,7 @@
       "title": "unit · src/lib/__tests__/voxResponseBackCompat.test.ts",
       "status": "pass",
       "summary": "todos os testes passaram",
-      "duration_ms": 272,
+      "duration_ms": 225,
       "detail": {
         "exit": 0,
         "stdout_tail": "  PASS  parseVoxPromptQuality · aceita snake_case e camelCase para needs_review/repaired\n  PASS  UI · resposta 422 com JSON cru de Laravel vira mensagem humana\n  PASS  Contrato additive · interface VoxPromptQuality e parser são totalmente opcionais\n"
@@ -133,11 +157,11 @@
       "title": "cargo test · atlas-platform (filter=vox)",
       "status": "pass",
       "summary": "todos os vox tests verdes",
-      "duration_ms": 1951,
+      "duration_ms": 569,
       "detail": {
         "exit": 0,
-        "stdout_tail": "test vox::audio::tests::capture_available_does_not_panic ... ok\ntest vox::audio::tests::describe_default_input_never_panics ... ok\n\ntest result: ok. 92 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.21s\n\n",
-        "stderr_tail": "   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `atlas-platform` (lib test) generated 1 warning\n    Finished `test` profile [optimized + debuginfo] target(s) in 1.36s\n     Running unittests src/lib.rs (target/debug/deps/atlas_platform-9ae5079c032bcedf)\n"
+        "stdout_tail": "test vox::audio::tests::capture_available_does_not_panic ... ok\ntest vox::audio::tests::describe_default_input_never_panics ... ok\n\ntest result: ok. 92 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.25s\n\n",
+        "stderr_tail": "   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `atlas-platform` (lib test) generated 1 warning\n    Finished `test` profile [optimized + debuginfo] target(s) in 0.29s\n     Running unittests src/lib.rs (target/debug/deps/atlas_platform-9ae5079c032bcedf)\n"
       },
       "next_action": null
     },
@@ -146,11 +170,11 @@
       "title": "cargo test · atlas-tauri (filter=vox)",
       "status": "pass",
       "summary": "todos os vox tests verdes",
-      "duration_ms": 4183,
+      "duration_ms": 498,
       "detail": {
         "exit": 0,
-        "stdout_tail": "test commands_vox_reply::tests::cooldown_releases_after_elapsing ... ok\ntest commands_vox_setup::tests::audio_input_describe_returns_canonical_schema ... ok\n\ntest result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.15s\n\n",
-        "stderr_tail": "\nwarning: `atlas-platform` (lib) generated 6 warnings\n   Compiling atlas-tauri v0.1.0 (/Users/vitorepf/develop/Atlas/atlas-desktop/crates/atlas-tauri)\n    Finished `test` profile [optimized + debuginfo] target(s) in 3.66s\n     Running unittests src/lib.rs (target/debug/deps/atlas_tauri-bfc398c109057a90)\n"
+        "stdout_tail": "test commands_vox_reply::tests::cooldown_releases_after_elapsing ... ok\ntest commands_vox_setup::tests::audio_input_describe_returns_canonical_schema ... ok\n\ntest result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.11s\n\n",
+        "stderr_tail": "\nwarning: `atlas-platform` (lib) generated 6 warnings\nwarning: `atlas-bridge` (lib) generated 3 warnings\n    Finished `test` profile [optimized + debuginfo] target(s) in 0.36s\n     Running unittests src/lib.rs (target/debug/deps/atlas_tauri-bfc398c109057a90)\n"
       },
       "next_action": null
     },
@@ -221,7 +245,7 @@
       "title": "runtime · cargo check -p atlas-tauri --features whisper-cpp",
       "status": "pass",
       "summary": "whisper-cpp compila — runtime nativo Vox pronto pra linkar.",
-      "duration_ms": 2201,
+      "duration_ms": 247,
       "detail": {
         "exit": 0,
         "stdout_tail": ""
@@ -233,10 +257,10 @@
       "title": "npm run build · production build",
       "status": "pass",
       "summary": "tsc -b && vite build verdes",
-      "duration_ms": 4189,
+      "duration_ms": 3682,
       "detail": {
         "exit": 0,
-        "stdout_tail": "dist/assets/cpp-BJijccld.js                           626.12 kB │ gzip:  48.09 kB\ndist/assets/emacs-lisp-DFyMFAZA.js                    779.87 kB │ gzip: 197.55 kB\ndist/assets/index-LWgVjAaC.js                       1,275.02 kB │ gzip: 323.62 kB\n\n✓ built in 334ms\n",
+        "stdout_tail": "dist/assets/cpp-BvYoqMDc.js                           626.12 kB │ gzip:  48.09 kB\ndist/assets/emacs-lisp-DFyMFAZA.js                    779.87 kB │ gzip: 197.55 kB\ndist/assets/index-B76q3wDC.js                       1,279.78 kB │ gzip: 325.16 kB\n\n✓ built in 348ms\n",
         "stderr_tail": "[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n"
       },
       "next_action": null

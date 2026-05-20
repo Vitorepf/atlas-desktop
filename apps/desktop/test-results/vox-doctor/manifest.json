@@ -1,8 +1,8 @@
 {
   "schema": "atlas.vox.doctor.v1",
   "status": "pass",
-  "generated_at": "2026-05-20T14:30:55.062Z",
-  "duration_ms": 44,
+  "generated_at": "2026-05-20T16:01:56.564Z",
+  "duration_ms": 39,
   "totals": {
     "total": 11,
     "pass": 11,

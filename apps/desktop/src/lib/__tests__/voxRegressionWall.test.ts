@@ -631,8 +631,10 @@ test('REGRESSION · Atlas AI mantém thread ativa sem corrida entre turnos de vo
     'useAtlasAi precisa de selectedThreadIdRef para evitar criar nova thread por stale closure',
   )
   assert.ok(
-    hook.includes('let threadId = options?.newThread ? null : selectedThreadIdRef.current'),
-    'send() deve ler thread ativa do ref, não de state possivelmente atrasado',
+    hook.includes('const shouldForceNewThread = options?.newThread && !options?.voiceConversation')
+      && hook.includes('let threadId = shouldForceNewThread ? null : selectedThreadIdRef.current')
+      && hook.includes('thread_id: shouldForceNewThread ? null : selectedThreadIdRef.current'),
+    'send() deve ignorar newThread em voiceConversation e ler a thread ativa do ref, não de state possivelmente atrasado',
   )
   assert.ok(
     hook.includes('selectedThreadIdRef.current = threadId'),
@@ -678,15 +680,40 @@ test('REGRESSION · Atlas Voice rearma múltiplos turnos automaticamente', () =>
   assert.ok(
     surface.includes('VOICE_LOOP_HEARTBEAT_MS')
       && surface.includes('VOICE_SPEAKING_WATCHDOG_MS')
+      && surface.includes('VOICE_AWAITING_REPLY_WATCHDOG_MS')
       && surface.includes('voiceSpeechStartedAtRef')
       && surface.includes('scheduleVoiceRearm(0)'),
     'loop contínuo precisa ter heartbeat independente de eventos React/TTS perdidos',
+  )
+  assert.ok(
+    surface.includes('atlasVoiceCanResetStaleTurn')
+      && surface.includes('voxCloseRef')
+      && surface.includes('voxTranscriptKeyRef')
+      && surface.includes('staleTranscriptAlreadySent')
+      && surface.includes('voiceTurnDispatchInFlightRef')
+      && surface.includes('voiceAwaitingReplyRef'),
+    'modo Atlas Voice precisa limpar restos seguros do turno anterior, bloquear rearm durante despacho e aguardar resposta falada; transcript_ready velho não pode matar o segundo turno',
+  )
+  assert.ok(
+    surface.includes('voiceAwaitingReplyStartedAtRef')
+      && surface.includes('clearVoiceAwaitingReply()')
+      && surface.includes('atlasVoiceShouldRecoverAwaitingReply')
+      && surface.includes('A resposta demorou demais. Voltei a ouvir para você continuar.'),
+    'se uma resposta ficar sem callback final, Atlas Voice precisa recuperar o loop em vez de morrer no segundo turno',
+  )
+  assert.ok(
+    surface.includes('VOICE_ECHO_GUARD_AFTER_SPEECH_MS')
+      && surface.includes('voiceLastSpeechEndedAtRef')
+      && surface.includes('voiceLoopEpochRef')
+      && surface.includes('loopEpoch !== voiceLoopEpochRef.current'),
+    'modo Atlas Voice precisa esperar o rabo da propria voz antes de ouvir e invalidar timers antigos de rearm',
   )
   assert.ok(
     surface.includes('VOICE_MIN_SPEECH_FRAMES')
       && surface.includes('voiceSpeechFrameCountRef')
       && surface.includes('VOICE_MIN_CONFIRMED_SPEECH_MS')
       && surface.includes('voiceSpeechMsRef')
+      && surface.includes('atlasVoiceNextSpeechWindow({')
       && surface.includes('atlasVoiceConfirmsHumanSpeech')
       && surface.includes('atlasVoiceShouldDropSilentTurn')
       && !surface.includes('VOICE_UNDETECTED_AUTO_SEND_MS'),
@@ -714,6 +741,7 @@ test('REGRESSION · Atlas Voice rearma múltiplos turnos automaticamente', () =>
 test('REGRESSION · Atlas Voice reduz latência sem trocar qualidade da voz', () => {
   const hook = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'useAtlasAi.ts'))
   const surface = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'AtlasAiSurface.tsx'))
+  const overlay = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'components', 'AtlasAiVoiceConversationOverlay.tsx'))
   const voiceReply = readText(join(DESKTOP_APP_ROOT, 'src', 'surfaces', 'atlas-ai', 'atlasAiVoiceReply.ts'))
   const native = readText(join(ATLAS_DESKTOP_ROOT, 'crates', 'atlas-tauri', 'src', 'commands_vox_reply.rs'))
   const promptBuilder = readText(join(REPO_ROOT, 'atlas-server', 'app', 'Services', 'Ai', 'AiPromptBuilder.php'))
@@ -757,31 +785,48 @@ test('REGRESSION · Atlas Voice reduz latência sem trocar qualidade da voz', ()
     'frontend precisa emitir e preservar telemetria local de latência da fala sem expor segredo',
   )
   assert.ok(
-    surface.includes('const VOICE_REPLY_MAX_CHARS = 420')
+    surface.includes('const VOICE_REPLY_MAX_CHARS = 1_000')
       && surface.includes('VOICE_REPLY_STREAMING_MAX_CHARS')
       && surface.includes('selectAtlasVoiceStreamingChunk')
-      && surface.includes('const VOICE_SILENCE_MS_TO_SEND = 350')
+      && surface.includes('const VOICE_SHORT_UTTERANCE_SILENCE_MS = 3_200')
+      && surface.includes('const VOICE_LONG_UTTERANCE_SILENCE_MS = 2_200')
+      && surface.includes('const VOICE_LONG_UTTERANCE_SPEECH_MS = 4_000')
+      && surface.includes('atlasVoiceEndpointSilenceMs')
+      && surface.includes('atlasVoiceShouldFinishTurn')
+      && surface.includes('atlasVoiceDecideTranscriptDispatch')
+      && surface.includes('atlasVoiceShouldDropTranscript')
+      && surface.includes('voicePendingContinuationRef')
+      && surface.includes('voiceConfirmedSpeechMsRef')
+      && surface.includes('confirmedSpeechMs: voiceConfirmedSpeechMsRef.current')
       && surface.includes('const VOICE_MIN_TURN_MS = 900')
       && surface.includes('const VOICE_MIN_CONFIRMED_SPEECH_MS = 700'),
-    'auto-envio por pausa precisa ser rápido, mas não pode aceitar ruído curto como fala',
+    'auto-envio por pausa precisa priorizar qualidade: esperar pausa real, acumular fala confirmada no turno inteiro, não cortar frase humana e segurar transcript incompleto',
   )
   assert.ok(
     hook.includes('voiceConversation?: boolean')
       && hook.includes('voice_response_contract')
-      && hook.includes("mode: 'spoken_concise'")
-      && hook.includes('target_chars: 280')
-      && hook.includes('hard_max_chars: 420'),
-    'turnos do Atlas Voice precisam enviar contrato de resposta falada curta para reduzir geração e TTS',
+      && hook.includes("mode: 'spoken_result'")
+      && hook.includes('target_chars: 650')
+      && hook.includes('hard_max_chars: 1_000')
+      && hook.includes('execute o pedido completo antes de resumir em voz'),
+    'turnos do Atlas Voice precisam executar a intenção completa e só adaptar a resposta final para voz',
   )
   assert.ok(
     surface.includes('voiceConversation: true'),
     'auto-envio do Atlas Voice precisa marcar o turno como conversa por voz',
   )
   assert.ok(
+    surface.includes('recordVoiceTurnAgain')
+      && surface.includes("setVoiceSpeechState('idle')")
+      && overlay.includes('onRecordAgain'),
+    'recuperação manual/automática do Atlas Voice precisa limpar estado de voz indisponível antes de reabrir o microfone',
+  )
+  assert.ok(
     promptBuilder.includes('voiceResponseInstructions($options)')
       && promptBuilder.includes('payload.voice_response_contract')
       && promptBuilder.includes('Contrato de resposta falada Atlas Voice')
       && promptBuilder.includes('Esta resposta sera falada em voz alta')
+      && promptBuilder.includes('Nao reduza o escopo do pedido por ser voz')
       && promptBuilder.includes('Mira de tamanho'),
     'backend precisa projetar o contrato de resposta falada no prompt do provider',
   )

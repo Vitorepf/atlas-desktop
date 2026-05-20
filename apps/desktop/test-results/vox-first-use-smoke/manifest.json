@@ -1,7 +1,7 @@
 {
   "schema": "atlas.vox.first_use_smoke.v1",
   "status": "pass",
-  "generated_at": "2026-05-20T14:31:36.737Z",
+  "generated_at": "2026-05-20T16:01:56.814Z",
   "repo_root": "~/develop/Atlas/atlas-desktop",
   "backend_url_present": true,
   "backend_url_redacted": "http://127.0.0.1:8001",

@@ -26,6 +26,23 @@ test('maps Desktop plan request to backend PlanRequest contract', () => {
   })
 })
 
+test('maps explicit composer compute effort to policy hints and surface context', () => {
+  const body = toAtlasDevPlanHttpBody({
+    input_text: 'corrigir algoritmo pesado',
+    workspace: '/tmp/workspace',
+    task: 'dev',
+    compute_effort: 'max',
+  })
+
+  assert.deepEqual(body.policy_hints, { compute_effort: 'max' })
+  assert.deepEqual(body.surface_context, {
+    composer_mode: 'programming',
+    composer_task: 'dev',
+    composer_compute_effort: 'max',
+    compute_effort: 'max',
+  })
+})
+
 test('preserves explicit payload overrides while forcing canonical raw intent', () => {
   const body = toAtlasDevPlanHttpBody({
     input_text: 'usar texto canônico',

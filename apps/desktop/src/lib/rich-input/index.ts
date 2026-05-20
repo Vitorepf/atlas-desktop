@@ -14,3 +14,11 @@ export * from './pdfProcessor'
 export * from './chunkedUploader'
 export * from './useAtlasRichInputAttachments'
 export * from './metrics'
+export {
+  ATLAS_COMPUTE_EFFORT_OPTIONS,
+  atlasComputeEffortForPayload,
+  labelAtlasComputeEffortShort,
+  normalizeAtlasComputeEffort,
+  type AtlasComputeEffortChoice,
+  type AtlasComputeEffortLevel,
+} from '@atlas/rich-input-canon'

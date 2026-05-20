@@ -46,10 +46,17 @@ import { serializeThreadAsMarkdown } from './threadExport'
 import { useAtlasAi } from './useAtlasAi'
 import {
   atlasVoiceAcceptsSpeechRunEvent,
+  atlasVoiceCanResetStaleTurn,
   atlasVoiceCanStartNextTurn,
   atlasVoiceConfirmsHumanSpeech,
+  atlasVoiceDecideTranscriptDispatch,
+  atlasVoiceEndpointSilenceMs,
   atlasVoiceIsAtlasBusy,
+  atlasVoiceNextSpeechWindow,
+  atlasVoiceShouldRecoverAwaitingReply,
   atlasVoiceShouldDropSilentTurn,
+  atlasVoiceShouldDropTranscript,
+  atlasVoiceShouldFinishTurn,
 } from './atlasAiVoiceContinuity'
 import { speakAtlasAiText, stopAtlasAiSpeech } from './atlasAiVoiceReply'
 import { useCalmaria } from './useCalmaria'
@@ -61,20 +68,24 @@ const PINNED_STORAGE = 'atlas-desktop:atlas-ai-pinned-threads'
 const VOICE_TURN_POLL_MS = 80
 const VOICE_MIN_RMS = 0.0015
 const VOICE_MIN_PEAK = 0.008
-const VOICE_SILENCE_MS_TO_SEND = 350
+const VOICE_SHORT_UTTERANCE_SILENCE_MS = 3_200
+const VOICE_LONG_UTTERANCE_SILENCE_MS = 2_200
+const VOICE_LONG_UTTERANCE_SPEECH_MS = 4_000
 const VOICE_MIN_TURN_MS = 900
 const VOICE_MAX_TURN_MS = 24_000
 const VOICE_MIN_SPEECH_FRAMES = 8
 const VOICE_MIN_CONFIRMED_SPEECH_MS = 700
-const VOICE_REPLY_MAX_CHARS = 420
+const VOICE_REPLY_MAX_CHARS = 1_000
 const VOICE_REPLY_STREAMING_MAX_CHARS = 320
 const VOICE_REPLY_STREAMING_MIN_CHARS = 90
 const VOICE_REARM_AFTER_REPLY_MS = 120
+const VOICE_ECHO_GUARD_AFTER_SPEECH_MS = 900
 const VOICE_REARM_WATCHDOG_MS = 350
 const VOICE_LOOP_HEARTBEAT_MS = 500
 const VOICE_REARM_VERIFY_MS = 650
 const VOICE_REARM_MAX_ATTEMPTS = 4
 const VOICE_SPEAKING_WATCHDOG_MS = 45_000
+const VOICE_AWAITING_REPLY_WATCHDOG_MS = 75_000
 
 function selectAtlasVoiceStreamingChunk(input: string | null | undefined): string | null {
   const text = (input ?? '').replace(/\s+/g, ' ').trim()
@@ -180,21 +191,30 @@ export function AtlasAiSurface({
   const streamingSpeechTraceIdRef = useRef<string | null>(null)
   const streamingSpeechPrefixRef = useRef<string | null>(null)
   const voiceReplyEnabledRef = useRef<boolean>(voiceReplyEnabled)
+  const voiceLoopEpochRef = useRef<number>(0)
   const voxStartRef = useRef<(() => Promise<void>) | null>(null)
+  const voxCloseRef = useRef<(() => void) | null>(null)
   const voxStateRef = useRef<string>('closed')
   const voxBusyRef = useRef<boolean>(false)
+  const voxTranscriptKeyRef = useRef<string | null>(null)
   const voiceSpeechStateRef = useRef<AtlasAiVoiceSpeechState>('idle')
   const atlasVoiceBusyRef = useRef<boolean>(false)
   const voiceRearmTimerRef = useRef<number | null>(null)
   const voiceSpeechRunIdRef = useRef<number>(0)
   const voiceSpeechStartedAtRef = useRef<number | null>(null)
+  const voiceLastSpeechEndedAtRef = useRef<number>(0)
   const voiceHeardSpeechRef = useRef<boolean>(false)
   const voiceSpeechFrameCountRef = useRef<number>(0)
   const voiceSpeechMsRef = useRef<number>(0)
+  const voiceConfirmedSpeechMsRef = useRef<number>(0)
   const voiceSilenceSinceRef = useRef<number | null>(null)
   const voiceAutoFinishInFlightRef = useRef<boolean>(false)
+  const voiceTurnDispatchInFlightRef = useRef<boolean>(false)
+  const voiceAwaitingReplyRef = useRef<boolean>(false)
+  const voiceAwaitingReplyStartedAtRef = useRef<number | null>(null)
   const voiceNoiseFloorRef = useRef<{ rms: number; peak: number; samples: number } | null>(null)
   const voiceRearmAttemptRef = useRef<number>(0)
+  const voicePendingContinuationRef = useRef<string | null>(null)
 
   // Layout rails (drag-resize + collapse persist)
   const { setLeftResizeNode, setRightResizeNode } = useAtlasAiColumnSizing()
@@ -296,6 +316,7 @@ export function AtlasAiSurface({
         textBlocks: options?.attachments?.text_blocks,
         urlAttachments: options?.attachments?.url_attachments,
         richInputPayload: options?.richInputCanonical,
+        computeEffort: options?.computeEffort,
       })
       if (!trace && sendingText.trim() !== '') {
         setComposerDraft(sendingText)
@@ -393,6 +414,7 @@ export function AtlasAiSurface({
     voiceHeardSpeechRef.current = false
     voiceSpeechFrameCountRef.current = 0
     voiceSpeechMsRef.current = 0
+    voiceConfirmedSpeechMsRef.current = 0
     voiceSilenceSinceRef.current = null
     voiceAutoFinishInFlightRef.current = false
     voiceNoiseFloorRef.current = null
@@ -401,6 +423,11 @@ export function AtlasAiSurface({
   const resetVoiceStreamingSpeech = useCallback(() => {
     streamingSpeechTraceIdRef.current = null
     streamingSpeechPrefixRef.current = null
+  }, [])
+
+  const clearVoiceAwaitingReply = useCallback(() => {
+    voiceAwaitingReplyRef.current = false
+    voiceAwaitingReplyStartedAtRef.current = null
   }, [])
 
   const nextVoiceSpeechRunId = useCallback(() => {
@@ -418,14 +445,50 @@ export function AtlasAiSurface({
 
   const scheduleVoiceRearm = useCallback((delayMs: number = VOICE_REARM_AFTER_REPLY_MS, attempt: number = 0) => {
     clearVoiceRearmTimer()
+    const loopEpoch = voiceLoopEpochRef.current
+    const echoGuardRemainingMs = Math.max(
+      0,
+      VOICE_ECHO_GUARD_AFTER_SPEECH_MS - (Date.now() - voiceLastSpeechEndedAtRef.current),
+    )
+    const actualDelayMs = Math.max(0, delayMs, echoGuardRemainingMs)
     voiceRearmTimerRef.current = window.setTimeout(() => {
       voiceRearmTimerRef.current = null
+      if (loopEpoch !== voiceLoopEpochRef.current) return
       if (!voiceReplyEnabledRef.current) return
       if (attempt > VOICE_REARM_MAX_ATTEMPTS) {
         setVoiceSpeechError('A conversa por voz não conseguiu reabrir o microfone. Aperte gravar de novo.')
         return
       }
-      if (atlasVoiceBusyRef.current || voiceSpeechStateRef.current === 'speaking' || voxBusyRef.current) {
+      if (
+        atlasVoiceBusyRef.current
+        || voiceTurnDispatchInFlightRef.current
+        || voiceAwaitingReplyRef.current
+        || voiceSpeechStateRef.current === 'speaking'
+        || voxBusyRef.current
+      ) {
+        scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS, attempt + 1)
+        return
+      }
+
+      const currentVoxState = voxStateRef.current
+      const staleTranscriptKey = voxTranscriptKeyRef.current
+      const staleTranscriptAlreadySent =
+        currentVoxState !== 'transcript_ready'
+        || staleTranscriptKey === null
+        || staleTranscriptKey === lastVoiceSentTranscriptRef.current
+
+      if (
+        staleTranscriptAlreadySent
+        && atlasVoiceCanResetStaleTurn({
+          voiceEnabled: voiceReplyEnabledRef.current,
+          atlasBusy: atlasVoiceBusyRef.current,
+          speechState: voiceSpeechStateRef.current,
+          voxBusy: voxBusyRef.current,
+          voxState: currentVoxState,
+        })
+      ) {
+        resetVoiceTurnDetection()
+        voxCloseRef.current?.()
         scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS, attempt + 1)
         return
       }
@@ -442,6 +505,8 @@ export function AtlasAiSurface({
       }
 
       resetVoiceTurnDetection()
+      setVoiceSpeechState('idle')
+      setVoiceSpeechError(null)
       voiceRearmAttemptRef.current = attempt
       void (async () => {
         await voxStartRef.current?.()
@@ -458,16 +523,20 @@ export function AtlasAiSurface({
           scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS, attempt + 1)
         }, VOICE_REARM_VERIFY_MS)
       })()
-    }, Math.max(0, delayMs))
+    }, actualDelayMs)
   }, [clearVoiceRearmTimer, resetVoiceTurnDetection])
 
   const stopVoiceConversation = useCallback(async () => {
     clearVoiceRearmTimer()
     voiceReplyEnabledRef.current = false
+    voiceLoopEpochRef.current += 1
     nextVoiceSpeechRunId()
     voiceRearmAttemptRef.current = 0
     resetVoiceStreamingSpeech()
     resetVoiceTurnDetection()
+    voicePendingContinuationRef.current = null
+    voiceTurnDispatchInFlightRef.current = false
+    clearVoiceAwaitingReply()
     setVoiceReplyEnabled(false)
     setVoiceSpeechState('idle')
     await stopAtlasAiSpeech()
@@ -497,8 +566,11 @@ export function AtlasAiSurface({
 
     clearVoiceRearmTimer()
     voiceRearmAttemptRef.current = 0
+    voiceLoopEpochRef.current += 1
     nextVoiceSpeechRunId()
     resetVoiceStreamingSpeech()
+    voicePendingContinuationRef.current = null
+    clearVoiceAwaitingReply()
     lastSpokenMessageIdRef.current = latestAtlasMessage?.id ?? null
     resetVoiceTurnDetection()
     setVoiceSpeechError(null)
@@ -515,7 +587,10 @@ export function AtlasAiSurface({
     if (!voiceReplyEnabledRef.current) return
     clearVoiceRearmTimer()
     voiceRearmAttemptRef.current = 0
+    voiceLoopEpochRef.current += 1
     resetVoiceStreamingSpeech()
+    voicePendingContinuationRef.current = null
+    clearVoiceAwaitingReply()
     await stopAtlasAiSpeech()
     resetVoiceTurnDetection()
     setVoiceSpeechError(null)
@@ -526,11 +601,40 @@ export function AtlasAiSurface({
     }
   }, [clearVoiceRearmTimer, resetVoiceTurnDetection, vox])
 
+  const recordVoiceTurnAgain = useCallback(async () => {
+    if (!voiceReplyEnabledRef.current) return
+    clearVoiceRearmTimer()
+    voiceRearmAttemptRef.current = 0
+    resetVoiceStreamingSpeech()
+    resetVoiceTurnDetection()
+    setVoiceSpeechError(null)
+    setVoiceSpeechState('idle')
+    const cur = vox.state
+    if (cur === 'closed' || cur === 'idle' || cur === 'cancelled' || cur === 'error' || cur === 'transcript_ready') {
+      if (cur === 'transcript_ready') vox.close()
+      await vox.start()
+    }
+  }, [clearVoiceRearmTimer, resetVoiceStreamingSpeech, resetVoiceTurnDetection, vox])
+
   useEffect(() => {
     voxStartRef.current = vox.start
+    voxCloseRef.current = vox.close
     voxStateRef.current = vox.state
     voxBusyRef.current = vox.busy
-  }, [vox.busy, vox.start, vox.state])
+    const text = (vox.transcriptDraft || vox.transcript?.text || '').trim()
+    voxTranscriptKeyRef.current = text
+      ? vox.transcript?.transcriptId ?? `${text}:${vox.session?.sessionId ?? 'no-session'}`
+      : null
+  }, [
+    vox.busy,
+    vox.close,
+    vox.session?.sessionId,
+    vox.start,
+    vox.state,
+    vox.transcript?.text,
+    vox.transcript?.transcriptId,
+    vox.transcriptDraft,
+  ])
 
   useEffect(() => {
     if (!voiceReplyEnabled) return
@@ -563,9 +667,16 @@ export function AtlasAiSurface({
       const adaptiveRms = Math.max(VOICE_MIN_RMS, (floor?.rms ?? 0) * 2.4)
       const adaptivePeak = Math.max(VOICE_MIN_PEAK, (floor?.peak ?? 0) * 2.0)
       const speaking = level.rms >= adaptiveRms || level.peak >= adaptivePeak
+      const speechWindow = atlasVoiceNextSpeechWindow({
+        speaking,
+        previousFrameCount: voiceSpeechFrameCountRef.current,
+        previousSpeechMs: voiceSpeechMsRef.current,
+        pollMs: VOICE_TURN_POLL_MS,
+      })
+      voiceSpeechFrameCountRef.current = speechWindow.speechFrameCount
+      voiceSpeechMsRef.current = speechWindow.speechMs
+
       if (speaking) {
-        voiceSpeechFrameCountRef.current += 1
-        voiceSpeechMsRef.current += VOICE_TURN_POLL_MS
         if (atlasVoiceConfirmsHumanSpeech({
           speaking,
           speechFrameCount: voiceSpeechFrameCountRef.current,
@@ -575,11 +686,14 @@ export function AtlasAiSurface({
           minSpeechMs: VOICE_MIN_CONFIRMED_SPEECH_MS,
         })) {
           voiceHeardSpeechRef.current = true
+          voiceConfirmedSpeechMsRef.current = Math.max(
+            voiceConfirmedSpeechMsRef.current,
+            voiceSpeechMsRef.current,
+          )
         }
         voiceSilenceSinceRef.current = null
         return
       }
-      voiceSpeechFrameCountRef.current = 0
 
       if (atlasVoiceShouldDropSilentTurn({
         heardSpeech: voiceHeardSpeechRef.current,
@@ -601,7 +715,20 @@ export function AtlasAiSurface({
       }
 
       const silenceMs = now - voiceSilenceSinceRef.current
-      if (level.durationMs >= VOICE_MIN_TURN_MS && silenceMs >= VOICE_SILENCE_MS_TO_SEND) {
+      const requiredSilenceMs = atlasVoiceEndpointSilenceMs({
+        confirmedSpeechMs: voiceConfirmedSpeechMsRef.current,
+        shortUtteranceSilenceMs: VOICE_SHORT_UTTERANCE_SILENCE_MS,
+        longUtteranceSilenceMs: VOICE_LONG_UTTERANCE_SILENCE_MS,
+        longUtteranceSpeechMs: VOICE_LONG_UTTERANCE_SPEECH_MS,
+      })
+
+      if (atlasVoiceShouldFinishTurn({
+        heardSpeech: voiceHeardSpeechRef.current,
+        durationMs: level.durationMs,
+        minTurnMs: VOICE_MIN_TURN_MS,
+        silenceMs,
+        requiredSilenceMs,
+      })) {
         voiceAutoFinishInFlightRef.current = true
         await vox.finish()
       }
@@ -636,21 +763,54 @@ export function AtlasAiSurface({
     if (lastVoiceSentTranscriptRef.current === transcriptKey) return
     lastVoiceSentTranscriptRef.current = transcriptKey
 
+    if (atlasVoiceShouldDropTranscript({ text })) {
+      resetVoiceTurnDetection()
+      vox.close()
+      scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS)
+      return
+    }
+
+    const dispatchDecision = atlasVoiceDecideTranscriptDispatch({
+      pendingText: voicePendingContinuationRef.current,
+      transcriptText: text,
+    })
+
+    if (!dispatchDecision.shouldDispatch) {
+      voicePendingContinuationRef.current = dispatchDecision.pendingText
+      resetVoiceTurnDetection()
+      vox.close()
+      scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS)
+      return
+    }
+
+    const textToSend = dispatchDecision.textToSend
+    if (!textToSend) return
+
+    voicePendingContinuationRef.current = null
     clearVoiceRearmTimer()
     resetVoiceStreamingSpeech()
     resetVoiceTurnDetection()
+    voiceTurnDispatchInFlightRef.current = true
+    voiceAwaitingReplyRef.current = true
+    voiceAwaitingReplyStartedAtRef.current = Date.now()
     setVoiceSpeechError(null)
     vox.close()
     void (async () => {
-      const trace = await atlas.send(text, {
+      const trace = await atlas.send(textToSend, {
         newThread: atlas.selectedThreadId === null,
-        title: text.slice(0, 80),
+        title: textToSend.slice(0, 80),
         voiceConversation: true,
       })
       if (!trace && voiceReplyEnabledRef.current) {
+        voiceTurnDispatchInFlightRef.current = false
+        clearVoiceAwaitingReply()
         setVoiceSpeechError('Não consegui enviar esse turno. Grave de novo.')
         scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS)
+        return
       }
+      window.setTimeout(() => {
+        voiceTurnDispatchInFlightRef.current = false
+      }, VOICE_REARM_WATCHDOG_MS)
     })()
   }, [
     atlas,
@@ -687,19 +847,24 @@ export function AtlasAiSurface({
       maxChars: VOICE_REPLY_STREAMING_MAX_CHARS,
       onEnd: () => {
         if (!isCurrentVoiceSpeechRun(speechRunId)) return
+        voiceLastSpeechEndedAtRef.current = Date.now()
         setVoiceSpeechState('idle')
       },
       onError: (reason) => {
         if (!isCurrentVoiceSpeechRun(speechRunId)) return
         setVoiceSpeechError(humanizeAtlasVoiceSpeechError(reason))
         setVoiceSpeechState('idle')
+        clearVoiceAwaitingReply()
+        if (voiceReplyEnabledRef.current) scheduleVoiceRearm(VOICE_REARM_AFTER_REPLY_MS)
       },
     }).then((spoke) => {
       if (!isCurrentVoiceSpeechRun(speechRunId)) return
       if (!spoke) {
         streamingSpeechPrefixRef.current = null
         setVoiceSpeechError((current) => current ?? 'Não consegui falar o início da resposta.')
-        setVoiceSpeechState('unavailable')
+        setVoiceSpeechState('idle')
+        clearVoiceAwaitingReply()
+        if (voiceReplyEnabledRef.current) scheduleVoiceRearm(VOICE_REARM_AFTER_REPLY_MS)
       }
     })
   }, [
@@ -723,6 +888,8 @@ export function AtlasAiSurface({
 
     if (streamingPrefix && finalSpeechText.length < 60) {
       resetVoiceStreamingSpeech()
+      voiceLastSpeechEndedAtRef.current = Date.now()
+      clearVoiceAwaitingReply()
       if (voiceReplyEnabledRef.current) scheduleVoiceRearm(VOICE_REARM_AFTER_REPLY_MS)
       return
     }
@@ -733,7 +900,9 @@ export function AtlasAiSurface({
       maxChars: VOICE_REPLY_MAX_CHARS,
       onEnd: () => {
         if (!isCurrentVoiceSpeechRun(speechRunId)) return
+        voiceLastSpeechEndedAtRef.current = Date.now()
         setVoiceSpeechState('idle')
+        clearVoiceAwaitingReply()
         resetVoiceStreamingSpeech()
         if (!voiceReplyEnabledRef.current) return
         const cur = voxStateRef.current
@@ -754,14 +923,18 @@ export function AtlasAiSurface({
         if (!isCurrentVoiceSpeechRun(speechRunId)) return
         setVoiceSpeechError(humanizeAtlasVoiceSpeechError(reason))
         setVoiceSpeechState('idle')
+        clearVoiceAwaitingReply()
         resetVoiceStreamingSpeech()
+        if (voiceReplyEnabledRef.current) scheduleVoiceRearm(VOICE_REARM_AFTER_REPLY_MS)
       },
     }).then((spoke) => {
       if (!isCurrentVoiceSpeechRun(speechRunId)) return
       if (!spoke) {
         setVoiceSpeechError((current) => current ?? 'Não consegui falar a resposta. A resposta ficou na conversa.')
-        setVoiceSpeechState('unavailable')
+        setVoiceSpeechState('idle')
+        clearVoiceAwaitingReply()
         resetVoiceStreamingSpeech()
+        if (voiceReplyEnabledRef.current) scheduleVoiceRearm(VOICE_REARM_AFTER_REPLY_MS)
       }
     })
   }, [
@@ -784,6 +957,7 @@ export function AtlasAiSurface({
       return
     }
     if (atlas.sending || atlas.pendingTrace || atlas.streamingText.trim().length > 0) return
+    if (voiceAwaitingReplyRef.current) return
     if (voiceSpeechState !== 'idle') return
     if (vox.busy) return
     if (vox.state === 'closed' || vox.state === 'idle' || vox.state === 'cancelled' || vox.state === 'error') {
@@ -816,12 +990,35 @@ export function AtlasAiSurface({
       ) {
         void stopAtlasAiSpeech()
         setVoiceSpeechState('idle')
+        voiceLastSpeechEndedAtRef.current = Date.now()
+        clearVoiceAwaitingReply()
+        resetVoiceStreamingSpeech()
+        scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS)
+        return
+      }
+
+      const awaitingReplyStartedAt = voiceAwaitingReplyStartedAtRef.current
+      if (atlasVoiceShouldRecoverAwaitingReply({
+        awaitingReply: voiceAwaitingReplyRef.current,
+        awaitingStartedAtMs: awaitingReplyStartedAt,
+        nowMs: Date.now(),
+        maxAwaitingMs: VOICE_AWAITING_REPLY_WATCHDOG_MS,
+        atlasBusy: atlasVoiceBusyRef.current,
+        speechState: voiceSpeechStateRef.current,
+      })) {
+        voiceTurnDispatchInFlightRef.current = false
+        clearVoiceAwaitingReply()
+        resetVoiceStreamingSpeech()
+        setVoiceSpeechState('idle')
+        setVoiceSpeechError('A resposta demorou demais. Voltei a ouvir para você continuar.')
         scheduleVoiceRearm(VOICE_REARM_WATCHDOG_MS)
         return
       }
 
       if (
         atlasVoiceBusyRef.current
+        || voiceTurnDispatchInFlightRef.current
+        || voiceAwaitingReplyRef.current
         || voiceSpeechStateRef.current === 'speaking'
         || voxBusyRef.current
       ) {
@@ -840,7 +1037,7 @@ export function AtlasAiSurface({
     }, VOICE_LOOP_HEARTBEAT_MS)
 
     return () => window.clearInterval(heartbeat)
-  }, [scheduleVoiceRearm, voiceReplyEnabled])
+  }, [clearVoiceAwaitingReply, resetVoiceStreamingSpeech, scheduleVoiceRearm, voiceReplyEnabled])
 
   const handleRetryThreads = useCallback(async () => {
     setRetrying(true)
@@ -1081,6 +1278,8 @@ export function AtlasAiSurface({
               onTaskChange={atlas.setComposerTask}
               provider={atlas.composerProvider}
               onProviderChange={atlas.setComposerProvider}
+              computeEffort={atlas.composerComputeEffort}
+              onComputeEffortChange={atlas.setComposerComputeEffort}
               sending={atlas.sending}
               sendError={atlas.sendError}
               workspaceSlug={atlas.workspaceSlug ?? atlas.threadDetail?.workspace ?? null}
@@ -1090,6 +1289,7 @@ export function AtlasAiSurface({
                   newThread: extras?.newThread ?? atlas.selectedThreadId === null,
                   attachments: extras?.attachments,
                   richInputCanonical: extras?.richInputCanonical,
+                  computeEffort: extras?.computeEffort,
                 })
               }
               onSendInNew={(extras) =>
@@ -1097,6 +1297,7 @@ export function AtlasAiSurface({
                   newThread: true,
                   attachments: extras?.attachments,
                   richInputCanonical: extras?.richInputCanonical,
+                  computeEffort: extras?.computeEffort,
                 })
               }
               onVoxClick={handleVoxToggle}
@@ -1115,6 +1316,7 @@ export function AtlasAiSurface({
                 sendError={atlas.sendError}
                 onStop={() => void stopVoiceConversation()}
                 onInterrupt={() => void interruptVoiceConversation()}
+                onRecordAgain={() => void recordVoiceTurnAgain()}
               />
             ) : (
               <VoxOverlay controller={vox} />

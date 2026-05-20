@@ -63,6 +63,10 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {}
 }
 
+function asNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
 function ByStatusList({ byStatus }: { byStatus?: Record<string, number> }) {
   const entries = Object.entries(byStatus ?? {})
   if (entries.length === 0) {
@@ -238,13 +242,16 @@ function EvidenceSection({ summary }: { summary: ControlPlaneComponentSummary })
 
 function ApprovalsSection({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
   const a = snapshot.approvals_summary
-  const total = a.total ?? 0
-  const pending = a.pending ?? 0
+  const operator = snapshot.operator_approvals_summary
+  const total = (a.total ?? 0) + (operator?.total ?? 0)
+  const pending = (a.pending ?? 0) + (operator?.pending ?? 0)
+  const approved = (operator?.approved ?? 0) + Number(a.by_status?.approved ?? 0)
+  const byMode = operator?.by_mode ?? {}
   return (
     <SectionCard
       title="Approvals"
-      status={a.status}
-      detail={a.detail ?? 'pending operator decisions (Policy)'}
+      status={pending > 0 ? 'degraded' : a.status}
+      detail={operator ? 'policy approvals + external execution operator approvals' : (a.detail ?? 'pending operator decisions (Policy)')}
       isEmpty={total === 0}
       emptyMessage="no approval requests on record"
     >
@@ -254,6 +261,12 @@ function ApprovalsSection({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
           <div className="l">pending</div>
         </div>
         <div>
+          <div className="v" style={{ opacity: 0.75 }}>
+            {approved}
+          </div>
+          <div className="l">approved</div>
+        </div>
+        <div>
           <div className="v" style={{ opacity: 0.65 }}>
             {total}
           </div>
@@ -261,6 +274,12 @@ function ApprovalsSection({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
         </div>
       </div>
       <ByStatusList byStatus={a.by_status} />
+      {operator ? (
+        <>
+          <div className="cp-row-meta">operator approvals · {operator.total ?? 0} total · {operator.pending ?? 0} pending</div>
+          <ByStatusList byStatus={byMode} />
+        </>
+      ) : null}
     </SectionCard>
   )
 }
@@ -298,6 +317,140 @@ function CertificationSection({ snapshot }: { snapshot: ControlPlaneSnapshot }) 
           <StatusBadge status={mission.status} /> {mission.total ?? 0} total
         </dd>
       </dl>
+    </SectionCard>
+  )
+}
+
+function RuntimeIntelligenceSection({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
+  const runtime = snapshot.runtime_intelligence_summary
+  const status = runtime?.status ?? 'missing'
+  const summary = runtime?.summary ?? {}
+  const external = runtime?.external_execution
+  const externalSummary = asRecord(external?.summary)
+  const unsafeExternal = asNumber(summary.external_execution_unsafe_enabled)
+  const missingReceiptBindings = asNumber(summary.external_execution_missing_receipt_bindings)
+  const pendingExternalApprovals = asNumber(summary.external_execution_pending_approval)
+  const signatureCoverage = typeof externalSummary.signature_protection_coverage === 'number'
+    ? `${Math.round(externalSummary.signature_protection_coverage * 100)}%`
+    : '—'
+  const sections = [
+    ['APCR', runtime?.persistent_context],
+    ['AEMOR', runtime?.aemor],
+    ['ASEIF', runtime?.intelligence_factory],
+    ['Swarm', runtime?.swarm_company],
+    ['External', runtime?.external_execution],
+  ] as const
+  const isEmpty = !runtime || Object.keys(summary).length === 0
+  const actionQueue = runtime?.action_queue ?? []
+
+  return (
+    <SectionCard
+      title="Runtime Intelligence"
+      status={status}
+      detail={runtime?.schema_version ?? 'APCR · AEMOR · ASEIF · Swarm · external execution'}
+      wide
+      isEmpty={isEmpty}
+      emptyMessage="runtime intelligence summary is not present in the backend snapshot"
+    >
+      <div className="cp-section-totals">
+        <div>
+          <div className="v">{asNumber(summary.system_blockers_count)}</div>
+          <div className="l">system blockers</div>
+        </div>
+        <div>
+          <div className="v">{asNumber(summary.operator_queue_count)}</div>
+          <div className="l">operator queue</div>
+        </div>
+        <div>
+          <div className="v">{asNumber(summary.clarification_queue_count)}</div>
+          <div className="l">clarifications</div>
+        </div>
+        <div>
+          <div className="v">{asNumber(summary.aemor_episodes_total)}</div>
+          <div className="l">AEMOR episodes</div>
+        </div>
+        <div>
+          <div className="v">{asNumber(summary.intelligence_factory_capabilities_total)}</div>
+          <div className="l">capabilities</div>
+        </div>
+        <div>
+          <div className="v">{asNumber(summary.swarm_company_roles_total)}</div>
+          <div className="l">agent roles</div>
+        </div>
+        <div>
+          <div className="v">{asNumber(summary.external_execution_mandates_total)}</div>
+          <div className="l">mandates</div>
+        </div>
+        <div>
+          <div className="v">{pendingExternalApprovals}</div>
+          <div className="l">external approvals</div>
+        </div>
+        <div>
+          <div className="v" style={{ color: unsafeExternal > 0 ? 'rgba(220, 110, 110, 0.95)' : undefined }}>
+            {unsafeExternal}
+          </div>
+          <div className="l">unsafe enabled</div>
+        </div>
+        <div>
+          <div className="v" style={{ color: missingReceiptBindings > 0 ? 'rgba(214, 177, 96, 0.96)' : undefined }}>
+            {missingReceiptBindings}
+          </div>
+          <div className="l">receipt gaps</div>
+        </div>
+      </div>
+      {external ? (
+        <div className="cp-governance-strip">
+          <div>
+            <span className="k">External policy</span>
+            <span className="v">blocked by default · manual handoff only</span>
+          </div>
+          <div>
+            <span className="k">Signature coverage</span>
+            <span className="v">{signatureCoverage}</span>
+          </div>
+          <div>
+            <span className="k">Receipt bindings</span>
+            <span className="v">
+              {asNumber(externalSummary.receipt_binding_count)} bound · {missingReceiptBindings} missing
+            </span>
+          </div>
+          <div>
+            <span className="k">Unsafe execution</span>
+            <span className="v">{unsafeExternal === 0 ? 'none enabled' : `${unsafeExternal} blocked`}</span>
+          </div>
+        </div>
+      ) : null}
+      <dl className="cp-key-value">
+        {sections.map(([label, section]) => (
+          <div key={label} style={{ display: 'contents' }}>
+            <dt>{label}</dt>
+            <dd>
+              <StatusBadge status={section?.status ?? 'missing'} />{' '}
+              {Object.entries((section?.summary as Record<string, unknown> | undefined) ?? {})
+                .slice(0, 2)
+                .map(([k, v]) => `${k}=${String(v)}`)
+                .join(' · ') || 'no counters'}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {actionQueue.length > 0 ? (
+        <ul className="cp-section-list">
+          {actionQueue.slice(0, 6).map((item, idx) => (
+            <li key={`${item.kind}-${item.target_id ?? idx}`}>
+              <div className="cp-row-title">
+                <StatusBadge status={item.status} />
+                <span>{item.kind}</span>
+              </div>
+              <div className="cp-row-meta">
+                {item.detail}
+                {item.target_id !== undefined && item.target_id !== null ? ` · ${String(item.target_id).slice(0, 12)}` : ''}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {runtime?.hash ? <div className="cp-row-meta">hash {runtime.hash}</div> : null}
     </SectionCard>
   )
 }
@@ -553,6 +706,7 @@ export function ControlPlaneSurface() {
           <EvidenceSection summary={snapshot.evidence_summary} />
           <ApprovalsSection snapshot={snapshot} />
           <CertificationSection snapshot={snapshot} />
+          <RuntimeIntelligenceSection snapshot={snapshot} />
           <BlockersSection snapshot={snapshot} />
           <TimelineSection events={recentEvents} />
           <NextActionsSection actions={nextActions} />
@@ -561,4 +715,3 @@ export function ControlPlaneSurface() {
     </div>
   )
 }
-
