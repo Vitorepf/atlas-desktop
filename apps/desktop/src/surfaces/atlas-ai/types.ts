@@ -164,6 +164,38 @@ export interface AtlasAiRuntimeReadiness {
   } | null
 }
 
+export interface AtlasAwisLearningLoop {
+  schema_version?: 'atlas.awis.workspace_intelligence_loop.v1' | string
+  status?: 'ready' | 'blocked' | string
+  workspace_id?: string | null
+  next_action?: {
+    status?: 'ready' | 'blocked' | string
+    action?: string | null
+    target?: string | null
+    reasons?: ReadonlyArray<string> | null
+  } | null
+  evidence_learning?: {
+    learning_score?: number | null
+    missing_evidence?: ReadonlyArray<string> | null
+    feedback_targets?: ReadonlyArray<string> | null
+  } | null
+  closed_loop?: {
+    event_to_understanding?: boolean
+    understanding_to_memory?: boolean
+    memory_to_context?: boolean
+    context_to_next_action?: boolean
+    next_action_to_evidence?: boolean
+    evidence_to_learning?: boolean
+    loop_closed?: boolean
+  } | null
+  context_application?: {
+    raw_conversation_included?: boolean
+    provider_prompt_allowed?: boolean
+    stale_policy?: string | null
+  } | null
+  loop_hash?: string | null
+}
+
 /** Mantido em sync com `provider` enum em StoreAiInteractionRequest. */
 export type AtlasAiProvider =
   | 'claude_cli'
@@ -209,6 +241,111 @@ export interface AiThreadMessage {
 export interface AiThreadDetail extends AiThreadSummary {
   messages?: AiThreadMessage[]
   last_trace?: AiTrace | null
+}
+
+export interface AtlasWorkspaceConversationFusion {
+  schema_version?: 'atlas.workspace_conversation_fusion.v1' | string
+  status?: 'ready' | 'empty' | 'blocked' | string
+  workspace_id?: string | null
+  workspace_name?: string | null
+  source_policy?: {
+    raw_conversation_returned?: boolean
+    full_message_content_returned?: boolean
+    hashes_are_authoritative?: boolean
+    workspace_isolation_required?: boolean
+  } | null
+  summary?: {
+    thread_count?: number
+    message_count?: number
+    decision_count?: number
+    blocker_count?: number
+    risk_count?: number
+  } | null
+  fusion_pack?: {
+    schema_version?: string
+    workspace_id?: string | null
+    source_thread_ids?: string[]
+    source_thread_hashes?: string[]
+    summary_units?: Array<{ id?: string; label?: string; value?: string }>
+    decision_ledger?: unknown[]
+    blocker_ledger?: unknown[]
+    risk_ledger?: unknown[]
+    fusion_pack_hash?: string | null
+  } | null
+  persisted_artifact?: {
+    artifact_id?: string | null
+    artifact_type?: string | null
+    artifact_hash?: string | null
+    runtime_hash?: string | null
+  } | null
+  requested_thread_ids?: string[]
+  rejected_thread_ids?: string[]
+  claim_policy?: {
+    read_only?: boolean
+    invokes_provider?: boolean
+    spends_tokens?: boolean
+    cross_workspace_merge_allowed?: boolean
+    safe_for_context_pack?: boolean
+  } | null
+  fusion_hash?: string | null
+  reason?: string | null
+}
+
+export interface AtlasWorkspaceArtifactLakeEntry {
+  schema_version?: 'atlas.workspace_artifact_lake_entry.v1' | string
+  status?: 'ready' | 'blocked' | string
+  workspace_id?: string | null
+  blockers?: string[] | null
+  artifact?: {
+    artifact_id?: string | null
+    artifact_hash?: string | null
+    runtime_hash?: string | null
+    artifact_type?: string | null
+    status?: string | null
+    consumer?: string | null
+    source_hashes?: string[] | null
+    quality_score?: number | null
+    captured_at?: string | null
+    body?: {
+      schema_version?: string
+      summary?: AtlasWorkspaceConversationFusion['summary']
+      fusion_pack?: AtlasWorkspaceConversationFusion['fusion_pack']
+      source_policy?: AtlasWorkspaceConversationFusion['source_policy']
+    } | null
+  } | null
+  replay_contract?: {
+    workspace_scope_required?: boolean
+    raw_conversation_replay_allowed?: boolean
+    provider_prompt_allowed?: boolean
+    recommended_consumers?: string[]
+  } | null
+  source_policy?: AtlasWorkspaceConversationFusion['source_policy'] | null
+  claim_policy?: {
+    read_only?: boolean
+    invokes_provider?: boolean
+    spends_tokens?: boolean
+    cross_workspace_read_allowed?: boolean
+  } | null
+}
+
+export interface AtlasServerHealth {
+  status?: 'ok' | string
+  service?: string | null
+  version?: string | null
+  ts?: string | null
+  db_connected?: boolean | null
+  overall_ok?: boolean | null
+  checks?: {
+    database?: {
+      ok?: boolean | null
+    } | null
+    storage?: {
+      ok?: boolean | null
+      writable?: boolean | null
+      path?: string | null
+      error?: string | null
+    } | null
+  } & Record<string, unknown> | null
 }
 
 /**

@@ -14,8 +14,8 @@
  *   - docs/engineering-knowledge-base/atlas-ai-conversation-surface-and-atlas-dev-v1.md
  *   - docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AtlasWorkspaceProfile } from '@atlas/domain'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import type { AtlasWorkspaceProfile, AtlasWorkspaceProfileList } from '@atlas/domain'
 import type { Surface } from '../../hooks/useSurface'
 // ProjectScopeStrip removido do Atlas AI: era redundante (info já vive
 // no WorkspacePill do topbar). Para abrir Project Profile, mantemos um
@@ -34,16 +34,32 @@ import { AtlasAiHero } from './components/AtlasAiHero'
 import { AtlasAiPromotionPanel } from './components/AtlasAiPromotionPanel'
 import { AtlasAiRuntimeStatusPill } from './components/AtlasAiRuntimeStatusPill'
 import { AtlasAiSidePanel } from './components/AtlasAiSidePanel'
+import { AtlasAiWorkspacePicker } from './components/AtlasAiWorkspacePicker'
 import { AtlasAiThreadContextMenu, type ContextMenuPos } from './components/AtlasAiThreadContextMenu'
-import { AtlasAiThreadList } from './components/AtlasAiThreadList'
+import { ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, AtlasAiThreadList } from './components/AtlasAiThreadList'
 import {
   AtlasAiVoiceConversationOverlay,
   type AtlasAiVoiceSpeechState,
 } from './components/AtlasAiVoiceConversationOverlay'
 import { useRuntimeReadiness } from './useRuntimeReadiness'
+import { applyAwisOperationalHealth } from './runtimeReadinessView'
 import { useAtlasAiColumnSizing } from './layout/useAtlasAiColumnSizing'
 import { serializeThreadAsMarkdown } from './threadExport'
 import { useAtlasAi } from './useAtlasAi'
+import { getAtlasAwisLearningLoop, getAtlasServerHealth } from './client'
+import {
+  evaluateAwisWorkspaceIntelligence,
+  type AwisLearningLoopState,
+  type AwisServerHealthState,
+  type AwisWorkspaceIntelligence,
+} from './awisIntelligence'
+import {
+  nextWorkbenchFocusAfterClose,
+  nextWorkbenchThreadSelection,
+  pickWorkbenchRecordKeys,
+  pruneWorkbenchScope,
+} from './workbenchSelection'
+import { atlasAiWorkspaceScopeFromProfile, threadBelongsToWorkspace } from './workspaceScope'
 import {
   atlasVoiceAcceptsSpeechRunEvent,
   atlasVoiceCanResetStaleTurn,
@@ -61,10 +77,17 @@ import {
 import { speakAtlasAiText, stopAtlasAiSpeech } from './atlasAiVoiceReply'
 import { useCalmaria } from './useCalmaria'
 import { useComposerSize } from './useComposerSize'
-import type { AiThreadSummary } from './types'
+import type { AiThreadDetail, AiThreadSummary } from './types'
 import './atlas-ai.css'
 
+interface WorkbenchPaneDetail {
+  detail: AiThreadDetail | null
+  loading: boolean
+  error: string | null
+}
+
 const PINNED_STORAGE = 'atlas-desktop:atlas-ai-pinned-threads'
+const WORKBENCH_SNAPSHOTS_STORAGE = 'atlas-desktop:atlas-ai-workbench-snapshots'
 const VOICE_TURN_POLL_MS = 80
 const VOICE_MIN_RMS = 0.0015
 const VOICE_MIN_PEAK = 0.008
@@ -138,6 +161,76 @@ function savePinned(ids: Set<string>) {
   }
 }
 
+interface WorkbenchSnapshot {
+  threadIds: string[]
+  focusedThreadId: string | null
+  updatedAt: number
+}
+
+function loadWorkbenchSnapshots(): Record<string, WorkbenchSnapshot> {
+  try {
+    const raw = localStorage.getItem(WORKBENCH_SNAPSHOTS_STORAGE)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const snapshots: Record<string, WorkbenchSnapshot> = {}
+    for (const [slug, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+      const candidate = value as Partial<WorkbenchSnapshot>
+      const threadIds = Array.isArray(candidate.threadIds)
+        ? Array.from(new Set(candidate.threadIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))).slice(0, 4)
+        : []
+      if (threadIds.length === 0) continue
+      const focusedThreadId =
+        typeof candidate.focusedThreadId === 'string' && threadIds.includes(candidate.focusedThreadId)
+          ? candidate.focusedThreadId
+          : threadIds[0] ?? null
+      snapshots[slug] = {
+        threadIds,
+        focusedThreadId,
+        updatedAt: typeof candidate.updatedAt === 'number' ? candidate.updatedAt : 0,
+      }
+    }
+    return snapshots
+  } catch {
+    return {}
+  }
+}
+
+function saveWorkbenchSnapshot(workspaceSlug: string, snapshot: WorkbenchSnapshot | null) {
+  if (!workspaceSlug) return
+  try {
+    const snapshots = loadWorkbenchSnapshots()
+    if (snapshot && snapshot.threadIds.length > 0) {
+      snapshots[workspaceSlug] = snapshot
+    } else {
+      delete snapshots[workspaceSlug]
+    }
+    localStorage.setItem(WORKBENCH_SNAPSHOTS_STORAGE, JSON.stringify(snapshots))
+  } catch {
+    /* ignore */
+  }
+}
+
+function restoreWorkbenchSnapshot(workspaceSlug: string, availableThreadIds: Set<string>): WorkbenchSnapshot | null {
+  const snapshot = loadWorkbenchSnapshots()[workspaceSlug]
+  if (!snapshot) return null
+  const threadIds = snapshot.threadIds.filter((id) => availableThreadIds.has(id)).slice(0, 4)
+  if (threadIds.length === 0) return null
+  const focusedThreadId =
+    snapshot.focusedThreadId && threadIds.includes(snapshot.focusedThreadId)
+      ? snapshot.focusedThreadId
+      : threadIds[0] ?? null
+  return { threadIds, focusedThreadId, updatedAt: snapshot.updatedAt }
+}
+
+function omitRecordKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  if (!(key in record)) return record
+  const next = { ...record }
+  delete next[key]
+  return next
+}
+
 function humanizeAtlasVoiceSpeechError(reason: string | null | undefined): string {
   const raw = reason ?? ''
   if (raw.includes('paid_plan_required') || raw.includes('http_status: 402')) {
@@ -158,27 +251,112 @@ function humanizeAtlasVoiceSpeechError(reason: string | null | undefined): strin
   return 'Não consegui falar a resposta.'
 }
 
+function workspaceSlugFromThread(thread: AiThreadDetail | null): string | null {
+  const meta = thread?.metadata ?? {}
+  const candidates = [
+    typeof meta.workspace_slug === 'string' ? meta.workspace_slug : null,
+    thread?.workspace ?? null,
+  ]
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim()
+    if (trimmed) return trimmed
+  }
+  return null
+}
+
+function workspaceKey(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  const parts = trimmed.split(/[\\/]+/).filter(Boolean)
+  return (parts.at(-1) ?? trimmed).toLowerCase()
+}
+
+function profileMatchesWorkspaceValue(profile: AtlasWorkspaceProfile, value: string | null | undefined): boolean {
+  const raw = value?.trim()
+  if (!raw) return false
+  const key = workspaceKey(raw)
+  return profile.slug === raw
+    || profile.workspacePath === raw
+    || profile.slug.toLowerCase() === key
+    || workspaceKey(profile.workspacePath) === key
+}
+
 interface AtlasAiSurfaceProps {
   activeWorkspaceSlug?: string | null
   activeWorkspaceName?: string | null
   activeWorkspace?: AtlasWorkspaceProfile | null
+  workspaces?: AtlasWorkspaceProfileList | null
   defaultWorkspaceSlug?: string | null
   onRequestSurfaceChange?: (surface: Surface) => void
-  onOpenWorkspaceProfile?: () => void
+  onSelectWorkspace?: (slug: string) => Promise<void> | void
+  onOpenWorkspaceProfile?: (mode?: 'view' | 'create' | 'edit') => void
+  onChooseWorkspaceFolder?: () => Promise<boolean | void> | boolean | void
 }
 
 export function AtlasAiSurface({
   activeWorkspaceSlug = null,
   activeWorkspaceName = null,
   activeWorkspace = null,
+  workspaces = null,
   defaultWorkspaceSlug = null,
+  onSelectWorkspace,
+  onOpenWorkspaceProfile,
+  onChooseWorkspaceFolder,
 }: AtlasAiSurfaceProps) {
-  const resolvedWorkspaceSlug = activeWorkspaceSlug ?? activeWorkspace?.slug ?? defaultWorkspaceSlug ?? 'atlas'
-  const atlas = useAtlasAi(resolvedWorkspaceSlug, activeWorkspace?.workspacePath || null)
+  const shellWorkspaceSlug = activeWorkspaceSlug ?? activeWorkspace?.slug ?? defaultWorkspaceSlug ?? 'atlas'
+  const atlas = useAtlasAi(shellWorkspaceSlug, activeWorkspace?.workspacePath || null)
+  const [workspaceLock, setWorkspaceLock] = useState<{
+    slug: string
+    name: string | null
+    path: string | null
+  } | null>(null)
+  const conversationWorkspaceOpen = atlas.selectedThreadId !== null || atlas.pendingUserMessage !== null
+  const lockedWorkspaceSlug = workspaceLock?.slug ?? null
+  const effectiveWorkspaceSlug = lockedWorkspaceSlug ?? shellWorkspaceSlug
+  const effectiveWorkspaceProfile = useMemo(
+    () => workspaces?.profiles.find((profile) => profile.slug === effectiveWorkspaceSlug)
+      ?? (activeWorkspace?.slug === effectiveWorkspaceSlug ? activeWorkspace : null),
+    [activeWorkspace, effectiveWorkspaceSlug, workspaces?.profiles],
+  )
+  const effectiveWorkspaceName =
+    workspaceLock?.name
+    ?? effectiveWorkspaceProfile?.name
+    ?? (activeWorkspace?.slug === effectiveWorkspaceSlug ? activeWorkspaceName : null)
+    ?? effectiveWorkspaceSlug
+  const effectiveWorkspacePath =
+    workspaceLock?.path
+    ?? effectiveWorkspaceProfile?.workspacePath
+    ?? (activeWorkspace?.slug === effectiveWorkspaceSlug ? activeWorkspace?.workspacePath : null)
+    ?? null
+  const activeWorkspaceScope = useMemo(
+    () => atlasAiWorkspaceScopeFromProfile(effectiveWorkspaceSlug, effectiveWorkspaceProfile),
+    [effectiveWorkspaceProfile, effectiveWorkspaceSlug],
+  )
+  const effectiveWorkspaceHasRepo = effectiveWorkspaceProfile?.workspacePathExists === true
+  const effectiveWorkspaceFolderLabel = effectiveWorkspaceHasRepo
+    ? 'Pasta pronta'
+    : effectiveWorkspacePath
+      ? 'Pasta ausente'
+      : 'Sem pasta local'
+  const effectiveWorkspaceScopeLabel = effectiveWorkspaceHasRepo ? 'projeto' : 'contexto'
   const runtimeReadiness = useRuntimeReadiness()
   const { calmaria, toggle: toggleCalmaria } = useCalmaria()
   const composerSize = useComposerSize()
   const [composerDraft, setComposerDraft] = useState<string>('')
+  const [workbenchThreadIds, setWorkbenchThreadIds] = useState<string[]>([])
+  const [workbenchActive, setWorkbenchActive] = useState<boolean>(false)
+  const [workbenchFocusedThreadId, setWorkbenchFocusedThreadId] = useState<string | null>(null)
+  const [workbenchDrafts, setWorkbenchDrafts] = useState<Record<string, string>>({})
+  const [workbenchDetails, setWorkbenchDetails] = useState<Record<string, WorkbenchPaneDetail>>({})
+  const [workbenchPendingThreadId, setWorkbenchPendingThreadId] = useState<string | null>(null)
+  const [workbenchNotice, setWorkbenchNotice] = useState<string | null>(null)
+  const [storedWorkbenchThreadIds, setStoredWorkbenchThreadIds] = useState<string[]>([])
+  const [projectSpaceCount, setProjectSpaceCount] = useState(0)
+  const [awisLearningLoop, setAwisLearningLoop] = useState<AwisLearningLoopState | null>(null)
+  const [awisServerHealth, setAwisServerHealth] = useState<AwisServerHealthState | null>(null)
+  const [awisHealthRefreshKey, setAwisHealthRefreshKey] = useState(0)
+  const [stageThreadDropActive, setStageThreadDropActive] = useState<boolean>(false)
+  const [threadDragClearSignal, setThreadDragClearSignal] = useState(0)
   const [promotionOpen, setPromotionOpen] = useState<boolean>(false)
   const [retrying, setRetrying] = useState<boolean>(false)
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => loadPinned())
@@ -215,6 +393,9 @@ export function AtlasAiSurface({
   const voiceNoiseFloorRef = useRef<{ rms: number; peak: number; samples: number } | null>(null)
   const voiceRearmAttemptRef = useRef<number>(0)
   const voicePendingContinuationRef = useRef<string | null>(null)
+  const shellWorkspaceSyncRef = useRef<string | null>(null)
+  const workbenchNoticeTimerRef = useRef<number | null>(null)
+  const awisHistoryRecoveryErrorRef = useRef<string | null>(null)
 
   // Layout rails (drag-resize + collapse persist)
   const { setLeftResizeNode, setRightResizeNode } = useAtlasAiColumnSizing()
@@ -223,17 +404,79 @@ export function AtlasAiSurface({
   const toggleLeft = useAtlasAiLayoutStore((s) => s.toggleLeftCollapsed)
   const toggleRight = useAtlasAiLayoutStore((s) => s.toggleRightCollapsed)
 
-  // Sincroniza workspace selecionado quando o topbar do shell muda.
+  const refreshAwisHealth = useCallback(() => {
+    setAwisHealthRefreshKey((value) => value + 1)
+  }, [])
+
+  useEffect(() => {
+    if (!conversationWorkspaceOpen) {
+      setWorkspaceLock(null)
+      shellWorkspaceSyncRef.current = null
+      return
+    }
+
+    const detailWorkspace = workspaceSlugFromThread(atlas.threadDetail)
+    const profile = workspaces?.profiles.find((item) => profileMatchesWorkspaceValue(item, detailWorkspace))
+      ?? (activeWorkspace && profileMatchesWorkspaceValue(activeWorkspace, detailWorkspace) ? activeWorkspace : null)
+    const nextSlug = profile?.slug ?? detailWorkspace ?? workspaceLock?.slug ?? atlas.workspaceSlug ?? shellWorkspaceSlug
+    const nextPath = profile?.workspacePath
+      ?? (detailWorkspace && /[\\/]/.test(detailWorkspace) ? detailWorkspace : null)
+      ?? (nextSlug === atlas.workspaceSlug ? atlas.workspacePath : null)
+      ?? (nextSlug === shellWorkspaceSlug ? activeWorkspace?.workspacePath : null)
+      ?? (detailWorkspace ? null : workspaceLock?.path)
+      ?? null
+    const nextName = profile?.name
+      ?? (nextSlug === shellWorkspaceSlug ? activeWorkspaceName : null)
+      ?? (detailWorkspace ? workspaceKey(detailWorkspace) : workspaceLock?.name)
+      ?? nextSlug
+
+    if (
+      workspaceLock?.slug !== nextSlug ||
+      workspaceLock?.path !== nextPath ||
+      workspaceLock?.name !== nextName
+    ) {
+      setWorkspaceLock({ slug: nextSlug, name: nextName, path: nextPath })
+    }
+  }, [
+    activeWorkspace,
+    activeWorkspaceName,
+    atlas.threadDetail,
+    atlas.workspacePath,
+    atlas.workspaceSlug,
+    conversationWorkspaceOpen,
+    shellWorkspaceSlug,
+    workspaces?.profiles,
+    workspaceLock,
+  ])
+
+  useEffect(() => {
+    const lockedSlug = workspaceLock?.slug ?? null
+    if (!conversationWorkspaceOpen || !lockedSlug || !onSelectWorkspace || effectiveWorkspaceProfile?.slug !== lockedSlug) return
+    if (lockedSlug === shellWorkspaceSlug) {
+      if (shellWorkspaceSyncRef.current === lockedSlug) shellWorkspaceSyncRef.current = null
+      return
+    }
+    if (shellWorkspaceSyncRef.current === lockedSlug) return
+
+    shellWorkspaceSyncRef.current = lockedSlug
+    void Promise.resolve(onSelectWorkspace(lockedSlug)).catch(() => {
+      shellWorkspaceSyncRef.current = null
+    })
+  }, [conversationWorkspaceOpen, effectiveWorkspaceProfile?.slug, onSelectWorkspace, shellWorkspaceSlug, workspaceLock?.slug])
+
+  // Sincroniza workspace selecionado quando o topbar do shell muda. Durante uma
+  // conversa, o escopo fica congelado no workspace original para impedir que a
+  // thread misture repositórios no meio do fluxo.
   const { workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath } = atlas
   useEffect(() => {
-    if (resolvedWorkspaceSlug !== workspaceSlug) {
-      setWorkspaceSlug(resolvedWorkspaceSlug)
+    if (effectiveWorkspaceSlug !== workspaceSlug) {
+      setWorkspaceSlug(effectiveWorkspaceSlug)
     }
-    const nextWorkspacePath = activeWorkspace?.workspacePath || null
+    const nextWorkspacePath = effectiveWorkspacePath || null
     if (nextWorkspacePath !== workspacePath) {
       setWorkspacePath(nextWorkspacePath)
     }
-  }, [resolvedWorkspaceSlug, activeWorkspace?.workspacePath, workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath])
+  }, [effectiveWorkspaceSlug, effectiveWorkspacePath, workspaceSlug, workspacePath, setWorkspaceSlug, setWorkspacePath])
 
   // Esc cancela streaming em curso (Codex CLI canon "esc to interrupt").
   const { cancelPending, sending, pendingTrace } = atlas
@@ -283,6 +526,508 @@ export function AtlasAiSurface({
       atlas.sending,
     ],
   )
+
+  const availableWorkspaceThreadIds = useMemo(
+    () => new Set(
+      atlas.threads
+        .filter((thread) => threadBelongsToWorkspace(thread, activeWorkspaceScope))
+        .map((thread) => thread.id),
+    ),
+    [activeWorkspaceScope, atlas.threads],
+  )
+  const availableWorkspaceThreadKey = useMemo(
+    () => Array.from(availableWorkspaceThreadIds).sort().join('|'),
+    [availableWorkspaceThreadIds],
+  )
+  const activeWorkspaceThreadCount = availableWorkspaceThreadIds.size
+
+  const handleSelectThread = useCallback(
+    (id: string) => {
+      setWorkbenchActive(false)
+      setWorkbenchThreadIds([id])
+      setWorkbenchFocusedThreadId(id)
+      atlas.selectThread(id)
+    },
+    [atlas],
+  )
+
+  const showWorkbenchNotice = useCallback((message: string) => {
+    setWorkbenchNotice(message)
+    if (workbenchNoticeTimerRef.current !== null) {
+      window.clearTimeout(workbenchNoticeTimerRef.current)
+    }
+    workbenchNoticeTimerRef.current = window.setTimeout(() => {
+      setWorkbenchNotice(null)
+      workbenchNoticeTimerRef.current = null
+    }, 2400)
+  }, [])
+
+  const handleAwisConfigureProject = useCallback(() => {
+    onOpenWorkspaceProfile?.(effectiveWorkspaceProfile ? 'edit' : 'create')
+  }, [effectiveWorkspaceProfile, onOpenWorkspaceProfile])
+
+  const handleAwisChooseFolder = useCallback(async () => {
+    if (!onChooseWorkspaceFolder) {
+      handleAwisConfigureProject()
+      return
+    }
+    const changed = await onChooseWorkspaceFolder()
+    if (changed) {
+      showWorkbenchNotice('Pasta local vinculada. AWIS pronto para contexto e execução.')
+      refreshAwisHealth()
+    }
+  }, [
+    handleAwisConfigureProject,
+    onChooseWorkspaceFolder,
+    refreshAwisHealth,
+    showWorkbenchNotice,
+  ])
+
+  useEffect(() => () => {
+    if (workbenchNoticeTimerRef.current !== null) {
+      window.clearTimeout(workbenchNoticeTimerRef.current)
+    }
+  }, [])
+
+  const focusWorkbenchPane = useCallback(
+    (id: string | null) => {
+      setWorkbenchFocusedThreadId(id)
+      if (id) atlas.selectThread(id)
+    },
+    [atlas],
+  )
+
+  const handleOpenThreadBeside = useCallback(
+    (id: string) => {
+      if (!availableWorkspaceThreadIds.has(id)) {
+        showWorkbenchNotice('Abra o projeto desta conversa para comparar sessões.')
+        return
+      }
+      const selectedThreadId = atlas.selectedThreadId && availableWorkspaceThreadIds.has(atlas.selectedThreadId)
+        ? atlas.selectedThreadId
+        : null
+      const scopedWorkbenchThreadIds = workbenchThreadIds.filter((threadId) => availableWorkspaceThreadIds.has(threadId))
+      const next = nextWorkbenchThreadSelection(scopedWorkbenchThreadIds, selectedThreadId, id)
+      if (next.atLimit) {
+        showWorkbenchNotice('Limite de 4 sessões. Feche uma para abrir outra.')
+      }
+      setWorkbenchActive(true)
+      setWorkbenchThreadIds(next.threadIds)
+      if (next.threadIds.includes(id)) {
+        focusWorkbenchPane(id)
+      }
+    },
+    [availableWorkspaceThreadIds, focusWorkbenchPane, showWorkbenchNotice, workbenchThreadIds],
+  )
+
+  const handleAddThreadToWorkbench = useCallback(
+    (id: string) => {
+      if (!id) return
+      if (!availableWorkspaceThreadIds.has(id)) {
+        showWorkbenchNotice('Abra o projeto desta conversa para comparar sessões.')
+        return
+      }
+      const selectedThreadId = atlas.selectedThreadId && availableWorkspaceThreadIds.has(atlas.selectedThreadId)
+        ? atlas.selectedThreadId
+        : null
+      const scopedWorkbenchThreadIds = workbenchThreadIds.filter((threadId) => availableWorkspaceThreadIds.has(threadId))
+      const next = nextWorkbenchThreadSelection(scopedWorkbenchThreadIds, selectedThreadId, id)
+      if (next.atLimit) {
+        showWorkbenchNotice('Limite de 4 sessões. Feche uma para abrir outra.')
+      }
+      setWorkbenchActive(true)
+      setWorkbenchThreadIds(next.threadIds)
+      if (next.threadIds.includes(id)) {
+        focusWorkbenchPane(id)
+      }
+    },
+    [availableWorkspaceThreadIds, focusWorkbenchPane, showWorkbenchNotice, workbenchThreadIds],
+  )
+
+  const clearThreadDragVisualState = useCallback(() => {
+    setThreadDragClearSignal((value) => value + 1)
+    window.dispatchEvent(new CustomEvent(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT))
+  }, [])
+
+  const handleOpenThreadInStage = useCallback(
+    (id: string) => {
+      handleAddThreadToWorkbench(id)
+      clearThreadDragVisualState()
+    },
+    [clearThreadDragVisualState, handleAddThreadToWorkbench],
+  )
+
+  const threadIdFromDragEvent = useCallback((event: DragEvent<HTMLElement>) => {
+    return (
+      event.dataTransfer.getData('application/x-atlas-ai-thread-id') ||
+      event.dataTransfer.getData('text/x-atlas-ai-thread-id')
+    )
+  }, [])
+
+  const stageAcceptsThreadDrop = useCallback((event: DragEvent<HTMLElement>) => {
+    const types = Array.from(event.dataTransfer.types)
+    return types.includes('application/x-atlas-ai-thread-id') || types.includes('text/x-atlas-ai-thread-id')
+  }, [])
+
+  useEffect(() => {
+    const clearStageDrop = () => setStageThreadDropActive(false)
+    const clearOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearStageDrop()
+    }
+    window.addEventListener('dragend', clearStageDrop)
+    window.addEventListener('drop', clearStageDrop)
+    window.addEventListener('mouseup', clearStageDrop)
+    window.addEventListener('pointerup', clearStageDrop)
+    window.addEventListener('blur', clearStageDrop)
+    window.addEventListener('keydown', clearOnEscape)
+    return () => {
+      window.removeEventListener('dragend', clearStageDrop)
+      window.removeEventListener('drop', clearStageDrop)
+      window.removeEventListener('mouseup', clearStageDrop)
+      window.removeEventListener('pointerup', clearStageDrop)
+      window.removeEventListener('blur', clearStageDrop)
+      window.removeEventListener('keydown', clearOnEscape)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (workbenchThreadIds.length === 0) return
+    const next = pruneWorkbenchScope({
+      threadIds: workbenchThreadIds,
+      availableThreadIds: availableWorkspaceThreadIds,
+      focusedThreadId: workbenchFocusedThreadId,
+      pendingThreadId: workbenchPendingThreadId,
+      active: workbenchActive,
+    })
+    if (!next.changed) return
+
+    const scopedSet = new Set(next.threadIds)
+    setWorkbenchThreadIds(next.threadIds)
+    setWorkbenchDrafts((prev) => pickWorkbenchRecordKeys(prev, scopedSet))
+    setWorkbenchDetails((prev) => pickWorkbenchRecordKeys(prev, scopedSet))
+    setWorkbenchPendingThreadId(next.pendingThreadId)
+    setWorkbenchActive(next.active)
+    setWorkbenchFocusedThreadId(next.focusedThreadId)
+    if (next.focusedThreadId !== workbenchFocusedThreadId) {
+      atlas.selectThread(next.focusedThreadId)
+    }
+  }, [
+    atlas,
+    availableWorkspaceThreadIds,
+    availableWorkspaceThreadKey,
+    workbenchActive,
+    workbenchFocusedThreadId,
+    workbenchPendingThreadId,
+    workbenchThreadIds,
+  ])
+
+  useEffect(() => {
+    const snapshot = restoreWorkbenchSnapshot(effectiveWorkspaceSlug, availableWorkspaceThreadIds)
+    setStoredWorkbenchThreadIds(snapshot?.threadIds ?? [])
+  }, [availableWorkspaceThreadIds, availableWorkspaceThreadKey, effectiveWorkspaceSlug])
+
+  useEffect(() => {
+    if (workbenchActive && workbenchThreadIds.length > 0) {
+      const scopedThreadIds = workbenchThreadIds
+        .filter((threadId) => availableWorkspaceThreadIds.has(threadId))
+        .slice(0, 4)
+      if (scopedThreadIds.length === 0) {
+        saveWorkbenchSnapshot(effectiveWorkspaceSlug, null)
+        setStoredWorkbenchThreadIds([])
+        return
+      }
+      saveWorkbenchSnapshot(effectiveWorkspaceSlug, {
+        threadIds: scopedThreadIds,
+        focusedThreadId: workbenchFocusedThreadId && scopedThreadIds.includes(workbenchFocusedThreadId)
+          ? workbenchFocusedThreadId
+          : scopedThreadIds[0] ?? null,
+        updatedAt: Date.now(),
+      })
+      setStoredWorkbenchThreadIds(scopedThreadIds)
+      return
+    }
+    if (!workbenchActive && workbenchThreadIds.length === 0) {
+      saveWorkbenchSnapshot(effectiveWorkspaceSlug, null)
+      setStoredWorkbenchThreadIds([])
+    }
+  }, [availableWorkspaceThreadIds, effectiveWorkspaceSlug, workbenchActive, workbenchFocusedThreadId, workbenchThreadIds])
+
+  useEffect(() => {
+    if (atlas.mode === 'offline') {
+      setAwisServerHealth({ status: 'unavailable', dbConnected: null, overallOk: false })
+      return
+    }
+
+    let cancelled = false
+    setAwisServerHealth((prev) => prev ?? { status: 'loading', dbConnected: null, overallOk: null })
+    void getAtlasServerHealth().then((health) => {
+      if (cancelled) return
+      if (!health) {
+        setAwisServerHealth({ status: 'unavailable', dbConnected: null, overallOk: false })
+        return
+      }
+      const dbConnected = health.db_connected ?? null
+      const overallOk = health.overall_ok ?? null
+      const storage = health.checks?.storage ?? null
+      const storageOk = typeof storage?.ok === 'boolean' ? storage.ok : null
+      const storageWritable = typeof storage?.writable === 'boolean' ? storage.writable : null
+      const storagePath = typeof storage?.path === 'string' ? storage.path : null
+      const storageHealthy = storageOk !== false && storageWritable !== false
+      setAwisServerHealth({
+        status: health.status === 'ok' && overallOk !== false && dbConnected !== false && storageHealthy ? 'ready' : 'degraded',
+        dbConnected,
+        overallOk,
+        storageOk,
+        storageWritable,
+        storagePath,
+        detail: health.service || 'atlas-server',
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [atlas.mode, awisHealthRefreshKey, retrying])
+
+  useEffect(() => {
+    const currentError = atlas.threadsError?.trim() || null
+    if (!currentError) {
+      awisHistoryRecoveryErrorRef.current = null
+      return
+    }
+    if (
+      awisServerHealth?.status !== 'ready' ||
+      awisServerHealth.overallOk === false ||
+      awisServerHealth.dbConnected === false ||
+      retrying
+    ) {
+      return
+    }
+    if (awisHistoryRecoveryErrorRef.current === currentError) return
+
+    awisHistoryRecoveryErrorRef.current = currentError
+    void Promise.resolve().then(async () => {
+      await atlas.refreshThreads()
+      await atlas.refreshConversationFusion()
+    })
+  }, [
+    atlas.refreshConversationFusion,
+    atlas.refreshThreads,
+    atlas.threadsError,
+    awisServerHealth?.dbConnected,
+    awisServerHealth?.overallOk,
+    awisServerHealth?.status,
+    retrying,
+  ])
+
+  useEffect(() => {
+    const workspace = effectiveWorkspaceSlug?.trim()
+    if (!workspace || atlas.mode === 'offline') {
+      setAwisLearningLoop(null)
+      return
+    }
+
+    let cancelled = false
+    setAwisLearningLoop((prev) => prev ?? { status: 'loading', loopClosed: false })
+    const task = atlas.threadDetail?.title?.trim() || 'Atlas AI workspace'
+    void getAtlasAwisLearningLoop(workspace, task).then((loop) => {
+      if (cancelled) return
+      if (!loop) {
+        setAwisLearningLoop({ status: 'unavailable', loopClosed: false })
+        return
+      }
+      const status =
+        loop.status === 'ready'
+          ? 'ready'
+          : loop.status === 'blocked'
+            ? 'blocked'
+            : 'unavailable'
+      setAwisLearningLoop({
+        status,
+        loopClosed: loop.closed_loop?.loop_closed === true,
+        action: loop.next_action?.action ?? null,
+        learningScore: loop.evidence_learning?.learning_score ?? null,
+        hash: loop.loop_hash ?? null,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [atlas.mode, atlas.threadDetail?.title, effectiveWorkspaceSlug, effectiveWorkspaceProfile?.workspacePathExists, runtimeReadiness.status])
+
+  const handleOpenSpace = useCallback(
+    (threadIds: string[]) => {
+      const unique = Array.from(new Set(threadIds.filter(Boolean)))
+      const scoped = unique.filter((threadId) => availableWorkspaceThreadIds.has(threadId))
+      const next = scoped.slice(0, 4)
+      if (next.length === 0) {
+        showWorkbenchNotice('Este Space não tem sessões neste projeto.')
+        return
+      }
+      if (unique.length > 4) {
+        showWorkbenchNotice('Abrindo as 4 primeiras sessões deste Space.')
+      }
+      const focus = next[0]
+      setWorkbenchActive(true)
+      setWorkbenchThreadIds(next)
+      focusWorkbenchPane(focus)
+    },
+    [availableWorkspaceThreadIds, focusWorkbenchPane, showWorkbenchNotice],
+  )
+
+  const handleResumeWorkbench = useCallback(() => {
+    const snapshot = restoreWorkbenchSnapshot(effectiveWorkspaceSlug, availableWorkspaceThreadIds)
+    const threadIds = snapshot?.threadIds ?? storedWorkbenchThreadIds
+    const next = threadIds.filter((id) => availableWorkspaceThreadIds.has(id)).slice(0, 4)
+    if (next.length === 0) {
+      showWorkbenchNotice('Não encontrei sessões salvas para este projeto.')
+      setStoredWorkbenchThreadIds([])
+      saveWorkbenchSnapshot(effectiveWorkspaceSlug, null)
+      return
+    }
+    const focus = snapshot?.focusedThreadId && next.includes(snapshot.focusedThreadId)
+      ? snapshot.focusedThreadId
+      : next[0]
+    setWorkbenchActive(true)
+    setWorkbenchThreadIds(next)
+    focusWorkbenchPane(focus)
+  }, [availableWorkspaceThreadIds, effectiveWorkspaceSlug, focusWorkbenchPane, showWorkbenchNotice, storedWorkbenchThreadIds])
+
+  const handleOpenRecommendedSideBySide = useCallback(() => {
+    const scopedThreadIds = atlas.threads
+      .filter((thread) => threadBelongsToWorkspace(thread, activeWorkspaceScope))
+      .map((thread) => thread.id)
+    const recommended = Array.from(new Set([
+      atlas.selectedThreadId,
+      ...scopedThreadIds,
+    ].filter((id): id is string => typeof id === 'string' && id.trim() !== '')))
+      .slice(0, 2)
+
+    if (recommended.length < 2) {
+      showWorkbenchNotice('Preciso de pelo menos 2 conversas neste projeto.')
+      return
+    }
+
+    setWorkbenchActive(true)
+    setWorkbenchThreadIds(recommended)
+    focusWorkbenchPane(recommended[0])
+  }, [activeWorkspaceScope, atlas.selectedThreadId, atlas.threads, focusWorkbenchPane, showWorkbenchNotice])
+
+  const closeWorkbenchPane = useCallback(
+    (id: string) => {
+      setWorkbenchDrafts((prev) => omitRecordKey(prev, id))
+      setWorkbenchDetails((prev) => omitRecordKey(prev, id))
+      setWorkbenchPendingThreadId((prev) => (prev === id ? null : prev))
+      setWorkbenchThreadIds((prev) => {
+        const next = prev.filter((threadId) => threadId !== id)
+        const fallback = nextWorkbenchFocusAfterClose(prev, id)
+        setWorkbenchActive(next.length > 0)
+        focusWorkbenchPane(fallback)
+        return next
+      })
+    },
+    [focusWorkbenchPane],
+  )
+
+  const workbenchKey = workbenchThreadIds.join('|')
+  useEffect(() => {
+    if (workbenchThreadIds.length <= 1) return
+    let cancelled = false
+    for (const threadId of workbenchThreadIds) {
+      setWorkbenchDetails((prev) => {
+        const existing = prev[threadId]
+        if (existing?.detail || existing?.loading) return prev
+        return { ...prev, [threadId]: { detail: null, loading: true, error: null } }
+      })
+      void atlas.fetchThreadDetail(threadId)
+        .then((detail) => {
+          if (cancelled) return
+          setWorkbenchDetails((prev) => ({
+            ...prev,
+            [threadId]: {
+              detail,
+              loading: false,
+              error: detail ? null : 'Não consegui carregar esta conversa.',
+            },
+          }))
+        })
+        .catch(() => {
+          if (cancelled) return
+          setWorkbenchDetails((prev) => ({
+            ...prev,
+            [threadId]: {
+              detail: null,
+              loading: false,
+              error: 'Não consegui carregar esta conversa.',
+            },
+          }))
+        })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [atlas.fetchThreadDetail, workbenchKey])
+
+  useEffect(() => {
+    const threadId = atlas.threadDetail?.id
+    if (!threadId || !workbenchThreadIds.includes(threadId)) return
+    setWorkbenchDetails((prev) => {
+      const existing = prev[threadId]
+      if (existing?.detail === atlas.threadDetail && existing.loading === false && existing.error === null) {
+        return prev
+      }
+      return {
+        ...prev,
+        [threadId]: {
+          detail: atlas.threadDetail,
+          loading: false,
+          error: null,
+        },
+      }
+    })
+  }, [atlas.threadDetail, workbenchThreadIds])
+
+  const handleWorkbenchSend = useCallback(
+    async (threadId: string, options?: AtlasAiComposerSendExtras) => {
+      const sendingText = workbenchDrafts[threadId] ?? ''
+      focusWorkbenchPane(threadId)
+      setWorkbenchPendingThreadId(threadId)
+      setWorkbenchDrafts((prev) => ({ ...prev, [threadId]: '' }))
+      const trace = await atlas.send(sendingText, {
+        newThread: false,
+        threadId,
+        uploadedImageIds: options?.attachments?.uploaded_image_ids,
+        uploadedDocumentIds: options?.attachments?.uploaded_document_ids,
+        textBlocks: options?.attachments?.text_blocks,
+        urlAttachments: options?.attachments?.url_attachments,
+        richInputPayload: options?.richInputCanonical,
+        computeEffort: options?.computeEffort,
+      })
+      if (!trace && sendingText.trim() !== '') {
+        setWorkbenchDrafts((prev) => ({ ...prev, [threadId]: sendingText }))
+      }
+    },
+    [atlas, focusWorkbenchPane, workbenchDrafts],
+  )
+
+  useEffect(() => {
+    if (
+      workbenchPendingThreadId &&
+      !atlas.sending &&
+      !atlas.pendingTrace &&
+      !atlas.pendingUserMessage &&
+      atlas.streamingText === '' &&
+      !atlas.sendError
+    ) {
+      setWorkbenchPendingThreadId(null)
+    }
+  }, [
+    atlas.pendingTrace,
+    atlas.pendingUserMessage,
+    atlas.sendError,
+    atlas.sending,
+    atlas.streamingText,
+    workbenchPendingThreadId,
+  ])
 
   const latestAtlasMessage = useMemo(() => {
     const messages = atlas.threadDetail?.messages ?? []
@@ -356,12 +1101,12 @@ export function AtlasAiSurface({
   // surface atual já bastam para o Kernel desambiguar intenções genéricas.
   const voxContextRefsProvider = useCallback((): VoxContextRef[] => {
     const refs: VoxContextRef[] = []
-    if (resolvedWorkspaceSlug) {
-      refs.push({ kind: 'workspace', ref: resolvedWorkspaceSlug, resolved: true })
+    if (effectiveWorkspaceSlug) {
+      refs.push({ kind: 'workspace', ref: effectiveWorkspaceSlug, resolved: true })
     }
     refs.push({ kind: 'surface', ref: 'atlas_ai', resolved: true })
     return refs
-  }, [resolvedWorkspaceSlug])
+  }, [effectiveWorkspaceSlug])
   // V4 · structured snapshot resolver. Reads workspace + active surface +
   // selected thread + live text selection. NÃO toca clipboard, screenshot,
   // AppleScript ou Full Disk Access — apenas dados que o WKWebView já tem.
@@ -370,8 +1115,8 @@ export function AtlasAiSurface({
   const { getSnapshot: getVoxContextSnapshot } = useVoxContextSnapshot({
     surface: 'atlas_ai',
     workspace: {
-      root: activeWorkspace?.workspacePath ?? null,
-      name: activeWorkspaceName ?? activeWorkspace?.name ?? resolvedWorkspaceSlug,
+      root: effectiveWorkspacePath,
+      name: effectiveWorkspaceName,
     },
     thread: {
       id: threadIdForSnapshot,
@@ -1069,7 +1814,7 @@ export function AtlasAiSurface({
     async (threadId: string) => {
       const detail = await atlas.fetchThreadDetail(threadId)
       if (!detail) {
-        await navigator.clipboard.writeText(`Atlas AI thread ${threadId} · backend indisponível para export.`).catch(() => {})
+        await navigator.clipboard.writeText('Não consegui carregar esta conversa agora. Tente recarregar o histórico e exportar novamente.').catch(() => {})
         return
       }
       const md = serializeThreadAsMarkdown(detail)
@@ -1084,7 +1829,7 @@ export function AtlasAiSurface({
 
   const handleRename = useCallback(
     (thread: AiThreadSummary) => {
-      const proposed = window.prompt('Renomear thread', thread.title?.trim() || '')
+      const proposed = window.prompt('Renomear conversa', thread.title?.trim() || '')
       if (proposed === null) return
       const trimmed = proposed.trim()
       if (trimmed === '' || trimmed === thread.title) return
@@ -1105,7 +1850,7 @@ export function AtlasAiSurface({
       <main className="atlas-ai-surface atlas-ai-stage atlas-ai-stage-fallback">
         <AtlasAiEmpty
           headline="Atlas AI offline"
-          detail="Atlas Desktop está sem ligação com o kernel. Nenhuma thread é inventada — a conversa volta quando o backend responder."
+          detail="Atlas Desktop está sem ligação com o serviço local. Nenhuma conversa é inventada — o histórico volta quando o serviço responder."
         />
       </main>
     )
@@ -1114,6 +1859,46 @@ export function AtlasAiSurface({
   // Hero some no instante que o usuário envia (mesmo antes do createAiThread
   // retornar) — assim o operador vê a bolha otimista + indicator imediato.
   const isHero = atlas.selectedThreadId === null && atlas.pendingUserMessage === null
+  const isWorkbenchOpen = workbenchActive && workbenchThreadIds.length > 0
+  const workspacePickerLocked = !isHero
+  const effectiveProjectSpaceCount = useMemo(() => {
+    const fusionThreadCount = atlas.conversationFusion?.summary?.thread_count ?? 0
+    const fusionReady = (atlas.conversationFusion?.status === 'ready' || Boolean(atlas.conversationFusion?.persisted_artifact))
+      && fusionThreadCount >= 2
+    return Math.max(projectSpaceCount, fusionReady ? 1 : 0)
+  }, [atlas.conversationFusion?.persisted_artifact, atlas.conversationFusion?.status, atlas.conversationFusion?.summary?.thread_count, projectSpaceCount])
+  const awisIntelligence = useMemo(
+    () => evaluateAwisWorkspaceIntelligence({
+      profile: effectiveWorkspaceProfile,
+      threadCount: activeWorkspaceThreadCount,
+      spaceCount: effectiveProjectSpaceCount,
+      workbenchPaneCount: workbenchThreadIds.length,
+      hasStoredWorkbench: storedWorkbenchThreadIds.length > 0,
+      historyHealthy: !atlas.threadsError,
+      runtimeStatus: runtimeReadiness.status,
+      serverHealth: awisServerHealth,
+      learningLoop: awisLearningLoop,
+    }),
+    [
+      activeWorkspaceThreadCount,
+      atlas.threadsError,
+      awisLearningLoop,
+      awisServerHealth,
+      effectiveWorkspaceProfile,
+      effectiveProjectSpaceCount,
+      runtimeReadiness.status,
+      storedWorkbenchThreadIds.length,
+      workbenchThreadIds.length,
+    ],
+  )
+  const operationalRuntimeReadiness = useMemo(
+    () => applyAwisOperationalHealth(runtimeReadiness, {
+      historyHealthy: !atlas.threadsError,
+      serverHealth: awisServerHealth,
+    }),
+    [atlas.threadsError, awisServerHealth, runtimeReadiness],
+  )
+  const showAwisCommandCenter = !isWorkbenchOpen && (isHero || awisIntelligence.score < 100 || storedWorkbenchThreadIds.length > 0)
 
   return (
     <>
@@ -1135,16 +1920,17 @@ export function AtlasAiSurface({
           </button>
           <div className="atlas-ai-header-bar-title">
             <h1>Atlas AI</h1>
-            {activeWorkspaceName ? (
+            {effectiveWorkspaceName ? (
               <p className="atlas-ai-header-bar-sub">
-                workspace · <span className="atlas-ai-header-bar-sub-name">{activeWorkspaceName}</span>
+                {effectiveWorkspaceScopeLabel} · <span className="atlas-ai-header-bar-sub-name">{effectiveWorkspaceName}</span>
+                <span className="atlas-ai-header-bar-sub-lock"> · {effectiveWorkspaceFolderLabel}</span>
               </p>
             ) : (
               <p className="atlas-ai-header-bar-sub">uma única inteligência</p>
             )}
           </div>
           <AtlasAiRuntimeStatusPill
-            readiness={runtimeReadiness}
+            readiness={operationalRuntimeReadiness}
             onOpenContext={!rightCollapsed ? undefined : toggleRight}
           />
         </div>
@@ -1198,11 +1984,35 @@ export function AtlasAiSurface({
           error={atlas.threadsError}
           retrying={retrying}
           selectedId={atlas.selectedThreadId}
+          activeWorkspace={activeWorkspaceScope}
           modeFilter={atlas.modeFilter}
           onModeFilter={atlas.setModeFilter}
           onRefresh={handleRetryThreads}
-          onSelect={atlas.selectThread}
-          onNewThread={() => atlas.selectThread(null)}
+          conversationFusion={atlas.conversationFusion}
+          conversationFusionLoading={atlas.conversationFusionLoading}
+          conversationFusionError={atlas.conversationFusionError}
+          conversationFusionArtifact={atlas.conversationFusionArtifact}
+          conversationFusionArtifactLoading={atlas.conversationFusionArtifactLoading}
+          conversationFusionArtifactError={atlas.conversationFusionArtifactError}
+          onPersistConversationFusion={() => atlas.refreshConversationFusion(undefined, { persist: true })}
+          onSelect={handleSelectThread}
+          onOpenBeside={handleOpenThreadBeside}
+          onOpenInStage={handleOpenThreadInStage}
+          onStageDragActive={setStageThreadDropActive}
+          onProjectSpaceCountChange={setProjectSpaceCount}
+          dragClearSignal={threadDragClearSignal}
+          onOpenSpace={handleOpenSpace}
+          onNewThread={() => {
+            setWorkbenchActive(false)
+            setWorkbenchThreadIds([])
+            setWorkbenchFocusedThreadId(null)
+            setWorkbenchDrafts({})
+            setWorkbenchDetails({})
+            setWorkbenchPendingThreadId(null)
+            atlas.selectThread(null)
+          }}
+          onMoveThreadToWorkspace={(threadId) => atlas.moveThreadToWorkspace(threadId, activeWorkspaceScope)}
+          onFuseThreads={(threadIds) => void atlas.refreshConversationFusion(threadIds, { persist: true })}
           pinnedIds={pinnedIds}
           onContextMenu={handleThreadContextMenu}
         />
@@ -1217,15 +2027,158 @@ export function AtlasAiSurface({
       />
 
       {/* STAGE central — hero ou conversation + composer integrado */}
-      <main className={`atlas-ai-stage${isHero ? ' is-hero' : ''}`}>
+      <main
+        className={`atlas-ai-stage${isHero ? ' is-hero' : ''}${isWorkbenchOpen ? ' is-workbench' : ''}${stageThreadDropActive ? ' is-thread-drop-active' : ''}`}
+        onDragEnter={(event) => {
+          if (!stageAcceptsThreadDrop(event)) return
+          event.preventDefault()
+          setStageThreadDropActive(true)
+        }}
+        onDragOver={(event) => {
+          if (!stageAcceptsThreadDrop(event)) return
+          event.preventDefault()
+          event.dataTransfer.dropEffect = 'copy'
+          setStageThreadDropActive(true)
+        }}
+        onDragLeave={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+          setStageThreadDropActive(false)
+        }}
+        onDrop={(event) => {
+          const threadId = threadIdFromDragEvent(event)
+          event.preventDefault()
+          setStageThreadDropActive(false)
+          clearThreadDragVisualState()
+          if (!threadId) return
+          handleAddThreadToWorkbench(threadId)
+        }}
+      >
+        {stageThreadDropActive ? (
+          <div className="atlas-ai-stage-drop-target" aria-hidden="true">
+            <span>Solte para comparar</span>
+            <strong>até 4 sessões no centro</strong>
+          </div>
+        ) : null}
+        {workbenchNotice ? (
+          <div className="atlas-ai-workbench-notice" role="status">
+            {workbenchNotice}
+          </div>
+        ) : null}
         <div className="atlas-ai-stage-scroll">
+          {showAwisCommandCenter ? (
+            <AwisCommandCenter
+              intelligence={awisIntelligence}
+              workspaceName={effectiveWorkspaceName}
+              workspacePath={effectiveWorkspacePath}
+              workspaceFolderLabel={effectiveWorkspaceFolderLabel}
+              workspaceFolderReady={effectiveWorkspaceHasRepo}
+              storedSessionCount={storedWorkbenchThreadIds.length}
+              canResume={storedWorkbenchThreadIds.length > 0 && !isWorkbenchOpen}
+              onResume={handleResumeWorkbench}
+              onOpenRecommendedSideBySide={handleOpenRecommendedSideBySide}
+              onConfigure={handleAwisConfigureProject}
+              onChooseFolder={handleAwisChooseFolder}
+              onRefreshHealth={refreshAwisHealth}
+            />
+          ) : null}
           {isHero ? (
             <AtlasAiHero
               mode={atlas.composerMode}
-              workspaceName={activeWorkspaceName}
-              threadCount={atlas.threads.length}
+              workspaceName={effectiveWorkspaceName}
+              threadCount={activeWorkspaceThreadCount}
               onUseChip={handleUseChip}
             />
+          ) : isWorkbenchOpen ? (
+            <div
+              className={`atlas-ai-workbench-grid is-count-${Math.min(workbenchThreadIds.length, 4)}`}
+              aria-label="Sessões em comparação"
+            >
+              {workbenchThreadIds.map((threadId) => {
+                const isFocused = workbenchFocusedThreadId === threadId
+                const cached = workbenchDetails[threadId] ?? { detail: null, loading: true, error: null }
+                const pendingThreadId =
+                  atlas.pendingTrace?.thread_id ??
+                  atlas.currentAtlasDevPlan?.thread_id ??
+                  workbenchPendingThreadId
+                const paneHasPending = threadId === pendingThreadId
+                const paneDetail =
+                  threadId === atlas.selectedThreadId && atlas.threadDetail
+                    ? atlas.threadDetail
+                    : cached.detail
+                const paneLoading =
+                  threadId === atlas.selectedThreadId
+                    ? atlas.threadDetailLoading
+                    : cached.loading
+                const paneError =
+                  threadId === atlas.selectedThreadId
+                    ? atlas.threadDetailError
+                    : cached.error
+                return (
+                  <section
+                    key={threadId}
+                    className={`atlas-ai-workbench-pane${isFocused ? ' is-focused' : ''}`}
+                    onMouseDown={() => focusWorkbenchPane(threadId)}
+                    onFocusCapture={() => focusWorkbenchPane(threadId)}
+                  >
+                    <div className="atlas-ai-workbench-pane-scroll">
+                      <AtlasAiConversation
+                        loading={paneLoading}
+                        detail={paneDetail}
+                        error={paneError}
+                        pendingTrace={paneHasPending ? conversation.pendingTrace : null}
+                        pendingUserMessage={paneHasPending ? conversation.pendingUserMessage : null}
+                        streamingText={paneHasPending ? conversation.streamingText : ''}
+                        sending={paneHasPending ? conversation.sending : false}
+                        onArchive={() => {
+                          void atlas.archiveThread(threadId)
+                          closeWorkbenchPane(threadId)
+                        }}
+                        onPromote={() => {
+                          focusWorkbenchPane(threadId)
+                          setPromotionOpen(true)
+                        }}
+                        onCancel={atlas.cancelPending}
+                        atlasDevPlan={paneHasPending ? atlas.currentAtlasDevPlan : null}
+                      />
+                    </div>
+                    <div className="atlas-ai-workbench-composer">
+                      <AtlasAiComposer
+                        draft={workbenchDrafts[threadId] ?? ''}
+                        onChange={(next) =>
+                          setWorkbenchDrafts((prev) => ({ ...prev, [threadId]: next }))
+                        }
+                        mode={atlas.composerMode}
+                        onModeChange={atlas.setComposerMode}
+                        task={atlas.composerTask}
+                        onTaskChange={atlas.setComposerTask}
+                        provider={atlas.composerProvider}
+                        onProviderChange={atlas.setComposerProvider}
+                        computeEffort={atlas.composerComputeEffort}
+                        onComputeEffortChange={atlas.setComposerComputeEffort}
+                        sending={paneHasPending ? atlas.sending : false}
+                        sendError={paneHasPending ? atlas.sendError : null}
+                        workspaceSlug={paneDetail?.workspace ?? atlas.workspaceSlug}
+                        textareaMaxPx={180}
+                        placeholder="Responder nesta sessão..."
+                        onSend={(extras) => handleWorkbenchSend(threadId, extras)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="atlas-ai-workbench-close"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        closeWorkbenchPane(threadId)
+                      }}
+                      aria-label="Fechar sessão"
+                      title="Fechar sessão"
+                    >
+                      ×
+                    </button>
+                  </section>
+                )
+              })}
+            </div>
           ) : (
             <AtlasAiConversation
               loading={conversation.loading}
@@ -1243,86 +2196,96 @@ export function AtlasAiSurface({
           )}
         </div>
 
-        <div
-          className="atlas-ai-stage-composer"
-          style={{
-            ['--composer-width' as string]: `${composerSize.size.width}px`,
-            ['--composer-textarea-max' as string]: `${composerSize.size.height}px`,
-          }}
-        >
-          <div className="atlas-ai-composer-wrap">
-            {/* Handle LARGURA · borda esquerda, drag horizontal */}
-            <button
-              type="button"
-              className="atlas-ai-composer-resize-w"
-              onMouseDown={composerSize.startWidthDrag}
-              onDoubleClick={composerSize.reset}
-              title="Arraste lateralmente pra ajustar largura · double-click reseta"
-              aria-label="Ajustar largura do composer"
-            />
-            {/* Handle ALTURA · borda superior, drag vertical */}
-            <button
-              type="button"
-              className="atlas-ai-composer-resize-h"
-              onMouseDown={composerSize.startHeightDrag}
-              onDoubleClick={composerSize.reset}
-              title="Arraste verticalmente pra ajustar altura · double-click reseta"
-              aria-label="Ajustar altura do composer"
-            />
-            <AtlasAiComposer
-              draft={composerDraft}
-              onChange={setComposerDraft}
-              mode={atlas.composerMode}
-              onModeChange={atlas.setComposerMode}
-              task={atlas.composerTask}
-              onTaskChange={atlas.setComposerTask}
-              provider={atlas.composerProvider}
-              onProviderChange={atlas.setComposerProvider}
-              computeEffort={atlas.composerComputeEffort}
-              onComputeEffortChange={atlas.setComposerComputeEffort}
-              sending={atlas.sending}
-              sendError={atlas.sendError}
-              workspaceSlug={atlas.workspaceSlug ?? atlas.threadDetail?.workspace ?? null}
-              textareaMaxPx={composerSize.size.height}
-              onSend={(extras) =>
-                handleSend({
-                  newThread: extras?.newThread ?? atlas.selectedThreadId === null,
-                  attachments: extras?.attachments,
-                  richInputCanonical: extras?.richInputCanonical,
-                  computeEffort: extras?.computeEffort,
-                })
-              }
-              onSendInNew={(extras) =>
-                handleSend({
-                  newThread: true,
-                  attachments: extras?.attachments,
-                  richInputCanonical: extras?.richInputCanonical,
-                  computeEffort: extras?.computeEffort,
-                })
-              }
-              onVoxClick={handleVoxToggle}
-              voxState={vox.state}
-              voiceReplyEnabled={voiceReplyEnabled}
-              onVoiceReplyToggle={handleVoiceConversationToggle}
-            />
-            {voiceReplyEnabled ? (
-              <AtlasAiVoiceConversationOverlay
-                vox={vox}
-                sending={atlas.sending}
-                awaitingResponse={atlas.pendingTrace !== null}
-                streaming={atlas.streamingText.trim().length > 0}
-                speechState={voiceSpeechState}
-                speechError={voiceSpeechError}
-                sendError={atlas.sendError}
-                onStop={() => void stopVoiceConversation()}
-                onInterrupt={() => void interruptVoiceConversation()}
-                onRecordAgain={() => void recordVoiceTurnAgain()}
+        {!isWorkbenchOpen ? (
+          <div
+            className="atlas-ai-stage-composer"
+            style={{
+              ['--composer-width' as string]: `${composerSize.size.width}px`,
+              ['--composer-textarea-max' as string]: `${composerSize.size.height}px`,
+            }}
+          >
+            <div className="atlas-ai-composer-wrap">
+              <AtlasAiWorkspacePicker
+                workspaces={workspaces}
+                activeWorkspace={effectiveWorkspaceProfile}
+                activeWorkspaceSlug={effectiveWorkspaceSlug}
+                locked={workspacePickerLocked}
+                onSelectWorkspace={onSelectWorkspace}
+                onOpenWorkspaceProfile={onOpenWorkspaceProfile}
               />
-            ) : (
-              <VoxOverlay controller={vox} />
-            )}
+              {/* Handle LARGURA · borda esquerda, drag horizontal */}
+              <button
+                type="button"
+                className="atlas-ai-composer-resize-w"
+                onMouseDown={composerSize.startWidthDrag}
+                onDoubleClick={composerSize.reset}
+                title="Arraste lateralmente pra ajustar largura · double-click reseta"
+                aria-label="Ajustar largura do composer"
+              />
+              {/* Handle ALTURA · borda superior, drag vertical */}
+              <button
+                type="button"
+                className="atlas-ai-composer-resize-h"
+                onMouseDown={composerSize.startHeightDrag}
+                onDoubleClick={composerSize.reset}
+                title="Arraste verticalmente pra ajustar altura · double-click reseta"
+                aria-label="Ajustar altura do composer"
+              />
+              <AtlasAiComposer
+                draft={composerDraft}
+                onChange={setComposerDraft}
+                mode={atlas.composerMode}
+                onModeChange={atlas.setComposerMode}
+                task={atlas.composerTask}
+                onTaskChange={atlas.setComposerTask}
+                provider={atlas.composerProvider}
+                onProviderChange={atlas.setComposerProvider}
+                computeEffort={atlas.composerComputeEffort}
+                onComputeEffortChange={atlas.setComposerComputeEffort}
+                sending={atlas.sending}
+                sendError={atlas.sendError}
+                workspaceSlug={atlas.workspaceSlug ?? atlas.threadDetail?.workspace ?? null}
+                textareaMaxPx={composerSize.size.height}
+                onSend={(extras) =>
+                  handleSend({
+                    newThread: extras?.newThread ?? atlas.selectedThreadId === null,
+                    attachments: extras?.attachments,
+                    richInputCanonical: extras?.richInputCanonical,
+                    computeEffort: extras?.computeEffort,
+                  })
+                }
+                onSendInNew={(extras) =>
+                  handleSend({
+                    newThread: true,
+                    attachments: extras?.attachments,
+                    richInputCanonical: extras?.richInputCanonical,
+                    computeEffort: extras?.computeEffort,
+                  })
+                }
+                onVoxClick={handleVoxToggle}
+                voxState={vox.state}
+                voiceReplyEnabled={voiceReplyEnabled}
+                onVoiceReplyToggle={handleVoiceConversationToggle}
+              />
+              {voiceReplyEnabled ? (
+                <AtlasAiVoiceConversationOverlay
+                  vox={vox}
+                  sending={atlas.sending}
+                  awaitingResponse={atlas.pendingTrace !== null}
+                  streaming={atlas.streamingText.trim().length > 0}
+                  speechState={voiceSpeechState}
+                  speechError={voiceSpeechError}
+                  sendError={atlas.sendError}
+                  onStop={() => void stopVoiceConversation()}
+                  onInterrupt={() => void interruptVoiceConversation()}
+                  onRecordAgain={() => void recordVoiceTurnAgain()}
+                />
+              ) : (
+                <VoxOverlay controller={vox} />
+              )}
+            </div>
           </div>
-        </div>
+        ) : null}
       </main>
 
       {/* RESIZER RIGHT */}
@@ -1337,12 +2300,13 @@ export function AtlasAiSurface({
       <aside className="atlas-ai-rail atlas-ai-rail-right" aria-label="Contexto Atlas AI">
         <AtlasAiSidePanel
           workspaceSlug={atlas.workspaceSlug}
-          workspaceName={activeWorkspaceName}
+          workspaceName={effectiveWorkspaceName}
           thread={atlas.threadDetail}
           pendingTrace={atlas.pendingTrace}
           mode={atlas.composerMode}
           task={atlas.composerTask}
           provider={atlas.composerProvider}
+          runtimeReadiness={operationalRuntimeReadiness}
           atlasDevPlan={atlas.currentAtlasDevPlan}
           atlasDevPlanLoading={atlas.atlasDevPlanLoading}
           atlasDevPlanError={atlas.atlasDevPlanError}
@@ -1380,5 +2344,127 @@ export function AtlasAiSurface({
         />
       ) : null}
     </>
+  )
+}
+
+function AwisCommandCenter({
+  intelligence,
+  workspaceName,
+  workspacePath,
+  workspaceFolderLabel,
+  workspaceFolderReady,
+  storedSessionCount,
+  canResume,
+  onResume,
+  onOpenRecommendedSideBySide,
+  onConfigure,
+  onChooseFolder,
+  onRefreshHealth,
+}: {
+  intelligence: AwisWorkspaceIntelligence
+  workspaceName: string | null
+  workspacePath: string | null
+  workspaceFolderLabel: string
+  workspaceFolderReady: boolean
+  storedSessionCount: number
+  canResume: boolean
+  onResume: () => void
+  onOpenRecommendedSideBySide: () => void
+  onConfigure: () => void
+  onChooseFolder: () => Promise<void> | void
+  onRefreshHealth: () => void
+}) {
+  const visibleCapabilities = intelligence.capabilities.slice(0, 4)
+  const visibleActions = intelligence.nextActions.slice(0, 2)
+  const displayedScore = visibleActions.length > 0 ? Math.min(94, intelligence.score) : intelligence.score
+  const canRefreshHealth = intelligence.liveSignal.label === 'serviço local' || intelligence.liveSignal.detail.includes('serviço local')
+  const canOpenRecommendedSideBySide = visibleActions.includes('comparar sessões')
+  return (
+    <section className={`atlas-ai-awis-command-center is-${intelligence.level}`} aria-label="Estado AWIS do projeto">
+      <div className="atlas-ai-awis-command-main">
+        <span className="atlas-ai-awis-kicker">AWIS</span>
+        <div>
+          <strong>{intelligence.label}</strong>
+          <p>{intelligence.summary}</p>
+        </div>
+      </div>
+      <div className="atlas-ai-awis-score" title="Força operacional do projeto neste Mac">
+        <span>{displayedScore}</span>
+        <small>/100</small>
+      </div>
+      <div className="atlas-ai-awis-context">
+        <span title={workspaceName ?? undefined}>{workspaceName || 'Projeto'}</span>
+        <small className={workspaceFolderReady ? 'is-ready' : 'is-missing'} title={workspacePath ?? undefined}>
+          {workspaceFolderLabel}
+        </small>
+      </div>
+      <div
+        className={`atlas-ai-awis-live tone-${intelligence.liveSignal.tone}`}
+        title={intelligence.liveSignal.detail}
+      >
+        <span>{intelligence.liveSignal.label}</span>
+        <small>{intelligence.liveSignal.detail}</small>
+      </div>
+      <div className="atlas-ai-awis-chips" aria-label="Capacidades AWIS ativas">
+        {visibleCapabilities.length > 0 ? visibleCapabilities.map((capability) => (
+          <span key={capability} className="atlas-ai-awis-chip">{capability}</span>
+        )) : (
+          <span className="atlas-ai-awis-chip is-muted">aguardando projeto</span>
+        )}
+      </div>
+      <div className="atlas-ai-awis-next" aria-label="Próximos saltos AWIS">
+        {visibleActions.length > 0 ? visibleActions.map((action) => (
+          <span key={action}>{action}</span>
+        )) : (
+          <span>pronto para trabalhar</span>
+        )}
+      </div>
+      <div className="atlas-ai-awis-actions">
+        {canResume ? (
+          <button
+            type="button"
+            className="atlas-ai-awis-action is-primary"
+            onClick={onResume}
+            title="Retoma as sessões salvas para comparação neste projeto"
+          >
+            Retomar {storedSessionCount} sessões
+          </button>
+        ) : null}
+        {canOpenRecommendedSideBySide ? (
+          <button
+            type="button"
+            className="atlas-ai-awis-action is-primary"
+            onClick={onOpenRecommendedSideBySide}
+            title="Abre duas conversas deste projeto para comparar"
+          >
+            Comparar
+          </button>
+        ) : null}
+        {canRefreshHealth ? (
+          <button
+            type="button"
+            className="atlas-ai-awis-action is-primary"
+            onClick={onRefreshHealth}
+            title="Verifica novamente o serviço local e o histórico deste Mac"
+          >
+            Verificar serviço
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="atlas-ai-awis-action"
+          onClick={() => {
+            if (workspaceFolderReady) {
+              onConfigure()
+              return
+            }
+            void onChooseFolder()
+          }}
+          title={workspaceFolderReady ? 'Abrir perfil do projeto e pasta local' : 'Escolher pasta real do Mac para este projeto'}
+        >
+          {workspaceFolderReady ? 'Configurar projeto' : 'Escolher pasta'}
+        </button>
+      </div>
+    </section>
   )
 }

@@ -53,9 +53,9 @@ export const ATLAS_SURFACES: AtlasSurfaceDefinition[] = [
   },
   {
     id: 'control_plane',
-    label: 'Control Plane',
+    label: 'Operação',
     shortcut: '⌘5',
-    sub: 'observar · estado vivo do Kernel novo',
+    sub: 'observar · saúde operacional do Atlas',
     authority: 'kernel',
     requiresKernel: true,
   },

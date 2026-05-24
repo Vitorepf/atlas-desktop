@@ -25,6 +25,9 @@ export function DefaultInspectorContent({ graph }: DefaultInspectorContentProps)
   const orphan = audit?.orphanCount ?? 0
   const found = audit?.found ?? 0
   const missing = audit?.missing ?? 0
+  const clarity = graph?.humanClarityContract?.humanClarity ?? null
+  const artifactLakeReplay = graph?.workspaceScope?.artifactLakeReplay ?? null
+  const artifactPacks = artifactLakeReplay?.latestArtifacts ?? []
 
   const repoReadable = sources?.repo.readable ?? false
   const vaultReadable = sources?.vault.readable ?? false
@@ -80,6 +83,12 @@ export function DefaultInspectorContent({ graph }: DefaultInspectorContentProps)
                 <span>grafo semântico</span>
                 <strong className="mono">{semanticNodes} nós · {audit?.semanticRelationCount ?? 0} relações</strong>
               </div>
+              <div className="fit-row">
+                <span>clareza visual</span>
+                <strong className="mono">
+                  {clarity ? `${clarity.score.toFixed(1)} · ${clarity.status}` : 'aguardando AURC'}
+                </strong>
+              </div>
             </div>
           </div>
         </div>
@@ -117,6 +126,34 @@ export function DefaultInspectorContent({ graph }: DefaultInspectorContentProps)
           </div>
         </div>
 
+        {artifactPacks.length > 0 ? (
+          <div className="ins-section ins-artifact-lake">
+            <h3>AWIS Artifact Lake</h3>
+            <div className="ins-fit">
+              <div className="fit-grid">
+                <div className="fit-row">
+                  <span>fusion packs</span>
+                  <strong className="mono">{artifactLakeReplay?.conversationFusionPackCount ?? 0} provider-safe</strong>
+                </div>
+                <div className="fit-row">
+                  <span>raw replay</span>
+                  <strong className="mono">
+                    {artifactLakeReplay?.sourcePolicy.rawConversationReturned ? 'bloquear' : 'desligado'} · hashes mandam
+                  </strong>
+                </div>
+                {artifactPacks.slice(0, 3).map((artifact) => (
+                  <div className="fit-row" key={artifact.artifactId || artifact.artifactHash}>
+                    <span>{artifact.artifactType}</span>
+                    <strong className="mono">
+                      {artifact.status} · {artifact.qualityScore.toFixed(1)} · {shortHash(artifact.artifactHash)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="ins-section ins-guide">
           <h3>Como ler o mapa</h3>
           <ul className="ins-guide-list">
@@ -143,4 +180,8 @@ export function DefaultInspectorContent({ graph }: DefaultInspectorContentProps)
       </div>
     </>
   )
+}
+
+function shortHash(value: string): string {
+  return value.length > 14 ? `${value.slice(0, 12)}...` : value
 }

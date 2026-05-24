@@ -34,7 +34,7 @@ export interface KernelStatusReport {
 
 const HTTP_READY_REPORT: KernelStatusReport = {
   status: 'ready',
-  message: 'Atlas Server configured via HTTP env',
+  message: 'Serviço local conectado por configuração externa.',
   failureCode: null,
   repairHint: null,
   serverPath: null,
@@ -48,9 +48,9 @@ const HTTP_READY_REPORT: KernelStatusReport = {
 
 const OFFLINE_REPORT: KernelStatusReport = {
   status: 'unconfigured',
-  message: 'Bridge offline · sem Atlas Server alcançável',
+  message: 'Serviço local indisponível. Abra o Atlas Code ou configure o endereço local.',
   failureCode: 'no_bridge',
-  repairHint: 'Set VITE_ATLAS_SERVER_URL or run inside the Atlas Code .app',
+  repairHint: 'Abra o aplicativo Atlas Code ou configure o endereço do serviço local.',
   serverPath: null,
   phpPath: null,
   url: '',
@@ -80,7 +80,7 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): UseKernelStatus
     if (bridge.mode === 'offline') return OFFLINE_REPORT
     return {
       status: 'booting',
-      message: 'iniciando Atlas Server…',
+      message: 'Iniciando serviço local do Atlas...',
       failureCode: null,
       repairHint: null,
       serverPath: null,
@@ -174,9 +174,9 @@ export function useKernelStatus(opts: UseKernelStatusOpts = {}): UseKernelStatus
       setReport((prev) => ({
         ...prev,
         status: 'failed',
-        message: `retry failed · ${e instanceof Error ? e.message : String(e)}`,
+        message: `Não consegui verificar o serviço local agora. ${e instanceof Error ? e.message : String(e)}`,
         failureCode: 'retry_failed',
-        repairHint: 'Check stderr_tail for the underlying error',
+        repairHint: 'Confira os erros recentes e tente verificar novamente.',
       }))
     } finally {
       setRetrying(false)

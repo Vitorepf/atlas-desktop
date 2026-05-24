@@ -18,11 +18,16 @@ interface SurfaceSwitcherProps {
    * Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
    */
   enabledSurfaces?: string[] | null
+  /**
+   * Runtime requirements for surfaces. Unlike `enabledSurfaces`, a surface
+   * with unmet requirements is not clickable until the Project/Profile is ready.
+   */
+  blockedSurfaces?: Partial<Record<Surface, string>> | null
 }
 
-export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfaces }: SurfaceSwitcherProps) {
+export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfaces, blockedSurfaces }: SurfaceSwitcherProps) {
   return (
-    <nav className="surface-switcher" role="tablist" aria-label="Atlas surfaces">
+    <nav className="surface-switcher" role="tablist" aria-label="Áreas Atlas">
       {ATLAS_SURFACES.map((s) => {
         const badge = badges?.[s.id]
         const hasBadge = typeof badge === 'number' && badge > 0
@@ -31,17 +36,25 @@ export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfa
             ? true
             : enabledSurfaces.includes(s.id)
         const limited = !enabled
+        const blockedReason = blockedSurfaces?.[s.id] ?? null
+        const blocked = blockedReason !== null && blockedReason !== undefined
         return (
           <button
             key={s.id}
             type="button"
             role="tab"
             aria-selected={surface === s.id}
-            className={`surface-tab${surface === s.id ? ' on' : ''}${hasBadge ? ' has-badge' : ''}${limited ? ' is-limited' : ''}`}
-            onClick={() => onSurfaceChange(s.id)}
+            className={`surface-tab${surface === s.id ? ' on' : ''}${hasBadge ? ' has-badge' : ''}${limited ? ' is-limited' : ''}${blocked ? ' is-blocked' : ''}`}
+            disabled={blocked}
+            onClick={() => {
+              if (blocked) return
+              onSurfaceChange(s.id)
+            }}
             title={
-              limited
-                ? `${s.label} · ${s.shortcut} · não declarada no Projeto ativo (limitado)`
+              blocked
+                ? `${s.label} · ${blockedReason}`
+                : limited
+                ? `${s.label} · ${s.shortcut} · área extra para este projeto`
                 : hasBadge
                   ? `${s.label} · ${s.shortcut} · ${badge} decisão${badge === 1 ? '' : 'ões'} pendente${badge === 1 ? '' : 's'}`
                   : `${s.label} · ${s.shortcut}`
@@ -51,7 +64,7 @@ export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfa
             {limited ? (
               <span
                 className="surface-tab-limited"
-                aria-label="Surface não declarada no Projeto ativo"
+                aria-label="Área extra para este projeto"
                 style={{
                   marginLeft: 4,
                   fontSize: 9,
@@ -64,7 +77,26 @@ export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfa
                   lineHeight: '12px',
                 }}
               >
-                lim
+                extra
+              </span>
+            ) : null}
+            {blocked ? (
+              <span
+                className="surface-tab-limited"
+                aria-label="Área requer pasta local"
+                style={{
+                  marginLeft: 4,
+                  fontSize: 9,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  color: 'rgba(212, 168, 90, 0.78)',
+                  border: '1px solid rgba(212, 168, 90, 0.22)',
+                  borderRadius: 2,
+                  padding: '0 4px',
+                  lineHeight: '12px',
+                }}
+              >
+                repo
               </span>
             ) : null}
             {hasBadge ? (
@@ -105,4 +137,3 @@ export function SurfaceSwitcher({ surface, onSurfaceChange, badges, enabledSurfa
     </nav>
   )
 }
-

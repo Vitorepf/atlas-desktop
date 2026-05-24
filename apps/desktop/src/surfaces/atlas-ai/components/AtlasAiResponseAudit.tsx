@@ -27,13 +27,13 @@ const SECTION_LABELS: Record<string, string> = {
   context_refs: 'contexto',
   evidence_refs: 'evidência',
   evidence: 'evidência',
-  trace: 'trace',
-  receipt: 'receipt',
-  routing: 'routing',
+  trace: 'registro',
+  receipt: 'recibo',
+  routing: 'caminho',
   confidence: 'confiança',
-  handoff: 'handoff',
-  context_pack: 'context pack',
-  metadata: 'metadata',
+  handoff: 'encaminhamento',
+  context_pack: 'pacote de contexto',
+  metadata: 'detalhes',
 }
 
 function labelFor(key: string): string {

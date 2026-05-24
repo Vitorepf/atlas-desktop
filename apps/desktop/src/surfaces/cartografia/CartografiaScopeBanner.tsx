@@ -1,4 +1,9 @@
-import type { AtlasWorkspaceProfile } from '@atlas/domain'
+import type {
+  AtlasWorkspaceProfile,
+  CartographyArtifactGraphReplay,
+  CartographyArtifactLakeReplay,
+  CartographyRuntimeProjectionReplay,
+} from '@atlas/domain'
 
 /**
  * Cartografia · Project/Workspace scope banner.
@@ -18,22 +23,39 @@ import type { AtlasWorkspaceProfile } from '@atlas/domain'
 interface CartografiaScopeBannerProps {
   activeWorkspace: AtlasWorkspaceProfile | null
   defaultSlug?: string | null
+  runtimeProjectionReplay?: CartographyRuntimeProjectionReplay | null
+  artifactGraphReplay?: CartographyArtifactGraphReplay | null
+  artifactLakeReplay?: CartographyArtifactLakeReplay | null
 }
 
 export function CartografiaScopeBanner({
   activeWorkspace,
   defaultSlug,
+  runtimeProjectionReplay = null,
+  artifactGraphReplay = null,
+  artifactLakeReplay = null,
 }: CartografiaScopeBannerProps) {
-  if (!activeWorkspace) return null
+  const hasRuntimeStale = (runtimeProjectionReplay?.staleCount ?? 0) > 0
+  const hasArtifactGraphStale = artifactGraphReplay?.stale === true
+  const hasAwisStale = hasRuntimeStale || hasArtifactGraphStale
+  const persistedFusionPacks = artifactLakeReplay?.conversationFusionPackCount ?? 0
 
-  const isDefault = !defaultSlug || activeWorkspace.slug === defaultSlug
-  const docsComplete = activeWorkspace.docsStatus === 'canonical'
+  if (!activeWorkspace && !hasAwisStale && persistedFusionPacks === 0) return null
 
-  if (isDefault && docsComplete) return null
+  const isDefault = !activeWorkspace || !defaultSlug || activeWorkspace.slug === defaultSlug
+  const docsComplete = activeWorkspace?.docsStatus === 'canonical'
 
-  const reason = isDefault
-    ? `docs ${activeWorkspace.docsStatus}`
-    : `escopo de ${activeWorkspace.name} · Cartografia mostra docs do Atlas (default)`
+  if (isDefault && docsComplete && !hasAwisStale && persistedFusionPacks === 0) return null
+
+  const staleFamilies = runtimeProjectionReplay?.staleFamilies?.join(', ') ?? ''
+  const reason = hasAwisStale
+    ? `AWIS stale · ${hasArtifactGraphStale && !hasRuntimeStale ? 'artifact graph' : staleFamilies || 'runtime projection'}`
+    : persistedFusionPacks > 0
+      ? `AWIS artifact lake · ${persistedFusionPacks} fusion pack${persistedFusionPacks > 1 ? 's' : ''}`
+    : isDefault
+      ? `docs ${activeWorkspace?.docsStatus}`
+      : `escopo de ${activeWorkspace?.name} · Cartografia mostra docs do Atlas (default)`
+  const label = hasAwisStale || persistedFusionPacks > 0 ? 'AWIS' : activeWorkspace?.name
 
   return (
     <div
@@ -57,7 +79,7 @@ export function CartografiaScopeBanner({
         pointerEvents: 'none',
       }}
     >
-      <strong style={{ marginRight: 6 }}>{activeWorkspace.name}</strong>
+      <strong style={{ marginRight: 6 }}>{label}</strong>
       <span style={{ opacity: 0.7 }}>·</span>
       <span style={{ marginLeft: 6 }}>{reason}</span>
     </div>

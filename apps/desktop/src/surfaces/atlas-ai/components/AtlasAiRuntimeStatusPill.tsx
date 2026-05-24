@@ -24,10 +24,10 @@ function statusDotClass(status: RuntimeReadinessView['status']): string {
 }
 
 function pillLabel(readiness: RuntimeReadinessView): string {
-  if (readiness.status === 'loading') return 'verificando runtime…'
-  if (readiness.status === 'unavailable') return 'runtime indisponível'
+  if (readiness.status === 'loading') return 'verificando AWIS…'
+  if (readiness.status === 'unavailable') return 'AWIS indisponível'
   if (readiness.status === 'blocked' && readiness.primaryBlocker) {
-    return `bloqueado · ${readiness.primaryBlocker}`
+    return `certificação pendente · ${readiness.primaryBlocker}`
   }
   if (readiness.status === 'partial' && readiness.primaryBlocker) {
     return `parcial · ${readiness.primaryBlocker}`
@@ -62,8 +62,8 @@ export function AtlasAiRuntimeStatusPill({ readiness, onOpenContext }: AtlasAiRu
       type="button"
       className={`atlas-ai-runtime-pill is-${readiness.status}`}
       onClick={onOpenContext}
-      aria-label={`Runtime ${readiness.statusLabel}. Abrir contexto/trace.`}
-      title={`${readiness.statusLabel} · clique para abrir contexto/trace`}
+      aria-label={`AWIS ${readiness.statusLabel}. Abrir contexto e execução.`}
+      title={`${readiness.statusLabel} · clique para abrir contexto e execução`}
     >
       <span className={statusDotClass(readiness.status)} aria-hidden="true" />
       <span className="atlas-ai-runtime-pill-label">{label}</span>

@@ -16,6 +16,7 @@ export function TopBar({
   loading,
   attentionCount,
   enabledSurfaces,
+  blockedSurfaces,
 }: TopBarProps) {
   const locationTrail = useTopBarLocationTrail()
   const workspaceName = activeWorkspace?.name ?? null
@@ -45,6 +46,7 @@ export function TopBar({
         onSurfaceChange={onSurfaceChange}
         badges={typeof attentionCount === 'number' ? { atencao: attentionCount } : undefined}
         enabledSurfaces={enabledSurfaces ?? null}
+        blockedSurfaces={blockedSurfaces ?? null}
       />
     </header>
   )

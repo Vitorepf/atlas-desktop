@@ -27,6 +27,7 @@ import type {
   AtlasAiTask,
   AtlasDevPlanResult,
 } from '../types'
+import type { RuntimeReadinessView } from '../runtimeReadinessView'
 
 type SidePanelTab = 'context' | 'plan'
 
@@ -38,6 +39,7 @@ interface AtlasAiSidePanelProps {
   mode: AtlasAiMode
   task: AtlasAiTask
   provider: AtlasAiProviderChoice
+  runtimeReadiness?: RuntimeReadinessView | null
   atlasDevPlan?: AtlasDevPlanResult | null
   atlasDevPlanLoading?: boolean
   atlasDevPlanError?: string | null
@@ -82,6 +84,7 @@ export function AtlasAiSidePanel(props: AtlasAiSidePanelProps) {
             mode={props.mode}
             task={props.task}
             provider={props.provider}
+            runtimeReadiness={props.runtimeReadiness ?? null}
             atlasDevPlan={props.atlasDevPlan ?? null}
             atlasDevPlanLoading={props.atlasDevPlanLoading ?? false}
             atlasDevPlanError={props.atlasDevPlanError ?? null}

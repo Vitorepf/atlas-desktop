@@ -49,13 +49,31 @@ Object.defineProperty(globalThis, 'navigator', {
   },
   configurable: true,
 })
-globalThis.sessionStorage ??= {
-  getItem() {
-    return null
-  },
-  setItem() {},
-  removeItem() {},
+function createMemoryStorage(seed = {}) {
+  const data = new Map(Object.entries(seed))
+  return {
+    getItem(key) {
+      return data.has(key) ? data.get(key) : null
+    },
+    setItem(key, value) {
+      data.set(key, String(value))
+    },
+    removeItem(key) {
+      data.delete(key)
+    },
+    clear() {
+      data.clear()
+    },
+    key(index) {
+      return Array.from(data.keys())[index] ?? null
+    },
+    get length() {
+      return data.size
+    },
+  }
 }
+globalThis.sessionStorage ??= createMemoryStorage()
+globalThis.localStorage ??= createMemoryStorage()
 globalThis.document ??= {
   querySelector() {
     return null
@@ -100,7 +118,11 @@ try {
   const { RunPanel } = await vite.ssrLoadModule('/src/components/atlasDev/RunPanel.tsx')
   const { ReadinessGate } = await vite.ssrLoadModule('/src/components/atlasDev/ReadinessGate.tsx')
   const { ReceiptCard } = await vite.ssrLoadModule('/src/components/atlasDev/ReceiptCard.tsx')
+  const { ProjectProfileSheet } = await vite.ssrLoadModule('/src/shared/projectProfile/ProjectProfileSheet.tsx')
   const { AtlasAiSurface } = await vite.ssrLoadModule('/src/surfaces/atlas-ai/AtlasAiSurface.tsx')
+  const { AtlasAiThreadList } = await vite.ssrLoadModule(
+    '/src/surfaces/atlas-ai/components/AtlasAiThreadList.tsx',
+  )
   const { AtlasAiPlanPanel } = await vite.ssrLoadModule(
     '/src/surfaces/atlas-ai/components/AtlasAiPlanPanel.tsx',
   )
@@ -108,6 +130,81 @@ try {
   const { cancelAtlasDevRun, runAtlasDev, streamAtlasDevRun, fetchAtlasDevRunStatus } = await vite.ssrLoadModule(
     '/src/components/atlasDev/api.ts',
   )
+
+  function makeWorkspaceProfile(overrides = {}) {
+    return {
+      schemaVersion: 'atlas.code.workspace_profile.v1',
+      id: 'atlas',
+      slug: 'atlas',
+      name: 'Atlas',
+      kind: 'product',
+      source: 'operator',
+      status: 'active',
+      workspacePath: '/redacted/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/redacted/Atlas',
+      productionStatus: 'development',
+      stackSummary: 'Laravel + Desktop + Expo',
+      commands: { dev: 'npm run dev' },
+      testCommands: ['npm run atlas-ai:test'],
+      buildCommands: ['npm run tauri:build -- --workspace=@atlas/desktop'],
+      devServerCommand: 'npm run dev',
+      criticalAreas: ['AWIS', 'Atlas AI'],
+      docsStatus: 'canonical',
+      defaultRisk: 'medium',
+      deploymentNotes: 'Produto em desenvolvimento local.',
+      surfacesEnabled: ['atlas_ai', 'code'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+      ...overrides,
+    }
+  }
+
+  function renderProjectProfileView(profile) {
+    return renderToStaticMarkup(
+      createElement(ProjectProfileSheet, {
+        open: true,
+        initialMode: 'view',
+        onClose: () => {},
+        workspaces: {
+          schemaVersion: 'atlas.code.workspace_profile.v1',
+          defaultSlug: 'atlas',
+          profiles: [profile],
+        },
+        active: profile,
+        activeSlug: profile.slug,
+        onSelect: () => {},
+        onCreate: () => null,
+        onUpdate: () => profile,
+        onArchive: () => null,
+        onPickWorkspaceFolder: () => '/redacted/Atlas',
+      }),
+    )
+  }
+
+  function makeThread(id, title, messageCount) {
+    return {
+      id,
+      title,
+      summary: `Resumo de ${title}`,
+      status: 'active',
+      surface: 'atlas_desktop_ai',
+      workspace: 'atlas',
+      source_type: 'desktop',
+      source_id: null,
+      last_trace_id: null,
+      last_provider: null,
+      message_count: messageCount,
+      last_message_at: '2026-05-24T12:00:00Z',
+      metadata: { workspace_slug: 'atlas' },
+      created_at: '2026-05-24T10:00:00Z',
+      updated_at: '2026-05-24T12:00:00Z',
+    }
+  }
 
   const validPlan = {
     run_id: 'dev-1700000000000-abcd1234',
@@ -169,6 +266,163 @@ try {
     assert(html.includes('atlas-ai-composer'), 'composer did not mount')
     assert(!html.includes('Atlas AI offline'), 'surface fell back to offline mode')
     assert(!html.includes('<div id="root"></div>'), 'only Vite shell rendered')
+  })
+
+  test('ProjectProfileSheet · create mode renders real workspace editor', () => {
+    const html = renderToStaticMarkup(
+      createElement(ProjectProfileSheet, {
+        open: true,
+        initialMode: 'create',
+        onClose: () => {},
+        workspaces: {
+          schemaVersion: 'atlas.code.workspace_profile.v1',
+          defaultSlug: 'atlas',
+          profiles: [
+            {
+              schemaVersion: 'atlas.code.workspace_profile.v1',
+              id: 'atlas',
+              slug: 'atlas',
+              name: 'Atlas',
+              kind: 'product',
+              source: 'config',
+              status: 'active',
+              workspacePath: '/redacted/Atlas',
+              workspacePathExists: true,
+              repoRoot: '/redacted/Atlas',
+              productionStatus: 'development',
+              stackSummary: 'Laravel + Desktop + Expo',
+              commands: {},
+              testCommands: ['php artisan test'],
+              buildCommands: ['npm run build'],
+              devServerCommand: 'npm run dev',
+              criticalAreas: ['ai-runtime'],
+              docsStatus: 'canonical',
+              defaultRisk: 'medium',
+              deploymentNotes: '',
+              surfacesEnabled: ['atlas_ai', 'cartografia', 'code', 'atencao'],
+              safety: {
+                executionAllowed: true,
+                executionBlockedReason: null,
+                riskFloor: 'medium',
+                requiresExplicitInterventionReview: false,
+              },
+            },
+          ],
+        },
+        active: null,
+        activeSlug: 'atlas',
+        onSelect: () => {},
+        onCreate: () => null,
+        onUpdate: () => null,
+        onArchive: () => null,
+      }),
+    )
+    writeFileSync(join(SNAPSHOT_DIR, 'project-profile-create.html'), html)
+    assert(html.includes('Novo projeto'), 'create mode title missing')
+    assert(html.includes('pasta do Mac'), 'human folder field missing')
+    assert(html.includes('escolher pasta'), 'native folder action missing')
+    assert(html.includes('salvar projeto'), 'save action missing')
+    assert(html.includes('comandos de teste'), 'human test commands fields missing')
+  })
+
+  test('AWIS · project profile makes folder state obvious before execution', () => {
+    const profile = makeWorkspaceProfile({
+      workspacePath: '',
+      workspacePathExists: false,
+      safety: {
+        executionAllowed: false,
+        executionBlockedReason: 'Escolha uma pasta local para liberar execução.',
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    })
+    const html = renderProjectProfileView(profile)
+    writeFileSync(join(SNAPSHOT_DIR, 'awis-project-missing-folder.html'), html)
+    assert(html.includes('Projeto ativo'), 'active project identity missing')
+    assert(html.includes('Atlas'), 'project name missing')
+    assert(html.includes('Sem pasta local'), 'missing-folder status must be plain Portuguese')
+    assert(html.includes('Escolher pasta do Mac'), 'missing-folder CTA must open folder selection')
+    assert(html.includes('Consulta segura'), 'execution must stay safe before folder link')
+    assert(!html.includes('workspace_path'), 'raw backend field leaked into project view')
+    assert(!html.includes('thread id'), 'technical thread wording leaked into project view')
+  })
+
+  test('AWIS · project profile confirms ready folder and local execution', () => {
+    const profile = makeWorkspaceProfile({
+      workspacePath: '/redacted/Atlas',
+      workspacePathExists: true,
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    })
+    const html = renderProjectProfileView(profile)
+    writeFileSync(join(SNAPSHOT_DIR, 'awis-project-folder-ready.html'), html)
+    assert(html.includes('Pasta pronta'), 'ready-folder status missing')
+    assert(html.includes('Trocar pasta'), 'ready-folder CTA must be available')
+    assert(html.includes('Execução liberada'), 'execution ready status missing')
+    assert(html.includes('Laravel + Desktop + Expo'), 'project stack summary missing')
+    assert(!html.includes('/Users/'), 'absolute local user path leaked in project profile')
+  })
+
+  test('AWIS · Spaces are organization and open sessions side by side', () => {
+    localStorage.clear()
+    localStorage.setItem(
+      'atlas-desktop:atlas-ai-project-spaces',
+      JSON.stringify([
+        {
+          id: 'thread-a|thread-b',
+          projectKey: 'atlas',
+          title: 'Fluxo Atlas AI',
+          threadIds: ['thread-a', 'thread-b'],
+          manualTitle: true,
+        },
+      ]),
+    )
+
+    const html = renderToStaticMarkup(
+      createElement(AtlasAiThreadList, {
+        threads: [
+          makeThread('thread-a', 'Revisar fluxo Atlas AI', 8),
+          makeThread('thread-b', 'Corrigir drag de conversas', 5),
+          makeThread('thread-c', 'Validar composer por sessão', 3),
+        ],
+        loading: false,
+        error: null,
+        selectedId: 'thread-a',
+        activeWorkspace: {
+          slug: 'atlas',
+          name: 'Atlas',
+          path: '/redacted/Atlas',
+          pathExists: true,
+        },
+        modeFilter: 'all',
+        onModeFilter: () => {},
+        onRefresh: () => {},
+        onSelect: () => {},
+        onOpenBeside: () => {},
+        onOpenInStage: () => {},
+        onOpenSpace: () => {},
+        onNewThread: () => {},
+        pinnedIds: new Set(),
+      }),
+    )
+    writeFileSync(join(SNAPSHOT_DIR, 'awis-spaces-thread-list.html'), html)
+    assert(html.includes('Spaces'), 'Spaces section missing')
+    assert(html.includes('Fluxo Atlas AI'), 'clear Space name missing')
+    assert(html.includes('2 sessões'), 'session count missing')
+    assert(html.includes('Revisar fluxo Atlas AI'), 'first conversation inside Space missing')
+    assert(html.includes('Corrigir drag de conversas'), 'second conversation inside Space missing')
+    assert(html.includes('lado a lado'), 'side-by-side action missing')
+    assert(html.includes('Abre as conversas deste Space lado a lado'), 'Space tooltip must explain behavior')
+    assert(html.includes('editar'), 'rename action missing')
+    assert(html.includes('Desfazer Space Fluxo Atlas AI'), 'delete Space action missing')
+    assert(html.includes('Remover Revisar fluxo Atlas AI deste Space'), 'remove conversation action missing')
+    assert(!html.includes('abrir Workbench'), 'raw Workbench wording leaked into Space UI')
+    assert(!html.toLowerCase().includes('fusion'), 'technical fusion wording leaked into Space UI')
+    assert(!html.includes('thread id'), 'technical thread id wording leaked into Space UI')
   })
 
   /* --------- RunPanel --------- */

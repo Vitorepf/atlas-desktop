@@ -258,10 +258,61 @@ pub async fn bridge_run_atlas_code_enterprise_certification(
 }
 
 #[tauri::command]
-pub async fn bridge_list_works(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+pub async fn bridge_list_works(
+    state: State<'_, AppState>,
+    workspace_slug: Option<String>,
+) -> Result<serde_json::Value, String> {
     bridge_of(&state)
         .await
-        .list_works()
+        .list_works(workspace_slug.as_deref())
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_list_workspaces(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .list_workspace_profiles()
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_create_workspace_profile(
+    state: State<'_, AppState>,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .create_workspace_profile(payload)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_update_workspace_profile(
+    state: State<'_, AppState>,
+    slug: String,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .update_workspace_profile(&slug, payload)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
+pub async fn bridge_archive_workspace_profile(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .archive_workspace_profile(&slug)
         .await
         .map_err(into_str_err)
 }

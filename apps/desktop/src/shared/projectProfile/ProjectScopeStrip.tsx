@@ -1,8 +1,8 @@
 /**
  * ProjectScopeStrip · cintinha "Scope" reaproveitável por qualquer surface.
  *
- * Mostra de forma densa o Projeto/Workspace ativo + repo_root truncado + estado
- * do workspace_path. Clicável: abre o Project Profile Sheet quando o callback é
+ * Mostra de forma densa o Projeto ativo + pasta local truncada + estado
+ * da pasta. Clicável: abre o Project Profile Sheet quando o callback é
  * provido. Sem cores cyber, segue tokens --cc-*.
  */
 import type { AtlasWorkspaceProfile } from '@atlas/domain'
@@ -22,6 +22,11 @@ function truncate(value: string, max = 56): string {
   return `…${value.slice(-(max - 1))}`
 }
 
+function folderStateLabel(active: AtlasWorkspaceProfile | null): string {
+  if (!active?.workspacePath) return 'Sem pasta local'
+  return active.workspacePathExists ? 'Pasta pronta' : 'Pasta ausente'
+}
+
 export function ProjectScopeStrip({
   active,
   activeSlug,
@@ -30,34 +35,36 @@ export function ProjectScopeStrip({
   surfaceLabel,
 }: ProjectScopeStripProps) {
   const name = active?.name ?? activeSlug ?? 'Atlas'
-  const slug = active?.slug ?? activeSlug ?? 'atlas'
-  const repo = active?.repoRoot ?? null
+  const folderPath = active?.workspacePath || active?.repoRoot || null
   const wsExists = active?.workspacePathExists ?? null
   const status = active?.productionStatus ?? null
-  const isDefault = defaultSlug !== null && defaultSlug !== undefined && slug === defaultSlug
+  const isDefault = defaultSlug !== null && defaultSlug !== undefined && (active?.slug ?? activeSlug) === defaultSlug
+  const folderLabel = folderStateLabel(active)
 
   const interactive = typeof onOpenProfile === 'function'
 
   const content = (
     <>
-      <span className="atlas-project-strip-eyebrow">Scope</span>
+      <span className="atlas-project-strip-eyebrow">Projeto</span>
       <span className="atlas-project-strip-name">{name}</span>
       <span className="atlas-project-strip-divider" aria-hidden="true">·</span>
-      <span className="atlas-project-strip-slug">{slug}{isDefault ? ' (default)' : ''}</span>
+      <span className={`atlas-project-strip-folder${wsExists === false ? ' is-missing' : ''}`}>
+        {folderLabel}{isDefault ? ' · padrão' : ''}
+      </span>
       {status === 'production' ? (
         <span className="atlas-project-strip-tag tag-prod" title="Projeto em produção · risco padrão maior">
           PROD
         </span>
       ) : null}
       {wsExists === false ? (
-        <span className="atlas-project-strip-tag tag-warn" title="workspace_path declarado mas inexistente">
-          path ausente
+        <span className="atlas-project-strip-tag tag-warn" title="Pasta local configurada, mas não encontrada">
+          pasta ausente
         </span>
       ) : null}
-      {repo ? (
-        <span className="atlas-project-strip-repo" title={repo}>
+      {folderPath ? (
+        <span className="atlas-project-strip-repo" title={folderPath}>
           <span className="atlas-project-strip-divider" aria-hidden="true">·</span>
-          <code>{truncate(repo)}</code>
+          <code>{truncate(folderPath)}</code>
         </span>
       ) : null}
       {surfaceLabel ? (
@@ -81,7 +88,7 @@ export function ProjectScopeStrip({
       type="button"
       className="atlas-project-strip atlas-project-strip-interactive"
       onClick={onOpenProfile}
-      title="Abrir ficha do Projeto/Workspace (Cmd+Shift+P)"
+      title="Abrir ficha do Projeto (Cmd+Shift+P)"
     >
       {content}
     </button>

@@ -78,14 +78,14 @@ export function AtlasAiThreadContextMenu({
       aria-label={`Ações para ${threadTitle}`}
     >
       <header className="atlas-ai-ctxmenu-head">
-        <span className="atlas-ai-ctxmenu-head-eye">Thread</span>
+        <span className="atlas-ai-ctxmenu-head-eye">Conversa</span>
         <span className="atlas-ai-ctxmenu-head-title">{threadTitle}</span>
       </header>
 
       <MenuItem
         icon="★"
         label={actions.isPinned ? 'Desfixar' : 'Fixar'}
-        description={actions.isPinned ? 'Remove a thread do topo' : 'Mantém esta thread no topo da lista'}
+        description={actions.isPinned ? 'Remove a conversa do topo' : 'Mantém esta conversa no topo da lista'}
         onClick={() => {
           actions.onPin()
           onClose()
@@ -94,7 +94,7 @@ export function AtlasAiThreadContextMenu({
       <MenuItem
         icon="✎"
         label="Renomear"
-        description="Edita o título da thread"
+        description="Edita o título da conversa"
         onClick={() => {
           actions.onRename()
           onClose()
@@ -114,8 +114,8 @@ export function AtlasAiThreadContextMenu({
 
       <MenuItem
         icon="⎘"
-        label="Copiar ID da sessão"
-        description="Cola em outro Atlas para abrir esta thread"
+        label="Copiar referência"
+        description="Guarda o identificador seguro desta conversa"
         onClick={() => {
           actions.onCopyId()
           onClose()
@@ -124,7 +124,7 @@ export function AtlasAiThreadContextMenu({
       <MenuItem
         icon="⤓"
         label="Copiar contexto completo (markdown)"
-        description="Mensagens + metadata exportadas — cole em outro Atlas e ele tem tudo"
+        description="Mensagens e dados úteis para continuar em outro Atlas"
         accent
         onClick={() => {
           void actions.onCopyContext()

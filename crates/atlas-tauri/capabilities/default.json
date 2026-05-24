@@ -4,6 +4,7 @@
   "description": "Permite que a janela principal do Atlas Code use IPC, eventos Tauri e comandos nativos necessários para PTY, bridge e cartografia.",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "dialog:default"
   ]
 }

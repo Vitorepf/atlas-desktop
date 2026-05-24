@@ -10,6 +10,7 @@
  * (TDAH-friendly: nunca silêncio, sempre uma frase que descreve o momento).
  */
 import type { AiTrace } from '../types'
+import { modelLabel } from '../contract'
 
 interface AtlasAiStreamingIndicatorProps {
   trace: AiTrace | null
@@ -30,11 +31,11 @@ export function AtlasAiStreamingIndicator({ trace, sending }: AtlasAiStreamingIn
       ? 'na fila — Atlas vai começar em instantes'
       : isRunning
         ? 'Atlas está pensando — montando contexto e resposta'
-        : `trace · ${status ?? '—'}`
+        : `execução · ${status ?? '—'}`
 
   const meta = !trace
     ? 'preparando'
-    : `trace · ${status ?? '—'}${trace.provider ? ` · ${trace.provider}` : ''}`
+    : `execução · ${status ?? '—'}${trace.provider ? ` · ${modelLabel(trace.provider)}` : ''}`
 
   return (
     <article

@@ -14,6 +14,7 @@
  * o painel também sinaliza explicitamente "plan · pronto" sem partir para /run.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { modelLabel } from '../contract'
 import type {
   AiThreadDetail,
   AiTrace,
@@ -63,6 +64,31 @@ function acceptanceLine(
     verification: ac.verification,
     ref: ac.verification_ref ?? null,
   }
+}
+
+function labelReadinessStatus(status: string): string {
+  switch (status) {
+    case 'ready':
+      return 'pronto'
+    case 'partial':
+      return 'atenção'
+    case 'blocked':
+      return 'atenção pendente'
+    case 'loading':
+      return 'verificando'
+    default:
+      return status.replace(/[._-]+/g, ' ').trim() || 'indefinido'
+  }
+}
+
+function labelReadinessCheck(id: string): string {
+  const labels: Record<string, string> = {
+    memory_learning_loop: 'memória e aprendizado',
+    mission_foundation_readiness: 'base operacional da missão',
+    operator_approval_gates: 'aprovações do operador',
+    router_runtime_readiness: 'roteamento inteligente',
+  }
+  return labels[id] ?? id.replace(/[._-]+/g, ' ').trim()
 }
 
 function toRunPlan(plan: AtlasDevPlanResult | null | undefined): PlanOnlyResult | null {
@@ -168,7 +194,7 @@ export function AtlasAiPlanPanel({
 
       {atlasDevPlan?.status === 'blocked' && atlasDevPlan.blocked ? (
         <article className="atlas-ai-plan-card is-warning">
-          <header>Plano bloqueado</header>
+          <header>Plano precisa de atenção</header>
           <p>{atlasDevPlan.blocked.message}</p>
           {atlasDevPlan.blocked.question ? (
             <p className="atlas-ai-plan-faint">{atlasDevPlan.blocked.question}</p>
@@ -333,11 +359,11 @@ export function AtlasAiPlanPanel({
 
       {atlasDevPlan ? (
         <p className="atlas-ai-plan-footnote">
-          Plan-only · run {atlasDevPlan.run_id} · status {atlasDevPlan.status} · provider não chamado
+          Plano seguro · execução {atlasDevPlan.run_id} · status {atlasDevPlan.status} · modelo não chamado
         </p>
       ) : pendingTrace && pendingTrace.status === 'completed' ? (
         <p className="atlas-ai-plan-footnote">
-          Último trace concluído · provider {pendingTrace.provider ?? '—'} · latência{' '}
+          Última execução concluída · modelo {modelLabel(pendingTrace.provider)} · latência{' '}
           {pendingTrace.latency_ms ?? '—'}ms · modo {mode}
         </p>
       ) : null}
@@ -360,7 +386,9 @@ function AtlasDevReadinessPanel() {
     try {
       setReadiness(await fetchAtlasDevReadiness({ strict: true }))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'falha ao consultar readiness')
+      setError(cause instanceof Error && cause.message.includes('service')
+        ? 'serviço local indisponível'
+        : 'não consegui verificar a execução local')
       setReadiness(null)
     } finally {
       setLoading(false)
@@ -378,26 +406,26 @@ function AtlasDevReadinessPanel() {
 
   return (
     <article className="atlas-ai-plan-card is-warning">
-      <header>Readiness Atlas Dev</header>
+      <header>Prontidão para código</header>
       {loading && !readiness ? (
-        <p className="atlas-ai-plan-faint">verificando runtime...</p>
+        <p className="atlas-ai-plan-faint">verificando execução local...</p>
       ) : error ? (
         <p>{error}</p>
       ) : readiness ? (
         <>
           <p>
-            status {readiness.status} · {readiness.summary.passed} ok · {readiness.summary.failed} bloqueios
+            estado {labelReadinessStatus(readiness.status)} · {readiness.summary.passed} ok · {readiness.summary.failed} pendências
           </p>
           {blockers.length > 0 ? (
             <ul className="atlas-ai-plan-list">
               {blockers.slice(0, 5).map((check) => (
                 <li key={check.id}>
-                  <strong>{check.id}</strong> · {check.message}
+                  <strong title={check.id}>{labelReadinessCheck(check.id)}</strong> · {check.message}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="atlas-ai-plan-faint">runtime pronto; gere um novo plano.</p>
+            <p className="atlas-ai-plan-faint">execução local pronta; gere um novo plano.</p>
           )}
         </>
       ) : null}

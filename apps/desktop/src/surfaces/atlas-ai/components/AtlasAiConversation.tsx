@@ -25,8 +25,9 @@ import { AtlasAiReasoningDrawer } from './AtlasAiReasoningDrawer'
 import { AtlasAiThinkingState } from './AtlasAiThinkingState'
 import { AtlasAiToolReceipts } from './AtlasAiToolReceipts'
 import { AtlasAiYouTubeSourceBadge } from './AtlasAiYouTubeSourceBadge'
+import { modeLabel, modelLabel } from '../contract'
 import { formatRelativeLong } from '../timeFormat'
-import type { AiThreadDetail, AiThreadMessage, AiTrace, AtlasDevPlanResult } from '../types'
+import type { AiThreadDetail, AiThreadMessage, AiTrace, AtlasAiMode, AtlasDevPlanResult } from '../types'
 
 interface PendingUserMessage {
   text: string
@@ -65,6 +66,38 @@ function basename(pathOrSlug: string): string {
   return segs[segs.length - 1] ?? trimmed
 }
 
+function projectName(pathOrSlug: string): string {
+  const base = basename(pathOrSlug)
+  if (base.length <= 1) return base.toUpperCase()
+  return base.charAt(0).toUpperCase() + base.slice(1)
+}
+
+function messageCountLabel(count: number): string {
+  const safeCount = Math.max(0, count)
+  return `${safeCount.toLocaleString('pt-BR')} ${safeCount === 1 ? 'mensagem' : 'mensagens'}`
+}
+
+const CONVERSATION_MODES = new Set<AtlasAiMode>([
+  'auto',
+  'general',
+  'conversation',
+  'operational',
+  'programming',
+  'research',
+  'finance',
+  'marketing',
+  'strategy',
+  'personal_development',
+  'cyber',
+  'automation',
+])
+
+function normalizeConversationMode(value: unknown): AtlasAiMode {
+  return typeof value === 'string' && CONVERSATION_MODES.has(value as AtlasAiMode)
+    ? (value as AtlasAiMode)
+    : 'general'
+}
+
 function findTraceForMessage(message: AiThreadMessage, lastTrace: AiTrace | null): AiTrace | null {
   if (!lastTrace) return null
   if (message.trace_id && message.trace_id === lastTrace.id) return lastTrace
@@ -95,7 +128,7 @@ function MessageBubble({
       <header className="atlas-ai-message-header">
         <span className="atlas-ai-message-role">{roleLabel(message.role)}</span>
         <span className="atlas-ai-message-meta">
-          {message.provider ? `${message.provider} · ` : ''}
+          {message.provider ? `${modelLabel(message.provider)} · ` : ''}
           {formatRelativeLong(message.created_at) || '—'}
         </span>
       </header>
@@ -327,7 +360,7 @@ export function AtlasAiConversation({
     ? (detail.messages ?? []).slice().sort((a, b) => a.position - b.position)
     : []
   const meta = detail?.metadata ?? {}
-  const mode = typeof meta.atlas_focus === 'string' ? meta.atlas_focus : 'general'
+  const mode = normalizeConversationMode(meta.atlas_focus)
   // Cobre `running`, `processing` (status real do backend) e `queued`.
   // Antes só checava 'running'/'queued' — quando backend passa pra 'processing'
   // (90% do tempo da execução) o indicator desaparecia silenciosamente.
@@ -360,24 +393,24 @@ export function AtlasAiConversation({
         <div>
           <h2>{detail?.title?.trim() || (isCreatingThread ? 'Nova conversa' : '(sem título)')}</h2>
           <p className="atlas-ai-conversation-meta">
-            <span className="atlas-ai-conversation-meta-mode">{mode}</span>
+            <span className="atlas-ai-conversation-meta-mode">{modeLabel(mode)}</span>
             {detail?.workspace ? (
               <span className="atlas-ai-conversation-meta-sep" aria-hidden="true"> · </span>
             ) : null}
             {detail?.workspace ? (
               <span className="atlas-ai-conversation-meta-workspace" title={detail.workspace}>
-                {basename(detail.workspace)}
+                projeto {projectName(detail.workspace)}
               </span>
             ) : null}
             {detail?.last_provider ? (
               <span className="atlas-ai-conversation-meta-sep" aria-hidden="true"> · </span>
             ) : null}
             {detail?.last_provider ? (
-              <span className="atlas-ai-conversation-meta-provider">{detail.last_provider}</span>
+              <span className="atlas-ai-conversation-meta-provider">{modelLabel(detail.last_provider)}</span>
             ) : null}
             <span className="atlas-ai-conversation-meta-sep" aria-hidden="true"> · </span>
             <span className="atlas-ai-conversation-meta-count">
-              {(detail?.message_count ?? (showOptimistic ? 1 : 0)).toLocaleString('pt-BR')} mensagens
+              {messageCountLabel(detail?.message_count ?? (showOptimistic ? 1 : 0))}
             </span>
           </p>
         </div>
@@ -397,7 +430,7 @@ export function AtlasAiConversation({
               type="button"
               className="atlas-ai-link atlas-ai-danger-link"
               onClick={onArchive}
-              title="Arquivar thread"
+              title="Arquivar conversa"
             >
               arquivar
             </button>

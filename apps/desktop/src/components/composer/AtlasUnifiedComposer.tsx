@@ -71,6 +71,7 @@ interface AtlasUnifiedComposerProps {
   workspaceSlug?: string | null
   requireWorkspaceForProgramming?: boolean
   textareaMaxPx?: number
+  placeholder?: string
   allowedModes?: readonly AtlasAiMode[]
   allowedProgrammingTasks?: readonly AtlasAiTask[]
   modeOptionOverrides?: AtlasUnifiedComposerModeOptionOverrides
@@ -95,10 +96,10 @@ const SLASH_COMMANDS: Array<{ command: string; label: string; description: strin
 
 const MODE_DESC: Record<AtlasAiMode, string> = {
   auto: 'Atlas Decide escolhe domínio/flow pelo contexto',
-  general: 'pesquisa, ideia, dúvida — sem exigir Workspace',
+  general: 'pesquisa, ideia, dúvida — sem exigir projeto local',
   conversation: 'troca livre, sem domínio técnico',
   operational: 'diagnóstico, próxima ação, risco operacional',
-  programming: 'bug, debug, feature, review · exige Workspace',
+  programming: 'bug, debug, feature, review · exige projeto local',
   research: 'pesquisa técnica/mercado · síntese executiva',
   finance: 'análise financeira, decisão de carteira',
   marketing: 'campanha, copy, métrica',
@@ -152,6 +153,7 @@ export function AtlasUnifiedComposer({
   workspaceSlug = null,
   requireWorkspaceForProgramming = false,
   textareaMaxPx,
+  placeholder,
   allowedModes,
   allowedProgrammingTasks,
   modeOptionOverrides = {},
@@ -345,7 +347,7 @@ export function AtlasUnifiedComposer({
       return
     }
     if (programmingMissingWorkspace) {
-      setLocalError('Atlas Dev exige Workspace — selecione um Projeto no topbar antes de enviar.')
+      setLocalError('Atlas Dev exige projeto local — selecione um Projeto antes de enviar.')
       return
     }
     if (modeScopeBlocked || taskScopeBlocked) {
@@ -531,7 +533,7 @@ export function AtlasUnifiedComposer({
           value={draft}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={disabled ? (disabledReason ?? 'Composer indisponível.') : MODE_PLACEHOLDER[mode]}
+          placeholder={disabled ? (disabledReason ?? 'Composer indisponível.') : (placeholder ?? MODE_PLACEHOLDER[mode])}
           rows={3}
           maxLength={50000}
           disabled={disabled || sending}
@@ -626,7 +628,7 @@ export function AtlasUnifiedComposer({
             onChange={onProviderChange}
             disabled={disabled || sending}
             align="end"
-            ariaLabel="Provider Atlas"
+            ariaLabel="Modelo Atlas"
           />
 
           <AtlasAiComposerMenu<AtlasComputeEffortChoice>

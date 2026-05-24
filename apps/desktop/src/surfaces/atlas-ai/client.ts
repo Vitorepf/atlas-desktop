@@ -16,6 +16,10 @@ import type {
   AtlasAiRouterBootstrap,
   AtlasAiRouterReadiness,
   AtlasAiRuntimeReadiness,
+  AtlasAwisLearningLoop,
+  AtlasServerHealth,
+  AtlasWorkspaceArtifactLakeEntry,
+  AtlasWorkspaceConversationFusion,
   AtlasDevPlanRequest,
   AtlasDevPlanResult,
 } from './types'
@@ -61,14 +65,24 @@ function apiUrl(path: string): string {
 }
 
 function compactHttpError(status: number, body: string): string {
+  const bodyHint = body.toLowerCase()
+
   if (status === 404) {
-    return 'Atlas AI indisponível: rota /api/ai/threads não encontrada no backend ativo.'
+    return 'Atlas AI indisponível: rota /ai/threads não encontrada no serviço local.'
   }
   if (status === 401 || status === 403) {
-    return 'Atlas AI sem autorização: verifique o token VITE_ATLAS_TOKEN ou a sessão do backend.'
+    return 'Atlas AI sem autorização. Verifique a sessão local do Atlas e tente de novo.'
   }
   if (status >= 500 && status < 600) {
-    return `Atlas AI · backend respondeu ${status}. Tente novamente em instantes.`
+    if (
+      bodyHint.includes('sqlstate[08006]') ||
+      (bodyHint.includes('connection refused') &&
+        (bodyHint.includes('pgsql') || bodyHint.includes('postgres') || bodyHint.includes('5433')))
+    ) {
+      return 'Atlas AI · serviço local indisponível. Inicie o serviço local do Atlas e tente de novo.'
+    }
+
+    return 'Atlas AI · serviço local instável. Tente de novo em instantes.'
   }
 
   try {
@@ -169,7 +183,13 @@ export async function getAiThread(id: string): Promise<AiThreadDetail> {
 
 export async function updateAiThread(
   id: string,
-  changes: { title?: string; summary?: string; status?: 'active' | 'archived' | 'closed'; metadata?: Record<string, unknown> },
+  changes: {
+    title?: string
+    summary?: string
+    status?: 'active' | 'archived' | 'closed'
+    workspace?: string
+    metadata?: Record<string, unknown>
+  },
 ): Promise<AiThreadSummary> {
   ensureOnline('updateAiThread')
   const result = await fetchJson<{ thread: AiThreadSummary }>(`/ai/threads/${encodeURIComponent(id)}`, {
@@ -184,6 +204,34 @@ export async function deleteAiThread(id: string): Promise<void> {
   await fetchJson<{ ok: boolean; deleted_thread_id: string }>(`/ai/threads/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
+}
+
+export async function getWorkspaceConversationFusion(
+  workspace: string,
+  opts: { limit?: number; threadIds?: string[]; persist?: boolean } = {},
+): Promise<AtlasWorkspaceConversationFusion> {
+  ensureOnline('getWorkspaceConversationFusion')
+  const params = new URLSearchParams()
+  if (opts.limit) params.set('limit', String(opts.limit))
+  if (opts.persist) params.set('persist', '1')
+  for (const id of opts.threadIds ?? []) {
+    if (id.trim() !== '') params.append('thread[]', id)
+  }
+  const qs = params.toString()
+  return fetchJson<AtlasWorkspaceConversationFusion>(
+    `/ai/workspaces/${encodeURIComponent(workspace)}/conversation-fusion${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export async function getWorkspaceArtifactLakeEntry(
+  workspace: string,
+  artifact: string,
+): Promise<AtlasWorkspaceArtifactLakeEntry> {
+  ensureOnline('getWorkspaceArtifactLakeEntry')
+  const params = new URLSearchParams({ workspace })
+  return fetchJson<AtlasWorkspaceArtifactLakeEntry>(
+    `/atlas-code/workspace-intelligence/artifact-lake/${encodeURIComponent(artifact)}?${params.toString()}`,
+  )
 }
 
 export async function createAiInteraction(
@@ -260,6 +308,31 @@ export async function getAtlasAiRuntimeReadiness(): Promise<AtlasAiRuntimeReadin
   }
 }
 
+export async function getAtlasAwisLearningLoop(
+  workspace: string,
+  task = '',
+): Promise<AtlasAwisLearningLoop | null> {
+  if (MODE === 'offline') return null
+  const params = new URLSearchParams({ workspace })
+  if (task.trim() !== '') params.set('task', task.trim())
+  try {
+    return await fetchJson<AtlasAwisLearningLoop>(
+      `/atlas-code/workspace-intelligence/learning-loop?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function getAtlasServerHealth(): Promise<AtlasServerHealth | null> {
+  if (MODE === 'offline') return null
+  try {
+    return await fetchJson<AtlasServerHealth>('/health')
+  } catch {
+    return null
+  }
+}
+
 /**
  * GET /ai/router-runtime/readiness — opcional. Mesma filosofia do bootstrap:
  * 404/erro = null, Desktop ignora.
@@ -297,7 +370,7 @@ export async function getAtlasAiRouterReadiness(): Promise<AtlasAiRouterReadines
  * legacy chat" hint without leaking technical HTTP codes to the operator.
  */
 export class AtlasDevPlanUnavailableError extends Error {
-  constructor(message = 'Atlas Dev plan endpoint indisponível.') {
+  constructor(message = 'Plano técnico indisponível no serviço local.') {
     super(message)
     this.name = 'AtlasDevPlanUnavailableError'
   }
@@ -334,7 +407,7 @@ export async function postAtlasDevPlan(
 
   if (response.status === 404) {
     throw new AtlasDevPlanUnavailableError(
-      'Atlas Dev plan endpoint não disponível no backend ativo (HTTP 404).',
+      'Plano técnico ainda não está disponível no serviço local.',
     )
   }
   // HTTP 503 + ATLAS_DEV_*_DISABLED → flag desligada no atlas-server.

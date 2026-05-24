@@ -4,9 +4,9 @@
  * UMA linha italic serif, sem box, sem mono. Drop refs/hash/avisos para
  * o ReasoningDrawer — aqui fica só o status:
  *
- *   open brain · usado          (tone-good)
- *   open brain · parcial        (tone-partial)
- *   open brain · bloqueado      (tone-bad — bronze italic, NÃO vermelho)
+ *   memória · usada             (tone-good)
+ *   memória · parcial           (tone-partial)
+ *   memória · atenção pendente  (tone-bad — bronze italic, NÃO vermelho)
  *
  * Suprimido quando status === 'skipped' ou nenhum sinal.
  */
@@ -28,7 +28,7 @@ function statusLabel(status: string): string {
   if (status === 'injected') return 'usado'
   if (status === 'degraded') return 'parcial'
   if (status === 'failed_open') return 'falhou aberto'
-  if (status === 'failed_closed') return 'bloqueado'
+  if (status === 'failed_closed') return 'atenção pendente'
   if (status === 'skipped') return 'ignorado'
   return status
 }
@@ -45,7 +45,7 @@ export function AtlasAiOpenBrainBadge({ trace }: AtlasAiOpenBrainBadgeProps) {
   if (!status || status === 'skipped') return null
   return (
     <p className={`atlas-ai-openbrain-line tone-${tone(status)}`}>
-      open brain · {statusLabel(status)}
+      memória · {statusLabel(status)}
     </p>
   )
 }

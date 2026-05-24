@@ -4291,6 +4291,16 @@
     background: var(--cc-surface);
     color: var(--cc-text);
   }
+  .surface-tab:disabled,
+  .surface-tab.is-blocked {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+  .surface-tab:disabled:hover,
+  .surface-tab.is-blocked:hover {
+    background: transparent;
+    color: inherit;
+  }
   .surface-tab.on {
     background: var(--cc-surface-raised);
     border-color: var(--cc-border-soft);

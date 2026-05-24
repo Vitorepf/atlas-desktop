@@ -41,8 +41,8 @@ const TARGET_LABEL: Record<AtlasCodePromotionTarget, string> = {
 const TARGET_HINT: Record<AtlasCodePromotionTarget, string> = {
   none: 'Conversa pequena ou já resolvida — continuar no Atlas Dev. Nenhuma Obra precisa nascer.',
   quick_intervention: 'Pequeno, claro e reversível. Não cria Obra; vira um trabalho leve, executável no Atlas Dev.',
-  obra_candidate: 'Trabalho com risco/escopo. Cria uma Obra candidata (não-executada) com contexto e back-link para a thread.',
-  forge_obra: 'Trabalho ultra-hard ou pedido explícito do humano. Cria Obra Forge real, vinculada ao workspace.',
+  obra_candidate: 'Trabalho com risco/escopo. Cria uma Obra candidata (não-executada) com contexto e volta para esta conversa.',
+  forge_obra: 'Trabalho ultra-hard ou pedido explícito do humano. Cria Obra Forge real, vinculada ao projeto.',
 }
 
 function confidenceLabel(score: number): 'low' | 'medium' | 'high' {
@@ -92,7 +92,7 @@ export function AtlasAiPromotionPanel({
         )
         if (cancelled) return
         if (data === null) {
-          setError('atlas_dev_promotion_unavailable · backend não respondeu')
+          setError('Não consegui calcular a promoção agora. Verifique o serviço local e tente novamente.')
           return
         }
         setPreview(data)
@@ -157,7 +157,7 @@ export function AtlasAiPromotionPanel({
         },
       })
       if (result === null) {
-        setError('atlas_dev_promotion_failed · backend não confirmou a promoção')
+        setError('Não consegui promover agora. O serviço local não confirmou a ação.')
         return
       }
       onPromoted?.(result)
@@ -188,7 +188,7 @@ export function AtlasAiPromotionPanel({
       className="atlas-ai-promotion-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-label="Promover thread para Forge"
+      aria-label="Promover conversa para Forge"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -197,9 +197,9 @@ export function AtlasAiPromotionPanel({
         <header className="atlas-ai-promotion-header">
           <div>
             <p className="atlas-ai-promotion-eyebrow">Atlas Dev → Forge</p>
-            <h2>{preview?.title || 'Promover thread'}</h2>
+            <h2>{preview?.title || 'Promover conversa'}</h2>
             <p className="atlas-ai-promotion-sub">
-              {preview?.workspaceName ?? preview?.workspaceSlug ?? 'workspace —'}
+              {preview?.workspaceName ?? preview?.workspaceSlug ?? 'projeto —'}
               {preview?.messageCount
                 ? ` · ${preview.messageCount} mensagens`
                 : ''}
@@ -239,19 +239,19 @@ export function AtlasAiPromotionPanel({
               ) : null}
               {thinSmallBugVeto ? (
                 <p className="atlas-ai-promotion-warning">
-                  ⚠ thread pequena demais para virar Obra. Atlas Dev cobre. Promova só se você
+                  ⚠ conversa pequena demais para virar Obra. Atlas Dev cobre. Promova só se você
                   tiver motivo explícito.
                 </p>
               ) : null}
               {alreadyPromoted ? (
                 <p className="atlas-ai-promotion-warning">
-                  ⚠ esta thread já tem uma Obra promovida (`{preview.promotedObraId}`).
+                  ⚠ esta conversa já tem uma Obra promovida (`{preview.promotedObraId}`).
                   Re-enviar não cria uma nova; refresca o candidato existente.
                 </p>
               ) : null}
               {requiresWorkspace ? (
                 <p className="atlas-ai-promotion-warning">
-                  ⚠ workspace ausente no preview. Selecione um Project no topbar antes de promover.
+                  ⚠ projeto ausente na prévia. Selecione um projeto na barra superior antes de promover.
                 </p>
               ) : null}
             </section>

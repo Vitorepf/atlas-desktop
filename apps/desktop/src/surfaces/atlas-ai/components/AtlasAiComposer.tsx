@@ -47,6 +47,7 @@ interface AtlasAiComposerProps {
    */
   onSendInNew?: (extras?: AtlasAiComposerSendExtras) => Promise<void> | void
   textareaMaxPx?: number
+  placeholder?: string
   onVoxClick?: () => void
   voxState?: VoxOverlayState
   voiceReplyEnabled?: boolean
@@ -69,6 +70,7 @@ export function AtlasAiComposer({
   sendError,
   onSend,
   textareaMaxPx,
+  placeholder,
   onVoxClick,
   voxState = 'closed',
   voiceReplyEnabled = false,
@@ -113,6 +115,7 @@ export function AtlasAiComposer({
       workspaceSlug={workspaceSlug}
       requireWorkspaceForProgramming
       textareaMaxPx={textareaMaxPx}
+      placeholder={placeholder}
       onSend={handleSend}
       onVoxClick={onVoxClick}
       voxState={voxState}

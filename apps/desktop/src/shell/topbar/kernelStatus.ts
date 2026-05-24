@@ -1,10 +1,10 @@
 import type { UseKernelStatusResult } from '../../hooks/useKernelStatus'
 
 export const KERNEL_LABEL: Record<UseKernelStatusResult['status'], string> = {
-  booting: 'Kernel iniciando...',
-  ready: 'Kernel pronto',
-  failed: 'Kernel falhou',
-  unconfigured: 'Kernel não encontrado',
+  booting: 'Serviço iniciando...',
+  ready: 'Serviço pronto',
+  failed: 'Serviço com atenção',
+  unconfigured: 'Serviço indisponível',
 }
 
 export const KERNEL_TONE: Record<UseKernelStatusResult['status'], string> = {
@@ -13,4 +13,3 @@ export const KERNEL_TONE: Record<UseKernelStatusResult['status'], string> = {
   failed: 'kernel-failed',
   unconfigured: 'kernel-unconfigured',
 }
-

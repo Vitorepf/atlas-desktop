@@ -3,7 +3,7 @@
  *
  * Responsabilidades:
  *   - listar/abrir/criar `ai_threads` reais (sem storage paralelo);
- *   - filtrar por workspace + modo;
+ *   - listar conversas cross-workspace e deixar o workspace ativo governar o composer;
  *   - construir payload via `contract.ts` (paridade com Atlas AI mobile);
  *   - postar `/ai/interactions` e fazer polling leve do trace até `completed`.
  */
@@ -20,11 +20,18 @@ import {
   getAiTrace,
   getAtlasAiRouterBootstrap,
   getAtlasAiRouterReadiness,
+  getWorkspaceArtifactLakeEntry,
+  getWorkspaceConversationFusion,
   listAiThreads,
   postAtlasDevPlan,
   updateAiThread,
 } from './client'
 import { buildInteractionPayload, defaultTaskForMode, isTaskAllowedForMode } from './contract'
+import {
+  workspaceMetadata,
+  workspaceStorageValue,
+  type AtlasAiWorkspaceScope,
+} from './workspaceScope'
 import type { AtlasComputeEffortChoice, AtlasRichInputPayload } from '../../lib/rich-input'
 import type {
   AiThreadDetail,
@@ -35,6 +42,8 @@ import type {
   AtlasAiRouterBootstrap,
   AtlasAiRouterReadiness,
   AtlasAiTask,
+  AtlasWorkspaceArtifactLakeEntry,
+  AtlasWorkspaceConversationFusion,
   AtlasDevPlanResult,
 } from './types'
 
@@ -50,6 +59,14 @@ export interface AtlasAiState {
   modeFilter: AtlasAiMode | 'all'
   setModeFilter: (mode: AtlasAiMode | 'all') => void
   refreshThreads: () => Promise<void>
+  conversationFusion: AtlasWorkspaceConversationFusion | null
+  conversationFusionLoading: boolean
+  conversationFusionError: string | null
+  refreshConversationFusion: (threadIds?: string[], opts?: { persist?: boolean }) => Promise<AtlasWorkspaceConversationFusion | null>
+  conversationFusionArtifact: AtlasWorkspaceArtifactLakeEntry | null
+  conversationFusionArtifactLoading: boolean
+  conversationFusionArtifactError: string | null
+  inspectConversationFusionArtifact: (artifact?: string | null) => Promise<void>
 
   selectedThreadId: string | null
   selectThread: (id: string | null) => void
@@ -123,6 +140,8 @@ export interface AtlasAiState {
       richInputPayload?: AtlasRichInputPayload
       computeEffort?: AtlasComputeEffortChoice
       voiceConversation?: boolean
+      /** Thread alvo explícita. Necessário para Workbench multi-conversa. */
+      threadId?: string | null
     },
   ) => Promise<AiTrace | null>
 
@@ -133,6 +152,8 @@ export interface AtlasAiState {
   renameThread: (id: string, title: string) => Promise<void>
   /** Apaga a thread permanentemente (DELETE /ai/threads/{id}). */
   closeThread: (id: string) => Promise<void>
+  /** Move thread para o workspace AWIS ativo (usado por drag/drop e menu). */
+  moveThreadToWorkspace: (id: string, scope: AtlasAiWorkspaceScope) => Promise<void>
   /** Baixa detalhe completo (com mensagens) para export — não muda estado. */
   fetchThreadDetail: (id: string) => Promise<AiThreadDetail | null>
 }
@@ -149,11 +170,19 @@ export function useAtlasAi(
   const mode = atlasAiBridgeMode()
   const [workspaceSlug, setWorkspaceSlug] = useState<string | null>(initialWorkspaceSlug)
   const [workspacePath, setWorkspacePath] = useState<string | null>(initialWorkspacePath)
+  const previousWorkspaceSlugRef = useRef<string | null>(initialWorkspaceSlug)
   const [modeFilter, setModeFilter] = useState<AtlasAiMode | 'all'>('all')
 
   const [threads, setThreads] = useState<AiThreadSummary[]>([])
   const [threadsLoading, setThreadsLoading] = useState<boolean>(mode !== 'offline')
   const [threadsError, setThreadsError] = useState<string | null>(null)
+  const threadsRetryCountRef = useRef<number>(0)
+  const [conversationFusion, setConversationFusion] = useState<AtlasWorkspaceConversationFusion | null>(null)
+  const [conversationFusionLoading, setConversationFusionLoading] = useState<boolean>(false)
+  const [conversationFusionError, setConversationFusionError] = useState<string | null>(null)
+  const [conversationFusionArtifact, setConversationFusionArtifact] = useState<AtlasWorkspaceArtifactLakeEntry | null>(null)
+  const [conversationFusionArtifactLoading, setConversationFusionArtifactLoading] = useState<boolean>(false)
+  const [conversationFusionArtifactError, setConversationFusionArtifactError] = useState<string | null>(null)
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const selectedThreadIdRef = useRef<string | null>(null)
@@ -208,12 +237,6 @@ export function useAtlasAi(
       return
     }
     try {
-      // NÃO filtra por `workspace` aqui: o backend faz match LITERAL
-      // (`->where('workspace', $value)`), mas o DB armazena workspace como
-      // path absoluto ("/Users/vitorepf/Develop/atlas") enquanto o desktop
-      // operava com slug ("atlas") — divergência que zerava a lista.
-      // Solução: pegar TODAS as threads ativas e deixar o agrupamento
-      // client-side (AtlasAiThreadList) cuidar de organizar por projeto.
       const list = await listAiThreads({
         status: 'active',
         light: true,
@@ -222,6 +245,7 @@ export function useAtlasAi(
       if (!mountedRef.current) return
       setThreads(list)
       setThreadsError(null)
+      threadsRetryCountRef.current = 0
     } catch (e) {
       if (!mountedRef.current) return
       setThreads([])
@@ -230,6 +254,82 @@ export function useAtlasAi(
       if (mountedRef.current) setThreadsLoading(false)
     }
   }, [mode])
+
+  const refreshConversationFusion = useCallback(async (threadIds?: string[], opts: { persist?: boolean } = {}) => {
+    if (mode === 'offline' || !workspaceSlug) {
+      if (mountedRef.current) {
+        setConversationFusion(null)
+        setConversationFusionLoading(false)
+        setConversationFusionArtifact(null)
+        setConversationFusionArtifactLoading(false)
+      }
+      return null
+    }
+    setConversationFusionLoading(true)
+    try {
+      const fusion = await getWorkspaceConversationFusion(workspaceSlug, {
+        limit: threadIds?.length ? threadIds.length : 12,
+        threadIds,
+        persist: opts.persist === true,
+      })
+      if (!mountedRef.current) return null
+      setConversationFusion(fusion)
+      setConversationFusionError(null)
+      const artifactRef = opts.persist === true
+        ? fusion.persisted_artifact?.artifact_id ?? fusion.persisted_artifact?.artifact_hash ?? null
+        : null
+      if (artifactRef) {
+        setConversationFusionArtifactLoading(true)
+        try {
+          const payload = await getWorkspaceArtifactLakeEntry(workspaceSlug, artifactRef)
+          if (!mountedRef.current) return fusion
+          setConversationFusionArtifact(payload)
+          setConversationFusionArtifactError(null)
+        } catch (e) {
+          if (!mountedRef.current) return fusion
+          setConversationFusionArtifact(null)
+          setConversationFusionArtifactError(e instanceof Error ? e.message : String(e))
+        } finally {
+          if (mountedRef.current) setConversationFusionArtifactLoading(false)
+        }
+      }
+      return fusion
+    } catch (e) {
+      if (!mountedRef.current) return null
+      setConversationFusion(null)
+      setConversationFusionError(e instanceof Error ? e.message : String(e))
+      return null
+    } finally {
+      if (mountedRef.current) setConversationFusionLoading(false)
+    }
+  }, [mode, workspaceSlug])
+
+  const inspectConversationFusionArtifact = useCallback(async (artifact?: string | null) => {
+    const artifactRef = artifact
+      ?? conversationFusion?.persisted_artifact?.artifact_id
+      ?? conversationFusion?.persisted_artifact?.artifact_hash
+      ?? null
+    if (mode === 'offline' || !workspaceSlug || !artifactRef) {
+      if (mountedRef.current) {
+        setConversationFusionArtifact(null)
+        setConversationFusionArtifactLoading(false)
+      }
+      return
+    }
+    setConversationFusionArtifactLoading(true)
+    try {
+      const payload = await getWorkspaceArtifactLakeEntry(workspaceSlug, artifactRef)
+      if (!mountedRef.current) return
+      setConversationFusionArtifact(payload)
+      setConversationFusionArtifactError(null)
+    } catch (e) {
+      if (!mountedRef.current) return
+      setConversationFusionArtifact(null)
+      setConversationFusionArtifactError(e instanceof Error ? e.message : String(e))
+    } finally {
+      if (mountedRef.current) setConversationFusionArtifactLoading(false)
+    }
+  }, [conversationFusion, mode, workspaceSlug])
 
   const loadThreadDetail = useCallback(
     async (id: string) => {
@@ -267,6 +367,25 @@ export function useAtlasAi(
     },
     [loadThreadDetail],
   )
+
+  useEffect(() => {
+    if (previousWorkspaceSlugRef.current === workspaceSlug) return
+    previousWorkspaceSlugRef.current = workspaceSlug
+    /*
+     * Workspace changes are no longer equivalent to "close the active
+     * conversation". Atlas AI can show and open threads from multiple projects
+     * in the same rail; selecting a cross-project thread updates the effective
+     * workspace in the surface. Clearing selectedThreadId here caused the exact
+     * regression where only the latest/current-project conversation could be
+     * opened.
+     */
+    setCurrentAtlasDevPlan(null)
+    setAtlasDevPlanError(null)
+    setConversationFusion(null)
+    setConversationFusionError(null)
+    setConversationFusionArtifact(null)
+    setConversationFusionArtifactError(null)
+  }, [workspaceSlug])
 
   // Stream subscription · token-by-token render via SSE.
   // Acumula content de eventos delta/text/content_block_delta no buffer.
@@ -374,7 +493,7 @@ export function useAtlasAi(
           if (consecutiveErrors >= 5) {
             stop()
             setPendingUserMessage(null)
-            setSendError('Backend não responde ao polling do trace · tenta de novo ou verifica o atlas-server.')
+            setSendError('Serviço local não confirmou a resposta. Tente de novo ou reinicie o Atlas local.')
             return
           }
         }
@@ -383,7 +502,7 @@ export function useAtlasAi(
           // CRÍTICO: limpar optimistic + reportar timeout claro pro usuário.
           // Sem isso a bolha "enviando agora…" fica eterna.
           setPendingUserMessage(null)
-          setSendError(`Atlas não respondeu em ${Math.round(TRACE_POLL_TIMEOUT_MS / 1000)}s · provider/kernel travado, tenta de novo`)
+          setSendError(`Atlas não respondeu em ${Math.round(TRACE_POLL_TIMEOUT_MS / 1000)}s. Tente de novo em instantes.`)
           return
         }
         pollTimerRef.current = window.setTimeout(tick, TRACE_POLL_INTERVAL_MS)
@@ -431,10 +550,11 @@ export function useAtlasAi(
         richInputPayload?: AtlasRichInputPayload
         computeEffort?: AtlasComputeEffortChoice
         voiceConversation?: boolean
+        threadId?: string | null
       },
     ): Promise<AiTrace | null> => {
       if (mode === 'offline') {
-        setSendError('Atlas AI offline · backend indisponível, conversa só volta quando o kernel responder.')
+        setSendError('Atlas AI offline · serviço local indisponível. A conversa volta quando o serviço responder.')
         return null
       }
       const trimmed = text.trim()
@@ -486,6 +606,10 @@ export function useAtlasAi(
       const shouldRunPlanOnly =
         composerMode === 'programming' && (composerTask === 'dev' || composerTask === 'debug')
       const shouldForceNewThread = options?.newThread && !options?.voiceConversation
+      const explicitThreadId =
+        Object.prototype.hasOwnProperty.call(options ?? {}, 'threadId')
+          ? options?.threadId ?? null
+          : undefined
       let planOnlyDecision: 'continue' | 'halt' = 'continue'
       if (shouldRunPlanOnly) {
         setAtlasDevPlanLoading(true)
@@ -493,7 +617,7 @@ export function useAtlasAi(
         try {
           const planResult = await postAtlasDevPlan({
             input_text: trimmed,
-            thread_id: shouldForceNewThread ? null : selectedThreadIdRef.current,
+            thread_id: shouldForceNewThread ? null : explicitThreadId ?? selectedThreadIdRef.current,
             surface_id: 'atlas_desktop_ai',
             workspace: atlasDevWorkspace,
             task: composerTask,
@@ -541,7 +665,13 @@ export function useAtlasAi(
       }
 
       try {
-        let threadId = shouldForceNewThread ? null : selectedThreadIdRef.current
+        const scope: AtlasAiWorkspaceScope = {
+          slug: workspaceSlug,
+          name: workspaceSlug,
+          path: workspacePath,
+          pathExists: null,
+        }
+        let threadId = shouldForceNewThread ? null : explicitThreadId ?? selectedThreadIdRef.current
         // Cria thread explicitamente quando não há uma — assim o trace já fica
         // ligado e o histórico atualiza sem corrida.
         if (!threadId) {
@@ -550,10 +680,11 @@ export function useAtlasAi(
               options?.title?.trim() ||
               trimmed.slice(0, 80) ||
               (hasAttachments ? 'Atlas AI · conversa com anexos' : 'Atlas AI · nova conversa'),
-            workspace: workspaceSlug,
+            workspace: workspaceStorageValue(scope),
             surface: 'atlas_desktop_ai',
             source_type: 'desktop',
             metadata: {
+              ...workspaceMetadata(scope),
               atlas_focus: composerMode,
               atlas_workflow_mode: composerTask,
               operator_compute_effort: options?.computeEffort ?? composerComputeEffort,
@@ -570,6 +701,7 @@ export function useAtlasAi(
           threadId = newThread.id
           selectedThreadIdRef.current = threadId
           if (mountedRef.current) {
+            setThreads((prev) => [newThread, ...prev.filter((thread) => thread.id !== newThread.id)])
             setSelectedThreadId(threadId)
             setThreadDetail(null)
             setThreadDetailLoading(true)
@@ -722,6 +854,26 @@ export function useAtlasAi(
     [selectedThreadId, refreshThreads],
   )
 
+  const moveThreadToWorkspace = useCallback(
+    async (id: string, scope: AtlasAiWorkspaceScope) => {
+      try {
+        const updated = await updateAiThread(id, {
+          workspace: workspaceStorageValue(scope) ?? undefined,
+          metadata: workspaceMetadata(scope),
+        })
+        if (!mountedRef.current) return
+        setThreads((prev) => prev.map((thread) => (thread.id === id ? { ...thread, ...updated } : thread)))
+        if (id === selectedThreadId) {
+          void loadThreadDetail(id)
+        }
+        void refreshThreads()
+      } catch (e) {
+        if (mountedRef.current) setThreadDetailError(e instanceof Error ? e.message : String(e))
+      }
+    },
+    [loadThreadDetail, refreshThreads, selectedThreadId],
+  )
+
   const fetchThreadDetail = useCallback(
     async (id: string): Promise<AiThreadDetail | null> => {
       if (mode === 'offline') return null
@@ -759,6 +911,7 @@ export function useAtlasAi(
     void Promise.resolve().then(() => {
       if (!mountedRef.current) return
       void refreshThreads()
+      void refreshConversationFusion()
     })
     // Hyperflow bootstrap + readiness — opcionais e silenciosos. Carregam só
     // pra alimentar painéis informativos; o front nunca depende disso para
@@ -784,7 +937,43 @@ export function useAtlasAi(
         streamUnsubRef.current = null
       }
     }
-  }, [refreshThreads, mode])
+  }, [refreshThreads, refreshConversationFusion, mode])
+
+  useEffect(() => {
+    if (mode !== 'tauri') return
+    let cancelled = false
+    let unlisten: (() => void) | null = null
+
+    void Promise.resolve().then(async () => {
+      try {
+        const eventApi = await import('@tauri-apps/api/event')
+        unlisten = await eventApi.listen('kernel://ready', () => {
+          if (cancelled) return
+          threadsRetryCountRef.current = 0
+          void refreshThreads()
+          void refreshConversationFusion()
+        })
+      } catch {
+        /* Browser/test environments do not expose Tauri events. */
+      }
+    })
+
+    return () => {
+      cancelled = true
+      if (unlisten) unlisten()
+    }
+  }, [mode, refreshConversationFusion, refreshThreads])
+
+  useEffect(() => {
+    if (mode === 'offline' || !threadsError) return
+    if (threadsRetryCountRef.current >= 6) return
+    const retry = window.setTimeout(() => {
+      if (!mountedRef.current) return
+      threadsRetryCountRef.current += 1
+      void refreshThreads()
+    }, 2500)
+    return () => window.clearTimeout(retry)
+  }, [mode, refreshThreads, threadsError])
 
   const filteredThreads = applyModeFilter(threads, modeFilter)
 
@@ -800,6 +989,14 @@ export function useAtlasAi(
     modeFilter,
     setModeFilter,
     refreshThreads,
+    conversationFusion,
+    conversationFusionLoading,
+    conversationFusionError,
+    refreshConversationFusion,
+    conversationFusionArtifact,
+    conversationFusionArtifactLoading,
+    conversationFusionArtifactError,
+    inspectConversationFusionArtifact,
 
     selectedThreadId,
     selectThread,
@@ -851,6 +1048,7 @@ export function useAtlasAi(
     archiveThread,
     renameThread,
     closeThread,
+    moveThreadToWorkspace,
     fetchThreadDetail,
   }
 }

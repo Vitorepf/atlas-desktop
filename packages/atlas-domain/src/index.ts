@@ -145,6 +145,8 @@ export interface AtlasWorkspaceProfile {
   slug: string
   name: string
   kind: AtlasWorkspaceKind
+  source?: string
+  status?: string
   workspacePath: string
   workspacePathExists: boolean
   repoRoot: string
@@ -3540,9 +3542,18 @@ export type {
   BrokenPath,
   CartographyAtom,
   CartographyGraph,
+  CartographyArtifactGraphReplay,
+  CartographyArtifactLakeReplay,
+  CartographyArtifactLakeReplayItem,
+  CartographyHumanClarity,
+  CartographyHumanClarityContract,
+  CartographyHumanClarityDimension,
   CartographyNote,
+  CartographyRuntimeProjectionReplay,
+  CartographyRuntimeProjectionReplayItem,
   CartographySources,
   CartographyView,
+  CartographyWorkspaceScope,
   Connection,
   Continent,
   GraphAudit,

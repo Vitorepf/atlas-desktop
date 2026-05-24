@@ -189,6 +189,94 @@ export interface CartographySources {
   obsidianVaultPath: string
 }
 
+export interface CartographyHumanClarityDimension {
+  id: string
+  score: number
+  evidence: string
+}
+
+export interface CartographyHumanClarity {
+  schemaVersion: string
+  status: string
+  score: number
+  targetScore: number
+  grade: string
+  dimensions: CartographyHumanClarityDimension[]
+  invariants: Record<string, boolean>
+}
+
+export interface CartographyHumanClarityContract {
+  humanClarity: CartographyHumanClarity | null
+  writes: boolean
+}
+
+export interface CartographyRuntimeProjectionReplayItem {
+  family: string
+  status: string
+  staleReason: string | null
+  savedWorkspaceHash: string | null
+  currentWorkspaceHash: string | null
+  generatedAt: string | null
+}
+
+export interface CartographyRuntimeProjectionReplay {
+  schemaVersion: string
+  status: string
+  staleCount: number
+  missingCount: number
+  staleFamilies: string[]
+  missingFamilies: string[]
+  items: CartographyRuntimeProjectionReplayItem[]
+}
+
+export interface CartographyArtifactGraphReplay {
+  schemaVersion: string
+  status: string
+  stale: boolean
+  reason: string | null
+  snapshotId: string | null
+  runtimeHash: string | null
+  artifactIntelligenceHash: string | null
+  graphHash: string | null
+  capturedAt: string | null
+}
+
+export interface CartographyArtifactLakeReplayItem {
+  artifactId: string
+  artifactHash: string
+  runtimeHash: string
+  artifactType: string
+  status: string
+  consumer: string | null
+  sourceHashCount: number
+  qualityScore: number
+  capturedAt: string | null
+}
+
+export interface CartographyArtifactLakeReplay {
+  schemaVersion: string
+  status: string
+  reason: string | null
+  artifactCount: number
+  conversationFusionPackCount: number
+  latestArtifacts: CartographyArtifactLakeReplayItem[]
+  inspectEndpoint: string | null
+  sourcePolicy: {
+    rawConversationReturned: boolean
+    fullMessageContentReturned: boolean
+    workspaceScopeRequired: boolean
+    hashesAreAuthoritative: boolean
+  }
+}
+
+export interface CartographyWorkspaceScope {
+  workspaceId: string | null
+  workspaceHash: string | null
+  runtimeProjectionReplay: CartographyRuntimeProjectionReplay | null
+  artifactGraphReplay: CartographyArtifactGraphReplay | null
+  artifactLakeReplay: CartographyArtifactLakeReplay | null
+}
+
 /**
  * Resposta canônica de `/atlas-cartography/graph`.
  * `checksum` é sha256 estável das superfícies canônicas (exclui generated_at)
@@ -204,6 +292,8 @@ export interface CartographyGraph {
   lanes: Record<string, Lane>
   connections: Connection[]
   semanticGraph: SemanticGraph | null
+  humanClarityContract: CartographyHumanClarityContract | null
+  workspaceScope: CartographyWorkspaceScope | null
 }
 
 /**

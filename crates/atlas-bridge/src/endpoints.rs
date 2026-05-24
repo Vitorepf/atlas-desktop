@@ -37,6 +37,7 @@ pub const ATLAS_CODE_CERTIFICATION: &str = "/atlas-code/certification"; // V2
 pub const ATLAS_CODE_WORKS_LIST: &str = "/atlas-code/works"; // V2
 pub const ATLAS_CODE_WORKS_CREATE: &str = "/atlas-code/works"; // V2
 pub const ATLAS_CODE_WORK_SHOW: &str = "/atlas-code/works/"; // V2 (+ {id})
+pub const ATLAS_CODE_WORKSPACES: &str = "/atlas-code/projects/workspaces"; // V2 Project/Workspace profiles
 pub const ATLAS_CODE_WORK_STATE: &str = "/atlas-code/works/"; // V2 (+ {id}/state)
 pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions)
 pub const ATLAS_CODE_WORK_FORGE_LIVE_EXECUTIONS_ASYNC: &str = "/atlas-code/works/"; // V2 (+ {id}/forge/live-executions/async)

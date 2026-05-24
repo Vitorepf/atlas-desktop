@@ -26,11 +26,24 @@ interface WorkspacePillProps {
   onOpenProfile?: () => void
 }
 
+function projectFolderLabel(profile: AtlasWorkspaceProfile): string {
+  if (!profile.workspacePath) return 'Sem pasta local'
+  return profile.workspacePathExists ? 'Pasta pronta' : 'Pasta ausente'
+}
+
+function projectDocsLabel(profile: AtlasWorkspaceProfile): string {
+  if (profile.docsStatus === 'complete') return 'docs prontas'
+  if (profile.docsStatus === 'partial') return 'docs parciais'
+  return 'docs pendentes'
+}
+
 export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabled, onOpenProfile }: WorkspacePillProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
   const profiles = workspaces?.profiles ?? []
   const fallbackName = active?.name ?? (activeSlug ? activeSlug : 'Atlas')
+  const activeFolderLabel = active ? projectFolderLabel(active) : 'Sem pasta local'
+  const activeFolderReady = active?.workspacePathExists === true
   const productionStatus = active?.productionStatus ?? 'development'
   const isProduction = productionStatus === 'production'
 
@@ -79,7 +92,7 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
         className="workspace-pill-button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Project/Workspace ativo: ${fallbackName}`}
+        aria-label={`Projeto ativo: ${fallbackName}. ${activeFolderLabel}`}
         disabled={!interactive}
         onClick={() => setOpen((v) => !v)}
         style={{
@@ -101,6 +114,25 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
       >
         <span aria-hidden="true" style={{ opacity: 0.7 }}>◆</span>
         <span>{fallbackName}</span>
+        <span
+          title={activeFolderReady ? 'Pasta local pronta para contexto e execução' : 'Escolha a pasta local do Mac'}
+          style={{
+            padding: '0 5px',
+            fontSize: 9,
+            lineHeight: '14px',
+            borderRadius: 2,
+            border: activeFolderReady
+              ? '1px solid rgba(98, 160, 122, 0.45)'
+              : '1px solid var(--cc-warning, #d4a85a)',
+            color: activeFolderReady
+              ? 'var(--cc-success, #8ad09a)'
+              : 'var(--cc-warning, #d4a85a)',
+            letterSpacing: 0.4,
+            textTransform: 'none',
+          }}
+        >
+          {activeFolderLabel}
+        </span>
         {isProduction ? (
           <span
             aria-label="Projeto em produção"
@@ -127,7 +159,7 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
       {open && interactive ? (
         <ul
           role="listbox"
-          aria-label="Selecionar Project/Workspace"
+          aria-label="Selecionar projeto"
           className="workspace-pill-menu"
           style={{
             position: 'absolute',
@@ -154,7 +186,7 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
           {profiles.map((profile) => {
             const selected = profile.slug === activeSlug
             const prod = profile.productionStatus === 'production'
-            const docs = profile.docsStatus
+            const detail = `${projectFolderLabel(profile)} · ${projectDocsLabel(profile)}`
             return (
               <li key={profile.slug} role="option" aria-selected={selected}>
                 <button
@@ -178,7 +210,7 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
                   <span style={{ display: 'grid', gap: 2 }}>
                     <span style={{ fontWeight: selected ? 600 : 500 }}>{profile.name}</span>
                     <span style={{ fontSize: 10, opacity: 0.6, letterSpacing: 0.2 }}>
-                      {profile.slug} · docs {docs}
+                      {detail}
                     </span>
                   </span>
                   {prod ? (
@@ -227,7 +259,7 @@ export function WorkspacePill({ workspaces, active, activeSlug, onSelect, disabl
                   textTransform: 'uppercase',
                 }}
               >
-                ver perfil completo · ⌘⇧P
+                configurar projeto · ⌘⇧P
               </button>
             </li>
           ) : null}

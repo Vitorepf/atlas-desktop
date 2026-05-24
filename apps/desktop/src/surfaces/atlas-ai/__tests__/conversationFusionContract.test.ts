@@ -1,0 +1,803 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+
+const client = readFileSync(new URL('../client.ts', import.meta.url), 'utf8')
+const hook = readFileSync(new URL('../useAtlasAi.ts', import.meta.url), 'utf8')
+const threadList = readFileSync(new URL('../components/AtlasAiThreadList.tsx', import.meta.url), 'utf8')
+const conversation = readFileSync(new URL('../components/AtlasAiConversation.tsx', import.meta.url), 'utf8')
+const threadContextMenu = readFileSync(new URL('../components/AtlasAiThreadContextMenu.tsx', import.meta.url), 'utf8')
+const contextPanel = readFileSync(new URL('../components/AtlasAiContextPanel.tsx', import.meta.url), 'utf8')
+const decisionBadge = readFileSync(new URL('../components/AtlasAiDecisionBadge.tsx', import.meta.url), 'utf8')
+const openBrainBadge = readFileSync(new URL('../components/AtlasAiOpenBrainBadge.tsx', import.meta.url), 'utf8')
+const planIndicators = readFileSync(new URL('../components/AtlasAiPlanIndicators.tsx', import.meta.url), 'utf8')
+const promotionPanel = readFileSync(new URL('../components/AtlasAiPromotionPanel.tsx', import.meta.url), 'utf8')
+const errorBanner = readFileSync(new URL('../components/AtlasAiErrorBanner.tsx', import.meta.url), 'utf8')
+const surface = readFileSync(new URL('../AtlasAiSurface.tsx', import.meta.url), 'utf8')
+const types = readFileSync(new URL('../types.ts', import.meta.url), 'utf8')
+const css = readFileSync(new URL('../atlas-ai.css', import.meta.url), 'utf8')
+
+assert.match(
+  client,
+  /opts:\s*\{\s*limit\?: number; threadIds\?: string\[\]; persist\?: boolean\s*\}/,
+  'conversation fusion client must expose persist option',
+)
+assert.match(
+  client,
+  /if \(opts\.persist\) params\.set\('persist', '1'\)/,
+  'conversation fusion client must request persist=1 when asked',
+)
+assert.match(
+  client,
+  /getWorkspaceArtifactLakeEntry/,
+  'Desktop client must expose persisted AWIS artifact inspection',
+)
+assert.match(
+  client,
+  /getAtlasAwisLearningLoop/,
+  'Desktop client must read the certified AWIS learning loop instead of relying only on local heuristics',
+)
+assert.match(
+  client,
+  /getAtlasServerHealth/,
+  'Desktop client must expose a local health probe so AWIS can explain backend/database failures before showing generic errors',
+)
+assert.match(
+  client,
+  /fetchJson<AtlasServerHealth>\('\/health'\)/,
+  'AWIS health gate must use the canonical atlas-server /health endpoint',
+)
+assert.match(
+  client,
+  /\/atlas-code\/workspace-intelligence\/learning-loop\?\$\{params\.toString\(\)\}/,
+  'Certified AWIS loop must use the server workspace-intelligence learning-loop endpoint',
+)
+assert.match(
+  client,
+  /\/atlas-code\/workspace-intelligence\/artifact-lake\/\$\{encodeURIComponent\(artifact\)\}/,
+  'Persisted fusion artifact inspection must use the workspace Artifact Lake endpoint',
+)
+assert.match(
+  hook,
+  /refreshConversationFusion: \(threadIds\?: string\[\], opts\?: \{ persist\?: boolean \}\) => Promise<AtlasWorkspaceConversationFusion \| null>/,
+  'Atlas AI hook must expose persist control and return the generated workspace fusion pack',
+)
+assert.match(
+  hook,
+  /return fusion/,
+  'Persisted AWIS Space saves must return the materialized artifact reference to the Desktop receipt cache',
+)
+assert.match(
+  hook,
+  /persist: opts\.persist === true/,
+  'Atlas AI hook must forward persist=true only when a manual caller asks for materialization',
+)
+assert.match(
+  hook,
+  /inspectConversationFusionArtifact: \(artifact\?: string \| null\) => Promise<void>/,
+  'Atlas AI hook must expose persisted fusion artifact inspection',
+)
+assert.match(
+  hook,
+  /getWorkspaceArtifactLakeEntry\(workspaceSlug, artifactRef\)/,
+  'Artifact inspection must be workspace-scoped',
+)
+assert.match(
+  hook,
+  /opts\.persist === true[\s\S]*fusion\.persisted_artifact\?\.artifact_id[\s\S]*getWorkspaceArtifactLakeEntry\(workspaceSlug, artifactRef\)[\s\S]*setConversationFusionArtifact\(payload\)/,
+  'Persisting a Space by drag/drop must immediately inspect the saved artifact so local Spaces can show safe details.',
+)
+assert.match(
+  surface,
+  /onPersistConversationFusion=\{\(\) => atlas\.refreshConversationFusion\(undefined, \{ persist: true \}\)\}/,
+  'Atlas AI surface must expose explicit save-pack action for conversation fusion',
+)
+assert.doesNotMatch(
+  surface,
+  /onInspectConversationFusionArtifact=/,
+  'Saved Space artifact inspection must not add a secondary details panel to the sidebar.',
+)
+assert.match(
+  surface,
+  /onFuseThreads=\{\(threadIds\) => void atlas\.refreshConversationFusion\(threadIds, \{ persist: true \}\)\}/,
+  'Drag thread-to-thread fusion must materialize the generated AWIS artifact',
+)
+assert.match(
+  surface,
+  /getAtlasAwisLearningLoop\(workspace, task\)/,
+  'Atlas AI surface must enrich the project command center with the certified AWIS loop',
+)
+assert.match(
+  surface,
+  /getAtlasServerHealth\(\)/,
+  'Atlas AI surface must feed server health into the AWIS command center',
+)
+assert.match(
+  surface,
+  /health\.checks\?\.storage[\s\S]*storageWritable[\s\S]*storageHealthy[\s\S]*status: health\.status === 'ok'[\s\S]*storageHealthy \? 'ready' : 'degraded'/,
+  'Atlas AI must treat unwritable local storage as degraded AWIS health, not only database connectivity.',
+)
+assert.match(
+  surface,
+  /serverHealth: awisServerHealth/,
+  'AWIS intelligence must receive local service health as a first-class input',
+)
+assert.match(
+  surface,
+  /const refreshAwisHealth = useCallback/,
+  'AWIS command center must expose an explicit local-service recheck action instead of passive health diagnostics only',
+)
+assert.match(
+  surface,
+  /Verificar serviço/,
+  'AWIS degraded service state must give the operator a human retry action',
+)
+assert.match(
+  surface,
+  /const handleOpenRecommendedSideBySide = useCallback/,
+  'AWIS command center must make its compare action directly executable',
+)
+assert.match(
+  surface,
+  /threadBelongsToWorkspace\(thread, activeWorkspaceScope\)/,
+  'Recommended side-by-side opening must stay scoped to the active AWIS workspace',
+)
+assert.match(
+  surface,
+  /onOpenRecommendedSideBySide=\{handleOpenRecommendedSideBySide\}/,
+  'AWIS command center must receive the side-by-side action instead of leaving the next step as passive text',
+)
+assert.match(
+  surface,
+  /const effectiveProjectSpaceCount = useMemo/,
+  'Atlas AI command center must count a ready conversation-fusion pack as Space power, not ask the user to create a Space that already exists',
+)
+assert.match(
+  surface,
+  /const displayedScore = visibleActions\.length > 0 \? Math\.min\(94, intelligence\.score\) : intelligence\.score/,
+  'Atlas AI command center must not display 100/100 while it still shows a next operational step',
+)
+assert.match(
+  surface,
+  /atlas-ai-awis-live/,
+  'Atlas AI command center must show whether AWIS is local, verifying, live or blocked',
+)
+assert.match(
+  types,
+  /export interface AtlasAwisLearningLoop/,
+  'Desktop types must preserve the certified AWIS learning-loop payload',
+)
+assert.match(
+  types,
+  /export interface AtlasServerHealth/,
+  'Desktop types must preserve the atlas-server health payload for the AWIS health gate',
+)
+assert.match(
+  types,
+  /persisted_artifact\?:/,
+  'Desktop type must preserve persisted fusion artifact metadata',
+)
+assert.match(
+  types,
+  /rejected_thread_ids\?: string\[\]/,
+  'Desktop type must preserve rejected cross-workspace thread ids',
+)
+assert.match(
+  threadList,
+  /Conversas fora deste projeto/,
+  'Thread list must explain cross-workspace fusion failures without showing a confusing blocked Space',
+)
+assert.match(
+  threadList,
+  /salvo/,
+  'Thread list must surface that a fusion pack was materialized as an AWIS artifact',
+)
+assert.match(
+  threadList,
+  /abrir/,
+  'Thread list must expose a user action to inspect the persisted fusion artifact',
+)
+assert.match(
+  threadList,
+  /atlas-ai-thread-drag-preview/,
+  'Thread list must expose a floating drag preview while creating a Space.',
+)
+assert.match(
+  threadList,
+  /comparar/,
+  'Thread drag preview must name the compare action when the center stage will open a pane.',
+)
+assert.match(
+  threadList,
+  /adicionar ao Space/,
+  'Thread drag preview must distinguish adding to an existing Space from creating a new Space.',
+)
+assert.match(
+  threadList,
+  /const dragHandleTitle = 'Arrastar conversa'[\s\S]*title=\{dragHandleTitle\}[\s\S]*aria-label=\{`\$\{dragHandleTitle\}: \$\{title\}`\}/,
+  'Visible drag handles must use compact human copy instead of exposing AWIS outcomes on every row.',
+)
+assert.doesNotMatch(
+  threadList,
+  /Criar Space ou comparar/,
+  'Thread rows must not expose technical drag outcomes as the handle label.',
+)
+assert.doesNotMatch(
+  threadList,
+  /Arraste sobre outra conversa para criar um Space/,
+  'Thread drag handles must not repeat long instructional copy on every row.',
+)
+assert.doesNotMatch(
+  threadList,
+  /Arraste sobre outra conversa para criar um Space/,
+  'Thread drag handles must not repeat long instructional copy on every row.',
+)
+assert.match(
+  threadList,
+  /atlas-ai-thread-drag-handle/,
+  'Each draggable conversation row must expose a visible drag handle for Spaces creation.',
+)
+assert.match(
+  threadList,
+  /draggable=\{false\}/,
+  'Conversation rows/handles must avoid native DnD as the primary path because Tauri can miss drop/dragend.',
+)
+assert.match(
+  surface,
+  /handleAddThreadToWorkbench/,
+  'Atlas AI stage must accept dropped conversations and open them in the multi-conversation Workbench.',
+)
+assert.match(
+  surface,
+  /Solte para comparar/,
+  'Central stage must show an explicit drop target when a conversation is dragged over it.',
+)
+assert.match(
+  surface,
+  /onDrop=\{\(event\) => \{[\s\S]*const threadId = threadIdFromDragEvent\(event\)[\s\S]*event\.preventDefault\(\)[\s\S]*setStageThreadDropActive\(false\)[\s\S]*clearThreadDragVisualState\(\)[\s\S]*if \(!threadId\) return[\s\S]*handleAddThreadToWorkbench\(threadId\)/,
+  'Stage drop must clear drag UI even when the WebView loses the dragged thread id.',
+)
+assert.match(
+  threadList,
+  />\s*comparar\s*<[\s\S]*Abre as sessões deste Space para comparar/,
+  'Project Space cards must expose a short explicit compare action for multi-session view.',
+)
+assert.match(
+  threadList,
+  /className="atlas-ai-project-space-title-button is-static"[\s\S]*\{space\.title\}/,
+  'Clicking a Space title must not secretly open every session; the explicit compare button owns that action.',
+)
+assert.match(
+  threadList,
+  /title="Abrir somente esta conversa"[\s\S]*onSelect\(thread\.id\)/,
+  'Clicking a conversation inside a Space must open only that conversation.',
+)
+assert.match(
+  threadList,
+  /draggable=\{false\}[\s\S]*onDragStart=\{startThreadDrag\}/,
+  'Conversation rows must keep native drag disabled so the clean AWIS pointer preview owns the drag gesture.',
+)
+assert.match(
+  threadList,
+  /className="atlas-ai-thread-drag-handle"[\s\S]*title=\{dragHandleTitle\}[\s\S]*onPointerDown=\{\(event\) => \{/,
+  'The visible drag handle must start the AWIS pointer drag engine without invoking the native WebView ghost.',
+)
+assert.match(
+  threadList,
+  /ProjectSpacesPanel/,
+  'Conversation fusion must be presented as Project Spaces instead of a technical CTX/fusion block.',
+)
+assert.match(
+  threadList,
+  /title=\{`\$\{list\.length\} conversas neste projeto`\}[\s\S]*\{list\.length\} <span>conversas<\/span>/,
+  'Project rows must label the project conversation count instead of showing an ambiguous bare number.',
+)
+assert.match(
+  threadList,
+  /projectSpacePanelCount > 0[\s\S]*`[\s\S]*\$\{projectSpacePanelCount\} \$\{projectSpacePanelCount === 1 \? 'Space' : 'Spaces'\}/,
+  'Project rows must label Space counts separately from conversation counts.',
+)
+assert.match(
+  threadList,
+  /projectSpacePanelCount > 0[\s\S]*: 'criar Space'/,
+  'Project rows must not show a generic Spaces badge when no Space exists yet.',
+)
+assert.match(
+  threadList,
+  /const showCreationGuide = buildingSpace && spaces\.length === 0 && !showSuggestedSpace && !showBackgroundSpaceStatus[\s\S]*Solte sobre outra conversa[\s\S]*Cria um Space com estas sessões\./,
+  'Empty Project Spaces panels must stay quiet until drag feedback is actually needed.',
+)
+assert.doesNotMatch(
+  threadList,
+  /Arraste uma conversa sobre outra/,
+  'The sidebar must not show a permanent empty Spaces instruction card.',
+)
+assert.doesNotMatch(
+  threadList,
+  /showServerActions\s*=\s*false/,
+  'Persisted Space actions must not be hidden behind a permanently disabled server-actions block.',
+)
+assert.match(
+  threadList,
+  /onSaveSpace=\{onPersistConversationFusion\}/,
+  'Suggested Space cards must expose the existing provider-safe save action directly.',
+)
+assert.match(
+  threadList,
+  /const persistedFusion = await onPersistConversationFusion\(\)[\s\S]*const nextFusion = persistedFusion \?\? conversationFusion[\s\S]*const artifact = nextFusion\?\.persisted_artifact/,
+  'Saved Space receipts must capture the freshly materialized artifact ref returned by the save call.',
+)
+assert.doesNotMatch(
+  threadList,
+  /onInspectSavedSpace|savedSpaceArtifactRef/,
+  'Saved Space cards must stay compact and avoid opening a secondary details inspector.',
+)
+assert.match(
+  threadList,
+  /\{saved \? 'Space salvo' : 'Space sugerido'\}/,
+  'Suggested Space card label must switch to saved immediately after persistence, before artifact inspection finishes.',
+)
+assert.match(
+  threadList,
+  /Space salvo neste Mac/,
+  'Saved Space cards must avoid exposing an actionable open button when only the local saved receipt is available.',
+)
+assert.match(
+  threadList,
+  /savedProjectSpaceKeyFromFusion/,
+  'Saved Space receipts must use a stable provider-safe fusion key instead of raw conversation content.',
+)
+assert.doesNotMatch(
+  threadList,
+  /\{artifactReady \? 'Space salvo' : 'Space sugerido'\}/,
+  'Suggested Space card label must not wait for artifact inspection to show the saved state.',
+)
+assert.match(
+  threadList,
+  /consumerLabelForSpace/,
+  'Saved Space replay consumers must be humanized before they appear in the AWIS sidebar.',
+)
+assert.doesNotMatch(
+  threadList,
+  /recommended_consumers\?\.slice\(0, 3\)\.join\(', '\)/,
+  'Saved Space status must not dump raw recommended_consumer ids like atlas_dev or subagent_projection.',
+)
+assert.match(
+  threadList,
+  /reutilizável por/,
+  'Saved Space status must describe reuse in human product language.',
+)
+assert.doesNotMatch(
+  threadList,
+  /function SavedSpaceInspector|Detalhes seguros|atlas-ai-saved-space-timeline|humanSpaceSummaryUnitText/,
+  'Saved Space sidebar must not render the verbose safe-details inspector.',
+)
+assert.doesNotMatch(
+  threadList,
+  /Conversas agrupadas|sessões agrupadas/,
+  'Saved Space copy must not make Space look like a generic conversation merge.',
+)
+assert.doesNotMatch(
+  threadList,
+  /const label = humanSpaceSummaryUnitText\(unit\.label\)|const value = humanSpaceSummaryUnitText\(unit\.value\)/,
+  'Saved Space inspection must not render backend summary unit labels or values directly.',
+)
+assert.doesNotMatch(
+  threadList,
+  /<[^>]*(artifact_hash|artifact_hash|runtime_hash|workspace_id|schema_version)/,
+  'Saved Space inspection must not expose raw artifact/workspace/schema ids as primary UI labels.',
+)
+assert.match(
+  threadList,
+  /comparar/,
+  'Dragging conversations together must create an actionable Space card immediately.',
+)
+assert.match(
+  threadList,
+  /onOpenInStage/,
+  'Pointer drag to the center stage must use the stage-open path instead of the ordinary beside button path.',
+)
+assert.doesNotMatch(
+  threadList,
+  /if \(stageTarget\) \{\s*onOpenInStage\?/,
+  'Pointer drag must not open the side-by-side stage during hover; it must wait for drop/pointer-up.',
+)
+assert.match(
+  threadList,
+  /onStageDragActive\?\.\(Boolean\(stageTarget\)\)/,
+  'Pointer drag over the center stage must still activate clear visual feedback before drop.',
+)
+assert.match(
+  surface,
+  /const isWorkbenchOpen = workbenchActive && workbenchThreadIds\.length > 0/,
+  'Workbench must support one to four active panes without making normal thread selection look like Workbench.',
+)
+assert.match(
+  surface,
+  /setWorkbenchPendingThreadId\(threadId\)[\s\S]*const pendingThreadId =[\s\S]*atlas\.pendingTrace\?\.thread_id[\s\S]*workbenchPendingThreadId[\s\S]*const paneHasPending = threadId === pendingThreadId[\s\S]*sending=\{paneHasPending \? atlas\.sending : false\}/,
+  'Each side-by-side pane composer must keep its own usable state instead of globally disabling every pane composer.',
+)
+assert.doesNotMatch(
+  surface,
+  /const panePending = threadId === atlas\.selectedThreadId/,
+  'Workbench pending/streaming state must follow the sending session, not whichever pane the operator focused last.',
+)
+assert.match(
+  surface,
+  /setWorkbenchDrafts\(\(prev\) => omitRecordKey\(prev, id\)\)[\s\S]*setWorkbenchDetails\(\(prev\) => omitRecordKey\(prev, id\)\)/,
+  'Closing a Workbench pane must clear hidden draft/detail state for that pane so reopening starts from current conversation state.',
+)
+assert.match(
+  surface,
+  /onNewThread=\{\(\) => \{[\s\S]*setWorkbenchDrafts\(\{\}\)[\s\S]*setWorkbenchDetails\(\{\}\)/,
+  'Starting a new conversation must clear hidden Workbench pane state.',
+)
+assert.match(
+  threadList,
+  /onOpenSpace/,
+  'Project Spaces must expose a direct open action instead of a hidden click-fusion mode.',
+)
+assert.match(
+  threadList,
+  /localStorage\.setItem\(PROJECT_SPACES_STORAGE/,
+  'Project Spaces must persist locally across Atlas AI reloads when there is no backend Space API yet.',
+)
+assert.match(
+  threadList,
+  /onRenameSpace/,
+  'Project Spaces must support renaming so generated names are not a dead end.',
+)
+assert.match(
+  threadList,
+  /desfazer/,
+  'Local Project Spaces must expose a visible desfazer action, not only an unlabeled close glyph.',
+)
+assert.match(
+  threadList,
+  />\s*editar\s*</,
+  'Local Project Spaces must expose editar as the visible action for the Space management modal.',
+)
+assert.match(
+  threadList,
+  /function SpaceEditDialog[\s\S]*role="dialog"[\s\S]*desfazer Space[\s\S]*cancelar[\s\S]*salvar/,
+  'Editing a Space must happen in a closable modal with save/cancel/desfazer actions.',
+)
+assert.doesNotMatch(
+  threadList,
+  /openingSaved\s*\?\s*'abrindo'\s*:\s*'ver'|>\s*ver\s*</,
+  'Saved Spaces must not expose a separate "ver" inspector action; the compact card is enough.',
+)
+assert.doesNotMatch(
+  threadList,
+  />\s*adotar\s*</,
+  'Saved Space adoption cannot use vague "adotar" copy; it must say what changes for the operator.',
+)
+assert.doesNotMatch(
+  threadList,
+  /atlas-ai-project-space-rename/,
+  'Local Project Spaces must not leave an inline rename editor stuck inside the sidebar.',
+)
+assert.match(
+  threadList,
+  /pointerDropTargetId/,
+  'Pointer drag must highlight and add conversations to an existing Space, not only native drag.',
+)
+assert.match(
+  threadList,
+  /spaceThreads\.slice\(0, 4\)/,
+  'Space cards must stay compact by showing only the first four sessions clearly.',
+)
+assert.match(
+  threadList,
+  /window\.addEventListener\('blur', clearThreadDragState\)/,
+  'Thread drag state must clear when the window loses focus so no preview remains stuck.',
+)
+assert.match(
+  surface,
+  /setThreadDragClearSignal\(\(value\) => value \+ 1\)/,
+  'Stage-open path must send a React cleanup signal so Tauri drag previews cannot remain stuck.',
+)
+assert.match(
+  surface,
+  /dragClearSignal=\{threadDragClearSignal\}/,
+  'AtlasAiSurface must pass the deterministic drag cleanup signal into the thread list.',
+)
+assert.match(
+  surface,
+  /awisHistoryRecoveryErrorRef[\s\S]*awisServerHealth\?\.status !== 'ready'[\s\S]*await atlas\.refreshThreads\(\)[\s\S]*await atlas\.refreshConversationFusion\(\)/,
+  'When the local AWIS service becomes healthy again, the surface must recover stale sidebar history errors automatically.',
+)
+assert.match(
+  threadList,
+  /\}, \[clearThreadDragState, dragClearSignal\]\)/,
+  'Thread list must clear drag state whenever the stage accepts a conversation drop.',
+)
+assert.match(
+  threadList,
+  /const beginNativeThreadDrag = useCallback\(\(title: string\) => \{\n\s+clearThreadDragState\(\)/,
+  'Native drag must clear pointer-preview state before starting so ghost previews cannot remain stuck.',
+)
+assert.match(
+  threadList,
+  /if \(!draggingThreadTitle \|\| pointerFusionPreview\) return[\s\S]*1200/,
+  'Native drag visual state must have a short watchdog for environments that miss dragend/drop.',
+)
+assert.match(
+  threadList,
+  /const finishThreadDrag = \(event: DragEvent<HTMLElement>\) => \{[\s\S]*target\?\.closest\('\.atlas-ai-stage'\)[\s\S]*onOpenInStage\?\.\(thread\.id\)/,
+  'Native dragend must open the thread in the stage when Tauri/WebView misses the normal drop event.',
+)
+assert.match(
+  threadList,
+  /className="atlas-ai-thread-drag-handle"[\s\S]*draggable=\{false\}/,
+  'Thread drag handles must not trigger the WebView native drag ghost; pointer drag owns the visual feedback.',
+)
+assert.doesNotMatch(
+  threadList,
+  /draggable=\{Boolean\(draggable\)\}/,
+  'Conversation rows must not opt into native draggable mode because it competes with the AWIS pointer drag engine.',
+)
+assert.match(
+  threadList,
+  /window\.addEventListener\('mousemove', handlePointerMove as EventListener/,
+  'Pointer drag engine must also accept mousemove because desktop automation/WebView may not emit PointerEvent reliably.',
+)
+assert.match(
+  threadList,
+  /pointerFusionStartRef[\s\S]*eventType === 'mousedown'[\s\S]*lastStart\.eventType === 'pointerdown'[\s\S]*now - lastStart\.at < 120/,
+  'Pointer and mouse fallback starts must be deduped so one drag gesture cannot initialize twice.',
+)
+assert.match(
+  threadList,
+  /onMouseDown=\{onPointerFusionStart\}/,
+  'Conversation rows must start the same AWIS drag engine from mouse input, not fall back to click selection.',
+)
+assert.match(
+  threadList,
+  /suppressNextThreadClick\(pointerFusionThread\.id\)/,
+  'Pointer drag drop must suppress the follow-up click event so stage drop cannot be overwritten by ordinary thread selection.',
+)
+assert.match(
+  threadList,
+  /suppressClickThreadIdRef\.current = threadId[\s\S]*const selectThreadFromList = useCallback[\s\S]*if \(suppressClickThreadIdRef\.current === threadId\) return[\s\S]*onSelect\(threadId\)/,
+  'Drag click suppression must use a synchronous ref so React state timing cannot overwrite a stage drop with a normal row selection.',
+)
+assert.match(
+  threadList,
+  /if \(suppressClick\) \{[\s\S]*event\.stopPropagation\(\)[\s\S]*return/,
+  'Conversation row click handler must ignore the synthetic click that follows a successful drag.',
+)
+assert.match(
+  surface,
+  /Limite de 4 sessões\. Feche uma para abrir outra\./,
+  'The side-by-side stage must give clear feedback instead of silently replacing panes past the four-session limit.',
+)
+assert.doesNotMatch(
+  threadList,
+  />ctx</i,
+  'Atlas AI sidebar must not expose CTX as the primary user-facing workspace action.',
+)
+assert.doesNotMatch(
+  threadList,
+  /fundir/,
+  'Atlas AI sidebar must not expose technical fusion wording in the primary UI.',
+)
+assert.doesNotMatch(
+  threadList,
+  /juntar projeto/i,
+  'Space actions must not say "juntar projeto"; project/workspace and Space are separate AWIS concepts.',
+)
+assert.doesNotMatch(
+  threadList,
+  />pack<|Copiar pack/i,
+  'Space copy actions must say context, not expose pack jargon as the primary label.',
+)
+assert.match(
+  threadList,
+  /Usar como contexto seguro; não contém mensagens completas\./,
+  'Copied Space context should stay human-readable and avoid pack jargon.',
+)
+assert.match(
+  threadList,
+  /criar Space/,
+  'Manual Space creation copy must name Space directly instead of merging or joining a project.',
+)
+assert.match(
+  threadList,
+  /const showCreationGuide = buildingSpace && spaces\.length === 0 && !showSuggestedSpace && !showBackgroundSpaceStatus/,
+  'The sidebar must show Space creation guidance only during an active drag.',
+)
+assert.match(
+  threadList,
+  /const showBackgroundSpaceStatus = spaces\.length === 0 && !showSuggestedSpace && \(fusionLoading \|\| artifactLoading\)/,
+  'Unavailable automatic Space suggestions must not add noisy error copy when there is no visible Space.',
+)
+assert.doesNotMatch(
+  threadList,
+  /thread ativa/i,
+  'Conversation controls must not expose "thread" wording in user-facing help.',
+)
+assert.match(
+  threadList,
+  /Compor sem conversa ativa/,
+  'New conversation help must use human-facing conversation wording.',
+)
+assert.doesNotMatch(
+  conversation,
+  /Arquivar thread/,
+  'Conversation archive action must not expose "thread" wording to users.',
+)
+assert.doesNotMatch(
+  surface,
+  /Atlas AI thread \$\{threadId\}|backend indisponível para export/,
+  'Export fallback must not copy raw thread/backend wording to the user.',
+)
+assert.doesNotMatch(
+  surface,
+  /Renomear thread/,
+  'Rename prompt must not expose thread wording to users.',
+)
+assert.match(
+  surface,
+  /Renomear conversa/,
+  'Rename prompt must use conversation wording.',
+)
+assert.match(
+  surface,
+  /Tente recarregar o histórico e exportar novamente\./,
+  'Export fallback should tell the user the next concrete action in plain language.',
+)
+assert.doesNotMatch(
+  surface,
+  /Nenhuma thread é inventada|backend responder/,
+  'Offline copy must not expose thread/backend wording.',
+)
+assert.match(
+  surface,
+  /Nenhuma conversa é inventada[\s\S]*serviço responder/,
+  'Offline copy must explain the local service state in user language.',
+)
+assert.doesNotMatch(
+  threadContextMenu,
+  />Thread<|a thread|esta thread|título da thread|abrir esta thread/,
+  'Context menu must not expose thread wording to users.',
+)
+assert.match(
+  threadContextMenu,
+  />Conversa<[\s\S]*Remove a conversa do topo[\s\S]*título da conversa[\s\S]*Copiar referência/,
+  'Context menu must use conversation wording across actions.',
+)
+assert.doesNotMatch(
+  threadContextMenu,
+  />\s*Copiar ID da sessão\s*<|metadata exportadas/,
+  'Context menu must not expose ID/metadata jargon as user-facing copy.',
+)
+assert.doesNotMatch(
+  contextPanel,
+  />Workspace<|>Surface<|<h3>Thread<\/h3>|Hyperflow \(backend\)|Front coleta|backend decide|Nenhum trace ativo|Sem thread carregada|<span>workspace<\/span>|<span>provider<\/span>|>Provider|plan-only endpoint|fluxo legado|erro · \{error\}/,
+  'Context panel must use project/conversation Portuguese labels instead of raw workspace/thread/provider labels.',
+)
+assert.match(
+  contextPanel,
+  />Projeto<[\s\S]*>Aplicativo<[\s\S]*>Modelo<[\s\S]*Caminho escolhido[\s\S]*<h3>Conversa<\/h3>[\s\S]*Sem conversa carregada[\s\S]*Nenhuma execução ativa/,
+  'Context panel must preserve human-readable AWIS identity and conversation labels.',
+)
+assert.doesNotMatch(
+  contextPanel,
+  />Atlas Runtime<|>status<|>checks<|>warnings\s*·|cert_hash|<span>selo<\/span>|>passed<| passed<|<code>\{runtimeReadiness\.status\}|<code>\{decisionMode\}|<code>atlas_desktop_ai<\/code>/,
+  'Context panel must not render runtime/check/hash/internal decision labels as primary user-facing copy.',
+)
+assert.match(
+  contextPanel,
+  /Saúde do AWIS[\s\S]*verificações[\s\S]*prontas[\s\S]*atenções[\s\S]*humanizeRuntimeSignal/,
+  'Context panel must explain AWIS health in human language while still deriving warning names from canonical signals.',
+)
+assert.match(
+  contextPanel,
+  /className="atlas-ai-context-heading-with-pill"[\s\S]*<span>Saúde do AWIS<\/span>[\s\S]*atlas-ai-context-runtime-pill/,
+  'AWIS health heading must keep the label and status pill visually separated in the side panel.',
+)
+assert.match(
+  contextPanel,
+  /Plano técnico ainda não disponível no serviço local[\s\S]*A conversa continua funcionando/,
+  'Atlas Dev plan fallback in the side panel must explain degraded service in human language.',
+)
+assert.doesNotMatch(
+  contextPanel,
+  /thread\.workspace \?\? '—'|devRuntime\.workspace\}|devRuntime\.expected_artifacts\.join|devRuntime\.schema_version|hyperflow\.handoffTarget\}<\/code>|hyperflow\.dispatchStatus\}<\/code>| chars|tiers selecionados|open brain/,
+  'Context panel must not render raw workspace paths, artifact ids, schema versions, dispatch ids, char jargon, tier jargon, or Open Brain internals.',
+)
+assert.match(
+  contextPanel,
+  /projectDisplayName\(thread\.workspace[\s\S]*handoffLabel\(hyperflow\.handoffTarget\)[\s\S]*devRuntime\.expected_artifacts\.map\(expectedArtifactLabel\)[\s\S]*openBrainLabel/,
+  'Context panel must translate project names, handoff destinations, expected deliverables, and memory state before rendering.',
+)
+assert.match(
+  decisionBadge,
+  /modelLabel\(provider\)/,
+  'Decision badge must humanize provider names before showing them in the conversation.',
+)
+assert.doesNotMatch(
+  decisionBadge,
+  /parts\.push\(provider\)/,
+  'Decision badge must not display raw provider ids as product copy.',
+)
+assert.doesNotMatch(
+  `${openBrainBadge}\n${planIndicators}`,
+  /open brain ·/,
+  'Inline memory indicators must not expose Open Brain jargon in user-facing copy.',
+)
+assert.match(
+  `${openBrainBadge}\n${planIndicators}`,
+  /memória · \{statusLabel\(status\)\}[\s\S]*memória · \{ob\.label\}/,
+  'Inline memory indicators must use human memory wording.',
+)
+assert.match(
+  `${openBrainBadge}\n${planIndicators}`,
+  /failed_closed'\) return 'atenção pendente'[\s\S]*hint === 'bloqueado'\) return \{ label: 'atenção pendente'/,
+  'Inline memory indicators must translate closed/blocked memory states into human pending-attention copy.',
+)
+assert.doesNotMatch(
+  `${openBrainBadge}\n${planIndicators}`,
+  /memória · bloquead|plan · bloquead/,
+  'Inline AWIS indicators must not expose blocked wording in compact user-facing copy.',
+)
+assert.match(
+  errorBanner,
+  /function explainAtlasAiError[\s\S]*Serviço local indisponível[\s\S]*Serviço local instável[\s\S]*title=\{explained\.detail/,
+  'Atlas AI errors must render human operational copy while preserving technical detail for debugging.',
+)
+assert.match(
+  threadList,
+  /retryLabel="verificar serviço"/,
+  'Thread history failure must offer a service-health retry action instead of vague retry copy.',
+)
+assert.match(
+  css,
+  /\.atlas-ai-awis-next\s*\{[\s\S]*grid-column: 1 \/ -1;[\s\S]*overflow: visible;[\s\S]*\.atlas-ai-awis-next::before[\s\S]*content: 'Próximo'/,
+  'AWIS command center next actions must not be squeezed into the action column.',
+)
+assert.match(
+  css,
+  /@media \(max-width: 1380px\) \{[\s\S]*\.atlas-ai-awis-command-center\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\);[\s\S]*\.atlas-ai-awis-actions\s*\{[\s\S]*grid-column: 1;[\s\S]*grid-row: auto;/,
+  'AWIS command center must stack before the side rails squeeze status text into action buttons.',
+)
+assert.match(
+  css,
+  /\.atlas-ai-runtime-pill\.is-blocked\s*\{[\s\S]*color: var\(--cc-status-warn[\s\S]*\.atlas-ai-runtime-pill-dot\.is-blocked\s*\{\s*background: var\(--cc-status-warn/,
+  'Runtime blocked now means certification pending in AWIS UI, so it must use warning tone instead of destructive error tone.',
+)
+assert.match(
+  contextPanel,
+  /Atlas Desktop[\s\S]*Atlas decide pelo contexto[\s\S]*labelDecisionMode\(decisionMode\)/,
+  'Context panel identity/routing copy must describe the product behavior instead of exposing surface ids or router ids.',
+)
+assert.match(
+  contextPanel,
+  /return decisionMode === 'atlas_decide' \? 'Atlas escolhe' : 'Escolha manual'/,
+  'Context panel must translate router decision ids before rendering them.',
+)
+assert.doesNotMatch(
+  promotionPanel,
+  /Promover thread|workspace —|thread pequena|esta thread|workspace ausente|backend não respondeu/,
+  'Promotion panel must not expose raw thread/workspace/backend copy to users.',
+)
+assert.match(
+  promotionPanel,
+  /Promover conversa[\s\S]*projeto —[\s\S]*conversa pequena[\s\S]*projeto ausente/,
+  'Promotion panel must use product language for conversation and project states.',
+)
+assert.match(
+  threadList,
+  /conteúdo completo \{replay\?\.raw_conversation_replay_allowed === false \? 'protegido' : 'sob revisão'\}/,
+  'Thread list artifact inspection must surface replay safety in product language.',
+)
+assert.doesNotMatch(
+  threadList,
+  /conversa bruta/i,
+  'Thread list must not expose raw-conversation wording to users.',
+)
+assert.match(
+  css,
+  /\.atlas-ai-project-space-item,[\s\S]*\.atlas-ai-saved-space-inspector\s*\{[\s\S]*inset 3px 0 0 rgba\(235, 196, 124, 0\.62\)/,
+  'Space cards must keep the left gold stripe visible without requiring hover.',
+)

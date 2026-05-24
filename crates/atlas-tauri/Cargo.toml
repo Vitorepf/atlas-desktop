@@ -24,6 +24,8 @@ futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
+tauri-plugin-dialog = "2.7.1"
+rfd = "0.15"
 
 # Workspace siblings · the Tauri shell composes the native crates.
 atlas-bridge = { path = "../atlas-bridge" }

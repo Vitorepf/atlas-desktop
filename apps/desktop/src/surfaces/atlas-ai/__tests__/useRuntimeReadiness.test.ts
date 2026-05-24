@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { buildRuntimeReadinessView } from '../runtimeReadinessView.ts'
+import { applyAwisOperationalHealth, buildRuntimeReadinessView } from '../runtimeReadinessView.ts'
 import type { AtlasAiRuntimeReadiness } from '../types.ts'
 
 const noopRefresh = (): void => {}
@@ -72,6 +72,33 @@ test('view-model · ready projeta passed/warn=0 e label canônico', () => {
   assert.equal(view.certificationHash?.length, 64)
 })
 
+test('view-model · AWIS operacional não mostra Pronto quando histórico local falha', () => {
+  const ready = buildRuntimeReadinessView(readyPayload(), false, true, noopRefresh)
+  const view = applyAwisOperationalHealth(ready, {
+    historyHealthy: false,
+    serverHealth: { status: 'degraded', dbConnected: false },
+  })
+
+  assert.equal(view.status, 'partial')
+  assert.equal(view.statusLabel, 'Parcial')
+  assert.equal(view.primaryBlocker, 'histórico local indisponível')
+  assert.ok(view.warnings.includes('histórico local indisponível'))
+  assert.ok(view.warnFailed >= 1)
+})
+
+test('view-model · AWIS operacional preserva certificação pendente e adiciona serviço local', () => {
+  const blocked = buildRuntimeReadinessView(blockedPayload(), false, true, noopRefresh)
+  const view = applyAwisOperationalHealth(blocked, {
+    historyHealthy: true,
+    serverHealth: { status: 'unavailable', dbConnected: null },
+  })
+
+  assert.equal(view.status, 'blocked')
+  assert.equal(view.statusLabel, 'Certificação pendente')
+  assert.equal(view.primaryBlocker, 'base operacional da missão')
+  assert.ok(view.warnings.includes('serviço local indisponível'))
+})
+
 test('view-model · partial expõe warnings e label PT', () => {
   const view = buildRuntimeReadinessView(partialPayload(), false, true, noopRefresh)
   assert.equal(view.status, 'partial')
@@ -84,7 +111,7 @@ test('view-model · partial expõe warnings e label PT', () => {
 test('view-model · blocked expõe blockers + criticalFailed', () => {
   const view = buildRuntimeReadinessView(blockedPayload(), false, true, noopRefresh)
   assert.equal(view.status, 'blocked')
-  assert.equal(view.statusLabel, 'Bloqueado')
+  assert.equal(view.statusLabel, 'Certificação pendente')
   assert.equal(view.criticalFailed, 3)
   assert.equal(view.blockers.length, 3)
   assert.ok(view.blockers.includes('mission_foundation_readiness'))
@@ -172,12 +199,12 @@ test('view-model · bundle ausente → fields zerados (não inventa)', () => {
 
 test('view-model · primaryBlocker humaniza id snake_case do primeiro blocker', () => {
   const view = buildRuntimeReadinessView(blockedPayload(), false, true, noopRefresh)
-  assert.equal(view.primaryBlocker, 'mission foundation readiness')
+  assert.equal(view.primaryBlocker, 'base operacional da missão')
 })
 
 test('view-model · primaryBlocker cai em warning se não houver blocker', () => {
   const view = buildRuntimeReadinessView(partialPayload(), false, true, noopRefresh)
-  assert.equal(view.primaryBlocker, 'control plane runtime')
+  assert.equal(view.primaryBlocker, 'contexto e execução')
 })
 
 test('view-model · certificationHashShort tem 12 chars + ellipsis (display compacto)', () => {

@@ -6,24 +6,35 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 
+export type ProjectProfileMode = 'view' | 'create' | 'edit'
+
 export interface ProjectProfileController {
   open: boolean
-  show: () => void
+  mode: ProjectProfileMode
+  show: (mode?: ProjectProfileMode) => void
   hide: () => void
-  toggle: () => void
+  toggle: (mode?: ProjectProfileMode) => void
 }
 
 export function useProjectProfile(): ProjectProfileController {
   const [open, setOpen] = useState(false)
-  const show = useCallback(() => setOpen(true), [])
+  const [mode, setMode] = useState<ProjectProfileMode>('view')
+  const show = useCallback((nextMode: ProjectProfileMode = 'view') => {
+    setMode(nextMode)
+    setOpen(true)
+  }, [])
   const hide = useCallback(() => setOpen(false), [])
-  const toggle = useCallback(() => setOpen((v) => !v), [])
+  const toggle = useCallback((nextMode: ProjectProfileMode = 'view') => {
+    setMode(nextMode)
+    setOpen((v) => !v)
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey
       if (meta && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
         e.preventDefault()
+        setMode('view')
         setOpen((v) => !v)
       }
     }
@@ -31,5 +42,5 @@ export function useProjectProfile(): ProjectProfileController {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  return { open, show, hide, toggle }
+  return { open, mode, show, hide, toggle }
 }

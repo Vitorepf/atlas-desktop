@@ -1,14 +1,14 @@
 {
   "status": "passed",
-  "url": "http://127.0.0.1:54430",
+  "url": "http://127.0.0.1:65180",
   "artifacts": {
     "screenshot": "/Users/vitorepf/develop/Atlas/atlas-desktop/apps/desktop/test-results/atlas-dev-browser/root.png",
     "dom_dump": "/Users/vitorepf/develop/Atlas/atlas-desktop/apps/desktop/test-results/atlas-dev-browser/root.dom.html",
     "chrome_stderr": "/Users/vitorepf/develop/Atlas/atlas-desktop/apps/desktop/test-results/atlas-dev-browser/root.stderr.log"
   },
   "sizes": {
-    "screenshot_bytes": 188038,
-    "dom_dump_bytes": 17493,
+    "screenshot_bytes": 194196,
+    "dom_dump_bytes": 19117,
     "shell_bytes": 833
   },
   "results": [
@@ -53,5 +53,5 @@
       "detail": ""
     }
   ],
-  "generated_at": "2026-05-19T23:44:20.278Z"
+  "generated_at": "2026-05-23T17:13:16.691Z"
 }

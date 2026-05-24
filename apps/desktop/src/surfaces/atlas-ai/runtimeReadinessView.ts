@@ -47,12 +47,28 @@ export interface RuntimeReadinessView {
   refresh: () => void
 }
 
+export interface AwisOperationalHealthInput {
+  historyHealthy: boolean
+  serverHealth?: {
+    status: 'ready' | 'degraded' | 'loading' | 'unavailable' | string
+    dbConnected?: boolean | null
+  } | null
+}
+
 const STATUS_LABEL: Record<RuntimeReadinessStatus, string> = {
   ready: 'Pronto',
   partial: 'Parcial',
-  blocked: 'Bloqueado',
+  blocked: 'Certificação pendente',
   unavailable: 'Indisponível',
   loading: 'Verificando',
+}
+
+const BLOCKER_LABELS: Record<string, string> = {
+  control_plane_runtime: 'contexto e execução',
+  memory_learning_loop: 'memória e aprendizado',
+  mission_foundation_readiness: 'base operacional da missão',
+  operator_approval_gates: 'aprovações do operador',
+  router_runtime_readiness: 'roteamento inteligente',
 }
 
 export function statusLabelFor(status: RuntimeReadinessStatus): string {
@@ -64,9 +80,11 @@ export function statusLabelFor(status: RuntimeReadinessStatus): string {
  * rótulo humano para o pill. Não inventa conteúdo — apenas formata para a
  * UX leve. Mantém `blocker_id` intacto se já é legível.
  */
-function humanizeBlockerId(id: string): string {
-  return id.replace(/[._-]+/g, ' ').trim()
+export function humanizeBlockerId(id: string): string {
+  return BLOCKER_LABELS[id] ?? id.replace(/[._-]+/g, ' ').trim()
 }
+
+export const humanizeRuntimeSignal = humanizeBlockerId
 
 export function buildRuntimeReadinessView(
   raw: AtlasAiRuntimeReadiness | null,
@@ -152,5 +170,38 @@ export function buildRuntimeReadinessView(
     pendingApprovalsCount: raw.ux_bundle?.pending_approvals_count ?? 0,
     latestHandoff,
     refresh,
+  }
+}
+
+export function applyAwisOperationalHealth(
+  view: RuntimeReadinessView,
+  health: AwisOperationalHealthInput,
+): RuntimeReadinessView {
+  if (view.status === 'loading' || view.status === 'unavailable') return view
+
+  const serverStatus = health.serverHealth?.status ?? null
+  const dbUnavailable = health.serverHealth?.dbConnected === false
+  const warnings = [...view.warnings]
+
+  if (!health.historyHealthy || dbUnavailable) {
+    warnings.push('histórico local indisponível')
+  }
+  if (serverStatus === 'unavailable') {
+    warnings.push('serviço local indisponível')
+  } else if (serverStatus === 'degraded' && !dbUnavailable) {
+    warnings.push('serviço local requer atenção')
+  }
+
+  const uniqueWarnings = Array.from(new Set(warnings))
+  if (uniqueWarnings.length === view.warnings.length) return view
+
+  const nextStatus: RuntimeReadinessStatus = view.status === 'blocked' ? 'blocked' : 'partial'
+  return {
+    ...view,
+    status: nextStatus,
+    statusLabel: STATUS_LABEL[nextStatus],
+    warnFailed: Math.max(view.warnFailed, uniqueWarnings.length),
+    warnings: uniqueWarnings,
+    primaryBlocker: view.primaryBlocker ?? uniqueWarnings[0] ?? null,
   }
 }

@@ -13,6 +13,7 @@
  */
 import { useState } from 'react'
 import type { AiAtlasDecision, AiRouterDecision } from '../types'
+import { modelLabel } from '../contract'
 
 interface AtlasAiDecisionBadgeProps {
   atlasDecision?: AiAtlasDecision | null
@@ -47,7 +48,7 @@ export function AtlasAiDecisionBadge({ atlasDecision, routerDecision }: AtlasAiD
   const hasDetail = !!reason || !!decision?.fallback_provider
 
   const parts: string[] = []
-  if (provider) parts.push(provider)
+  if (provider) parts.push(modelLabel(provider))
   parts.push(mode)
   if (conviction) parts.push(conviction)
   if (risk) parts.push(risk)

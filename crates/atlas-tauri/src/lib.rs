@@ -80,6 +80,19 @@ fn atlas_workspace_path() -> String {
 }
 
 #[tauri::command]
+async fn atlas_pick_workspace_folder() -> Result<Option<String>, String> {
+    let picked = tauri::async_runtime::spawn_blocking(|| {
+        rfd::FileDialog::new()
+            .set_title("Escolher pasta do projeto")
+            .pick_folder()
+    })
+    .await
+    .map_err(|e| format!("folder_picker_join_failed: {e}"))?;
+
+    Ok(picked.map(|path| path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 async fn atlas_kernel_status(
     state: tauri::State<'_, Arc<KernelManagerState>>,
 ) -> Result<KernelStatusReport, String> {
@@ -172,6 +185,7 @@ pub fn run() {
     }
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .menu(native_menu::atlas_menu)
         .on_menu_event(native_menu::handle_menu_event)
         .setup({
@@ -241,6 +255,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             atlas_core_status,
+            atlas_pick_workspace_folder,
             atlas_kernel_status,
             atlas_kernel_retry,
             atlas_bridge_reconfigure,
@@ -249,6 +264,10 @@ pub fn run() {
             commands_bridge::bridge_get_atlas_code_enterprise_certification,
             commands_bridge::bridge_run_atlas_code_enterprise_certification,
             commands_bridge::bridge_list_works,
+            commands_bridge::bridge_list_workspaces,
+            commands_bridge::bridge_create_workspace_profile,
+            commands_bridge::bridge_update_workspace_profile,
+            commands_bridge::bridge_archive_workspace_profile,
             commands_bridge::bridge_create_work,
             commands_bridge::bridge_get_work_state,
             commands_bridge::bridge_run_forge_live_execution,

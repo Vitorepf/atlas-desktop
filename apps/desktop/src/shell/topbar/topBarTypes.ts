@@ -36,8 +36,14 @@ export interface TopBarProps {
   attentionCount?: number | null
   /**
    * Surfaces declared as canonically enabled by the active Project. Tabs
-   * outside this list still render but with a "lim" badge so the operator
+   * outside this list still render but with an "extra" badge so the operator
    * knows the surface is not officially supported in this Project yet.
    */
   enabledSurfaces?: string[] | null
+  /**
+   * Surfaces blocked by live Project state, e.g. Code when the active Project
+   * has no local workspace path. These are stronger than "limited": the tab
+   * is visible but cannot be opened until the Project profile is fixed.
+   */
+  blockedSurfaces?: Partial<Record<Surface, string>> | null
 }

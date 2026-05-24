@@ -4,7 +4,7 @@
  * Linhas italic discretas, mesmo registro do AtlasAiOpenBrainBadge. Mostram
  * o que o plan-only produziu sem abrir o painel lateral:
  *
- *   open brain · parcial/completo/bloqueado
+ *   memória · parcial/completo/atenção pendente
  *   escopo · N arquivos
  *   plan · pronto
  *
@@ -21,7 +21,7 @@ function openBrainStatus(plan: AtlasDevPlanResult): { label: string; tone: 'good
   const hint = plan.ui_hints?.open_brain_status
   if (hint === 'completo') return { label: 'completo', tone: 'good' }
   if (hint === 'parcial') return { label: 'parcial', tone: 'partial' }
-  if (hint === 'bloqueado') return { label: 'bloqueado', tone: 'bad' }
+  if (hint === 'bloqueado') return { label: 'atenção pendente', tone: 'bad' }
 
   const truncation = plan.open_brain_projection?.truncation
   const missing =
@@ -69,7 +69,7 @@ export function AtlasAiPlanIndicators({ plan }: AtlasAiPlanIndicatorsProps) {
     <p className="atlas-ai-plan-indicators atlas-ai-faint" aria-label="Indicadores plan-only">
       {ob ? (
         <span className={`atlas-ai-plan-indicator tone-${ob.tone}`}>
-          open brain · {ob.label}
+          memória · {ob.label}
         </span>
       ) : null}
       {scope > 0 ? (
@@ -80,7 +80,7 @@ export function AtlasAiPlanIndicators({ plan }: AtlasAiPlanIndicatorsProps) {
       {ready ? (
         <span className="atlas-ai-plan-indicator tone-good">plan · pronto</span>
       ) : plan.status === 'blocked' ? (
-        <span className="atlas-ai-plan-indicator tone-bad">plan · bloqueado</span>
+        <span className="atlas-ai-plan-indicator tone-bad">plan · atenção</span>
       ) : plan.status === 'forge_promotion_preview' ? (
         <span className="atlas-ai-plan-indicator tone-partial">plan · promoção sugerida</span>
       ) : null}

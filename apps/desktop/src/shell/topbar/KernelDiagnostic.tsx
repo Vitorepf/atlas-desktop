@@ -6,10 +6,15 @@ interface KernelDiagnosticProps {
 }
 
 export function KernelDiagnostic({ kernel, onClose }: KernelDiagnosticProps) {
+  const status = `${kernelStatusLabel(kernel.status)}${kernel.queueRunning ? ' · fila ativa' : ''}`
+  const message = explainKernelMessage(kernel.message)
+  const failure = kernel.failureCode ? kernelFailureLabel(kernel.failureCode) : null
+  const repairHint = kernel.repairHint ? explainKernelRepairHint(kernel.repairHint) : null
+
   return (
     <div className="kernel-diagnostic">
       <div className="kernel-diagnostic-head">
-        <strong>Kernel diagnostic</strong>
+        <strong>Serviço local do Atlas</strong>
         <button
           type="button"
           onClick={onClose}
@@ -19,18 +24,18 @@ export function KernelDiagnostic({ kernel, onClose }: KernelDiagnosticProps) {
         </button>
       </div>
 
-      <DiagRow k="status" v={`${kernel.status}${kernel.queueRunning ? ' · worker' : ''}`} />
-      {kernel.message ? <DiagRow k="message" v={kernel.message} /> : null}
-      {kernel.failureCode ? <DiagRow k="failure_code" v={kernel.failureCode} tone="rec" /> : null}
-      {kernel.repairHint ? (
-        <DiagRow k="repair_hint" v={kernel.repairHint} tone="moss" wrap />
+      <DiagRow k="Estado" v={status} />
+      {message ? <DiagRow k="Mensagem" v={message} /> : null}
+      {failure ? <DiagRow k="Falha" v={failure} tone="rec" /> : null}
+      {repairHint ? (
+        <DiagRow k="Como resolver" v={repairHint} tone="moss" wrap />
       ) : null}
-      {kernel.serverPath ? <DiagRow k="server_path" v={kernel.serverPath} /> : null}
-      {kernel.phpPath ? <DiagRow k="php_path" v={kernel.phpPath} /> : null}
-      <DiagRow k="url" v={`${kernel.url}:${kernel.port}`} />
+      {kernel.serverPath ? <DiagRow k="Serviço" v={kernel.serverPath} /> : null}
+      {kernel.phpPath ? <DiagRow k="PHP" v={kernel.phpPath} /> : null}
+      <DiagRow k="Endereço local" v={`${kernel.url}:${kernel.port}`} />
 
-      <KernelTail title="stderr_tail" tone="rec" lines={kernel.stderrTail} />
-      <KernelTail title="stdout_tail" tone="ink" lines={kernel.stdoutTail} />
+      <KernelTail title="Erros recentes" tone="rec" lines={kernel.stderrTail} />
+      <KernelTail title="Eventos recentes" tone="ink" lines={kernel.stdoutTail} />
 
       <button
         type="button"
@@ -38,10 +43,58 @@ export function KernelDiagnostic({ kernel, onClose }: KernelDiagnosticProps) {
         disabled={kernel.retrying}
         className="kernel-diagnostic-retry"
       >
-        {kernel.retrying ? 'tentando...' : '↻ tentar novamente'}
+        {kernel.retrying ? 'verificando...' : 'verificar novamente'}
       </button>
     </div>
   )
+}
+
+function kernelStatusLabel(status: UseKernelStatusResult['status']): string {
+  if (status === 'ready') return 'Pronto'
+  if (status === 'booting') return 'Iniciando'
+  if (status === 'failed') return 'Atenção'
+  if (status === 'unconfigured') return 'Sem configuração'
+  return status
+}
+
+export function explainKernelMessage(message: string): string {
+  const value = message.trim()
+  if (!value) return ''
+  const lower = value.toLowerCase()
+  if (lower.includes('atlas server configured') || lower.includes('http env')) {
+    return 'Serviço local conectado por configuração externa.'
+  }
+  if (lower.includes('bridge offline') || lower.includes('no atlas server')) {
+    return 'Serviço local indisponível. Abra o Atlas Code ou configure o endereço local.'
+  }
+  if (lower.includes('retry failed')) {
+    return 'Não consegui verificar o serviço local agora.'
+  }
+  return value
+}
+
+function kernelFailureLabel(code: string): string {
+  const value = code.trim()
+  if (!value) return ''
+  if (value === 'no_bridge') return 'Serviço não encontrado'
+  if (value === 'retry_failed') return 'Verificação falhou'
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function explainKernelRepairHint(hint: string): string {
+  const value = hint.trim()
+  if (!value) return ''
+  const lower = value.toLowerCase()
+  if (lower.includes('vite_atlas_server_url') || lower.includes('atlas code .app')) {
+    return 'Abra o aplicativo Atlas Code ou configure o endereço do serviço local.'
+  }
+  if (lower.includes('stderr')) {
+    return 'Confira os erros recentes e tente verificar novamente.'
+  }
+  return value
 }
 
 function KernelTail({

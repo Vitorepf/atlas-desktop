@@ -2,19 +2,20 @@
  * Atlas AI · ContextPanel premium (Hyperflow-first).
  *
  * Seções nomeadas, separadas por hairline. A camada "Roteamento" agora
- * mostra a **decisão Hyperflow real** do trace quando disponível; o que o
+ * mostra a **decisão Hyperflow real** da execução quando disponível; o que o
  * front pediu vai como `hint`. Atlas Dev Runtime / Forge aparecem só quando
- * o trace canônico os carrega — front não força nenhum dos dois.
+ * a execução canônica os carrega — front não força nenhum dos dois.
  *
- *   1. Identidade            · workspace, surface, escopo
+ *   1. Identidade            · projeto, superfície, escopo
  *   2. Roteamento (front)    · hint pedido pelo composer
- *   3. Hyperflow (backend)   · trace.hyperflow real (intent/domain/flow/...)
- *   4. Thread ativa          · id, mensagens, status, último provider
- *   5. Trace recente         · id, status, provider, latência
+ *   3. Caminho escolhido     · execução canônica real (intent/domain/flow/...)
+ *   4. Conversa ativa        · id, mensagens, status, último modelo
+ *   5. Execução recente      · id, status, modelo, latência
  *   6. Atlas Dev Runtime     · só com pendingTrace.atlas_dev_runtime
  *   7. Forge handoff         · só com hyperflow.handoff_target.startsWith('forge')
  */
-import { flowIdForMode, providerLabel } from '../contract'
+import { flowIdForMode, modelLabel, providerLabel } from '../contract'
+import { humanizeRuntimeSignal, type RuntimeReadinessView } from '../runtimeReadinessView'
 import { useHyperflowRuntime } from '../useHyperflowRuntime'
 import { useRuntimeReadiness } from '../useRuntimeReadiness'
 import type {
@@ -27,6 +28,127 @@ import type {
   AtlasDevRuntime,
 } from '../types'
 
+function labelMode(mode: AtlasAiMode): string {
+  const labels: Partial<Record<AtlasAiMode, string>> = {
+    auto: 'Atlas decide',
+    general: 'Geral',
+    conversation: 'Conversa',
+    operational: 'Operacional',
+    programming: 'Código',
+    research: 'Pesquisa',
+    finance: 'Finanças',
+    marketing: 'Marketing',
+    strategy: 'Estratégia',
+    personal_development: 'Pessoal',
+    cyber: 'Cyber',
+    automation: 'Automação',
+  }
+  return labels[mode] ?? mode
+}
+
+function labelTask(task: AtlasAiTask): string {
+  const labels: Partial<Record<AtlasAiTask, string>> = {
+    auto: 'Atlas decide',
+    plan: 'Plano',
+    direct: 'Resposta direta',
+    dev: 'Código',
+    debug: 'Diagnóstico',
+    review: 'Revisão',
+  }
+  return labels[task] ?? task.replace(/[._-]+/g, ' ')
+}
+
+function labelDecisionMode(decisionMode: 'atlas_decide' | 'manual_override'): string {
+  return decisionMode === 'atlas_decide' ? 'Atlas escolhe' : 'Escolha manual'
+}
+
+function labelRuntimeStatus(status: string): string {
+  if (status === 'ready') return 'pronto'
+  if (status === 'partial') return 'atenção'
+  if (status === 'blocked') return 'certificação pendente'
+  if (status === 'loading') return 'verificando'
+  return 'indisponível'
+}
+
+function labelThreadStatus(status: string | null | undefined): string {
+  if (status === 'active') return 'ativa'
+  if (status === 'archived') return 'arquivada'
+  if (status === 'deleted') return 'removida'
+  if (status === 'ready') return 'pronto'
+  if (status === 'blocked') return 'atenção pendente'
+  if (status === 'partial') return 'parcial'
+  if (status === 'completed') return 'concluída'
+  if (status === 'processing' || status === 'running') return 'em execução'
+  if (status === 'queued') return 'na fila'
+  return status ?? 'sem estado'
+}
+
+function humanizeCompactLabel(value: string): string {
+  return value
+    .replace(/^workspace_/i, '')
+    .replace(/[._-]+/g, ' ')
+    .trim()
+}
+
+function projectDisplayName(value: string | null | undefined, fallback: string | null): string {
+  const raw = value?.trim() || fallback?.trim() || ''
+  if (!raw) return 'não selecionado'
+  const parts = raw.split(/[\\/]+/).filter(Boolean)
+  const last = parts[parts.length - 1] ?? raw
+  return last
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || raw
+}
+
+function handoffLabel(value: string | null | undefined): string {
+  switch (value) {
+    case 'atlas_dev':
+      return 'Code'
+    case 'atlas_forge':
+      return 'Forge'
+    case 'subagent_projection':
+      return 'agentes'
+    default:
+      return value ? humanizeCompactLabel(value) : 'Atlas decide'
+  }
+}
+
+function expectedArtifactLabel(value: string): string {
+  switch (value) {
+    case 'plan':
+      return 'plano'
+    case 'diff_or_reason':
+      return 'mudança ou justificativa'
+    case 'tests_or_reason':
+      return 'testes ou justificativa'
+    case 'risks':
+      return 'riscos'
+    default:
+      return humanizeCompactLabel(value)
+  }
+}
+
+function openBrainLabel(value: string | null | undefined): string {
+  switch (value) {
+    case 'complete':
+    case 'completo':
+    case 'ready':
+      return 'completo'
+    case 'partial':
+    case 'parcial':
+      return 'parcial'
+    case 'blocked':
+    case 'bloqueado':
+    case 'failed_closed':
+      return 'atenção pendente'
+    case 'not_required':
+      return 'não exigido'
+    default:
+      return value ? humanizeCompactLabel(value) : 'não informado'
+  }
+}
+
 interface AtlasAiContextPanelProps {
   workspaceSlug: string | null
   workspaceName: string | null
@@ -35,6 +157,7 @@ interface AtlasAiContextPanelProps {
   mode: AtlasAiMode
   task: AtlasAiTask
   provider: AtlasAiProviderChoice
+  runtimeReadiness?: RuntimeReadinessView | null
   atlasDevPlan?: AtlasDevPlanResult | null
   atlasDevPlanLoading?: boolean
   atlasDevPlanError?: string | null
@@ -49,6 +172,7 @@ export function AtlasAiContextPanel({
   mode,
   task,
   provider,
+  runtimeReadiness: runtimeReadinessOverride,
   atlasDevPlan,
   atlasDevPlanLoading,
   atlasDevPlanError,
@@ -59,12 +183,13 @@ export function AtlasAiContextPanel({
     mode === 'programming'
       ? 'Intervenção Rápida / Candidato'
       : mode === 'auto'
-        ? 'Decidido pelo Hyperflow após routing'
+        ? 'Atlas decide pelo contexto'
         : 'Obra Forge (apenas se complexidade exigir)'
   const decisionMode = provider === 'auto' ? 'atlas_decide' : 'manual_override'
   const devRuntime: AtlasDevRuntime | null = pendingTrace?.atlas_dev_runtime ?? null
   const hyperflow = useHyperflowRuntime(pendingTrace)
-  const runtimeReadiness = useRuntimeReadiness()
+  const liveRuntimeReadiness = useRuntimeReadiness()
+  const runtimeReadiness = runtimeReadinessOverride ?? liveRuntimeReadiness
   const showForgeBlock = hyperflow.isForgeHandoff
   const policyRefs = hyperflow.raw?.policy_refs ?? null
   const evidenceRefs = hyperflow.raw?.evidence_refs ?? null
@@ -77,82 +202,79 @@ export function AtlasAiContextPanel({
       <div className="atlas-ai-context-section">
         <h3>Identidade</h3>
         <dl className="atlas-ai-kv">
-          <dt>Workspace</dt>
+          <dt>Projeto</dt>
           <dd>
             {workspaceName ?? workspaceSlug ?? <span className="atlas-ai-faint">não selecionado</span>}
           </dd>
-          <dt>Surface</dt>
-          <dd><code>atlas_desktop_ai</code></dd>
-          <dt>Obra exigida</dt>
+          <dt>Aplicativo</dt>
+          <dd>Atlas Desktop</dd>
+          <dt>Escopo</dt>
           <dd>
             {mode === 'programming'
-              ? 'não · Atlas Dev'
+              ? 'sessão de código'
               : mode === 'auto'
-                ? 'depende do Hyperflow'
-                : 'não'}
+                ? 'Atlas decide pelo contexto'
+                : 'conversa simples'}
           </dd>
         </dl>
       </div>
 
       <div className="atlas-ai-context-section">
-        <h3>Roteamento (hint)</h3>
+        <h3>Caminho inicial</h3>
         <dl className="atlas-ai-kv">
           <dt>Modo</dt>
-          <dd>{mode}</dd>
-          <dt>Tarefa</dt>
-          <dd>{task}</dd>
-          <dt>Flow proposto</dt>
-          <dd><code>{flowId}</code></dd>
-          <dt>Provider</dt>
+          <dd>{labelMode(mode)}</dd>
+          <dt>Pedido</dt>
+          <dd>{labelTask(task)}</dd>
+          <dt>Caminho</dt>
+          <dd>{flowId === 'auto' ? 'Atlas decide' : flowId.replace(/[._-]+/g, ' ')}</dd>
+          <dt>Modelo</dt>
           <dd>{providerLabel(provider)}</dd>
           <dt>Decisão</dt>
-          <dd><code>{decisionMode}</code></dd>
+          <dd>{labelDecisionMode(decisionMode)}</dd>
         </dl>
         <p className="atlas-ai-context-note atlas-ai-faint" style={{ marginTop: 4 }}>
-          <em>Front coleta · backend decide · trace mostra a verdade abaixo.</em>
+          <em>Atlas coleta contexto, escolhe o melhor caminho e mostra a execução abaixo.</em>
         </p>
       </div>
 
       {hyperflow.isReady ? (
         <div className="atlas-ai-context-section atlas-ai-context-hyperflow">
-          <h3>Hyperflow (backend)</h3>
+          <h3>Caminho escolhido</h3>
           <ul className="atlas-ai-context-list">
             {hyperflow.intent ? (
-              <li><span>intent</span><code>{hyperflow.intent}</code></li>
+              <li><span>intenção</span><code>{humanizeCompactLabel(hyperflow.intent)}</code></li>
             ) : null}
             {hyperflow.domainId ? (
-              <li><span>domínio</span><code>{hyperflow.domainId}</code></li>
+              <li><span>domínio</span><code>{humanizeCompactLabel(hyperflow.domainId)}</code></li>
             ) : null}
             {hyperflow.flowId ? (
-              <li><span>flow</span><code>{hyperflow.flowId}</code></li>
+              <li><span>caminho</span><code>{humanizeCompactLabel(hyperflow.flowId)}</code></li>
             ) : null}
             {hyperflow.runtimeMode ? (
-              <li><span>runtime</span><code>{hyperflow.runtimeMode}</code></li>
+              <li><span>execução</span><code>{humanizeCompactLabel(hyperflow.runtimeMode)}</code></li>
             ) : null}
             {typeof hyperflow.confidence === 'number' ? (
               <li><span>confiança</span><code>{hyperflow.confidence.toFixed(2)}</code></li>
             ) : null}
             {hyperflow.dispatchStatus ? (
-              <li><span>dispatch</span><code>{hyperflow.dispatchStatus}</code></li>
+              <li><span>envio</span><code>{labelThreadStatus(hyperflow.dispatchStatus)}</code></li>
             ) : null}
-            {hyperflow.raw?.decision_receipt_id ? (
-              <li><span>receipt</span><code>{hyperflow.raw.decision_receipt_id}</code></li>
-            ) : null}
-            {hyperflow.receiptHash ? (
-              <li><span>receipt_hash</span><code>{hyperflow.receiptHash.slice(0, 16)}…</code></li>
+            {hyperflow.raw?.decision_receipt_id || hyperflow.receiptHash ? (
+              <li><span>recibo</span><code>registrado</code></li>
             ) : null}
             {hyperflow.handoffTarget ? (
-              <li><span>handoff</span><code>{hyperflow.handoffTarget}</code></li>
+              <li><span>destino</span><code>{handoffLabel(hyperflow.handoffTarget)}</code></li>
             ) : null}
             {policyRefs && policyRefs.length > 0 ? (
               <li>
-                <span>policy_refs</span>
-                <code>{policyRefs.slice(0, 3).join(', ')}</code>
+                <span>regras</span>
+                <code>{policyRefs.length} regra{policyRefs.length === 1 ? '' : 's'}</code>
               </li>
             ) : null}
             {evidenceRefs && evidenceRefs.length > 0 ? (
               <li>
-                <span>evidence</span>
+                <span>evidências</span>
                 <code>{evidenceRefs.length} ref(s)</code>
               </li>
             ) : null}
@@ -170,53 +292,53 @@ export function AtlasAiContextPanel({
         <div
           className={`atlas-ai-context-section atlas-ai-context-runtime atlas-ai-context-runtime-${runtimeReadiness.status}`}
         >
-          <h3>
-            Atlas Runtime
+          <h3 className="atlas-ai-context-heading-with-pill">
+            <span>Saúde do AWIS</span>
             <span className="atlas-ai-context-runtime-pill" aria-label={`status ${runtimeReadiness.statusLabel}`}>
               {runtimeReadiness.statusLabel}
             </span>
           </h3>
           <ul className="atlas-ai-context-list">
             <li>
-              <span>status</span>
-              <code>{runtimeReadiness.status}</code>
+              <span>estado</span>
+              <code>{labelRuntimeStatus(runtimeReadiness.status)}</code>
             </li>
             {runtimeReadiness.raw?.summary ? (
               <li>
-                <span>checks</span>
+                <span>verificações</span>
                 <code>
-                  {runtimeReadiness.raw.summary.passed ?? 0}/{runtimeReadiness.raw.summary.total ?? 0} passed
+                  {runtimeReadiness.raw.summary.passed ?? 0}/{runtimeReadiness.raw.summary.total ?? 0} prontas
                 </code>
               </li>
             ) : null}
             {runtimeReadiness.criticalFailed > 0 ? (
               <li>
                 <span>críticos</span>
-                <code>{runtimeReadiness.criticalFailed} failed</code>
+                <code>{runtimeReadiness.criticalFailed} pendente(s)</code>
               </li>
             ) : null}
             {runtimeReadiness.warnFailed > 0 ? (
               <li>
-                <span>warnings</span>
+                <span>atenções</span>
                 <code>{runtimeReadiness.warnFailed}</code>
               </li>
             ) : null}
             {runtimeReadiness.certificationHash ? (
               <li>
-                <span>cert_hash</span>
-                <code>{runtimeReadiness.certificationHash.slice(0, 16)}…</code>
+                <span>certificação</span>
+                <code>registrada</code>
               </li>
             ) : null}
           </ul>
           {runtimeReadiness.blockers.length > 0 ? (
             <div className="atlas-ai-context-subblock atlas-ai-context-warning">
               <p className="atlas-ai-context-subblock-title">
-                blockers · {runtimeReadiness.blockers.length}
+                pendências críticas · {runtimeReadiness.blockers.length}
               </p>
               <ul className="atlas-ai-context-mono-list">
                 {runtimeReadiness.blockers.slice(0, 6).map((id) => (
                   <li key={`blk-${id}`}>
-                    <code>{id}</code>
+                    <span title={id}>{humanizeRuntimeSignal(id)}</span>
                   </li>
                 ))}
               </ul>
@@ -225,70 +347,69 @@ export function AtlasAiContextPanel({
           {runtimeReadiness.warnings.length > 0 ? (
             <div className="atlas-ai-context-subblock">
               <p className="atlas-ai-context-subblock-title">
-                warnings · {runtimeReadiness.warnings.length}
+                atenções · {runtimeReadiness.warnings.length}
               </p>
               <ul className="atlas-ai-context-mono-list">
                 {runtimeReadiness.warnings.slice(0, 6).map((id) => (
                   <li key={`warn-${id}`}>
-                    <code>{id}</code>
+                    <span title={id}>{humanizeRuntimeSignal(id)}</span>
                   </li>
                 ))}
               </ul>
             </div>
           ) : null}
           <p className="atlas-ai-context-note atlas-ai-faint" style={{ marginTop: 4 }}>
-            <em>Agregado de Product Cert + Control Plane + Mission + Approval + Learning.</em>
+            <em>Leitura agregada de projeto, execução local, aprovações e aprendizado.</em>
           </p>
         </div>
       ) : null}
 
       <div className="atlas-ai-context-section">
-        <h3>Promoção</h3>
+        <h3>Evolução</h3>
         <dl className="atlas-ai-kv">
-          <dt>Possível</dt>
+          <dt>Próximo passo</dt>
           <dd>{promotionTarget}</dd>
         </dl>
       </div>
 
       <div className="atlas-ai-context-section">
-        <h3>Thread</h3>
+          <h3>Conversa</h3>
         {thread ? (
           <ul className="atlas-ai-context-list">
-            <li><span>id</span><code>{thread.id}</code></li>
-            <li><span>workspace</span><code>{thread.workspace ?? '—'}</code></li>
-            <li><span>provider</span><code>{thread.last_provider ?? '—'}</code></li>
+            <li><span>projeto</span><code>{projectDisplayName(thread.workspace, workspaceName ?? workspaceSlug)}</code></li>
+              <li><span>modelo</span><code>{modelLabel(thread.last_provider)}</code></li>
             <li><span>mensagens</span><code>{thread.message_count}</code></li>
-            <li><span>status</span><code>{thread.status}</code></li>
+            <li><span>estado</span><code>{labelThreadStatus(thread.status)}</code></li>
           </ul>
         ) : (
-          <p className="atlas-ai-empty-line">Sem thread carregada.</p>
+          <p className="atlas-ai-empty-line">Sem conversa carregada.</p>
         )}
       </div>
 
       <div className="atlas-ai-context-section">
-        <h3>Trace recente</h3>
+          <h3>Execução recente</h3>
         {pendingTrace ? (
           <ul className="atlas-ai-context-list">
-            <li><span>id</span><code>{pendingTrace.id}</code></li>
-            <li><span>status</span><code>{pendingTrace.status}</code></li>
-            <li><span>provider</span><code>{pendingTrace.provider ?? '—'}</code></li>
+            <li><span>recibo</span><code>{pendingTrace.id.slice(0, 16)}…</code></li>
+            <li><span>estado</span><code>{labelThreadStatus(pendingTrace.status)}</code></li>
+            <li><span>modelo</span><code>{modelLabel(pendingTrace.provider)}</code></li>
             <li><span>latência</span><code>{pendingTrace.latency_ms ?? '—'}ms</code></li>
           </ul>
         ) : (
-          <p className="atlas-ai-empty-line">Nenhum trace ativo.</p>
+          <p className="atlas-ai-empty-line">Nenhuma execução ativa.</p>
         )}
       </div>
 
       {showForgeBlock ? (
         <div className="atlas-ai-context-section atlas-ai-context-forge">
-          <h3>Forge handoff</h3>
+          <h3>Encaminhamento Forge</h3>
           <ul className="atlas-ai-context-list">
-            <li><span>target</span><code>{hyperflow.handoffTarget}</code></li>
+            <li><span>destino</span><code>{handoffLabel(hyperflow.handoffTarget)}</code></li>
             {hyperflow.handoffReason ? (
-              <li><span>reason</span><code>{hyperflow.handoffReason}</code></li>
+              <li><span>motivo</span><code>{humanizeCompactLabel(hyperflow.handoffReason)}</code></li>
             ) : null}
             {hyperflow.dispatchStatus ? (
-              <li><span>dispatch</span><code>{hyperflow.dispatchStatus}</code></li>
+              <li><span>envio</span><code>{labelThreadStatus(hyperflow.dispatchStatus)}</code></li>
             ) : null}
           </ul>
         </div>
@@ -296,16 +417,16 @@ export function AtlasAiContextPanel({
 
       {devRuntime ? (
         <div className="atlas-ai-context-section">
-          <h3>Atlas Dev Runtime</h3>
+          <h3>Execução de código</h3>
           <ul className="atlas-ai-context-list">
-            <li><span>flow</span><code>{devRuntime.flow_id}</code></li>
-            <li><span>task</span><code>{devRuntime.task}</code></li>
-            <li><span>workspace</span><code>{devRuntime.workspace}</code></li>
-            <li><span>decisão</span><code>{devRuntime.decision_mode}</code></li>
-            <li><span>provider</span><code>{devRuntime.provider ?? '—'}</code></li>
-            <li><span>artefatos</span><code>{devRuntime.expected_artifacts.join(', ')}</code></li>
-            <li><span>open brain</span><code>{devRuntime.open_brain_status ?? devRuntime.open_brain_policy ?? '—'}</code></li>
-            <li><span>schema</span><code>{devRuntime.schema_version}</code></li>
+            <li><span>caminho</span><code title={devRuntime.flow_id}>{humanizeCompactLabel(devRuntime.flow_id)}</code></li>
+            <li><span>pedido</span><code title={devRuntime.task}>{humanizeCompactLabel(devRuntime.task)}</code></li>
+            <li><span>projeto</span><code>{projectDisplayName(devRuntime.workspace, workspaceName ?? workspaceSlug)}</code></li>
+            <li><span>decisão</span><code title={devRuntime.decision_mode}>{labelDecisionMode(devRuntime.decision_mode)}</code></li>
+            <li><span>modelo</span><code>{modelLabel(devRuntime.provider)}</code></li>
+            <li><span>entregas</span><code>{devRuntime.expected_artifacts.map(expectedArtifactLabel).join(', ')}</code></li>
+            <li><span>memória</span><code>{openBrainLabel(devRuntime.open_brain_status ?? devRuntime.open_brain_policy)}</code></li>
+            <li><span>contrato</span><code>registrado</code></li>
           </ul>
         </div>
       ) : null}
@@ -336,7 +457,7 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
   if (loading) {
     return (
       <div className="atlas-ai-context-section atlas-ai-context-plan">
-        <h3>Atlas Dev · Contexto</h3>
+        <h3>Contexto de código</h3>
         <p className="atlas-ai-empty-line atlas-ai-faint">consultando plano…</p>
       </div>
     )
@@ -345,9 +466,9 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
   if (unavailable) {
     return (
       <div className="atlas-ai-context-section atlas-ai-context-plan">
-        <h3>Atlas Dev · Contexto</h3>
+        <h3>Contexto de código</h3>
         <p className="atlas-ai-empty-line atlas-ai-faint">
-          plan-only endpoint ainda não disponível · usando fluxo legado
+          Plano técnico ainda não disponível no serviço local. Atlas continua pela conversa normal.
         </p>
       </div>
     )
@@ -356,8 +477,10 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
   if (error) {
     return (
       <div className="atlas-ai-context-section atlas-ai-context-plan">
-        <h3>Atlas Dev · Contexto</h3>
-        <p className="atlas-ai-empty-line atlas-ai-faint">erro · {error}</p>
+        <h3>Contexto de código</h3>
+        <p className="atlas-ai-empty-line atlas-ai-faint" title={error}>
+          Não consegui carregar o plano técnico agora. A conversa continua funcionando.
+        </p>
       </div>
     )
   }
@@ -383,18 +506,18 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
   return (
     <div className="atlas-ai-context-section atlas-ai-context-plan">
-      <h3>Atlas Dev · Contexto</h3>
+      <h3>Contexto de código</h3>
       <ul className="atlas-ai-context-list">
-        <li><span>run</span><code>{plan.run_id}</code></li>
-        <li><span>status</span><code>{plan.status}</code></li>
+        <li><span>recibo</span><code>{plan.run_id.slice(0, 16)}…</code></li>
+        <li><span>estado</span><code>{labelThreadStatus(plan.status)}</code></li>
         {retrieval?.budget_chars !== undefined ? (
-          <li><span>orçamento</span><code>{retrieval.budget_chars} chars</code></li>
+          <li><span>limite</span><code>{retrieval.budget_chars.toLocaleString('pt-BR')} caracteres</code></li>
         ) : null}
         {budget?.chars_used !== undefined && budget?.chars_used !== null ? (
           <li>
-            <span>usado</span>
+            <span>uso</span>
             <code>
-              {budget.chars_used}/{budget.chars_requested ?? '—'} chars
+              {budget.chars_used.toLocaleString('pt-BR')}/{budget.chars_requested?.toLocaleString('pt-BR') ?? '—'} caracteres
             </code>
           </li>
         ) : null}
@@ -408,10 +531,10 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {selectedTiers.length > 0 ? (
         <div className="atlas-ai-context-subblock">
-          <p className="atlas-ai-context-subblock-title">tiers selecionados</p>
+          <p className="atlas-ai-context-subblock-title">camadas selecionadas</p>
           <ul className="atlas-ai-context-chip-list">
             {selectedTiers.map((tier) => (
-              <li key={tier}><code>{tier}</code></li>
+              <li key={tier}><span title={tier}>{humanizeCompactLabel(tier)}</span></li>
             ))}
           </ul>
         </div>
@@ -419,7 +542,7 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {memoryRefs.length > 0 ? (
         <div className="atlas-ai-context-subblock">
-          <p className="atlas-ai-context-subblock-title">memory · {memoryRefs.length}</p>
+          <p className="atlas-ai-context-subblock-title">memória · {memoryRefs.length}</p>
           <ul className="atlas-ai-context-ref-list">
             {memoryRefs.slice(0, 6).map((r, i) => (
               <li key={`mr-${i}`}><code>{r.ref}</code><em>{r.reason}</em></li>
@@ -430,7 +553,7 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {knowledgeRefs.length > 0 ? (
         <div className="atlas-ai-context-subblock">
-          <p className="atlas-ai-context-subblock-title">knowledge · {knowledgeRefs.length}</p>
+          <p className="atlas-ai-context-subblock-title">conhecimento · {knowledgeRefs.length}</p>
           <ul className="atlas-ai-context-ref-list">
             {knowledgeRefs.slice(0, 6).map((r, i) => (
               <li key={`kr-${i}`}><code>{r.ref}</code><em>{r.reason}</em></li>
@@ -441,7 +564,7 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {codeRefs.length > 0 ? (
         <div className="atlas-ai-context-subblock">
-          <p className="atlas-ai-context-subblock-title">code · {codeRefs.length}</p>
+          <p className="atlas-ai-context-subblock-title">código · {codeRefs.length}</p>
           <ul className="atlas-ai-context-ref-list">
             {codeRefs.slice(0, 6).map((r, i) => (
               <li key={`cr-${i}`}><code>{r.ref}</code><em>{r.reason}</em></li>
@@ -452,10 +575,10 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {requiredSources.length > 0 ? (
         <div className="atlas-ai-context-subblock">
-          <p className="atlas-ai-context-subblock-title">required · {requiredSources.length}</p>
+          <p className="atlas-ai-context-subblock-title">fontes principais · {requiredSources.length}</p>
           <ul className="atlas-ai-context-mono-list">
             {requiredSources.slice(0, 8).map((s, i) => (
-              <li key={`req-${i}`}><code>{s}</code></li>
+              <li key={`req-${i}`}><span title={s}>{humanizeCompactLabel(s)}</span></li>
             ))}
           </ul>
         </div>
@@ -463,10 +586,10 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {optionalSources.length > 0 ? (
         <div className="atlas-ai-context-subblock">
-          <p className="atlas-ai-context-subblock-title">optional · {optionalSources.length}</p>
+          <p className="atlas-ai-context-subblock-title">fontes extras · {optionalSources.length}</p>
           <ul className="atlas-ai-context-mono-list">
             {optionalSources.slice(0, 8).map((s, i) => (
-              <li key={`opt-${i}`}><code>{s}</code></li>
+              <li key={`opt-${i}`}><span title={s}>{humanizeCompactLabel(s)}</span></li>
             ))}
           </ul>
         </div>
@@ -474,10 +597,10 @@ function AtlasDevPlanContextSection({ plan, loading, error, unavailable }: Atlas
 
       {missingSources.length > 0 ? (
         <div className="atlas-ai-context-subblock atlas-ai-context-warning">
-          <p className="atlas-ai-context-subblock-title">missing · {missingSources.length}</p>
+          <p className="atlas-ai-context-subblock-title">faltando · {missingSources.length}</p>
           <ul className="atlas-ai-context-mono-list">
             {missingSources.slice(0, 8).map((s, i) => (
-              <li key={`miss-${i}`}><code>{s}</code></li>
+              <li key={`miss-${i}`}><span title={s}>{humanizeCompactLabel(s)}</span></li>
             ))}
           </ul>
         </div>

@@ -155,6 +155,7 @@ export type BridgeMode = 'tauri' | 'http' | 'offline'
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown
+    __TAURI__?: unknown
   }
 }
 
@@ -163,8 +164,15 @@ const ENV = ((import.meta as ImportMeta & {
 }).env ?? {})
 
 export function detectMode(): BridgeMode {
-  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-    return 'tauri'
+  if (typeof window !== 'undefined') {
+    const protocol = window.location?.protocol ?? ''
+    if (
+      protocol === 'tauri:' ||
+      '__TAURI_INTERNALS__' in window ||
+      '__TAURI__' in window
+    ) {
+      return 'tauri'
+    }
   }
   if (ENV.VITE_ATLAS_SERVER_URL) {
     return 'http'
@@ -174,6 +182,28 @@ export function detectMode(): BridgeMode {
 
 const MODE: BridgeMode = detectMode()
 const HTTP_BASE = ENV.VITE_ATLAS_SERVER_URL ?? ''
+const LOCAL_WORKSPACE_PROFILES_KEY = 'atlas-desktop:local-workspace-profiles'
+
+function normalizeLocalFolderPath(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const clean = value.replace(/\\/g, '/').replace(/\s+/g, ' ').trim()
+  if (!clean.includes('/')) return clean
+  const absolute = clean.startsWith('/')
+  const parts: string[] = []
+  for (const part of clean.split('/')) {
+    if (!part || part === '.') continue
+    if (part === '..') {
+      if (parts.length > 0 && parts.at(-1) !== '..') {
+        parts.pop()
+      } else if (!absolute) {
+        parts.push(part)
+      }
+      continue
+    }
+    parts.push(part)
+  }
+  return absolute ? `/${parts.join('/')}` : parts.join('/')
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 // Tauri / HTTP / Offline dispatch helpers
@@ -222,6 +252,77 @@ function parseJsonBody<T>(body: string): T {
 /** Throws explicitly when offline so useBridge can report errors honestly. */
 function offline(method: string): never {
   throw new Error(`offline · ${method} · neither Tauri nor VITE_ATLAS_SERVER_URL configured`)
+}
+
+function readLocalWorkspaceProfiles(): AtlasWorkspaceProfileList | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(LOCAL_WORKSPACE_PROFILES_KEY)
+    return raw ? adaptWorkspaceProfileList(JSON.parse(raw)) : null
+  } catch (e) {
+    console.warn('[bridge] local workspace profiles read failed', e)
+    return null
+  }
+}
+
+function writeLocalWorkspaceProfiles(list: AtlasWorkspaceProfileList | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (!list || list.profiles.length === 0) {
+      window.localStorage.removeItem(LOCAL_WORKSPACE_PROFILES_KEY)
+      return
+    }
+    window.localStorage.setItem(LOCAL_WORKSPACE_PROFILES_KEY, JSON.stringify(list))
+  } catch (e) {
+    console.warn('[bridge] local workspace profiles write failed', e)
+  }
+}
+
+function localWorkspaceProfileFromPayload(payload: AtlasWorkspaceProfileWritePayload): AtlasWorkspaceProfile {
+  const body = workspaceProfilePayload(payload)
+  const workspacePath = String(body.workspace_path ?? '').trim()
+  const raw = {
+    ...body,
+    schema_version: 'atlas.code.workspace_profile.v1',
+    id: String(body.slug),
+    workspace_path_exists: workspacePath !== '',
+    safety: {
+      execution_allowed: workspacePath !== '',
+      execution_blocked_reason: workspacePath === '' ? 'Sem pasta local escolhida.' : null,
+      risk_floor: body.default_risk ?? 'medium',
+      requires_explicit_intervention_review: ['high', 'critical'].includes(String(body.default_risk ?? '')),
+    },
+  }
+  const profile = adaptWorkspaceProfile(raw)
+  if (!profile) throw new Error('workspace_profile_local_invalid')
+  return profile
+}
+
+function upsertLocalWorkspaceProfile(payload: AtlasWorkspaceProfileWritePayload): AtlasWorkspaceProfile {
+  const profile = localWorkspaceProfileFromPayload(payload)
+  const current = readLocalWorkspaceProfiles()
+  const profiles = current?.profiles.filter((item) => item.slug !== profile.slug) ?? []
+  profiles.push(profile)
+  writeLocalWorkspaceProfiles({
+    schemaVersion: current?.schemaVersion ?? 'atlas.code.workspace_profile.v1',
+    defaultSlug: profile.slug,
+    profiles,
+  })
+  return profile
+}
+
+function archiveLocalWorkspaceProfile(slug: string): AtlasWorkspaceProfile | null {
+  const current = readLocalWorkspaceProfiles()
+  const existing = current?.profiles.find((item) => item.slug === slug) ?? null
+  if (!current || !existing) return null
+  const archived = { ...existing, status: 'archived' }
+  const profiles = current.profiles.filter((item) => item.slug !== slug)
+  writeLocalWorkspaceProfiles(profiles.length > 0 ? {
+    schemaVersion: current.schemaVersion,
+    defaultSlug: profiles[0]?.slug ?? current.defaultSlug,
+    profiles,
+  } : null)
+  return archived
 }
 
 function requireHttpRichInputBridge(method: string, richInput: AtlasRichInputPayload | null): void {
@@ -380,6 +481,27 @@ export interface StreamEventDto {
   metadata: unknown
 }
 
+export interface AtlasWorkspaceProfileWritePayload {
+  slug: string
+  name: string
+  kind?: string
+  workspace_path?: string
+  repo_root?: string
+  production_status?: string
+  stack_summary?: string
+  commands?: Record<string, string>
+  test_commands?: string[]
+  build_commands?: string[]
+  dev_server_command?: string | null
+  critical_areas?: string[]
+  docs_status?: string
+  default_risk?: string
+  deployment_notes?: string
+  surfaces_enabled?: string[]
+  source?: string
+  status?: string
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Bridge surface · all the real production-readiness slots
 
@@ -516,7 +638,10 @@ export const bridge = {
       let raw: unknown
       const workspaceSlug = opts.workspaceSlug ?? null
       if (MODE === 'tauri') {
-        raw = await invokeTauri<unknown>('bridge_list_works')
+        raw = await invokeTauri<unknown>('bridge_list_works', {
+          workspaceSlug,
+          workspace_slug: workspaceSlug,
+        })
       } else if (MODE === 'http') {
         const qs = workspaceSlug ? `?workspace=${encodeURIComponent(workspaceSlug)}` : ''
         raw = await fetchHttp<unknown>(`/atlas-code/works${qs}`)
@@ -527,6 +652,24 @@ export const bridge = {
     } catch (e) {
       console.warn('[bridge] listObras', e)
       return []
+    }
+  },
+
+  async pickWorkspaceFolder(): Promise<string | null> {
+    if (MODE !== 'tauri') return null
+    try {
+      const selected = await invokeTauri<string | null>('atlas_pick_workspace_folder')
+      return typeof selected === 'string' && selected.trim() !== '' ? selected : null
+    } catch (e) {
+      console.warn('[bridge] native folder picker failed, falling back to dialog plugin', e)
+      const dialog = await import('@tauri-apps/plugin-dialog')
+      const selected = await dialog.open({
+        directory: true,
+        multiple: false,
+        title: 'Escolher pasta do projeto',
+      })
+      const path = Array.isArray(selected) ? selected[0] : selected
+      return typeof path === 'string' && path.trim() !== '' ? path : null
     }
   },
 
@@ -541,28 +684,134 @@ export const bridge = {
       if (MODE === 'http') {
         raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces')
       } else if (MODE === 'tauri') {
-        // Tauri command not implemented for workspaces yet. Tenta primeiro,
-        // mas se falhar (e tivermos HTTP_BASE configurado via env), faz fallback
-        // HTTP direto — Tauri WebView pode chamar 127.0.0.1:8001 sem problemas
-        // de CORS local.
         try {
           raw = await invokeTauri<unknown>('bridge_list_workspaces')
         } catch {
-          if (!HTTP_BASE) return null
+          if (!HTTP_BASE) return readLocalWorkspaceProfiles()
           try {
             raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces')
           } catch (e) {
             console.warn('[bridge] listWorkspaces HTTP fallback failed', e)
-            return null
+            return readLocalWorkspaceProfiles()
           }
         }
       } else {
-        return null
+        return readLocalWorkspaceProfiles()
       }
-      return adaptWorkspaceProfileList(raw)
+      return adaptWorkspaceProfileList(raw) ?? readLocalWorkspaceProfiles()
     } catch (e) {
       console.warn('[bridge] listWorkspaces', e)
-      return null
+      return readLocalWorkspaceProfiles()
+    }
+  },
+
+  async createWorkspaceProfile(payload: AtlasWorkspaceProfileWritePayload): Promise<AtlasWorkspaceProfile> {
+    const body = workspaceProfilePayload(payload)
+    let raw: unknown
+    if (MODE === 'http') {
+      raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces', { method: 'POST', body })
+    } else if (MODE === 'tauri') {
+      try {
+        raw = await invokeTauri<unknown>('bridge_create_workspace_profile', { payload: body })
+      } catch (nativeError) {
+        if (!HTTP_BASE) return upsertLocalWorkspaceProfile(payload)
+        try {
+          raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces', { method: 'POST', body })
+        } catch (httpError) {
+          console.warn('[bridge] createWorkspaceProfile remote unavailable; using local profile fallback', nativeError, httpError)
+          return upsertLocalWorkspaceProfile(payload)
+        }
+      }
+    } else {
+      return upsertLocalWorkspaceProfile(payload)
+    }
+    try {
+      return adaptWorkspaceProfileEnvelope(raw)
+    } catch (e) {
+      if (MODE === 'tauri') {
+        console.warn('[bridge] createWorkspaceProfile native response invalid; using local profile fallback', e)
+        return upsertLocalWorkspaceProfile(payload)
+      }
+      throw e
+    }
+  },
+
+  async updateWorkspaceProfile(slug: string, payload: AtlasWorkspaceProfileWritePayload): Promise<AtlasWorkspaceProfile> {
+    const target = slug.trim()
+    if (target === '') throw new Error('updateWorkspaceProfile · missing slug')
+    const body = workspaceProfilePayload({ ...payload, slug: target })
+    let raw: unknown
+    if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/projects/workspaces/${encodeURIComponent(target)}`, {
+        method: 'PATCH',
+        body,
+      })
+    } else if (MODE === 'tauri') {
+      try {
+        raw = await invokeTauri<unknown>('bridge_update_workspace_profile', { slug: target, payload: body })
+      } catch (nativeError) {
+        if (!HTTP_BASE) return upsertLocalWorkspaceProfile({ ...payload, slug: target })
+        try {
+          raw = await fetchHttp<unknown>(`/atlas-code/projects/workspaces/${encodeURIComponent(target)}`, {
+            method: 'PATCH',
+            body,
+          })
+        } catch (httpError) {
+          console.warn('[bridge] updateWorkspaceProfile remote unavailable; using local profile fallback', nativeError, httpError)
+          return upsertLocalWorkspaceProfile({ ...payload, slug: target })
+        }
+      }
+    } else {
+      return upsertLocalWorkspaceProfile({ ...payload, slug: target })
+    }
+    try {
+      return adaptWorkspaceProfileEnvelope(raw)
+    } catch (e) {
+      if (MODE === 'tauri') {
+        console.warn('[bridge] updateWorkspaceProfile native response invalid; using local profile fallback', e)
+        return upsertLocalWorkspaceProfile({ ...payload, slug: target })
+      }
+      throw e
+    }
+  },
+
+  async archiveWorkspaceProfile(slug: string): Promise<AtlasWorkspaceProfile> {
+    const target = slug.trim()
+    if (target === '') throw new Error('archiveWorkspaceProfile · missing slug')
+    let raw: unknown
+    if (MODE === 'http') {
+      raw = await fetchHttp<unknown>(`/atlas-code/projects/workspaces/${encodeURIComponent(target)}`, {
+        method: 'DELETE',
+      })
+    } else if (MODE === 'tauri') {
+      try {
+        raw = await invokeTauri<unknown>('bridge_archive_workspace_profile', { slug: target })
+      } catch {
+        if (!HTTP_BASE) {
+          const archived = archiveLocalWorkspaceProfile(target)
+          if (archived) return archived
+          offline('archiveWorkspaceProfile')
+        }
+        raw = await fetchHttp<unknown>(`/atlas-code/projects/workspaces/${encodeURIComponent(target)}`, {
+          method: 'DELETE',
+        })
+      }
+    } else {
+      const archived = archiveLocalWorkspaceProfile(target)
+      if (archived) return archived
+      offline('archiveWorkspaceProfile')
+    }
+    try {
+      return adaptWorkspaceProfileEnvelope(raw)
+    } catch (e) {
+      if (MODE === 'tauri' && !HTTP_BASE) {
+        const archived = archiveLocalWorkspaceProfile(target)
+        if (archived) {
+          console.warn('[bridge] archiveWorkspaceProfile native response invalid; using local profile fallback', e)
+          return archived
+        }
+      }
+      throw e
     }
   },
 
@@ -2181,9 +2430,11 @@ function adaptWorkspaceProfile(raw: unknown): AtlasWorkspaceProfile | null {
     slug,
     name: String(r.name ?? slug),
     kind: String(r.kind ?? 'product'),
-    workspacePath: String(r.workspace_path ?? r.workspacePath ?? ''),
+    source: typeof r.source === 'string' ? r.source : undefined,
+    status: typeof r.status === 'string' ? r.status : undefined,
+    workspacePath: normalizeLocalFolderPath(r.workspace_path ?? r.workspacePath),
     workspacePathExists: Boolean(r.workspace_path_exists ?? r.workspacePathExists ?? false),
-    repoRoot: String(r.repo_root ?? r.repoRoot ?? ''),
+    repoRoot: normalizeLocalFolderPath(r.repo_root ?? r.repoRoot),
     productionStatus: String(r.production_status ?? r.productionStatus ?? 'development'),
     stackSummary: String(r.stack_summary ?? r.stackSummary ?? ''),
     commands,
@@ -2209,6 +2460,50 @@ function adaptWorkspaceProfile(raw: unknown): AtlasWorkspaceProfile | null {
     })(),
     safety,
   }
+}
+
+function adaptWorkspaceProfileEnvelope(raw: unknown): AtlasWorkspaceProfile {
+  const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const profile = adaptWorkspaceProfile(r.workspace ?? raw)
+  if (!profile) throw new Error('workspace_profile_invalid_response')
+  return profile
+}
+
+function workspaceProfilePayload(payload: AtlasWorkspaceProfileWritePayload): Record<string, unknown> {
+  const cleanString = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null
+    const trimmed = value.trim()
+    return trimmed === '' ? null : trimmed
+  }
+  const cleanList = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
+      : []
+  const body: Record<string, unknown> = {
+    slug: cleanString(payload.slug),
+    name: cleanString(payload.name),
+    kind: cleanString(payload.kind) ?? 'product',
+    workspace_path: normalizeLocalFolderPath(cleanString(payload.workspace_path) ?? ''),
+    repo_root: normalizeLocalFolderPath(cleanString(payload.repo_root) ?? cleanString(payload.workspace_path) ?? ''),
+    production_status: cleanString(payload.production_status) ?? 'development',
+    stack_summary: cleanString(payload.stack_summary) ?? '',
+    commands: payload.commands ?? {},
+    test_commands: cleanList(payload.test_commands),
+    build_commands: cleanList(payload.build_commands),
+    dev_server_command: cleanString(payload.dev_server_command),
+    critical_areas: cleanList(payload.critical_areas),
+    docs_status: cleanString(payload.docs_status) ?? 'unknown',
+    default_risk: cleanString(payload.default_risk) ?? 'medium',
+    deployment_notes: cleanString(payload.deployment_notes) ?? '',
+    surfaces_enabled: cleanList(payload.surfaces_enabled).length > 0
+      ? cleanList(payload.surfaces_enabled)
+      : ['atlas_ai', 'cartografia', 'code', 'atencao'],
+    source: cleanString(payload.source) ?? 'operator',
+    status: cleanString(payload.status) ?? 'active',
+  }
+  if (!body.slug) throw new Error('workspace_profile_payload_missing_slug')
+  if (!body.name) throw new Error('workspace_profile_payload_missing_name')
+  return body
 }
 
 function adaptWorkspaceProfileList(raw: unknown): AtlasWorkspaceProfileList | null {
@@ -5747,6 +6042,137 @@ function adaptCartographyGraph(raw: unknown): CartographyGraph | null {
     lanes,
     connections,
     semanticGraph,
+    humanClarityContract: adaptHumanClarityContract(r.human_clarity_contract),
+    workspaceScope: adaptCartographyWorkspaceScope(r.workspace_scope),
+  }
+}
+
+function adaptCartographyWorkspaceScope(raw: unknown): import('@atlas/domain').CartographyWorkspaceScope | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+
+  return {
+    workspaceId: typeof r.workspace_id === 'string' ? r.workspace_id : null,
+    workspaceHash: typeof r.workspace_hash === 'string' ? r.workspace_hash : null,
+    runtimeProjectionReplay: adaptRuntimeProjectionReplay(r.runtime_projection_replay),
+    artifactGraphReplay: adaptArtifactGraphReplay(r.artifact_graph_replay),
+    artifactLakeReplay: adaptArtifactLakeReplay(r.artifact_lake_replay),
+  }
+}
+
+function adaptArtifactLakeReplay(raw: unknown): import('@atlas/domain').CartographyArtifactLakeReplay | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const items = Array.isArray(r.latest_artifacts) ? r.latest_artifacts : []
+  const sourcePolicy = (r.source_policy as Record<string, unknown> | undefined) ?? {}
+
+  return {
+    schemaVersion: String(r.schema_version ?? ''),
+    status: String(r.status ?? 'unknown'),
+    reason: typeof r.reason === 'string' ? r.reason : null,
+    artifactCount: Number(r.artifact_count ?? 0),
+    conversationFusionPackCount: Number(r.conversation_fusion_pack_count ?? 0),
+    latestArtifacts: items.map((item) => {
+      const i = (item ?? {}) as Record<string, unknown>
+
+      return {
+        artifactId: String(i.artifact_id ?? ''),
+        artifactHash: String(i.artifact_hash ?? ''),
+        runtimeHash: String(i.runtime_hash ?? ''),
+        artifactType: String(i.artifact_type ?? ''),
+        status: String(i.status ?? 'unknown'),
+        consumer: typeof i.consumer === 'string' ? i.consumer : null,
+        sourceHashCount: Number(i.source_hash_count ?? 0),
+        qualityScore: Number(i.quality_score ?? 0),
+        capturedAt: typeof i.captured_at === 'string' ? i.captured_at : null,
+      }
+    }),
+    inspectEndpoint: typeof r.inspect_endpoint === 'string' ? r.inspect_endpoint : null,
+    sourcePolicy: {
+      rawConversationReturned: sourcePolicy.raw_conversation_returned === true,
+      fullMessageContentReturned: sourcePolicy.full_message_content_returned === true,
+      workspaceScopeRequired: sourcePolicy.workspace_scope_required === true,
+      hashesAreAuthoritative: sourcePolicy.hashes_are_authoritative === true,
+    },
+  }
+}
+
+function adaptArtifactGraphReplay(raw: unknown): import('@atlas/domain').CartographyArtifactGraphReplay | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+
+  return {
+    schemaVersion: String(r.schema_version ?? ''),
+    status: String(r.status ?? 'unknown'),
+    stale: r.stale === true,
+    reason: typeof r.reason === 'string' ? r.reason : null,
+    snapshotId: typeof r.snapshot_id === 'string' ? r.snapshot_id : null,
+    runtimeHash: typeof r.runtime_hash === 'string' ? r.runtime_hash : null,
+    artifactIntelligenceHash: typeof r.artifact_intelligence_hash === 'string' ? r.artifact_intelligence_hash : null,
+    graphHash: typeof r.graph_hash === 'string' ? r.graph_hash : null,
+    capturedAt: typeof r.captured_at === 'string' ? r.captured_at : null,
+  }
+}
+
+function adaptRuntimeProjectionReplay(raw: unknown): import('@atlas/domain').CartographyRuntimeProjectionReplay | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const items = Array.isArray(r.items) ? r.items : []
+
+  return {
+    schemaVersion: String(r.schema_version ?? ''),
+    status: String(r.status ?? 'unknown'),
+    staleCount: Number(r.stale_count ?? 0),
+    missingCount: Number(r.missing_count ?? 0),
+    staleFamilies: Array.isArray(r.stale_families) ? r.stale_families.map(String) : [],
+    missingFamilies: Array.isArray(r.missing_families) ? r.missing_families.map(String) : [],
+    items: items.map((item) => {
+      const i = (item ?? {}) as Record<string, unknown>
+
+      return {
+        family: String(i.family ?? ''),
+        status: String(i.status ?? 'unknown'),
+        staleReason: typeof i.stale_reason === 'string' ? i.stale_reason : null,
+        savedWorkspaceHash: typeof i.saved_workspace_hash === 'string' ? i.saved_workspace_hash : null,
+        currentWorkspaceHash: typeof i.current_workspace_hash === 'string' ? i.current_workspace_hash : null,
+        generatedAt: typeof i.generated_at === 'string' ? i.generated_at : null,
+      }
+    }),
+  }
+}
+
+function adaptHumanClarityContract(raw: unknown): import('@atlas/domain').CartographyHumanClarityContract | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const clarityRaw = r.human_clarity as Record<string, unknown> | undefined
+  const dimensionsRaw = Array.isArray(clarityRaw?.dimensions) ? clarityRaw.dimensions : []
+
+  return {
+    humanClarity: clarityRaw
+      ? {
+          schemaVersion: String(clarityRaw.schema_version ?? ''),
+          status: String(clarityRaw.status ?? ''),
+          score: Number(clarityRaw.score ?? 0),
+          targetScore: Number(clarityRaw.target_score ?? 0),
+          grade: String(clarityRaw.grade ?? ''),
+          dimensions: dimensionsRaw.map((item) => {
+            const d = (item ?? {}) as Record<string, unknown>
+
+            return {
+              id: String(d.id ?? ''),
+              score: Number(d.score ?? 0),
+              evidence: String(d.evidence ?? ''),
+            }
+          }),
+          invariants: Object.fromEntries(
+            Object.entries((clarityRaw.invariants as Record<string, unknown> | undefined) ?? {}).map(([key, value]) => [
+              key,
+              Boolean(value),
+            ])
+          ),
+        }
+      : null,
+    writes: Boolean(r.writes ?? false),
   }
 }
 

@@ -89,6 +89,9 @@ function App() {
   // and any future surface that needs to inspect the active Project profile.
   // Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
   const projectProfile = useProjectProfile()
+  const blockedSurfaces = b.activeWorkspace && !b.activeWorkspace.workspacePathExists
+    ? { code: 'vincule uma pasta local no perfil do projeto antes de abrir Code' }
+    : null
 
   return (
     <TopBarLocationTrailProvider>
@@ -108,6 +111,7 @@ function App() {
           onOpenWorkspaceProfile={projectProfile.show}
           attentionCount={attentionCount}
           enabledSurfaces={b.activeWorkspace?.surfacesEnabled ?? null}
+          blockedSurfaces={blockedSurfaces}
         />
 
         <SurfaceHost
@@ -115,16 +119,21 @@ function App() {
           bridge={b}
           boot={boot}
           onSurfaceChange={setSurface}
-          onOpenWorkspaceProfile={projectProfile.show}
+          onOpenWorkspaceProfile={(mode) => projectProfile.show(mode ?? 'view')}
         />
 
         <ProjectProfileSheet
           open={projectProfile.open}
+          initialMode={projectProfile.mode}
           onClose={projectProfile.hide}
           workspaces={b.workspaces}
           active={b.activeWorkspace}
           activeSlug={b.activeWorkspaceSlug ?? null}
           onSelect={b.setActiveWorkspaceSlug}
+          onCreate={b.createWorkspaceProfile}
+          onUpdate={b.updateWorkspaceProfile}
+          onArchive={b.archiveWorkspaceProfile}
+          onPickWorkspaceFolder={b.pickWorkspaceFolder}
         />
       </AtlasShell>
     </TopBarLocationTrailProvider>

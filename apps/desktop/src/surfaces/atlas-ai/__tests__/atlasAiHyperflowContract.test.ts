@@ -23,7 +23,7 @@ import {
 
 test('auto is the canonical first mode option in the operator menu', () => {
   assert.equal(MODE_OPTIONS[0]?.value, 'auto')
-  assert.equal(MODE_OPTIONS[0]?.label, 'Auto (Hyperflow)')
+  assert.equal(MODE_OPTIONS[0]?.label, 'Auto (Atlas Decide)')
   // `programming` must NOT be the first menu entry — Desktop AI is a multi-
   // domain surface, not a programming workbench.
   assert.notEqual(MODE_OPTIONS[0]?.value, 'programming')

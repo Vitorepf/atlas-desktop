@@ -299,9 +299,55 @@ impl AtlasBridge {
         .await
     }
 
-    pub async fn list_works(&self) -> BridgeResult<serde_json::Value> {
-        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_WORKS_LIST))
+    pub async fn list_works(&self, workspace_slug: Option<&str>) -> BridgeResult<serde_json::Value> {
+        let path = match workspace_slug.map(str::trim).filter(|slug| !slug.is_empty()) {
+            Some(slug) => format!(
+                "{}?workspace={}",
+                endpoints::ATLAS_CODE_WORKS_LIST,
+                urlencoding::encode(slug)
+            ),
+            None => endpoints::ATLAS_CODE_WORKS_LIST.to_string(),
+        };
+        self.execute(self.build(Method::GET, &path)).await
+    }
+
+    pub async fn list_workspace_profiles(&self) -> BridgeResult<serde_json::Value> {
+        self.execute(self.build(Method::GET, endpoints::ATLAS_CODE_WORKSPACES))
             .await
+    }
+
+    pub async fn create_workspace_profile(
+        &self,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        self.execute(
+            self.build(Method::POST, endpoints::ATLAS_CODE_WORKSPACES)
+                .json(&payload),
+        )
+        .await
+    }
+
+    pub async fn update_workspace_profile(
+        &self,
+        slug: &str,
+        payload: serde_json::Value,
+    ) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}/{}",
+            endpoints::ATLAS_CODE_WORKSPACES,
+            urlencoding::encode(slug)
+        );
+        self.execute(self.build(Method::PATCH, &path).json(&payload))
+            .await
+    }
+
+    pub async fn archive_workspace_profile(&self, slug: &str) -> BridgeResult<serde_json::Value> {
+        let path = format!(
+            "{}/{}",
+            endpoints::ATLAS_CODE_WORKSPACES,
+            urlencoding::encode(slug)
+        );
+        self.execute(self.build(Method::DELETE, &path)).await
     }
 
     pub async fn create_work(

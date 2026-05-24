@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { UseKernelStatusResult } from '../../hooks/useKernelStatus'
 import { KERNEL_LABEL, KERNEL_TONE } from './kernelStatus'
-import { KernelDiagnostic } from './KernelDiagnostic'
+import { explainKernelMessage, KernelDiagnostic } from './KernelDiagnostic'
 import { useDismissablePopover } from './useDismissablePopover'
 
 export function KernelPill({ kernel }: { kernel: UseKernelStatusResult }) {
@@ -17,16 +17,15 @@ export function KernelPill({ kernel }: { kernel: UseKernelStatusResult }) {
         type="button"
         className={`v kernel-pill ${KERNEL_TONE[kernel.status]}`}
         onClick={() => setDiagOpen((s) => !s)}
-        title={`${kernel.message}${kernel.serverPath ? `\n${kernel.serverPath}` : ''}`}
+        title={`${explainKernelMessage(kernel.message)}${kernel.serverPath ? `\n${kernel.serverPath}` : ''}`}
         style={{ cursor: 'pointer', border: 'none', font: 'inherit' }}
       >
         <span className="kernel-dot" />
         {KERNEL_LABEL[kernel.status]}
-        {kernel.queueRunning ? ' · worker' : ''}
+        {kernel.queueRunning ? ' · fila ativa' : ''}
       </button>
 
       {diagOpen ? <KernelDiagnostic kernel={kernel} onClose={closeDiag} /> : null}
     </div>
   )
 }
-

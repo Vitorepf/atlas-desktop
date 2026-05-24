@@ -18,6 +18,7 @@ import {
   bridge,
   operatingRoomBridge,
   type AtlasComposerHints,
+  type AtlasWorkspaceProfileWritePayload,
   type BridgeMode,
 } from '../lib/bridge'
 import type { AtlasRichInputPayload } from '../lib/rich-input'
@@ -192,6 +193,10 @@ export interface BridgeActions {
   setActiveWorkspaceSlug: (slug: string) => Promise<void>
   /** Re-query workspace profiles (Atlas, Blackink, …) from atlas-server. */
   refreshWorkspaces: () => Promise<void>
+  pickWorkspaceFolder: () => Promise<string | null>
+  createWorkspaceProfile: (payload: AtlasWorkspaceProfileWritePayload) => Promise<AtlasWorkspaceProfile | null>
+  updateWorkspaceProfile: (slug: string, payload: AtlasWorkspaceProfileWritePayload) => Promise<AtlasWorkspaceProfile | null>
+  archiveWorkspaceProfile: (slug: string) => Promise<AtlasWorkspaceProfile | null>
   selectObra: (obraId: string) => Promise<void>
   createObra: (
     intent: string,
@@ -610,6 +615,15 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     }
   }, [pushError, resolveActiveWorkspace])
 
+  const pickWorkspaceFolder = useCallback(async (): Promise<string | null> => {
+    try {
+      return await bridge.pickWorkspaceFolder()
+    } catch (e) {
+      pushError('pickWorkspaceFolder', e)
+      return null
+    }
+  }, [pushError])
+
   const setActiveWorkspaceSlug = useCallback(
     async (slug: string) => {
       const target = slug.trim()
@@ -652,6 +666,90 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       })
     },
     [loadObraDetail, pushError, snap.workspaces, snap.activeWorkspaceSlug]
+  )
+
+  const createWorkspaceProfile = useCallback(
+    async (payload: AtlasWorkspaceProfileWritePayload): Promise<AtlasWorkspaceProfile | null> => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const profile = await bridge.createWorkspaceProfile(payload)
+        const next = await bridge.listWorkspaces()
+        if (cancelRef.current) return profile
+        persistWorkspaceSlug(profile.slug)
+        const obras = await bridge.listObras({ workspaceSlug: profile.slug }).catch(() => [] as Obra[])
+        setSnap((s) => ({
+          ...s,
+          busy: false,
+          workspaces: next,
+          activeWorkspaceSlug: profile.slug,
+          activeWorkspace: profile,
+          obras,
+          obra: obras[0] ?? null,
+          errors: [...errorBufRef.current],
+        }))
+        return profile
+      } catch (e) {
+        pushError('createWorkspaceProfile', e)
+        if (!cancelRef.current) setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const updateWorkspaceProfile = useCallback(
+    async (slug: string, payload: AtlasWorkspaceProfileWritePayload): Promise<AtlasWorkspaceProfile | null> => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const profile = await bridge.updateWorkspaceProfile(slug, payload)
+        const next = await bridge.listWorkspaces()
+        if (cancelRef.current) return profile
+        setSnap((s) => ({
+          ...s,
+          busy: false,
+          workspaces: next,
+          activeWorkspaceSlug: s.activeWorkspaceSlug === slug ? profile.slug : s.activeWorkspaceSlug,
+          activeWorkspace: s.activeWorkspaceSlug === slug ? profile : s.activeWorkspace,
+          errors: [...errorBufRef.current],
+        }))
+        return profile
+      } catch (e) {
+        pushError('updateWorkspaceProfile', e)
+        if (!cancelRef.current) setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError],
+  )
+
+  const archiveWorkspaceProfile = useCallback(
+    async (slug: string): Promise<AtlasWorkspaceProfile | null> => {
+      setSnap((s) => ({ ...s, busy: true }))
+      try {
+        const profile = await bridge.archiveWorkspaceProfile(slug)
+        const next = await bridge.listWorkspaces()
+        if (cancelRef.current) return profile
+        const { slug: nextSlug, profile: nextProfile } = resolveActiveWorkspace(
+          next,
+          snap.activeWorkspaceSlug === slug ? null : snap.activeWorkspaceSlug,
+        )
+        if (nextSlug) persistWorkspaceSlug(nextSlug)
+        setSnap((s) => ({
+          ...s,
+          busy: false,
+          workspaces: next,
+          activeWorkspaceSlug: nextSlug,
+          activeWorkspace: nextProfile,
+          errors: [...errorBufRef.current],
+        }))
+        return profile
+      } catch (e) {
+        pushError('archiveWorkspaceProfile', e)
+        if (!cancelRef.current) setSnap((s) => ({ ...s, busy: false, errors: [...errorBufRef.current] }))
+        return null
+      }
+    },
+    [pushError, resolveActiveWorkspace, snap.activeWorkspaceSlug],
   )
 
   const refreshSelfConstruction = useCallback(async () => {
@@ -2375,7 +2473,11 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
     ...snap,
     refresh,
     refreshWorkspaces,
+    pickWorkspaceFolder,
     setActiveWorkspaceSlug,
+    createWorkspaceProfile,
+    updateWorkspaceProfile,
+    archiveWorkspaceProfile,
     refreshProviderGovernance,
     refreshProviderOperatingRoom,
     createWorkPacket,

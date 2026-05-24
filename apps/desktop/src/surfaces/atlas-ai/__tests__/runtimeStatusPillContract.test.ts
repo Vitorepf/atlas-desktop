@@ -30,9 +30,9 @@ function shouldRenderPill(view: ReturnType<typeof buildRuntimeReadinessView>): b
 }
 
 function pillLabelFor(view: ReturnType<typeof buildRuntimeReadinessView>): string {
-  if (view.status === 'loading') return 'verificando runtime…'
-  if (view.status === 'unavailable') return 'runtime indisponível'
-  if (view.status === 'blocked' && view.primaryBlocker) return `bloqueado · ${view.primaryBlocker}`
+  if (view.status === 'loading') return 'verificando AWIS…'
+  if (view.status === 'unavailable') return 'AWIS indisponível'
+  if (view.status === 'blocked' && view.primaryBlocker) return `certificação pendente · ${view.primaryBlocker}`
   if (view.status === 'partial' && view.primaryBlocker) return `parcial · ${view.primaryBlocker}`
   if (view.activeMission) return `missão · ${view.activeMission.title}`
   return 'Atlas pronto'
@@ -79,8 +79,9 @@ test('pill · label de blocked humaniza id snake_case (não vaza technical key c
   }
   const view = buildRuntimeReadinessView(raw, false, true, noopRefresh)
   const label = pillLabelFor(view)
-  assert.equal(label, 'bloqueado · mission foundation readiness')
+  assert.equal(label, 'certificação pendente · base operacional da missão')
   assert.ok(!label.includes('_'), 'label não pode conter snake_case técnico')
+  assert.ok(!label.includes('readiness'), 'label não pode expor termo técnico de prontidão')
   assert.ok(!label.includes('{'), 'label não pode vazar JSON')
 })
 
@@ -132,6 +133,7 @@ test('pill · approvals badge só aparece quando count > 0', () => {
     false, true, noopRefresh,
   )
   assert.equal(three.pendingApprovalsCount, 3)
+  assert.equal(three.primaryBlocker, 'contexto e execução')
 })
 
 test('pill · handoff glyph reflete backend (dev vs forge) sem inventar', () => {

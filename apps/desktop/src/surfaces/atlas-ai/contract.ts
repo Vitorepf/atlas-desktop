@@ -37,7 +37,7 @@ export const PROVIDER_OPTIONS: ReadonlyArray<{
   label: string
   sub: string
 }> = [
-  { value: 'auto', label: 'Auto (Atlas Decide)', sub: 'Atlas escolhe o provider ideal por contexto' },
+  { value: 'auto', label: 'Auto (Atlas Decide)', sub: 'Atlas escolhe o melhor modelo pelo contexto' },
   { value: 'claude_cli', label: 'Claude', sub: 'Anthropic via Claude CLI · vision premium' },
   { value: 'codex_cli', label: 'Codex', sub: 'OpenAI via Codex CLI · raciocínio técnico' },
   { value: 'gemini_cli', label: 'Gemini', sub: 'Google Gemini · multimodal' },
@@ -50,7 +50,7 @@ export const PROVIDER_OPTIONS: ReadonlyArray<{
  * primeiro, domínios técnicos depois).
  */
 export const MODE_OPTIONS: ReadonlyArray<{ value: AtlasAiMode; label: string; sub: string }> = [
-  { value: 'auto', label: 'Auto (Hyperflow)', sub: 'Atlas Decide escolhe domínio/flow pelo contexto' },
+  { value: 'auto', label: 'Auto (Atlas Decide)', sub: 'Atlas escolhe o melhor caminho pelo contexto' },
   { value: 'general', label: 'Geral', sub: 'pesquisa, ideias, conversa leve' },
   { value: 'conversation', label: 'Conversa', sub: 'troca livre, sem domínio técnico' },
   { value: 'operational', label: 'Operacional', sub: 'diagnóstico, próxima ação' },
@@ -65,7 +65,7 @@ export const MODE_OPTIONS: ReadonlyArray<{ value: AtlasAiMode; label: string; su
 ]
 
 export const TASK_OPTIONS_AUTO: ReadonlyArray<{ value: AtlasAiTask; label: string; sub: string }> = [
-  { value: 'auto', label: 'Auto', sub: 'backend decide o task pelo Hyperflow' },
+  { value: 'auto', label: 'Auto', sub: 'Atlas decide a melhor ação pelo contexto' },
   { value: 'direct', label: 'Direto', sub: 'resposta imediata' },
   { value: 'plan', label: 'Plan', sub: 'pensar antes de responder' },
   { value: 'review', label: 'Review', sub: 'auditar/avaliar antes de agir' },
@@ -390,4 +390,44 @@ function programmingRuntimePolicy(workspace: string | null): Record<string, unkn
 
 export function providerLabel(value: AtlasAiProviderChoice): string {
   return PROVIDER_OPTIONS.find((opt) => opt.value === value)?.label ?? value
+}
+
+export function modeLabel(value: AtlasAiMode | null | undefined): string {
+  if (!value) return 'Atlas decide'
+  const known: Record<AtlasAiMode, string> = {
+    auto: 'Atlas decide',
+    general: 'Geral',
+    conversation: 'Conversa',
+    operational: 'Operacional',
+    programming: 'Programação',
+    research: 'Pesquisa',
+    finance: 'Finanças',
+    marketing: 'Marketing',
+    strategy: 'Estratégia',
+    personal_development: 'Pessoal',
+    cyber: 'Cyber',
+    automation: 'Automação',
+  }
+  return known[value] ?? value.replace(/[_-]+/g, ' ')
+}
+
+export function modelLabel(value: string | null | undefined): string {
+  const raw = value?.trim()
+  if (!raw) return '—'
+  const known: Record<string, string> = {
+    atlas: 'Atlas',
+    auto: 'Atlas Decide',
+    claude_cli: 'Claude',
+    codex_cli: 'Codex',
+    gemini_cli: 'Gemini',
+    claude_codex: 'Claude + Codex',
+    openai: 'OpenAI',
+    anthropic: 'Claude',
+    gemini: 'Gemini',
+  }
+  const lower = raw.toLowerCase()
+  if (known[lower]) return known[lower]
+  if (lower.startsWith('gpt-')) return `OpenAI ${raw}`
+  if (lower.startsWith('claude-')) return `Claude ${raw.replace(/^claude-/i, '')}`
+  return raw.replace(/[_-]+/g, ' ')
 }

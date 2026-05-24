@@ -49,7 +49,7 @@ const CHIPS: Record<AtlasAiMode, ChipDef[]> = {
     { label: 'Resumir conversa', prompt: 'Resumir conversa em 5 linhas:\n\n' },
   ],
   operational: [
-    { label: 'Status providers', prompt: 'Status atual dos providers Atlas Decide e impacto operacional:' },
+    { label: 'Status modelos', prompt: 'Status atual dos modelos Atlas Decide e impacto operacional:' },
     { label: 'Diagnóstico Atenção', prompt: 'Diagnóstico da fila de Atenção: o que está bloqueando humano agora?' },
     { label: 'Auditar deploy', prompt: 'Auditar o último deploy: o que mudou, o que rodou, o que ficou pendente?' },
     { label: 'Próxima decisão', prompt: 'Qual decisão humana mais urgente em aberto?' },
@@ -106,9 +106,9 @@ const CHIPS: Record<AtlasAiMode, ChipDef[]> = {
 
 const COPY: Record<AtlasAiMode, { eyebrow: string; title: string; hint: string }> = {
   auto: {
-    eyebrow: 'Atlas AI · Hyperflow',
+    eyebrow: 'Atlas AI · Atlas decide',
     title: 'Comece — Atlas decide o caminho pelo contexto.',
-    hint: 'Pesquisa, código, finanças, campanha, estratégia, cyber, automação ou conversa solta — escreva e o Hyperflow rota.',
+    hint: 'Pesquisa, código, finanças, campanha, estratégia, cyber, automação ou conversa solta — escreva e o Atlas escolhe o caminho.',
   },
   general: {
     eyebrow: 'Atlas AI · Geral',
@@ -123,7 +123,7 @@ const COPY: Record<AtlasAiMode, { eyebrow: string; title: string; hint: string }
   operational: {
     eyebrow: 'Atlas Ops · Operacional',
     title: 'Comece — diagnóstico, status, próxima ação.',
-    hint: 'Atlas Ops responde sobre estado real do kernel, fila Atenção, providers e custos. Nenhuma decisão é tomada por você.',
+    hint: 'Atlas Ops responde sobre serviço local, fila Atenção, modelos e custos. Nenhuma decisão é tomada por você.',
   },
   programming: {
     eyebrow: 'Atlas Dev · Programação',
@@ -195,7 +195,7 @@ export function AtlasAiHero({
       {(workspaceName || threadCount > 0) && (
         <p className="atlas-ai-hero-context">
           {workspaceName ? (
-            <>workspace · <span className="atlas-ai-hero-context-name">{workspaceName}</span></>
+            <>projeto · <span className="atlas-ai-hero-context-name">{workspaceName}</span></>
           ) : null}
           {workspaceName && threadCount > 0 ? ' · ' : ''}
           {threadCount > 0 ? (

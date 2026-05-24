@@ -128,6 +128,9 @@ export function CartografiaSurface({
       <CartografiaScopeBanner
         activeWorkspace={activeWorkspace}
         defaultSlug={defaultWorkspaceSlug}
+        runtimeProjectionReplay={c.graph?.workspaceScope?.runtimeProjectionReplay ?? null}
+        artifactGraphReplay={c.graph?.workspaceScope?.artifactGraphReplay ?? null}
+        artifactLakeReplay={c.graph?.workspaceScope?.artifactLakeReplay ?? null}
       />
       {auditOpen ? (
         <AuditPanel
