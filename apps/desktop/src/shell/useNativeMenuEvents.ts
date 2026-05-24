@@ -9,6 +9,7 @@ const MENU_EVENTS = {
   surfaceCode: 'atlas-menu:surface-code',
   surfaceAtencao: 'atlas-menu:surface-atencao',
   surfaceCartografia: 'atlas-menu:surface-cartografia',
+  surfaceControlPlane: 'atlas-menu:surface-control_plane',
   settingsOpenCodeTerminal: 'atlas-menu:settings-open-code-terminal',
   settingsTerminalRight: 'atlas-menu:settings-terminal-right',
   settingsTerminalBottom: 'atlas-menu:settings-terminal-bottom',
@@ -50,6 +51,7 @@ export function useNativeMenuEvents(surface: Surface, setSurface: SetSurface) {
         await add(MENU_EVENTS.surfaceCode, () => setSurface('code'))
         await add(MENU_EVENTS.surfaceAtencao, () => setSurface('atencao'))
         await add(MENU_EVENTS.surfaceCartografia, () => setSurface('cartografia'))
+        await add(MENU_EVENTS.surfaceControlPlane, () => setSurface('control_plane'))
         await add(MENU_EVENTS.settingsOpenCodeTerminal, () => {
           setSurface('code')
           useTerminalStore.getState().openDock()

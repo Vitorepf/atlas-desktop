@@ -1,5 +1,4 @@
 import { BrandBlock } from './BrandBlock'
-import { SurfaceSwitcher } from './SurfaceSwitcher'
 import type { TopBarProps } from './topBarTypes'
 import { TopBarLocationTrail } from './TopBarLocationTrail'
 import { useTopBarLocationTrail } from './useTopBarLocationTrail'
@@ -7,16 +6,12 @@ import { WorkspacePill } from './WorkspacePill'
 
 export function TopBar({
   surface,
-  onSurfaceChange,
   workspaces,
   activeWorkspace,
   activeWorkspaceSlug,
   onSelectWorkspace,
   onOpenWorkspaceProfile,
   loading,
-  attentionCount,
-  enabledSurfaces,
-  blockedSurfaces,
 }: TopBarProps) {
   const locationTrail = useTopBarLocationTrail()
   const workspaceName = activeWorkspace?.name ?? null
@@ -41,13 +36,6 @@ export function TopBar({
         ) : null}
         <TopBarLocationTrail items={surface === 'cartografia' ? locationTrail : []} />
       </div>
-      <SurfaceSwitcher
-        surface={surface}
-        onSurfaceChange={onSurfaceChange}
-        badges={typeof attentionCount === 'number' ? { atencao: attentionCount } : undefined}
-        enabledSurfaces={enabledSurfaces ?? null}
-        blockedSurfaces={blockedSurfaces ?? null}
-      />
     </header>
   )
 }

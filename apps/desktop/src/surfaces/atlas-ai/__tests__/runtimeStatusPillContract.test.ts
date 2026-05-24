@@ -35,6 +35,7 @@ function pillLabelFor(view: ReturnType<typeof buildRuntimeReadinessView>): strin
   if (view.status === 'blocked' && view.primaryBlocker) return `certificação pendente · ${view.primaryBlocker}`
   if (view.status === 'partial' && view.primaryBlocker) return `parcial · ${view.primaryBlocker}`
   if (view.activeMission) return `missão · ${view.activeMission.title}`
+  if (view.assistedExecution?.doctrineGateStatus) return `doutrina · ${view.assistedExecution.doctrineGateStatus}`
   return 'Atlas pronto'
 }
 
@@ -107,6 +108,43 @@ test('pill · label expõe missão ativa quando bundle presente e status ready',
   }
   const view = buildRuntimeReadinessView(raw, false, true, noopRefresh)
   assert.equal(pillLabelFor(view), 'missão · Vox V6 release')
+})
+
+test('pill · label expõe doutrina assistida quando não há missão ativa', () => {
+  const raw: AtlasAiRuntimeReadiness = {
+    schema_version: 'atlas.ai.runtime_readiness.v1',
+    status: 'ready',
+    summary: { total: 11, passed: 11, partial: 0, failed: 0, critical_failed: 0, warn_failed: 0 },
+    blockers: [],
+    warnings: [],
+    certification_hash: 'b'.repeat(64),
+    ux_bundle: {
+      active_mission: null,
+      pending_approvals_count: 0,
+      latest_handoff: null,
+      assisted_execution: {
+        schema_version: 'atlas.ai.assisted_execution.operational_ux.v1',
+        status: 'ready',
+        route_target: 'atlas_dev',
+        flow_id: 'programming.dev',
+        doctrine_gate_status: 'passed',
+        selected_drivers: ['atdd', 'tdd'],
+        context_memory_status: 'ready',
+        context_must_keep_coverage: 1,
+        areg_status: 'ready',
+        areg_path: 'local_dev',
+        outcome_feedback_status: 'recorded',
+        aemor_feedback_status: 'ready_to_record',
+        blockers: [],
+        summary: 'Execucao assistida governada por AEDPDS, contexto, AREG e feedback AEMOR.',
+        hash: 'c'.repeat(64),
+      },
+    },
+  }
+  const view = buildRuntimeReadinessView(raw, false, true, noopRefresh)
+  assert.equal(pillLabelFor(view), 'doutrina · passed')
+  assert.equal(view.assistedExecution?.routeTarget, 'atlas_dev')
+  assert.ok(!pillLabelFor(view).includes('{'), 'label não pode vazar JSON')
 })
 
 test('pill · approvals badge só aparece quando count > 0', () => {

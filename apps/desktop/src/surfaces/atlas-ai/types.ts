@@ -161,6 +161,23 @@ export interface AtlasAiRuntimeReadiness {
       status?: string
       created_at?: string | null
     } | null
+    assisted_execution?: {
+      schema_version?: string
+      status?: 'ready' | 'needs_attention' | 'unavailable' | string
+      route_target?: string | null
+      flow_id?: string | null
+      doctrine_gate_status?: string | null
+      selected_drivers?: ReadonlyArray<string> | null
+      context_memory_status?: string | null
+      context_must_keep_coverage?: number | null
+      areg_status?: string | null
+      areg_path?: string | null
+      outcome_feedback_status?: string | null
+      aemor_feedback_status?: string | null
+      blockers?: ReadonlyArray<string> | null
+      summary?: string | null
+      hash?: string | null
+    } | null
   } | null
 }
 

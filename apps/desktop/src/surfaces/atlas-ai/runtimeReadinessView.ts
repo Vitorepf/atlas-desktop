@@ -25,6 +25,22 @@ export interface RuntimeReadinessLatestHandoff {
   isForge: boolean
 }
 
+export interface RuntimeReadinessAssistedExecution {
+  status: string
+  routeTarget: string | null
+  flowId: string | null
+  doctrineGateStatus: string | null
+  selectedDrivers: ReadonlyArray<string>
+  contextMemoryStatus: string | null
+  contextMustKeepCoverage: number | null
+  aregPath: string | null
+  outcomeFeedbackStatus: string | null
+  aemorFeedbackStatus: string | null
+  blockers: ReadonlyArray<string>
+  summary: string | null
+  hash: string | null
+}
+
 export interface RuntimeReadinessView {
   raw: AtlasAiRuntimeReadiness | null
   status: RuntimeReadinessStatus
@@ -44,6 +60,7 @@ export interface RuntimeReadinessView {
   activeMission: RuntimeReadinessActiveMission | null
   pendingApprovalsCount: number
   latestHandoff: RuntimeReadinessLatestHandoff | null
+  assistedExecution: RuntimeReadinessAssistedExecution | null
   refresh: () => void
 }
 
@@ -110,6 +127,7 @@ export function buildRuntimeReadinessView(
       activeMission: null,
       pendingApprovalsCount: 0,
       latestHandoff: null,
+      assistedExecution: null,
       refresh,
     }
   }
@@ -153,6 +171,27 @@ export function buildRuntimeReadinessView(
       }
     : null
 
+  const bundleAssisted = raw.ux_bundle?.assisted_execution ?? null
+  const assistedExecution: RuntimeReadinessAssistedExecution | null = bundleAssisted
+    ? {
+        status: String(bundleAssisted.status ?? 'unknown'),
+        routeTarget: bundleAssisted.route_target ?? null,
+        flowId: bundleAssisted.flow_id ?? null,
+        doctrineGateStatus: bundleAssisted.doctrine_gate_status ?? null,
+        selectedDrivers: Array.isArray(bundleAssisted.selected_drivers) ? bundleAssisted.selected_drivers.map(String) : [],
+        contextMemoryStatus: bundleAssisted.context_memory_status ?? null,
+        contextMustKeepCoverage: typeof bundleAssisted.context_must_keep_coverage === 'number'
+          ? bundleAssisted.context_must_keep_coverage
+          : null,
+        aregPath: bundleAssisted.areg_path ?? null,
+        outcomeFeedbackStatus: bundleAssisted.outcome_feedback_status ?? null,
+        aemorFeedbackStatus: bundleAssisted.aemor_feedback_status ?? null,
+        blockers: Array.isArray(bundleAssisted.blockers) ? bundleAssisted.blockers.map(String) : [],
+        summary: bundleAssisted.summary ?? null,
+        hash: bundleAssisted.hash ?? null,
+      }
+    : null
+
   return {
     raw,
     status,
@@ -169,6 +208,7 @@ export function buildRuntimeReadinessView(
     activeMission,
     pendingApprovalsCount: raw.ux_bundle?.pending_approvals_count ?? 0,
     latestHandoff,
+    assistedExecution,
     refresh,
   }
 }

@@ -12,7 +12,6 @@ import { SurfaceHost } from './shell/SurfaceHost'
 import { TopBarLocationTrailProvider } from './shell/topbar/TopBarLocationTrailProvider'
 import { useNativeMenuEvents } from './shell/useNativeMenuEvents'
 import { useTerminalStore } from './state/terminalStore'
-import { useAttentionCount } from './surfaces/atencao/useAttentionCount'
 
 /**
  * Atlas Desktop · single .app, multiple sovereign surfaces.
@@ -76,22 +75,10 @@ function App() {
   const { boot } = useBoot(kernel.status === 'ready' || b.mode !== 'tauri')
   const { mcp } = useMcpStatus(kernel.status === 'ready' || b.mode !== 'tauri')
 
-  // Poll Atenção count when kernel is ready and operator is NOT in the
-  // Atenção surface (when they are, the surface itself has the snapshot
-  // and renders the counter inline). 30s interval is enough — Atenção is
-  // a steady-state queue, not a real-time log.
-  const attentionCount = useAttentionCount({
-    workspaceSlug: b.activeWorkspaceSlug ?? null,
-    enabled: surface !== 'atencao' && (kernel.status === 'ready' || b.mode !== 'tauri'),
-  })
-
   // Project Profile Sheet · Cmd+Shift+P opens; reachable from WorkspacePill
   // and any future surface that needs to inspect the active Project profile.
   // Canon: docs/engineering-knowledge-base/atlas-code-multi-project-workspace-os.md
   const projectProfile = useProjectProfile()
-  const blockedSurfaces = b.activeWorkspace && !b.activeWorkspace.workspacePathExists
-    ? { code: 'vincule uma pasta local no perfil do projeto antes de abrir Code' }
-    : null
 
   return (
     <TopBarLocationTrailProvider>
@@ -101,7 +88,6 @@ function App() {
           loading={b.loading || b.busy}
           errors={b.errors}
           surface={surface}
-          onSurfaceChange={setSurface}
           kernel={kernel}
           mcp={mcp}
           workspaces={b.workspaces}
@@ -109,9 +95,6 @@ function App() {
           activeWorkspaceSlug={b.activeWorkspaceSlug}
           onSelectWorkspace={b.setActiveWorkspaceSlug}
           onOpenWorkspaceProfile={projectProfile.show}
-          attentionCount={attentionCount}
-          enabledSurfaces={b.activeWorkspace?.surfacesEnabled ?? null}
-          blockedSurfaces={blockedSurfaces}
         />
 
         <SurfaceHost

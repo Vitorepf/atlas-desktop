@@ -35,6 +35,9 @@ function pillLabel(readiness: RuntimeReadinessView): string {
   if (readiness.activeMission) {
     return `missão · ${readiness.activeMission.title}`
   }
+  if (readiness.assistedExecution?.doctrineGateStatus) {
+    return `doutrina · ${readiness.assistedExecution.doctrineGateStatus}`
+  }
   return 'Atlas pronto'
 }
 
@@ -70,6 +73,11 @@ export function AtlasAiRuntimeStatusPill({ readiness, onOpenContext }: AtlasAiRu
       {readiness.activeMission?.nextAction ? (
         <span className="atlas-ai-runtime-pill-next" aria-label="próxima ação">
           · {readiness.activeMission.nextAction}
+        </span>
+      ) : null}
+      {!readiness.activeMission?.nextAction && readiness.assistedExecution?.routeTarget ? (
+        <span className="atlas-ai-runtime-pill-next" aria-label="execução assistida">
+          · {readiness.assistedExecution.routeTarget}
         </span>
       ) : null}
       {approvals > 0 ? (

@@ -174,6 +174,23 @@ function bundlePayload(): AtlasAiRuntimeReadiness {
         status: 'dispatched',
         created_at: '2026-05-19T10:30:00+00:00',
       },
+      assisted_execution: {
+        schema_version: 'atlas.ai.assisted_execution.operational_ux.v1',
+        status: 'ready',
+        route_target: 'atlas_dev',
+        flow_id: 'programming.dev',
+        doctrine_gate_status: 'passed',
+        selected_drivers: ['atdd', 'tdd', 'ux_driven', 'risk_driven'],
+        context_memory_status: 'ready',
+        context_must_keep_coverage: 1,
+        areg_status: 'ready',
+        areg_path: 'local_dev',
+        outcome_feedback_status: 'recorded',
+        aemor_feedback_status: 'ready_to_record',
+        blockers: [],
+        summary: 'Execucao assistida governada por AEDPDS, contexto, AREG e feedback AEMOR.',
+        hash: 'f'.repeat(64),
+      },
     },
   }
 }
@@ -188,6 +205,10 @@ test('view-model · ux_bundle expõe activeMission/pendingApprovals/latestHandof
   assert.equal(view.latestHandoff?.target, 'atlas_forge')
   assert.equal(view.latestHandoff?.isForge, true)
   assert.equal(view.latestHandoff?.isDev, false)
+  assert.equal(view.assistedExecution?.doctrineGateStatus, 'passed')
+  assert.deepEqual(Array.from(view.assistedExecution?.selectedDrivers ?? []), ['atdd', 'tdd', 'ux_driven', 'risk_driven'])
+  assert.equal(view.assistedExecution?.aregPath, 'local_dev')
+  assert.equal(view.assistedExecution?.aemorFeedbackStatus, 'ready_to_record')
 })
 
 test('view-model · bundle ausente → fields zerados (não inventa)', () => {
@@ -195,6 +216,7 @@ test('view-model · bundle ausente → fields zerados (não inventa)', () => {
   assert.equal(view.activeMission, null)
   assert.equal(view.pendingApprovalsCount, 0)
   assert.equal(view.latestHandoff, null)
+  assert.equal(view.assistedExecution, null)
 })
 
 test('view-model · primaryBlocker humaniza id snake_case do primeiro blocker', () => {
