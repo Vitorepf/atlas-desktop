@@ -28,6 +28,22 @@ export interface AwisWorkspaceMemoryOutcome {
   componentKeys: string[]
 }
 
+export type AwisWorkspaceMaintenanceAction =
+  | 'refresh_folder_map'
+  | 'preserve_artifact'
+  | 'open_side_by_side'
+  | 'update_space_pack'
+  | 'revalidate_context'
+
+export interface AwisWorkspaceMaintenanceEvent {
+  occurredAt: string
+  action: AwisWorkspaceMaintenanceAction
+  label: string
+  status: 'succeeded' | 'failed' | 'skipped'
+  reason: string | null
+  evidence: string[]
+}
+
 export interface AwisWorkspaceMemorySnapshot {
   schemaVersion: 'atlas.awis.workspace_memory.v1'
   workspaceKey: string
@@ -47,6 +63,7 @@ export interface AwisWorkspaceMemorySnapshot {
   contextPackAppliedCount: number
   lastInteractionAt: string | null
   recentOutcomes: AwisWorkspaceMemoryOutcome[]
+  recentMaintenance: AwisWorkspaceMaintenanceEvent[]
   observations: string[]
   driftEvents: string[]
 }
@@ -74,6 +91,18 @@ export interface AwisWorkspaceInteractionInput {
   contextGoldLabels?: string[] | null
   validationCommands?: string[] | null
   componentKeys?: string[] | null
+}
+
+export interface AwisWorkspaceMaintenanceInput {
+  workspaceKey: string
+  workspaceName: string
+  rootPath: string
+  occurredAt?: string | null
+  action: AwisWorkspaceMaintenanceAction
+  label: string
+  status: AwisWorkspaceMaintenanceEvent['status']
+  reason?: string | null
+  evidence?: string[] | null
 }
 
 export interface AwisWorkspaceContextPack {
@@ -109,6 +138,7 @@ export interface AwisWorkspaceContextPack {
       last_interaction_at: string | null
       recent_channels: string[]
       latest_status: string | null
+      recent_maintenance: string[]
       context_gold: {
         promoted: string[]
         revalidate: string[]
@@ -119,6 +149,10 @@ export interface AwisWorkspaceContextPack {
   session_gold: AwisWorkspaceSessionGoldProjection | null
   evolution: AwisWorkspaceEvolutionProjection | null
   relations: AwisWorkspaceRelationProjection | null
+  workspace_mesh: AwisWorkspaceMeshProjection | null
+  current_truth_pack: AwisWorkspaceCurrentTruthPackProjection | null
+  repository_constellation: AwisWorkspaceRepositoryConstellationProjection | null
+  live_execution_memory: AwisWorkspaceLiveExecutionMemoryProjection | null
   topology: AwisWorkspaceTopologyProjection | null
   component_memory: AwisWorkspaceComponentMemoryProjection | null
   semantic_index: AwisWorkspaceSemanticIndexProjection | null
@@ -140,6 +174,9 @@ export interface AwisWorkspaceContextPack {
   retention: AwisWorkspaceRetentionProjection | null
   memory_consolidation: AwisWorkspaceMemoryConsolidationProjection | null
   startup_orchestration: AwisWorkspaceStartupOrchestrationProjection | null
+  preflight: AwisWorkspacePreflightProjection | null
+  workspace_twin: AwisWorkspaceTwinProjection | null
+  launch_contract: AwisWorkspaceLaunchContractProjection | null
   artifact_lake: AwisWorkspaceArtifactLakeSummary | null
   artifact_replay: AwisWorkspaceArtifactReplayProjection | null
   next_session_brain: AwisWorkspaceNextSessionBrainProjection | null
@@ -161,6 +198,25 @@ export interface AwisWorkspaceArtifactEntry {
   created_at: string
   title: string
   summary: string
+  manifest: {
+    schema_version: 'atlas.awis.workspace_artifact_manifest.v1'
+    quality_score: number
+    replay_priority: number
+    seed_hash: string
+    load_first: string[]
+    validate_with: string[]
+    promote_signals: string[]
+    caution_signals: string[]
+    linked_spaces: string[]
+    repository_hints: string[]
+    safety: {
+      raw_source_included: false
+      raw_conversation_included: false
+      internal_ids_included: false
+      bounded: true
+      provider_safe: true
+    }
+  }
   payload: {
     startup_snapshot: AwisWorkspaceStartupSnapshot
     startup_briefing: AwisWorkspaceStartupBriefing | null
@@ -179,6 +235,10 @@ export interface AwisWorkspaceArtifactEntry {
     retention_projection: AwisWorkspaceRetentionProjection | null
     memory_consolidation_projection: AwisWorkspaceMemoryConsolidationProjection | null
     startup_orchestration_projection: AwisWorkspaceStartupOrchestrationProjection | null
+    preflight_projection: AwisWorkspacePreflightProjection | null
+    workspace_twin_projection: AwisWorkspaceTwinProjection | null
+    launch_contract_projection: AwisWorkspaceLaunchContractProjection | null
+    next_session_brain_projection: AwisWorkspaceNextSessionBrainProjection | null
     learning_projection: AwisWorkspaceLearningProjection | null
     topology_projection: AwisWorkspaceTopologyProjection | null
     component_memory_projection: AwisWorkspaceComponentMemoryProjection | null
@@ -187,6 +247,10 @@ export interface AwisWorkspaceArtifactEntry {
     space_projection: AwisWorkspaceSpaceProjection | null
     evolution_projection: AwisWorkspaceEvolutionProjection | null
     relation_projection: AwisWorkspaceRelationProjection | null
+    workspace_mesh_projection: AwisWorkspaceMeshProjection | null
+    current_truth_pack_projection: AwisWorkspaceCurrentTruthPackProjection | null
+    repository_constellation_projection: AwisWorkspaceRepositoryConstellationProjection | null
+    live_execution_memory_projection: AwisWorkspaceLiveExecutionMemoryProjection | null
     memory_operational: NonNullable<AwisWorkspaceContextPack['memory']>['operational'] | null
   }
   safety: {
@@ -213,6 +277,20 @@ export interface AwisWorkspaceArtifactReplayProjection {
   source: 'local_workspace_artifacts' | 'server_awair_artifact_intelligence'
   artifact_count: number
   latest_artifact_hash: string | null
+  cold_start_seed: {
+    schema_version: 'atlas.awis.artifact_cold_start_seed.v1'
+    source: AwisWorkspaceArtifactReplayProjection['source']
+    readiness_score: number
+    seed_hash: string
+    load_order: string[]
+    validate_with: string[]
+    context_signals: string[]
+    reuse_spaces: string[]
+    repository_hints: string[]
+    automation_hooks: string[]
+    warnings: string[]
+    human_boundary: string[]
+  }
   reusable_startup_gold: {
     strongest_spaces: string[]
     reusable_patterns: string[]
@@ -306,7 +384,7 @@ export interface AwisWorkspaceArtifactServerProjections {
 
 export interface AwisWorkspaceNextSessionBrainProjection {
   schema_version: 'atlas.awis.workspace_next_session_brain_projection.v1'
-  source: 'server_awnsb'
+  source: 'server_awnsb' | 'local_awis_seed'
   status: string
   brain_hash: string | null
   readiness_score: number | null
@@ -381,6 +459,8 @@ export interface AwisWorkspaceHandoffProjection {
     fallback_tests: string[]
   }
   next_session_brain_hash: string | null
+  artifact_refs: string[]
+  handoff_units: string[]
   safety: {
     raw_source_included: false
     raw_conversation_included: false
@@ -421,6 +501,7 @@ export interface AwisWorkspaceStartupSnapshot {
   safety: {
     raw_source_included: false
     raw_conversation_included: false
+    raw_message_content_included?: false
     internal_ids_included: false
     bounded: true
     provider_safe: true
@@ -670,6 +751,7 @@ export interface AwisWorkspaceProviderCapsuleProjection {
     update_memory: true
     update_space_pack: boolean
     preserve_artifact_after_success: boolean
+    maintenance_recent: string[]
     recovery_playbook: {
       retry_order: string[]
       fallback_validation: string[]
@@ -1113,6 +1195,7 @@ export interface AwisWorkspaceMemoryConsolidationProjection {
     rehearse_next: string[]
     archive_as_artifact: string[]
     summarize_only: string[]
+    revalidate: string[]
     never_promote: string[]
   }
   learning_loop: {
@@ -1158,6 +1241,151 @@ export interface AwisWorkspaceStartupOrchestrationProjection {
     update_memory: true
     update_space_pack: boolean
     preserve_artifact_after_success: boolean
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    raw_message_content_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    external_side_effects_allowed: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspacePreflightProjection {
+  schema_version: 'atlas.awis.workspace_preflight_projection.v1'
+  source: 'local_awis_preflight_compiler'
+  readiness_score: number
+  mode: 'blocked' | 'guarded' | 'ready'
+  gates: Array<{
+    gate: 'context' | 'evidence' | 'impact' | 'validation' | 'human' | 'learning'
+    status: 'ready' | 'warn' | 'blocked'
+    label: string
+    required: boolean
+    evidence: string[]
+  }>
+  execution_lanes: {
+    before_send: string[]
+    before_execution: string[]
+    after_success: string[]
+    after_failure: string[]
+  }
+  promotion_contract: {
+    promote_when: string[]
+    demote_when: string[]
+    preserve_as_artifact: boolean
+    update_space_pack: boolean
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    raw_message_content_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    external_side_effects_allowed: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspaceTwinProjection {
+  schema_version: 'atlas.awis.workspace_twin_projection.v1'
+  source: 'local_awis_workspace_twin_compiler'
+  workspace_id: string
+  readiness_score: number
+  stale: boolean
+  hashes: {
+    genome_hash: string
+    code_map_hash: string
+    command_registry_hash: string
+    risk_map_hash: string
+  }
+  genome: {
+    stack: string[]
+    apps: string[]
+    owner_docs: string[]
+    commands: string[]
+    risk_zones: string[]
+    test_families: string[]
+  }
+  live_map: {
+    components: Array<{
+      key: string
+      role: string
+      maturity: 'new' | 'learning' | 'stable' | 'battle_tested'
+      confidence: number
+    }>
+    connections: string[]
+    fragile_areas: string[]
+  }
+  context_autopilot: {
+    load_first: string[]
+    summarize: string[]
+    validate: string[]
+    avoid: string[]
+    reason: string
+  }
+  learning_loop: {
+    learned_from_outcomes: string[]
+    next_refresh: string[]
+    reuse_next_session: string[]
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    raw_message_content_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    external_side_effects_allowed: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspaceLaunchContractProjection {
+  schema_version: 'atlas.awis.workspace_launch_contract_projection.v1'
+  source: 'local_awis_launch_contract_compiler'
+  readiness_score: number
+  launch_mode: 'guarded' | 'warm' | 'deep'
+  seed_hash: string
+  startup_contract: {
+    never_start_cold: true
+    first_load: string[]
+    validate_before_trust: string[]
+    summarize_only: string[]
+    avoid_loading: string[]
+    promote_after_success: string[]
+    demote_after_failure: string[]
+    preserve_artifact_after_success: boolean
+    update_space_pack: boolean
+    needs_human_confirmation: boolean
+  }
+  automation_contract: {
+    before_send: string[]
+    after_success: string[]
+    after_failure: string[]
+    maintenance_actions: string[]
+  }
+  recovery_contract: {
+    demote_context: string[]
+    safe_resume: string[]
+    reason: string
+  }
+  human_contract: {
+    owns: string[]
+    confirm_before: string[]
+    do_not_delegate: string[]
+  }
+  next_conversation: {
+    load_order: string[]
+    context_budget: {
+      max_items: number
+      prefer_summary: boolean
+      reason: string
+    }
+    provider_note: string
   }
   safety: {
     raw_source_included: false
@@ -1218,6 +1446,15 @@ export interface AwisWorkspaceRelationProjection {
     do_not_transfer: string[]
     confidence: number
   }>
+  connection_contracts: Array<{
+    workspace_hint: string
+    relationship: 'shared_stack' | 'shared_command' | 'shared_context' | 'shared_recovery'
+    load_when: string[]
+    reuse: string[]
+    validate: string[]
+    never_transfer: string[]
+    confidence: number
+  }>
   transfer_policy: {
     privacy_level: 'provider_safe_hints'
     raw_workspace_names_returned: false
@@ -1231,6 +1468,178 @@ export interface AwisWorkspaceRelationProjection {
     raw_conversation_included: false
     absolute_paths_included: false
     internal_ids_included: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspaceMeshProjection {
+  schema_version: 'atlas.awis.workspace_mesh_projection.v1'
+  source: 'local_awis_operational_mesh'
+  readiness_score: number
+  mesh_hash: string
+  routes: Array<{
+    route_id: string
+    workspace_hint: string
+    relationship: AwisWorkspaceRelationProjection['connection_contracts'][number]['relationship'] | 'local_component' | 'space_context' | 'artifact_replay'
+    load_when: string[]
+    reuse: string[]
+    validate_with: string[]
+    never_transfer: string[]
+    linked_components: string[]
+    linked_spaces: string[]
+    confidence: number
+  }>
+  next_conversation: {
+    load_order: string[]
+    reuse_rules: string[]
+    validate_with: string[]
+    human_boundary: string[]
+  }
+  transfer_policy: {
+    privacy_level: 'provider_safe_operational_mesh'
+    raw_workspace_names_returned: false
+    raw_paths_returned: false
+    raw_source_returned: false
+    raw_conversation_returned: false
+    apply_only_when_stack_matches: true
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspaceCurrentTruthPackProjection {
+  schema_version: 'atlas.awis.current_truth_pack_projection.v1'
+  source: 'local_awis_truth_compiler'
+  workspace_key: string
+  readiness_score: number
+  truth_hash: string
+  current_truth: {
+    must_keep: string[]
+    active_components: string[]
+    active_spaces: string[]
+    active_artifacts: string[]
+    proven_commands: string[]
+    mesh_routes: string[]
+  }
+  proof: {
+    evidence_refs: string[]
+    validate_with: string[]
+    stale_or_unproven: string[]
+    human_boundary: string[]
+  }
+  next_conversation: {
+    load_first: string[]
+    summarize_only: string[]
+    promote_when: string[]
+    demote_when: string[]
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    raw_message_content_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspaceRepositoryConstellationProjection {
+  schema_version: 'atlas.awis.repository_constellation_projection.v1'
+  source: 'local_awis_repository_constellation'
+  readiness_score: number
+  constellation_hash: string
+  repositories: Array<{
+    key: string
+    role: string
+    stack: string[]
+    maturity: 'new' | 'learning' | 'stable' | 'battle_tested'
+    manifests: string[]
+    docs: string[]
+    commands: string[]
+    connected_to: string[]
+    load_when: string[]
+    summarize_when: string[]
+    validate_with: string[]
+    confidence: number
+  }>
+  bridges: Array<{
+    from: string
+    to: string
+    reason: string
+    shared_stack: string[]
+    validation_bridge: string[]
+    context_bridge: string[]
+    confidence: number
+  }>
+  next_conversation: {
+    load_first: string[]
+    compare_when: string[]
+    validate_with: string[]
+    preserve_as_artifact: string[]
+    human_boundary: string[]
+  }
+  learning_loop: {
+    promote_when: string[]
+    revalidate_when: string[]
+    demote_when: string[]
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    raw_message_content_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    bounded: true
+    provider_safe: true
+  }
+}
+
+export interface AwisWorkspaceLiveExecutionMemoryProjection {
+  schema_version: 'atlas.awis.live_execution_memory_projection.v1'
+  source: 'local_awis_live_execution_memory_compiler'
+  readiness_score: number
+  memory_hash: string
+  startup_packet: {
+    load_first: string[]
+    use_as_summary: string[]
+    validate_before_trust: string[]
+    avoid: string[]
+    human_boundary: string[]
+  }
+  automation_loop: {
+    before_send: string[]
+    after_success: string[]
+    after_failure: string[]
+    on_drift: string[]
+  }
+  promotion_rules: {
+    promote_to_gold: string[]
+    preserve_as_artifact: string[]
+    revalidate: string[]
+    demote: string[]
+  }
+  workspace_learning: {
+    repositories: string[]
+    components: string[]
+    spaces: string[]
+    artifacts: string[]
+    commands: string[]
+  }
+  safety: {
+    raw_source_included: false
+    raw_conversation_included: false
+    raw_message_content_included: false
+    absolute_paths_included: false
+    internal_ids_included: false
+    external_side_effects_allowed: false
     bounded: true
     provider_safe: true
   }
@@ -1268,6 +1677,15 @@ export interface AwisWorkspaceTopologyProjection {
     build_commands: string[]
     dev_commands: string[]
     check_commands: string[]
+  }
+  knowledge_map: {
+    load_first_docs: string[]
+    manifest_refs: string[]
+    command_sources: string[]
+    validation_entrypoints: string[]
+    runtime_entrypoints: string[]
+    sensitive_zones: string[]
+    summarize_only: string[]
   }
   safety: {
     raw_source_included: false
@@ -1416,6 +1834,10 @@ export interface AwisWorkspaceSpaceProjection {
   space_count: number
   total_session_count: number
   total_message_count: number
+  spaces: Array<{
+    name: string
+    session_count: number
+  }>
   strongest_spaces: Array<{
     title: string
     session_count: number
@@ -1450,6 +1872,7 @@ const MAX_OBSERVATIONS = 10
 const MAX_DRIFT_EVENTS = 12
 const MAX_OPERATIONAL_SIGNALS = 14
 const MAX_RECENT_OUTCOMES = 8
+const MAX_RECENT_MAINTENANCE = 10
 const MAX_EVOLUTION_PATTERNS = 8
 const MAX_FAILURE_SIGNATURES = 4
 const MAX_SPACE_PROJECTION_SPACES = 4
@@ -1571,6 +1994,7 @@ export function learnAwisWorkspaceMemory(
     contextPackAppliedCount: previous?.contextPackAppliedCount ?? 0,
     lastInteractionAt: previous?.lastInteractionAt ?? null,
     recentOutcomes: previous?.recentOutcomes?.slice(0, MAX_RECENT_OUTCOMES) ?? [],
+    recentMaintenance: previous?.recentMaintenance?.slice(0, MAX_RECENT_MAINTENANCE) ?? [],
     observations: buildObservations(snapshot, previous).concat(previous?.observations ?? []).slice(0, MAX_OBSERVATIONS),
     driftEvents: previous?.driftEvents?.slice(0, MAX_DRIFT_EVENTS) ?? [],
   }
@@ -1650,6 +2074,47 @@ export function recordAwisWorkspaceInteraction(
   return { memory, learned: unique(learned), changed: unique(changed) }
 }
 
+export function recordAwisWorkspaceMaintenance(
+  previous: AwisWorkspaceMemorySnapshot | null,
+  input: AwisWorkspaceMaintenanceInput,
+): AwisWorkspaceMemoryUpdate {
+  const now = input.occurredAt || new Date().toISOString()
+  const learned: string[] = []
+  const changed: string[] = []
+  const baseMemory = previous ?? emptyMemory(input.workspaceKey, input.workspaceName, input.rootPath, now)
+  const label = sanitizeProviderSafeText(input.label).slice(0, 140) || input.action
+  const event: AwisWorkspaceMaintenanceEvent = {
+    occurredAt: now,
+    action: input.action,
+    label,
+    status: input.status,
+    reason: input.reason ? sanitizeProviderSafeText(input.reason).slice(0, 180) : null,
+    evidence: normalizeStringList(input.evidence, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+  }
+  const operationalLabels = [
+    `manutenção:${input.action}`,
+    `manutenção:${input.status}`,
+    input.status === 'succeeded' ? `manutenção ok:${input.action}` : null,
+    event.evidence[0] ? `manutenção evidência:${event.evidence[0]}` : null,
+  ].filter(isString)
+  const memory: AwisWorkspaceMemorySnapshot = {
+    ...baseMemory,
+    workspaceName: input.workspaceName || baseMemory.workspaceName,
+    rootPath: input.rootPath || baseMemory.rootPath,
+    lastSeenAt: now,
+    operationalSignals: mergeSignals(baseMemory.operationalSignals, operationalLabels, now, learned).slice(0, MAX_OPERATIONAL_SIGNALS),
+    recentMaintenance: [event, ...(baseMemory.recentMaintenance ?? [])].slice(0, MAX_RECENT_MAINTENANCE),
+    observations: [
+      input.status === 'succeeded'
+        ? `manutenção AWIS aplicada:${input.action}`
+        : `manutenção AWIS ${input.status}:${input.action}`,
+      ...baseMemory.observations,
+    ].filter(isString).slice(0, MAX_OBSERVATIONS),
+  }
+  changed.push(`${now}: manutenção ${input.action} ${input.status}`)
+  return { memory, learned: unique(learned), changed: unique(changed) }
+}
+
 export function saveAwisWorkspaceMemory(
   memory: AwisWorkspaceMemorySnapshot,
   storage: Storage | null = safeLocalStorage(),
@@ -1669,6 +2134,7 @@ export function buildAwisWorkspaceArtifact(
   createdAt = new Date().toISOString(),
 ): AwisWorkspaceArtifactEntry | null {
   if (!pack.startup_snapshot) return null
+  const manifest = buildAwisWorkspaceArtifactManifest(pack)
   const payload: AwisWorkspaceArtifactEntry['payload'] = {
     startup_snapshot: pack.startup_snapshot,
     startup_briefing: pack.startup_briefing,
@@ -1687,6 +2153,10 @@ export function buildAwisWorkspaceArtifact(
     retention_projection: pack.retention,
     memory_consolidation_projection: pack.memory_consolidation,
     startup_orchestration_projection: pack.startup_orchestration,
+    preflight_projection: pack.preflight,
+    workspace_twin_projection: pack.workspace_twin,
+    launch_contract_projection: pack.launch_contract,
+    next_session_brain_projection: pack.next_session_brain,
     learning_projection: pack.learning ?? null,
     topology_projection: pack.topology,
     component_memory_projection: pack.component_memory,
@@ -1695,6 +2165,10 @@ export function buildAwisWorkspaceArtifact(
     space_projection: pack.spaces,
     evolution_projection: pack.evolution,
     relation_projection: pack.relations,
+    workspace_mesh_projection: pack.workspace_mesh,
+    current_truth_pack_projection: pack.current_truth_pack,
+    repository_constellation_projection: pack.repository_constellation,
+    live_execution_memory_projection: pack.live_execution_memory,
     memory_operational: pack.memory?.operational ?? null,
   }
   const artifactHash = `awis-${stableStringHash(JSON.stringify(payload))}`
@@ -1707,6 +2181,7 @@ export function buildAwisWorkspaceArtifact(
     created_at: createdAt,
     title: `Partida AWIS · ${pack.workspace.name}`,
     summary: startupArtifactSummary(pack),
+    manifest,
     payload,
     safety: {
       raw_source_included: false,
@@ -1840,6 +2315,15 @@ export function buildAwisWorkspaceContextPack(input: {
     memory: input.memory,
     learning,
   })
+  const nextSessionBrain = input.nextSessionBrain ?? buildAwisWorkspaceLocalNextSessionBrainProjection({
+    workspaceName,
+    topology,
+    memory: input.memory,
+    learning,
+    sessionGold,
+    spaces: input.spaces ?? null,
+    artifactReplay: input.artifactReplay ?? null,
+  })
   const startupSnapshot = buildAwisWorkspaceStartupSnapshot({
     workspaceName,
     brain: input.brain,
@@ -1850,7 +2334,7 @@ export function buildAwisWorkspaceContextPack(input: {
     relations: input.relations ?? null,
     spaces: input.spaces ?? null,
     artifactReplay: input.artifactReplay ?? null,
-    nextSessionBrain: input.nextSessionBrain ?? null,
+    nextSessionBrain,
     handoffPack: input.handoffPack ?? null,
   })
   const startupBriefing = buildAwisWorkspaceStartupBriefing({
@@ -1864,7 +2348,7 @@ export function buildAwisWorkspaceContextPack(input: {
     relations: input.relations ?? null,
     spaces: input.spaces ?? null,
     artifactReplay: input.artifactReplay ?? null,
-    nextSessionBrain: input.nextSessionBrain ?? null,
+    nextSessionBrain,
     handoffPack: input.handoffPack ?? null,
   })
   const startupPlaybook = buildAwisWorkspaceStartupPlaybook({
@@ -1891,7 +2375,7 @@ export function buildAwisWorkspaceContextPack(input: {
     spaces: input.spaces ?? null,
     artifactLake: input.artifactLake ?? null,
     artifactReplay: input.artifactReplay ?? null,
-    nextSessionBrain: input.nextSessionBrain ?? null,
+    nextSessionBrain,
     handoffPack: input.handoffPack ?? null,
   })
   const automation = buildAwisWorkspaceAutomationProjection({
@@ -1926,7 +2410,7 @@ export function buildAwisWorkspaceContextPack(input: {
     continuity,
     automation,
     confidence,
-    nextSessionBrain: input.nextSessionBrain ?? null,
+    nextSessionBrain,
     handoffPack: input.handoffPack ?? null,
   })
   const contextKernel = buildAwisWorkspaceContextKernelProjection({
@@ -1940,7 +2424,7 @@ export function buildAwisWorkspaceContextPack(input: {
     automation,
     confidence,
     livingGraph,
-    nextSessionBrain: input.nextSessionBrain ?? null,
+    nextSessionBrain,
     handoffPack: input.handoffPack ?? null,
   })
   const selfImprovement = buildAwisWorkspaceSelfImprovementProjection({
@@ -2054,6 +2538,110 @@ export function buildAwisWorkspaceContextPack(input: {
     startupOrchestration,
     artifactReplay: input.artifactReplay ?? null,
   })
+  const preflight = buildAwisWorkspacePreflightProjection({
+    workspaceRootKnown: Boolean(input.brain?.rootPath || input.memory?.rootPath),
+    executionDoctrine,
+    startupOrchestration,
+    memoryConsolidation,
+    impactMap,
+    semanticIndex,
+    taskRouter,
+    retention,
+    memoryFreshness,
+    componentMemory,
+    contextKernel,
+    spaces: input.spaces ?? null,
+    artifactReplay: input.artifactReplay ?? null,
+  })
+  const workspaceTwin = buildAwisWorkspaceTwinProjection({
+    workspaceKey: input.workspaceKey,
+    topology,
+    componentMemory,
+    semanticIndex,
+    impactMap,
+    executionDoctrine,
+    memoryFreshness,
+    sessionGold,
+    artifactReplay: input.artifactReplay ?? null,
+    preflight,
+  })
+  const launchContract = buildAwisWorkspaceLaunchContractProjection({
+    startupOrchestration,
+    preflight,
+    workspaceTwin,
+    memoryConsolidation,
+    retention,
+    contextKernel,
+    automation,
+    selfImprovement,
+    providerStrategy,
+    memoryFreshness,
+    spaces: input.spaces ?? null,
+    artifactReplay: input.artifactReplay ?? null,
+  })
+  const workspaceMesh = buildAwisWorkspaceMeshProjection({
+    workspaceKey: input.workspaceKey,
+    relations: input.relations ?? null,
+    topology,
+    spaces: input.spaces ?? null,
+    artifactReplay: input.artifactReplay ?? null,
+    workspaceTwin,
+    launchContract,
+  })
+  const currentTruthPack = buildAwisWorkspaceCurrentTruthPackProjection({
+    workspaceKey: input.workspaceKey,
+    topology,
+    learning,
+    sessionGold,
+    spaces: input.spaces ?? null,
+    artifactLake: input.artifactLake ?? null,
+    artifactReplay: input.artifactReplay ?? null,
+    continuity,
+    contextKernel,
+    memoryFreshness,
+    retention,
+    memoryConsolidation,
+    startupOrchestration,
+    preflight,
+    workspaceTwin,
+    launchContract,
+    workspaceMesh,
+    handoffPack: input.handoffPack ?? null,
+  })
+  const repositoryConstellation = buildAwisWorkspaceRepositoryConstellationProjection({
+    topology,
+    componentMemory,
+    semanticIndex,
+    impactMap,
+    relations: input.relations ?? null,
+    workspaceMesh,
+    currentTruthPack,
+    artifactReplay: input.artifactReplay ?? null,
+    sessionGold,
+    launchContract,
+  })
+  const liveExecutionMemory = buildAwisWorkspaceLiveExecutionMemoryProjection({
+    topology,
+    learning,
+    sessionGold,
+    spaces: input.spaces ?? null,
+    artifactLake: input.artifactLake ?? null,
+    artifactReplay: input.artifactReplay ?? null,
+    continuity,
+    automation,
+    contextKernel,
+    memoryFreshness,
+    retention,
+    memoryConsolidation,
+    startupOrchestration,
+    preflight,
+    workspaceTwin,
+    launchContract,
+    nextSessionBrain,
+    workspaceMesh,
+    currentTruthPack,
+    repositoryConstellation,
+  })
   return {
     schema_version: 'atlas.awis.workspace_context_pack.v1',
     source: 'atlas_desktop_awis',
@@ -2097,6 +2685,7 @@ export function buildAwisWorkspaceContextPack(input: {
             last_interaction_at: input.memory.lastInteractionAt,
             recent_channels: unique(input.memory.recentOutcomes.map((outcome) => outcome.channel)).slice(0, 4),
             latest_status: input.memory.recentOutcomes[0]?.status ?? null,
+            recent_maintenance: unique(input.memory.recentMaintenance.map((event) => `${event.action}:${event.status}:${event.label}`)).slice(0, 4),
             context_gold: buildContextGoldOperationalMemory(input.memory),
           },
         }
@@ -2105,6 +2694,10 @@ export function buildAwisWorkspaceContextPack(input: {
     session_gold: sessionGold,
     evolution: input.evolution ?? null,
     relations: input.relations ?? null,
+    workspace_mesh: workspaceMesh,
+    current_truth_pack: currentTruthPack,
+    repository_constellation: repositoryConstellation,
+    live_execution_memory: liveExecutionMemory,
     topology,
     component_memory: componentMemory,
     semantic_index: semanticIndex,
@@ -2126,9 +2719,12 @@ export function buildAwisWorkspaceContextPack(input: {
     retention,
     memory_consolidation: memoryConsolidation,
     startup_orchestration: startupOrchestration,
+    preflight,
+    workspace_twin: workspaceTwin,
+    launch_contract: launchContract,
     artifact_lake: input.artifactLake ?? null,
     artifact_replay: input.artifactReplay ?? null,
-    next_session_brain: input.nextSessionBrain ?? null,
+    next_session_brain: nextSessionBrain,
     handoff_pack: input.handoffPack ?? null,
     safety: {
       raw_source_included: false,
@@ -2146,72 +2742,154 @@ export function buildAwisWorkspaceArtifactReplayProjection(
     .filter((artifact) => artifact.schema_version === 'atlas.awis.workspace_artifact.v1')
     .slice(0, MAX_WORKSPACE_ARTIFACTS)
   if (validArtifacts.length === 0) return null
-  const startupGold = validArtifacts.flatMap((artifact) => [artifact.payload.startup_snapshot])
-  const startupBriefings = validArtifacts
+  const replayArtifacts = [...validArtifacts].sort((a, b) => (
+    b.manifest.replay_priority - a.manifest.replay_priority
+    || b.manifest.quality_score - a.manifest.quality_score
+    || Date.parse(b.created_at) - Date.parse(a.created_at)
+  ))
+  const startupGold = replayArtifacts.flatMap((artifact) => [artifact.payload.startup_snapshot])
+  const startupBriefings = replayArtifacts
     .map((artifact) => artifact.payload.startup_briefing)
     .filter((briefing): briefing is AwisWorkspaceStartupBriefing => Boolean(briefing))
-  const startupPlaybooks = validArtifacts
+  const startupPlaybooks = replayArtifacts
     .map((artifact) => artifact.payload.startup_playbook)
     .filter((playbook): playbook is AwisWorkspaceStartupPlaybook => Boolean(playbook))
-  const continuityProjections = validArtifacts
+  const continuityProjections = replayArtifacts
     .map((artifact) => artifact.payload.continuity_projection)
     .filter((continuity): continuity is AwisWorkspaceContinuityProjection => Boolean(continuity))
-  const automationProjections = validArtifacts
+  const automationProjections = replayArtifacts
     .map((artifact) => artifact.payload.automation_projection)
     .filter((automation): automation is AwisWorkspaceAutomationProjection => Boolean(automation))
-  const confidenceProjections = validArtifacts
+  const confidenceProjections = replayArtifacts
     .map((artifact) => artifact.payload.confidence_projection)
     .filter((confidence): confidence is AwisWorkspaceConfidenceProjection => Boolean(confidence))
-  const learningProjections = validArtifacts
+  const learningProjections = replayArtifacts
     .map((artifact) => artifact.payload.learning_projection)
     .filter((learning): learning is AwisWorkspaceLearningProjection => Boolean(learning))
-  const topologyProjections = validArtifacts
+  const topologyProjections = replayArtifacts
     .map((artifact) => artifact.payload.topology_projection)
     .filter((topology): topology is AwisWorkspaceTopologyProjection => Boolean(topology))
-  const relationProjections = validArtifacts
+  const relationProjections = replayArtifacts
     .map((artifact) => artifact.payload.relation_projection)
     .filter((relations): relations is AwisWorkspaceRelationProjection => Boolean(relations))
-  const componentMemoryProjections = validArtifacts
+  const meshProjections = replayArtifacts
+    .map((artifact) => artifact.payload.workspace_mesh_projection)
+    .filter((mesh): mesh is AwisWorkspaceMeshProjection => Boolean(mesh))
+  const truthPackProjections = replayArtifacts
+    .map((artifact) => artifact.payload.current_truth_pack_projection)
+    .filter((truth): truth is AwisWorkspaceCurrentTruthPackProjection => Boolean(truth))
+  const repositoryConstellationProjections = replayArtifacts
+    .map((artifact) => artifact.payload.repository_constellation_projection)
+    .filter((constellation): constellation is AwisWorkspaceRepositoryConstellationProjection => Boolean(constellation))
+  const liveExecutionMemoryProjections = replayArtifacts
+    .map((artifact) => artifact.payload.live_execution_memory_projection)
+    .filter((memory): memory is AwisWorkspaceLiveExecutionMemoryProjection => Boolean(memory))
+  const componentMemoryProjections = replayArtifacts
     .map((artifact) => artifact.payload.component_memory_projection)
     .filter((componentMemory): componentMemory is AwisWorkspaceComponentMemoryProjection => Boolean(componentMemory))
-  const semanticIndexProjections = validArtifacts
+  const semanticIndexProjections = replayArtifacts
     .map((artifact) => artifact.payload.semantic_index_projection)
     .filter((semanticIndex): semanticIndex is AwisWorkspaceSemanticIndexProjection => Boolean(semanticIndex))
-  const impactMapProjections = validArtifacts
+  const impactMapProjections = replayArtifacts
     .map((artifact) => artifact.payload.impact_map_projection)
     .filter((impactMap): impactMap is AwisWorkspaceImpactMapProjection => Boolean(impactMap))
-  const livingGraphProjections = validArtifacts
+  const livingGraphProjections = replayArtifacts
     .map((artifact) => artifact.payload.living_graph_projection)
     .filter((graph): graph is AwisWorkspaceLivingGraphProjection => Boolean(graph))
-  const sessionGoldProjections = validArtifacts
+  const sessionGoldProjections = replayArtifacts
     .map((artifact) => artifact.payload.session_gold_projection)
     .filter((gold): gold is AwisWorkspaceSessionGoldProjection => Boolean(gold))
-  const contextKernelProjections = validArtifacts
+  const contextKernelProjections = replayArtifacts
     .map((artifact) => artifact.payload.context_kernel_projection)
     .filter((kernel): kernel is AwisWorkspaceContextKernelProjection => Boolean(kernel))
-  const selfImprovementProjections = validArtifacts
+  const selfImprovementProjections = replayArtifacts
     .map((artifact) => artifact.payload.self_improvement_projection)
     .filter((self): self is AwisWorkspaceSelfImprovementProjection => Boolean(self))
-  const memoryFreshnessProjections = validArtifacts
+  const memoryFreshnessProjections = replayArtifacts
     .map((artifact) => artifact.payload.memory_freshness_projection)
     .filter((freshness): freshness is AwisWorkspaceMemoryFreshnessProjection => Boolean(freshness))
-  const retentionProjections = validArtifacts
+  const retentionProjections = replayArtifacts
     .map((artifact) => artifact.payload.retention_projection)
     .filter((retention): retention is AwisWorkspaceRetentionProjection => Boolean(retention))
-  const memoryConsolidationProjections = validArtifacts
+  const memoryConsolidationProjections = replayArtifacts
     .map((artifact) => artifact.payload.memory_consolidation_projection)
     .filter((consolidation): consolidation is AwisWorkspaceMemoryConsolidationProjection => Boolean(consolidation))
-  const startupOrchestrationProjections = validArtifacts
+  const startupOrchestrationProjections = replayArtifacts
     .map((artifact) => artifact.payload.startup_orchestration_projection)
     .filter((orchestration): orchestration is AwisWorkspaceStartupOrchestrationProjection => Boolean(orchestration))
+  const preflightProjections = replayArtifacts
+    .map((artifact) => artifact.payload.preflight_projection)
+    .filter((preflight): preflight is AwisWorkspacePreflightProjection => Boolean(preflight))
+  const workspaceTwinProjections = replayArtifacts
+    .map((artifact) => artifact.payload.workspace_twin_projection)
+    .filter((twin): twin is AwisWorkspaceTwinProjection => Boolean(twin))
+  const launchContractProjections = replayArtifacts
+    .map((artifact) => artifact.payload.launch_contract_projection)
+    .filter((contract): contract is AwisWorkspaceLaunchContractProjection => Boolean(contract))
+  const nextSessionBrainProjections = replayArtifacts
+    .map((artifact) => artifact.payload.next_session_brain_projection)
+    .filter((brain): brain is AwisWorkspaceNextSessionBrainProjection => Boolean(brain))
+  const coldStartSeed = buildAwisWorkspaceArtifactColdStartSeed({
+    source: 'local_workspace_artifacts',
+    artifactCount: validArtifacts.length,
+    latestArtifactHash: replayArtifacts[0]?.artifact_hash ?? null,
+    replayArtifacts,
+    startupBriefings,
+    startupPlaybooks,
+    continuityProjections,
+    automationProjections,
+    learningProjections,
+    topologyProjections,
+    relationProjections,
+    meshProjections,
+    repositoryConstellationProjections,
+    liveExecutionMemoryProjections,
+    contextKernelProjections,
+    memoryFreshnessProjections,
+    retentionProjections,
+    startupOrchestrationProjections,
+    preflightProjections,
+    workspaceTwinProjections,
+    launchContractProjections,
+    nextSessionBrainProjections,
+  })
   return {
     schema_version: 'atlas.awis.workspace_artifact_replay_projection.v1',
     source: 'local_workspace_artifacts',
     artifact_count: validArtifacts.length,
-    latest_artifact_hash: validArtifacts[0]?.artifact_hash ?? null,
+    latest_artifact_hash: replayArtifacts[0]?.artifact_hash ?? null,
+    cold_start_seed: coldStartSeed,
     reusable_startup_gold: {
-      strongest_spaces: unique(startupGold.flatMap((snapshot) => snapshot.startup_gold.strongest_spaces)).slice(0, MAX_STARTUP_ITEMS),
+      strongest_spaces: unique([
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.linked_spaces.map((space) => `artifact-space:${space}`)),
+        ...startupGold.flatMap((snapshot) => snapshot.startup_gold.strongest_spaces),
+      ]).slice(0, MAX_STARTUP_ITEMS),
       reusable_patterns: unique([
+        ...replayArtifacts.map((artifact) => `artifact-quality:${artifact.artifact_hash}:${artifact.manifest.quality_score}:${artifact.manifest.seed_hash}`),
+        ...liveExecutionMemoryProjections.map((memory) => `live-memory:${memory.memory_hash}:${memory.readiness_score}`),
+        ...liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.load_first.map((item) => `live-load:${item}`)).slice(0, 6),
+        ...liveExecutionMemoryProjections.flatMap((memory) => memory.promotion_rules.promote_to_gold.map((item) => `live-promote:${item}`)).slice(0, 4),
+        ...repositoryConstellationProjections.map((constellation) => `repo-constellation:${constellation.constellation_hash}:${constellation.readiness_score}`),
+        ...repositoryConstellationProjections.flatMap((constellation) => constellation.bridges.map((bridge) => `repo-bridge:${bridge.from}->${bridge.to}:${bridge.confidence}`)).slice(0, 6),
+        ...repositoryConstellationProjections.flatMap((constellation) => constellation.repositories.map((repo) => `repo-node:${repo.key}:${repo.maturity}:${repo.confidence}`)).slice(0, 6),
+        ...confidenceProjections.flatMap((confidence) => confidence.ranked.commands.map((item) => `confidence-command:${item.label}:${item.score}`)).slice(0, 2),
+        ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.next_session_seed.map((item) => `seed:${item}`)).slice(0, 4),
+        ...memoryFreshnessProjections.map((freshness) => `freshness:${freshness.state}:${freshness.freshness_score}`),
+        ...componentMemoryProjections.flatMap((memory) => memory.strongest_components.map((component) => `component-memory:${component.key}:${component.maturity}:${component.confidence}`)).slice(0, 4),
+        ...preflightProjections.flatMap((preflight) => preflight.gates.map((gate) => `preflight:${gate.gate}:${gate.status}:${gate.label}`)).slice(0, 4),
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.load_first.map((item) => `artifact-load:${item}`)).slice(0, 6),
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.validate_with.map((item) => `artifact-validate:${item}`)).slice(0, 6),
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.promote_signals.map((item) => `artifact-promote:${item}`)).slice(0, 6),
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.repository_hints.map((item) => `artifact-repo:${item}`)).slice(0, 6),
+        ...relationProjections.flatMap((relations) => relations.connection_contracts.map((contract) => `repo-contract:${contract.workspace_hint}:${contract.relationship}:${contract.confidence}`)),
+        ...relationProjections.flatMap((relations) => relations.connection_contracts.flatMap((contract) => (
+          contract.reuse.map((item) => `repo-contract-reuse:${contract.workspace_hint}:${item}`)
+        ))).slice(0, 4),
+        ...meshProjections.map((mesh) => `mesh:${mesh.mesh_hash}:${mesh.readiness_score}`),
+        ...meshProjections.flatMap((mesh) => mesh.routes.map((route) => `mesh-route:${route.workspace_hint}:${route.relationship}:${route.confidence}`)).slice(0, 6),
+        ...meshProjections.flatMap((mesh) => mesh.next_conversation.reuse_rules.map((rule) => `mesh-reuse:${rule}`)).slice(0, 4),
+        ...confidenceProjections.flatMap((confidence) => confidence.ranked.commands.map((item) => `confidence-command:${item.label}:${item.score}`)).slice(0, 2),
+        ...confidenceProjections.flatMap((confidence) => confidence.decision_policy.prefer.map((item) => `confidence-prefer:${item}`)).slice(0, 2),
         ...livingGraphProjections.flatMap((graph) => graph.golden_path.map((item) => `graph-route:${item}`)).slice(0, 2),
         ...livingGraphProjections.flatMap((graph) => graph.nodes.map((node) => `graph-node:${node.kind}:${node.label}`)).slice(0, 3),
         ...continuityProjections.flatMap((continuity) => continuity.restore_priority.map((item) => `restore:${item.kind}:${item.label}`)).slice(0, 3),
@@ -2220,20 +2898,33 @@ export function buildAwisWorkspaceArtifactReplayProjection(
         ...contextKernelProjections.flatMap((kernel) => kernel.priority_load.map((item) => `kernel-load:${item.kind}:${item.label}:${item.confidence}`)).slice(0, 4),
         ...contextKernelProjections.map((kernel) => `kernel-budget:${kernel.budget.mode}:${kernel.readiness_score}`),
         ...selfImprovementProjections.flatMap((self) => self.improvement_queue.map((item) => `self-improve:${item.action}:${item.label}:${item.priority}`)).slice(0, 4),
+        ...impactMapProjections.flatMap((impact) => impact.component_impacts.map((item) => `impact:${item.component_key}:${item.affected_components.join('+')}:${item.risk}`)).slice(0, 4),
         ...memoryFreshnessProjections.map((freshness) => `freshness:${freshness.state}:${freshness.freshness_score}`),
         ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.hot.map((item) => `fresh-hot:${item}`)).slice(0, 3),
+        ...startupGold.flatMap((snapshot) => snapshot.startup_gold.recent_channels.map((channel) => `startup-channel:${channel}`)).slice(0, 2),
         ...componentMemoryProjections.flatMap((memory) => memory.strongest_components.map((component) => `component-memory:${component.key}:${component.maturity}:${component.confidence}`)).slice(0, 4),
         ...semanticIndexProjections.flatMap((semantic) => semantic.query_aliases.map((alias) => `semantic:${alias.alias}:${alias.component_keys.join('+')}:${alias.confidence}`)).slice(0, 4),
-        ...semanticIndexProjections.flatMap((semantic) => semantic.stack_map.map((stack) => `stack:${stack.stack}:${stack.component_keys.join('+')}:${stack.confidence}`)).slice(0, 3),
-        ...impactMapProjections.flatMap((impact) => impact.component_impacts.map((item) => `impact:${item.component_key}:${item.affected_components.join('+')}:${item.risk}`)).slice(0, 4),
         ...retentionProjections.flatMap((retention) => retention.lifecycle.keep_hot.map((item) => `retention-keep:${item}`)).slice(0, 3),
         ...retentionProjections.flatMap((retention) => retention.lifecycle.revalidate.map((item) => `retention-revalidate:${item}`)).slice(0, 3),
         ...startupOrchestrationProjections.flatMap((orchestration) => orchestration.startup_sequence.map((item) => `orchestrate:${item.step}:${item.source}:${item.label}`)).slice(0, 4),
         ...startupOrchestrationProjections.map((orchestration) => `launch-mode:${orchestration.launch_mode}:${orchestration.readiness_score}`),
-        ...confidenceProjections.flatMap((confidence) => confidence.ranked.commands.map((item) => `confidence-command:${item.label}:${item.score}`)).slice(0, 2),
-        ...confidenceProjections.flatMap((confidence) => confidence.decision_policy.prefer.map((item) => `confidence-prefer:${item}`)).slice(0, 2),
+        ...preflightProjections.flatMap((preflight) => preflight.gates.map((gate) => `preflight:${gate.gate}:${gate.status}:${gate.label}`)).slice(0, 4),
+        ...preflightProjections.map((preflight) => `preflight-mode:${preflight.mode}:${preflight.readiness_score}`),
+        ...workspaceTwinProjections.flatMap((twin) => twin.genome.apps.map((app) => `twin-app:${app}:${twin.readiness_score}`)).slice(0, 4),
+        ...workspaceTwinProjections.flatMap((twin) => twin.genome.test_families.map((family) => `twin-test:${family}`)).slice(0, 3),
+        ...workspaceTwinProjections.map((twin) => `twin-hash:${twin.hashes.genome_hash}`),
+        ...launchContractProjections.flatMap((contract) => contract.startup_contract.first_load.map((item) => `launch-load:${item}`)).slice(0, 4),
+        ...launchContractProjections.flatMap((contract) => contract.automation_contract.maintenance_actions.map((item) => `launch-maintain:${item}`)).slice(0, 3),
+        ...launchContractProjections.map((contract) => `launch-contract:${contract.launch_mode}:${contract.readiness_score}:${contract.seed_hash}`),
+        ...nextSessionBrainProjections.flatMap((brain) => brain.load_order.map((item) => `brain-load:${item}`)).slice(0, 4),
+        ...nextSessionBrainProjections.flatMap((brain) => brain.focused_repositories.map((repo) => `brain-repo:${repo.repo_key}:${repo.score}`)).slice(0, 4),
+        ...nextSessionBrainProjections.map((brain) => `brain-seed:${brain.source}:${brain.readiness_score ?? 0}:${brain.brain_hash ?? 'no-hash'}`),
+        ...truthPackProjections.map((truth) => `truth-pack:${truth.truth_hash}:${truth.readiness_score}`),
+        ...truthPackProjections.flatMap((truth) => truth.current_truth.must_keep.map((item) => `truth-keep:${item}`)).slice(0, 6),
+        ...truthPackProjections.flatMap((truth) => truth.current_truth.proven_commands.map((item) => `truth-command:${item}`)).slice(0, 4),
         ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.next_session_seed.map((item) => `seed:${item}`)).slice(0, 4),
         ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.consolidate.promote_to_gold.map((item) => `consolidate-gold:${item}`)).slice(0, 3),
+        ...semanticIndexProjections.flatMap((semantic) => semantic.stack_map.map((stack) => `stack:${stack.stack}:${stack.component_keys.join('+')}:${stack.confidence}`)).slice(0, 3),
         ...startupPlaybooks.flatMap((playbook) => playbook.context_loading.must_load.map((item) => `playbook:${item}`)).slice(0, 1),
         ...startupBriefings.flatMap((briefing) => briefing.focus.load_sequence.map((item) => `load:${item}`)).slice(0, 1),
         ...learningProjections.map((learning) => `maturity:${learning.maturity}`),
@@ -2255,21 +2946,42 @@ export function buildAwisWorkspaceArtifactReplayProjection(
         ...relationProjections.flatMap((relations) => relations.related_workspaces.flatMap((workspace) => (
           workspace.shared_recovery_patterns.map((pattern) => `workspace-recovery:${workspace.workspace_hint}:${pattern}`)
         ))).slice(0, 3),
-      ]).slice(0, MAX_STARTUP_ITEMS * 5),
+      ]).slice(0, MAX_STARTUP_ITEMS * 12),
       warnings: unique([
+        ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.consolidate.never_promote.map((item) => `never-promote:${item}`)).slice(0, 4),
+        ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.revalidate.map((item) => `freshness-revalidate:${item}`)),
+        ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.missing.map((item) => `freshness-missing:${item}`)),
+        ...relationProjections.flatMap((relations) => relations.connection_contracts.flatMap((contract) => (
+          contract.never_transfer.map((item) => `repo-contract-never:${contract.workspace_hint}:${item}`)
+        ))).slice(0, 4),
+        ...meshProjections.flatMap((mesh) => mesh.next_conversation.human_boundary.map((item) => `mesh-boundary:${item}`)).slice(0, 4),
+        ...truthPackProjections.flatMap((truth) => truth.proof.stale_or_unproven.map((item) => `truth-stale:${item}`)).slice(0, 4),
+        ...truthPackProjections.flatMap((truth) => truth.proof.human_boundary.map((item) => `truth-human:${item}`)).slice(0, 3),
+        ...repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.human_boundary.map((item) => `repo-human:${item}`)).slice(0, 4),
+        ...liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.human_boundary.map((item) => `live-human:${item}`)).slice(0, 4),
+        ...liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.avoid.map((item) => `live-avoid:${item}`)).slice(0, 4),
         ...startupGold.flatMap((snapshot) => snapshot.startup_gold.warnings),
         ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.revalidate.map((item) => `freshness-revalidate:${item}`)),
         ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.missing.map((item) => `freshness-missing:${item}`)),
         ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.consolidate.never_promote.map((item) => `never-promote:${item}`)).slice(0, 4),
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.caution_signals.map((item) => `artifact-caution:${item}`)).slice(0, 6),
         ...semanticIndexProjections.flatMap((semantic) => semantic.retrieval_policy.revalidate_when.map((item) => `semantic-revalidate:${item}`)).slice(0, 4),
         ...impactMapProjections.flatMap((impact) => impact.component_impacts.filter((item) => item.risk !== 'low').map((item) => `impact-risk:${item.component_key}:${item.risk}`)).slice(0, 4),
+        ...preflightProjections.flatMap((preflight) => preflight.gates.filter((gate) => gate.status !== 'ready').map((gate) => `preflight-${gate.status}:${gate.gate}:${gate.label}`)).slice(0, 4),
+        ...workspaceTwinProjections.flatMap((twin) => twin.genome.risk_zones.map((risk) => `twin-risk:${risk}`)).slice(0, 4),
+        ...workspaceTwinProjections.filter((twin) => twin.stale).map(() => 'twin-stale:revalidar antes de executar'),
+        ...launchContractProjections.flatMap((contract) => contract.startup_contract.avoid_loading.map((item) => `launch-avoid:${item}`)).slice(0, 4),
+        ...launchContractProjections.flatMap((contract) => contract.human_contract.confirm_before.map((item) => `launch-human:${item}`)).slice(0, 4),
+        ...nextSessionBrainProjections.flatMap((brain) => brain.context_loading.avoid_commands.map((item) => `brain-avoid:${item}`)).slice(0, 4),
+        ...nextSessionBrainProjections.flatMap((brain) => brain.context_loading.flaky_commands.map((item) => `brain-flaky:${item}`)).slice(0, 4),
         ...componentMemoryProjections.flatMap((memory) => memory.strongest_components.flatMap((component) => component.cautions.map((caution) => `component-caution:${component.key}:${caution}`))),
-      ]).slice(0, MAX_STARTUP_ITEMS),
+      ]).slice(0, MAX_STARTUP_ITEMS * 2),
       next_best_actions: unique([
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.validate_with.map((command) => `validar artifact: ${command}`)).slice(0, 3),
+        ...replayArtifacts.flatMap((artifact) => artifact.manifest.load_first.map((item) => `reusar artifact: ${item}`)).slice(0, 3),
         ...startupGold.flatMap((snapshot) => snapshot.startup_gold.next_best_actions),
         ...memoryFreshnessProjections.flatMap((freshness) => freshness.next_refresh.actions.map((action) => `frescor: ${action}`)),
         ...semanticIndexProjections.flatMap((semantic) => semantic.retrieval_policy.load_full_when.map((item) => `semântico: ${item}`)).slice(0, 2),
-        ...impactMapProjections.flatMap((impact) => impact.component_impacts.slice(0, 2).map((item) => `impacto: validar ${item.component_key}`)),
         ...automationProjections.flatMap((automation) => automation.maintenance_queue.map((item) => `manter: ${item.label}`)).slice(0, 2),
         ...confidenceProjections.flatMap((confidence) => confidence.decision_policy.prefer.map((item) => `preferir: ${item}`)).slice(0, 2),
         ...startupBriefings.flatMap((briefing) => briefing.automation_plan.next_best_actions),
@@ -2283,7 +2995,23 @@ export function buildAwisWorkspaceArtifactReplayProjection(
         ...selfImprovementProjections.flatMap((self) => self.improvement_queue.slice(0, 2).map((item) => `evoluir: ${item.action}:${item.label}`)),
         ...retentionProjections.flatMap((retention) => retention.lifecycle.revalidate.slice(0, 2).map((item) => `retenção: revalidar ${item}`)),
         ...startupOrchestrationProjections.flatMap((orchestration) => orchestration.startup_sequence.slice(0, 2).map((item) => `partida: ${item.step} ${item.label}`)),
-      ]).slice(0, MAX_STARTUP_ITEMS * 4),
+        ...impactMapProjections.flatMap((impact) => impact.component_impacts.slice(0, 2).map((item) => `impacto: validar ${item.component_key}`)),
+        ...preflightProjections.flatMap((preflight) => preflight.execution_lanes.before_send.slice(0, 2).map((item) => `pré-voo: ${item}`)),
+        ...preflightProjections.flatMap((preflight) => preflight.execution_lanes.before_execution.slice(0, 2).map((item) => `pré-execução: ${item}`)),
+        ...launchContractProjections.flatMap((contract) => contract.next_conversation.load_order.slice(0, 3).map((item) => `partida viva: ${item}`)),
+        ...launchContractProjections.flatMap((contract) => contract.automation_contract.after_success.slice(0, 2).map((item) => `aprender: ${item}`)),
+        ...relationProjections.flatMap((relations) => relations.connection_contracts.slice(0, 2).map((contract) => `conexão repo: validar ${contract.workspace_hint}`)),
+        ...meshProjections.flatMap((mesh) => mesh.next_conversation.validate_with.slice(0, 2).map((item) => `mesh: validar ${item}`)),
+        ...truthPackProjections.flatMap((truth) => truth.proof.validate_with.slice(0, 2).map((item) => `truth: validar ${item}`)),
+        ...repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.load_first.slice(0, 2).map((item) => `constelação: carregar ${item}`)),
+        ...repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.validate_with.slice(0, 2).map((item) => `constelação: validar ${item}`)),
+        ...liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.load_first.slice(0, 2).map((item) => `memória viva: carregar ${item}`)),
+        ...liveExecutionMemoryProjections.flatMap((memory) => memory.automation_loop.after_success.slice(0, 2).map((item) => `memória viva: aprender ${item}`)),
+        ...workspaceTwinProjections.flatMap((twin) => twin.context_autopilot.validate.slice(0, 2).map((item) => `twin: validar ${item}`)),
+        ...workspaceTwinProjections.flatMap((twin) => twin.learning_loop.next_refresh.slice(0, 2).map((item) => `twin: atualizar ${item}`)),
+        ...nextSessionBrainProjections.flatMap((brain) => brain.execution_priority.slice(0, 2).map((priority) => `brain: priorizar ${priority.command}`)),
+        ...nextSessionBrainProjections.flatMap((brain) => brain.load_order.slice(0, 2).map((item) => `brain: carregar ${item}`)),
+      ]).slice(0, MAX_STARTUP_ITEMS * 10),
     },
     safety: {
       raw_source_included: false,
@@ -2292,6 +3020,143 @@ export function buildAwisWorkspaceArtifactReplayProjection(
       bounded: true,
       provider_safe: true,
     },
+  }
+}
+
+function buildAwisWorkspaceArtifactColdStartSeed(input: {
+  source: AwisWorkspaceArtifactReplayProjection['source']
+  artifactCount: number
+  latestArtifactHash: string | null
+  replayArtifacts: AwisWorkspaceArtifactEntry[]
+  startupBriefings: AwisWorkspaceStartupBriefing[]
+  startupPlaybooks: AwisWorkspaceStartupPlaybook[]
+  continuityProjections: AwisWorkspaceContinuityProjection[]
+  automationProjections: AwisWorkspaceAutomationProjection[]
+  learningProjections: AwisWorkspaceLearningProjection[]
+  topologyProjections: AwisWorkspaceTopologyProjection[]
+  relationProjections: AwisWorkspaceRelationProjection[]
+  meshProjections: AwisWorkspaceMeshProjection[]
+  repositoryConstellationProjections: AwisWorkspaceRepositoryConstellationProjection[]
+  liveExecutionMemoryProjections: AwisWorkspaceLiveExecutionMemoryProjection[]
+  contextKernelProjections: AwisWorkspaceContextKernelProjection[]
+  memoryFreshnessProjections: AwisWorkspaceMemoryFreshnessProjection[]
+  retentionProjections: AwisWorkspaceRetentionProjection[]
+  startupOrchestrationProjections: AwisWorkspaceStartupOrchestrationProjection[]
+  preflightProjections: AwisWorkspacePreflightProjection[]
+  workspaceTwinProjections: AwisWorkspaceTwinProjection[]
+  launchContractProjections: AwisWorkspaceLaunchContractProjection[]
+  nextSessionBrainProjections: AwisWorkspaceNextSessionBrainProjection[]
+}): AwisWorkspaceArtifactReplayProjection['cold_start_seed'] {
+  const loadOrder = unique([
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.load_first),
+    ...input.nextSessionBrainProjections.flatMap((brain) => brain.load_order),
+    ...input.launchContractProjections.flatMap((contract) => contract.next_conversation.load_order),
+    ...input.startupOrchestrationProjections.flatMap((orchestration) => orchestration.startup_sequence.map((item) => item.label)),
+    ...input.startupBriefings.flatMap((briefing) => briefing.focus.load_sequence),
+    ...input.startupPlaybooks.flatMap((playbook) => playbook.context_loading.must_load),
+    ...input.contextKernelProjections.flatMap((kernel) => kernel.priority_load.map((item) => `${item.kind}:${item.label}`)),
+    ...input.meshProjections.flatMap((mesh) => mesh.next_conversation.load_order),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.load_first),
+    ...input.continuityProjections.flatMap((continuity) => continuity.next_session_plan.first_load),
+    ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.load_first),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const validateWith = unique([
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.validate_before_trust),
+    ...input.nextSessionBrainProjections.flatMap((brain) => brain.execution_priority.map((priority) => priority.command)),
+    ...input.launchContractProjections.flatMap((contract) => contract.startup_contract.validate_before_trust),
+    ...input.startupPlaybooks.flatMap((playbook) => playbook.execution.primary_validation_commands),
+    ...input.preflightProjections.flatMap((preflight) => preflight.execution_lanes.before_execution),
+    ...input.meshProjections.flatMap((mesh) => mesh.next_conversation.validate_with),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.validate_with),
+    ...input.workspaceTwinProjections.flatMap((twin) => twin.context_autopilot.validate),
+    ...input.learningProjections.flatMap((learning) => learning.trusted_commands),
+    ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.validate_with),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const contextSignals = unique([
+    ...input.liveExecutionMemoryProjections.map((memory) => `live-memory:${memory.memory_hash}:${memory.readiness_score}`),
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.use_as_summary),
+    ...input.nextSessionBrainProjections.flatMap((brain) => brain.context_loading.command_hints),
+    ...input.startupBriefings.flatMap((briefing) => briefing.context_gold.reusable_patterns),
+    ...input.contextKernelProjections.flatMap((kernel) => kernel.priority_load.map((item) => item.reason)),
+    ...input.learningProjections.map((learning) => `maturidade:${learning.maturity}`),
+    ...input.memoryFreshnessProjections.map((freshness) => `frescor:${freshness.state}:${freshness.freshness_score}`),
+    ...input.meshProjections.flatMap((mesh) => mesh.routes.map((route) => `mesh:${route.workspace_hint}:${route.relationship}:${route.confidence}`)),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.repositories.map((repo) => `repo:${repo.key}:${repo.maturity}:${repo.confidence}`)),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.bridges.map((bridge) => `bridge:${bridge.from}->${bridge.to}:${bridge.confidence}`)),
+    ...input.topologyProjections.flatMap((topology) => topology.components.map((component) => `${component.key}:${component.role}`)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const reuseSpaces = unique([
+    ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.linked_spaces),
+    ...input.continuityProjections.flatMap((continuity) => continuity.hot_context.spaces),
+    ...input.startupBriefings.flatMap((briefing) => briefing.context_gold.strongest_spaces),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const repositoryHints = unique([
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.workspace_learning.repositories),
+    ...input.nextSessionBrainProjections.flatMap((brain) => brain.focused_repositories.map((repo) => repo.repo_key)),
+    ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.repository_hints),
+    ...input.meshProjections.flatMap((mesh) => mesh.routes.map((route) => route.workspace_hint)),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.repositories.map((repo) => repo.key)),
+    ...input.topologyProjections.flatMap((topology) => topology.components.map((component) => component.key)),
+    ...input.relationProjections.flatMap((relations) => relations.related_workspaces.map((workspace) => workspace.workspace_hint)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const automationHooks = unique([
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.automation_loop.before_send.map((item) => `antes:${item}`)),
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.automation_loop.after_success.map((item) => `sucesso:${item}`)),
+    ...input.launchContractProjections.flatMap((contract) => contract.automation_contract.after_success),
+    ...input.automationProjections.flatMap((automation) => automation.maintenance_queue.map((item) => `${item.action}:${item.label}`)),
+    ...input.startupBriefings.flatMap((briefing) => briefing.automation_plan.next_best_actions),
+    ...input.retentionProjections.flatMap((retention) => retention.lifecycle.revalidate.map((item) => `revalidar:${item}`)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const warnings = unique([
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.avoid.map((item) => `live:${item}`)),
+    ...input.nextSessionBrainProjections.flatMap((brain) => brain.context_loading.avoid_commands),
+    ...input.launchContractProjections.flatMap((contract) => contract.startup_contract.avoid_loading),
+    ...input.preflightProjections.flatMap((preflight) => preflight.gates.filter((gate) => gate.status !== 'ready').map((gate) => `${gate.gate}:${gate.label}`)),
+    ...input.meshProjections.flatMap((mesh) => mesh.next_conversation.human_boundary),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.human_boundary),
+    ...input.workspaceTwinProjections.flatMap((twin) => twin.genome.risk_zones),
+    ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.caution_signals),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const humanBoundary = unique([
+    ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.human_boundary),
+    ...input.launchContractProjections.flatMap((contract) => contract.human_contract.confirm_before),
+    ...input.meshProjections.flatMap((mesh) => mesh.next_conversation.human_boundary),
+    ...input.repositoryConstellationProjections.flatMap((constellation) => constellation.next_conversation.human_boundary),
+    ...input.nextSessionBrainProjections.flatMap((brain) => brain.execution_priority.filter((priority) => priority.requires_operator_approval).map((priority) => priority.command)),
+    ...input.preflightProjections.flatMap((preflight) => preflight.execution_lanes.before_execution),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const readinessScore = normalizePercent(
+    24
+      + Math.min(18, input.artifactCount * 3)
+      + Math.min(18, loadOrder.length * 2)
+      + Math.min(16, validateWith.length * 2)
+      + Math.min(12, contextSignals.length)
+      + Math.min(12, repositoryHints.length * 2),
+  )
+  const seedPayload = {
+    source: input.source,
+    artifact: input.latestArtifactHash,
+    loadOrder,
+    validateWith,
+    contextSignals,
+    reuseSpaces,
+    repositoryHints,
+    warnings,
+    humanBoundary,
+  }
+  return {
+    schema_version: 'atlas.awis.artifact_cold_start_seed.v1',
+    source: input.source,
+    readiness_score: readinessScore,
+    seed_hash: `cold-${stableStringHash(JSON.stringify(seedPayload))}`,
+    load_order: loadOrder,
+    validate_with: validateWith,
+    context_signals: contextSignals,
+    reuse_spaces: reuseSpaces,
+    repository_hints: repositoryHints,
+    automation_hooks: automationHooks,
+    warnings,
+    human_boundary: humanBoundary,
   }
 }
 
@@ -2358,6 +3223,7 @@ export function buildAwisWorkspaceTopologyProjection(
     })
     .sort((a, b) => b.confidence - a.confidence || a.key.localeCompare(b.key))
     .slice(0, MAX_TOPOLOGY_COMPONENTS)
+  const knowledgeMap = buildAwisWorkspaceTopologyKnowledgeMap(components, brain.truncated)
 
   return {
     schema_version: 'atlas.awis.workspace_topology_projection.v1',
@@ -2376,6 +3242,7 @@ export function buildAwisWorkspaceTopologyProjection(
       dev_commands: commandsByKind(components, /dev|start|serve/i),
       check_commands: commandsByKind(components, /lint|check|typecheck|tsc/i),
     },
+    knowledge_map: knowledgeMap,
     safety: {
       raw_source_included: false,
       absolute_paths_included: false,
@@ -2383,6 +3250,49 @@ export function buildAwisWorkspaceTopologyProjection(
       bounded: true,
       provider_safe: true,
     },
+  }
+}
+
+function buildAwisWorkspaceTopologyKnowledgeMap(
+  components: AwisWorkspaceTopologyProjection['components'],
+  scanTruncated: boolean,
+): AwisWorkspaceTopologyProjection['knowledge_map'] {
+  const docs = unique(components.flatMap((component) => component.docs).map(sanitizeRelativePath).filter(isString))
+  const manifests = unique(components.flatMap((component) => component.manifests).map(sanitizeRelativePath).filter(isString))
+  const commands = uniqueCommands(components.flatMap((component) => component.commands))
+  const validationCommands = commands.filter((command) => /test|spec|vitest|jest|phpunit|tsc|lint|check/i.test(`${command.kind} ${command.command}`))
+  const runtimeCommands = commands.filter((command) => /build|dev|start|serve|run|cargo|artisan/i.test(`${command.kind} ${command.command}`))
+  const loadFirstDocs = docs
+    .filter((path) => /agents\.md|readme|docs\/engineering-knowledge-base|knowledge|governance|awis|workspace/i.test(path))
+    .slice(0, MAX_STARTUP_ITEMS)
+  const sensitiveZones = unique([
+    ...components
+      .filter((component) => /auth|security|billing|payment|database|migration|secret|token|kernel|tauri|bridge|release|production/i.test([
+        component.key,
+        component.role,
+        ...component.stack,
+        ...component.manifests,
+        ...component.docs,
+        ...component.commands.map((command) => `${command.kind} ${command.command} ${command.source}`),
+      ].join(' ')))
+      .map((component) => component.key),
+    ...manifests.filter((path) => /migration|database|auth|security|tauri|cargo|composer|package\.json/i.test(path)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const summarizeOnly = unique([
+    scanTruncated ? 'mapa local truncado' : null,
+    ...components
+      .filter((component) => component.confidence < 55)
+      .map((component) => `área:${component.key}`),
+  ].filter(isString).map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+
+  return {
+    load_first_docs: loadFirstDocs,
+    manifest_refs: manifests.slice(0, MAX_STARTUP_ITEMS),
+    command_sources: unique(commands.map((command) => sanitizeRelativePath(command.source)).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+    validation_entrypoints: unique(validationCommands.map((command) => command.command).map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+    runtime_entrypoints: unique(runtimeCommands.map((command) => command.command).map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+    sensitive_zones: sensitiveZones,
+    summarize_only: summarizeOnly,
   }
 }
 
@@ -3215,6 +4125,24 @@ export function buildAwisWorkspaceArtifactProjectionsFromServer(
   const blockers = Array.isArray(awair.artifact_simulation?.blockers)
     ? awair.artifact_simulation.blockers.filter(isString)
     : []
+  const serverLoadOrder = unique([
+    ...contextUnits.map((unit) => `contexto:${unit}`),
+    ...templates.map((template) => `template:${template}`),
+    ...artifactTypes.map((type) => `artifact:${type}`),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const serverWarnings = unique([
+    replayReady ? null : 'replay de artefatos ainda não está pronto',
+    simulationReady ? null : 'simulação de artefatos bloqueada',
+    qualityReady ? null : 'qualidade dos artefatos exige revisão',
+    awair.artifact_context_compiler?.raw_conversation_included === true ? 'payload contém conversa bruta e foi tratado como inseguro' : null,
+    ...blockers,
+  ].filter(isString).map(sanitizeProviderSafeText)).slice(0, MAX_STARTUP_ITEMS)
+  const serverNextActions = unique([
+    replayReady ? 'reusar grafo de artefatos antes de abrir nova sessão' : 'materializar artefatos do workspace',
+    simulationReady ? 'usar artefatos certificados para preparar execução' : 'resolver bloqueios do Artifact Intelligence',
+    qualityReady ? 'promover contexto seguro para próxima conversa' : 'revisar qualidade dos artefatos antes de executar',
+    awair.artifact_outcome_learning?.requires_real_outcome === true ? 'registrar resultado real para o AWIS aprender' : null,
+  ].filter(isString)).slice(0, MAX_STARTUP_ITEMS)
 
   return {
     artifactLake: {
@@ -3231,6 +4159,36 @@ export function buildAwisWorkspaceArtifactProjectionsFromServer(
       source: 'server_awair_artifact_intelligence',
       artifact_count: artifactCount,
       latest_artifact_hash: latestArtifactHash,
+      cold_start_seed: {
+        schema_version: 'atlas.awis.artifact_cold_start_seed.v1',
+        source: 'server_awair_artifact_intelligence',
+        readiness_score: normalizePercent(
+          35
+            + Math.min(20, artifactCount * 4)
+            + (replayReady ? 15 : 0)
+            + (simulationReady ? 15 : 0)
+            + (qualityReady ? 15 : 0),
+        ),
+        seed_hash: `cold-${stableStringHash(JSON.stringify({
+          latestArtifactHash,
+          serverLoadOrder,
+          contextUnits,
+          templates,
+          consumers,
+          serverWarnings,
+        }))}`,
+        load_order: serverLoadOrder,
+        validate_with: serverNextActions.filter((action) => action.includes('validar') || action.includes('certificados')),
+        context_signals: unique([
+          ...contextUnits.map((unit) => `contexto:${unit}`),
+          ...consumers.map((consumer) => `consumer:${consumer}`),
+        ]).slice(0, MAX_STARTUP_ITEMS),
+        reuse_spaces: artifactTypes.map((type) => `${type} · artefato AWIS reutilizável`).slice(0, MAX_STARTUP_ITEMS),
+        repository_hints: consumers.slice(0, MAX_STARTUP_ITEMS),
+        automation_hooks: serverNextActions,
+        warnings: serverWarnings,
+        human_boundary: serverWarnings,
+      },
       reusable_startup_gold: {
         strongest_spaces: artifactTypes.map((type) => `${type} · artefato AWIS reutilizável`).slice(0, MAX_STARTUP_ITEMS),
         reusable_patterns: unique([
@@ -3238,19 +4196,8 @@ export function buildAwisWorkspaceArtifactProjectionsFromServer(
           ...templates.map((template) => `template:${template}`),
           ...consumers.map((consumer) => `consumer:${consumer}`),
         ]).slice(0, MAX_STARTUP_ITEMS),
-        warnings: unique([
-          replayReady ? null : 'replay de artefatos ainda não está pronto',
-          simulationReady ? null : 'simulação de artefatos bloqueada',
-          qualityReady ? null : 'qualidade dos artefatos exige revisão',
-          awair.artifact_context_compiler?.raw_conversation_included === true ? 'payload contém conversa bruta e foi tratado como inseguro' : null,
-          ...blockers,
-        ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
-        next_best_actions: unique([
-          replayReady ? 'reusar grafo de artefatos antes de abrir nova sessão' : 'materializar artefatos do workspace',
-          simulationReady ? 'usar artefatos certificados para preparar execução' : 'resolver bloqueios do Artifact Intelligence',
-          qualityReady ? 'promover contexto seguro para próxima conversa' : 'revisar qualidade dos artefatos antes de executar',
-          awair.artifact_outcome_learning?.requires_real_outcome === true ? 'registrar resultado real para o AWIS aprender' : null,
-        ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+        warnings: serverWarnings,
+        next_best_actions: serverNextActions,
       },
       safety: {
         raw_source_included: false,
@@ -3344,6 +4291,154 @@ export function buildAwisWorkspaceNextSessionBrainProjection(
   }
 }
 
+function buildAwisWorkspaceLocalNextSessionBrainProjection(input: {
+  workspaceName: string
+  topology: AwisWorkspaceTopologyProjection | null
+  memory: AwisWorkspaceMemorySnapshot | null
+  learning?: AwisWorkspaceLearningProjection | null
+  sessionGold: AwisWorkspaceSessionGoldProjection | null
+  spaces: AwisWorkspaceSpaceProjection | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+}): AwisWorkspaceNextSessionBrainProjection | null {
+  const focusedRepositories = (input.topology?.components ?? [])
+    .slice(0, MAX_STARTUP_ITEMS)
+    .map((component) => ({
+      repo_key: component.key,
+      score: normalizePercent(component.confidence),
+      reasons: unique([
+        component.role,
+        ...component.stack.slice(0, 2),
+        component.commands[0]?.command ? `comando:${component.commands[0].command}` : null,
+      ].filter(isString)).slice(0, 4),
+      stack: component.stack.slice(0, 6),
+    }))
+  const focusedManifestRefs = (input.topology?.components ?? [])
+    .filter((component) => component.manifests.length > 0 || component.stack.length > 0 || component.commands.length > 0)
+    .slice(0, MAX_STARTUP_ITEMS)
+    .map((component) => ({
+      repo_key: component.key,
+      manifest_files: component.manifests.slice(0, 6),
+      stack: component.stack.slice(0, 6),
+      script_names: component.commands.map((command) => command.command).slice(0, 8),
+    }))
+  const loadOrder = unique([
+    ...(input.artifactReplay?.cold_start_seed.load_order ?? []),
+    ...(input.topology?.knowledge_map.load_first_docs.map((path) => `doc:${path}`) ?? []),
+    ...(input.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+    ...(input.spaces?.strongest_spaces.map((space) => `space:${space.title}`) ?? []),
+    ...(input.artifactReplay?.latest_artifact_hash ? [`artifact:${input.artifactReplay.latest_artifact_hash}`] : []),
+    ...(input.sessionGold?.next_session_hooks.before_send.map((hook) => `ouro:${hook}`) ?? []),
+    ...(input.memory?.stableCommands.slice(0, 4).map((signal) => `comando:${signal.label}`) ?? []),
+    ...(input.learning?.task_memory.validation_plans.slice(0, 3).map((plan) => `plano:${plan.task_kind}:${plan.commands.join('+')}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const commandHints = unique([
+    ...(input.artifactReplay?.cold_start_seed.validate_with ?? []),
+    ...(input.artifactReplay?.cold_start_seed.context_signals ?? []),
+    ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
+    ...(input.topology?.knowledge_map.runtime_entrypoints ?? []),
+    ...(input.learning?.trusted_commands ?? []),
+    ...(input.learning?.task_memory.trusted_task_commands ?? []),
+    ...(input.memory?.stableCommands.map((signal) => signal.label) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const executionPriority = unique([
+    ...(input.artifactReplay?.cold_start_seed.validate_with ?? []),
+    ...(input.sessionGold?.proven_commands.map((command) => command.command) ?? []),
+    ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
+    ...(input.learning?.trusted_commands ?? []),
+    ...(input.memory?.stableCommands.map((signal) => signal.label) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString))
+    .slice(0, MAX_STARTUP_ITEMS)
+    .map((command) => ({
+      command,
+      why: /test|tsc|lint|check|build/i.test(command)
+        ? 'validação aprendida do workspace'
+        : 'comando detectado pelo mapa local',
+      requires_operator_approval: true,
+    }))
+  const focusedAreas = unique([
+    ...(input.artifactReplay?.cold_start_seed.reuse_spaces.map((space) => `artifact:${space}`) ?? []),
+    ...(input.spaces?.strongest_spaces.map((space) => space.title) ?? []),
+    ...(input.topology?.components.map((component) => component.role) ?? []),
+    ...(input.learning?.task_memory.task_kinds.map((kind) => `tarefa:${kind}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const artifactRefs = unique([
+    input.artifactReplay?.latest_artifact_hash ?? null,
+    input.artifactReplay?.cold_start_seed.seed_hash ?? null,
+    ...(input.artifactReplay?.reusable_startup_gold.reusable_patterns
+      .filter((item) => item.startsWith('artifact-quality:'))
+      .slice(0, 3) ?? []),
+  ].filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const ownerDocs = unique([
+    ...(input.topology?.knowledge_map.load_first_docs ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  if (
+    loadOrder.length === 0 &&
+    focusedRepositories.length === 0 &&
+    focusedAreas.length === 0 &&
+    executionPriority.length === 0 &&
+    artifactRefs.length === 0
+  ) return null
+  const readinessScore = normalizePercent(
+    30
+    + Math.min(20, loadOrder.length * 4)
+    + Math.min(16, focusedRepositories.length * 4)
+    + Math.min(16, executionPriority.length * 4)
+    + (input.sessionGold?.strongest_outcomes.length ? 8 : 0)
+    + (input.artifactReplay?.artifact_count ? 8 : 0),
+  )
+  const hashSeed = JSON.stringify({
+    workspace: input.workspaceName,
+    loadOrder,
+    focusedRepositories: focusedRepositories.map((repo) => repo.repo_key),
+    focusedAreas,
+    executionPriority: executionPriority.map((item) => item.command),
+    artifactRefs,
+  })
+
+  return {
+    schema_version: 'atlas.awis.workspace_next_session_brain_projection.v1',
+    source: 'local_awis_seed',
+    status: 'ready',
+    brain_hash: `local-${stableStringHash(hashSeed)}`,
+    readiness_score: readinessScore,
+    load_order: loadOrder,
+    focused_repositories: focusedRepositories,
+    focused_areas: focusedAreas,
+    artifact_refs: artifactRefs,
+    owner_docs: ownerDocs,
+    execution_priority: executionPriority,
+    context_loading: {
+      mode: readinessScore >= 82 ? 'deep' : readinessScore >= 64 ? 'guided' : 'warm',
+      repository_count: focusedRepositories.length,
+      stack_tags: unique(focusedRepositories.flatMap((repo) => repo.stack)).slice(0, MAX_STARTUP_ITEMS),
+      command_hints: commandHints,
+      outcome_ranked_commands: input.sessionGold?.proven_commands.map((command) => command.command).slice(0, MAX_STARTUP_ITEMS) ?? [],
+      avoid_commands: unique([
+        ...(input.artifactReplay?.cold_start_seed.warnings ?? []),
+        ...(input.topology?.knowledge_map.sensitive_zones.map((zone) => `zona sensível:${zone}`) ?? []),
+        ...(input.artifactReplay?.reusable_startup_gold.warnings.slice(0, 4) ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      flaky_commands: input.sessionGold?.recovery_patterns.filter((pattern) => /fail|erro|flaky|retry/i.test(pattern)).slice(0, MAX_STARTUP_ITEMS) ?? [],
+      slow_commands: [],
+      focused_manifest_refs: focusedManifestRefs,
+      hashes: {
+        repository_inventory_hash: input.topology ? `topology-${stableStringHash(JSON.stringify(input.topology.components.map((component) => component.key)))}` : null,
+        working_set_hash: input.topology ? `working-${stableStringHash(JSON.stringify(input.topology.knowledge_map))}` : null,
+        context_delta_plan_hash: input.artifactReplay?.latest_artifact_hash ?? null,
+        learning_snapshot_hash: input.memory ? `memory-${stableStringHash(JSON.stringify(input.memory.stableCommands.map((signal) => signal.label)))}` : null,
+      },
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      internal_ids_included: false,
+      absolute_paths_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
 export function buildAwisWorkspaceHandoffProjection(
   handoff: AtlasAwisHandoffPack | null | undefined,
 ): AwisWorkspaceHandoffProjection | null {
@@ -3360,6 +4455,8 @@ export function buildAwisWorkspaceHandoffProjection(
     : []
   const requiredArtifacts = Array.isArray(handoff.required_artifacts) ? handoff.required_artifacts.filter(isString).slice(0, MAX_STARTUP_ITEMS) : []
   const missingArtifacts = Array.isArray(handoff.missing_artifacts) ? handoff.missing_artifacts.filter(isString).slice(0, MAX_STARTUP_ITEMS) : []
+  const artifactRefs = unique(contextUnits.map((unit) => unit.artifact_hash).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const handoffUnits = unique(contextUnits.map((unit) => unit.artifact_type)).slice(0, MAX_STARTUP_ITEMS)
   if (!handoff.handoff_hash && contextUnits.length === 0 && requiredArtifacts.length === 0) return null
 
   return {
@@ -3382,6 +4479,8 @@ export function buildAwisWorkspaceHandoffProjection(
       fallback_tests: Array.isArray(handoff.test_contract?.fallback_tests) ? handoff.test_contract.fallback_tests.filter(isString).slice(0, MAX_STARTUP_ITEMS) : [],
     },
     next_session_brain_hash: handoff.next_session_brain?.brain_hash ?? null,
+    artifact_refs: artifactRefs,
+    handoff_units: handoffUnits,
     safety: {
       raw_source_included: false,
       raw_conversation_included: false,
@@ -3443,12 +4542,17 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
     input.nextSessionBrain && !nextSessionBrainReady ? 'next-session brain canônico ainda bloqueado' : null,
     input.handoffPack?.missing_artifacts.length ? `handoff com ${input.handoffPack.missing_artifacts.length} artefato(s) pendente(s)` : null,
     ...(input.evolution?.failure_signatures ?? []).map((failure) => failure.label),
+    ...(input.artifactReplay?.cold_start_seed.warnings ?? []),
     ...(input.artifactReplay?.reusable_startup_gold.warnings ?? []),
   ].filter(isString).slice(0, MAX_STARTUP_ITEMS)
   const nextBestActions = unique([
     ...(input.artifactReplay?.reusable_startup_gold.next_best_actions ?? []),
+    ...(input.artifactReplay?.cold_start_seed.automation_hooks.slice(0, 3).map((hook) => `partida fria: ${hook}`) ?? []),
+    ...(input.artifactReplay?.cold_start_seed.load_order.slice(0, 2).map((item) => `carregar seed: ${item}`) ?? []),
     ...(input.nextSessionBrain?.execution_priority.map((priority) => `priorizar comando: ${priority.command}`) ?? []),
     ...(input.handoffPack?.missing_artifacts.length ? ['completar artefatos pendentes do handoff'] : []),
+    ...(input.topology?.knowledge_map.load_first_docs.length ? ['carregar documentos-guia da pasta antes de responder'] : []),
+    ...(input.topology?.knowledge_map.validation_entrypoints.length ? ['validar com comandos detectados no mapa local'] : []),
     spacesReady ? 'usar Space forte antes de abrir conversa nova' : 'criar Space com sessões relacionadas',
     folderMapReady ? 'preferir comandos inferidos do workspace' : 'mapear pasta local',
     topologyReady ? 'carregar mapa de componentes antes de decidir arquivos' : null,
@@ -3488,11 +4592,14 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
         .slice(0, MAX_STARTUP_ITEMS),
       commands: unique([
         ...(input.brain?.commands.map((command) => command.command) ?? []),
+        ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
+        ...(input.topology?.knowledge_map.runtime_entrypoints ?? []),
         ...(input.topology?.execution_map.test_commands ?? []),
         ...(input.topology?.execution_map.build_commands ?? []),
         ...(input.memory?.stableCommands.map((signal) => signal.label) ?? []),
         ...(input.learning?.trusted_commands ?? []),
         ...(input.learning?.task_memory.trusted_task_commands ?? []),
+        ...(input.artifactReplay?.cold_start_seed.validate_with ?? []),
         ...(input.nextSessionBrain?.execution_priority.map((priority) => priority.command) ?? []),
         ...(input.nextSessionBrain?.context_loading.command_hints ?? []),
         ...(input.handoffPack?.test_contract.focused_tests ?? []),
@@ -3503,9 +4610,18 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
         .slice(0, MAX_STARTUP_ITEMS),
       recent_channels: unique(input.memory?.recentOutcomes.map((outcome) => outcome.channel) ?? []).slice(0, MAX_STARTUP_ITEMS),
       reusable_patterns: [
+        ...(input.artifactReplay?.cold_start_seed.seed_hash ? [`cold-seed:${input.artifactReplay.cold_start_seed.seed_hash}`] : []),
+        ...(input.artifactReplay?.cold_start_seed.load_order.slice(0, 3).map((item) => `cold-load:${item}`) ?? []),
+        ...(input.artifactReplay?.cold_start_seed.context_signals.slice(0, 3).map((item) => `cold-context:${item}`) ?? []),
+        ...(input.artifactReplay?.cold_start_seed.repository_hints.slice(0, 3).map((item) => `cold-repo:${item}`) ?? []),
         ...(input.relations?.related_workspaces.flatMap((workspace) => workspace.shared_validation_plans.map((item) => `transfer-validation:${workspace.workspace_hint}:${item}`)) ?? []),
         ...(input.relations?.related_workspaces.flatMap((workspace) => workspace.shared_recovery_patterns.map((item) => `transfer-recovery:${workspace.workspace_hint}:${item}`)) ?? []),
         ...(input.relations?.related_workspaces.flatMap((workspace) => workspace.recommended_transfer.map((item) => `transfer:${workspace.workspace_hint}:${item}`)) ?? []),
+        ...(input.topology?.knowledge_map.load_first_docs.map((path) => `knowledge-doc:${path}`) ?? []),
+        ...(input.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+        ...(input.topology?.knowledge_map.command_sources.map((path) => `command-source:${path}`) ?? []),
+        ...(input.topology?.knowledge_map.sensitive_zones.map((zone) => `sensitive-zone:${zone}`) ?? []),
+        ...(input.topology?.knowledge_map.summarize_only.map((item) => `summarize-only:${item}`) ?? []),
         ...(input.evolution?.patterns.map((pattern) => `${pattern.kind}:${pattern.label}`) ?? []),
         ...(input.evolution?.failure_signatures.map((pattern) => `${pattern.kind}:${pattern.label}`) ?? []),
         ...(input.learning ? [`learning:${input.learning.maturity}`] : []),
@@ -3516,7 +4632,7 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
         ...(input.topology?.components.map((component) => `component:${component.key}:${component.role}`) ?? []),
         ...(input.topology?.connections.map((connection) => `connection:${connection.from}->${connection.to}`) ?? []),
         ...(input.handoffPack?.context_units.map((unit) => `artifact:${unit.artifact_type}`) ?? []),
-      ].slice(0, MAX_STARTUP_ITEMS),
+      ].slice(0, MAX_STARTUP_ITEMS * 2),
       warnings,
       next_best_actions: nextBestActions,
     },
@@ -3560,6 +4676,7 @@ export function buildAwisWorkspaceStartupBriefing(input: {
     ...(input.topology?.components.map((component) => component.role) ?? []),
   ]).slice(0, MAX_STARTUP_ITEMS)
   const ownerDocs = unique([
+    ...(input.topology?.knowledge_map.load_first_docs ?? []),
     ...(input.nextSessionBrain?.owner_docs ?? []),
     ...(input.handoffPack?.scope_guard.owner_docs ?? []),
   ]).slice(0, MAX_STARTUP_ITEMS)
@@ -3601,7 +4718,8 @@ export function buildAwisWorkspaceStartupBriefing(input: {
     focus: {
       primary: primaryFocus.slice(0, 120),
       load_sequence: unique([
-        ...(input.nextSessionBrain?.load_order ?? []),
+        ...(input.topology?.knowledge_map.load_first_docs.length ? ['folder_knowledge_docs'] : []),
+        ...(input.topology?.knowledge_map.manifest_refs.length ? ['folder_manifests'] : []),
         startup.readiness.topology_ready ? 'workspace_topology' : null,
         startup.readiness.folder_map_ready ? 'folder_map' : null,
         startup.readiness.memory_ready ? 'workspace_memory' : null,
@@ -3609,6 +4727,7 @@ export function buildAwisWorkspaceStartupBriefing(input: {
         startup.readiness.spaces_ready ? 'spaces' : null,
         startup.readiness.relations_ready ? 'workspace_relations' : null,
         startup.readiness.artifact_replay_ready ? 'artifact_replay' : null,
+        ...(input.nextSessionBrain?.load_order ?? []),
       ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
       repositories,
       areas,
@@ -3623,8 +4742,11 @@ export function buildAwisWorkspaceStartupBriefing(input: {
         ...(input.relations?.related_workspaces.map((workspace) => `workspace-rel:${workspace.workspace_hint}:${workspace.overlap_score}`) ?? []),
         ...(input.learning?.trusted_commands.map((command) => `trusted-command:${command}`) ?? []),
         ...(input.learning?.task_memory.task_kinds.map((taskKind) => `task-memory:${taskKind}`) ?? []),
+        ...(input.topology?.knowledge_map.load_first_docs.map((path) => `folder-doc:${path}`) ?? []),
+        ...(input.topology?.knowledge_map.manifest_refs.map((path) => `folder-manifest:${path}`) ?? []),
+        ...(input.topology?.knowledge_map.command_sources.map((path) => `folder-command-source:${path}`) ?? []),
         ...startup.startup_gold.reusable_patterns,
-      ]).slice(0, MAX_STARTUP_ITEMS),
+      ]).slice(0, MAX_STARTUP_ITEMS * 2),
       artifact_refs: artifactRefs,
       handoff_units: handoffUnits,
     },
@@ -3640,19 +4762,26 @@ export function buildAwisWorkspaceStartupBriefing(input: {
         ...(input.nextSessionBrain?.execution_priority.map((priority) => priority.command) ?? []),
         ...(input.nextSessionBrain?.context_loading.outcome_ranked_commands ?? []),
         ...(input.nextSessionBrain?.context_loading.command_hints ?? []),
+        ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
+        ...(input.topology?.knowledge_map.runtime_entrypoints ?? []),
         ...(input.topology?.execution_map.test_commands ?? []),
         ...(input.learning?.trusted_commands.filter((command) => /test|tsc|lint|check/i.test(command)) ?? []),
         ...(input.learning?.task_memory.trusted_task_commands ?? []),
         ...(input.topology?.execution_map.build_commands ?? []),
       ]).slice(0, MAX_STARTUP_ITEMS),
       tests_to_run: unique([
+        ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
         ...(input.topology?.execution_map.test_commands ?? []),
         ...(input.handoffPack?.test_contract.focused_tests ?? []),
         ...(input.handoffPack?.test_contract.fallback_tests ?? []),
         ...startup.startup_gold.commands.filter((command) => /test|tsc|build|lint/i.test(command)),
       ]).slice(0, MAX_STARTUP_ITEMS),
       missing_artifacts: (input.handoffPack?.missing_artifacts ?? []).slice(0, MAX_STARTUP_ITEMS),
-      warnings: startup.startup_gold.warnings.slice(0, MAX_STARTUP_ITEMS),
+      warnings: unique([
+        ...startup.startup_gold.warnings,
+        ...(input.topology?.knowledge_map.sensitive_zones.map((zone) => `zona sensível:${zone}`) ?? []),
+        ...(input.topology?.knowledge_map.summarize_only.map((item) => `usar como resumo:${item}`) ?? []),
+      ]).slice(0, MAX_STARTUP_ITEMS),
     },
     safety: {
       raw_source_included: false,
@@ -4358,9 +5487,24 @@ export function buildAwisWorkspaceLivingGraphProjection(input: {
     }
   }
 
-  const graphNodes = Array.from(nodes.values())
+  const sortedNodes = Array.from(nodes.values())
     .sort((a, b) => b.confidence - a.confidence || a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label))
-    .slice(0, MAX_STARTUP_ITEMS)
+  const graphNodeMap = new Map<string, AwisWorkspaceLivingGraphProjection['nodes'][number]>()
+  for (const node of [
+    ...[
+      'component',
+      'command',
+      'space',
+      'artifact',
+      'task_memory',
+      'related_workspace',
+      'handoff',
+    ].flatMap((kind) => sortedNodes.filter((node) => node.kind === kind).slice(0, 1)),
+    ...sortedNodes,
+  ]) {
+    if (!graphNodeMap.has(node.key)) graphNodeMap.set(node.key, node)
+  }
+  const graphNodes = Array.from(graphNodeMap.values()).slice(0, MAX_STARTUP_ITEMS)
   const allowedKeys = new Set(graphNodes.map((node) => node.key))
   const graphEdges = edges
     .filter((edge) => allowedKeys.has(edge.from) && allowedKeys.has(edge.to))
@@ -5409,6 +6553,11 @@ export function buildAwisWorkspaceMemoryConsolidationProjection(input: {
     ...(input.retention?.stale_signals.map((item) => `revalidar:${item}`) ?? []),
     ...(input.selfImprovement?.promotion_policy.demote_when ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const revalidate = unique([
+    ...(input.memoryFreshness?.evidence.revalidate ?? []),
+    ...(input.retention?.lifecycle.revalidate ?? []),
+    ...(input.selfImprovement?.promotion_policy.demote_when.map((item) => `demote:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const nextSessionSeed = unique([
     ...promoteToGold.slice(0, 4),
     ...rehearseNext.slice(0, 4),
@@ -5453,6 +6602,7 @@ export function buildAwisWorkspaceMemoryConsolidationProjection(input: {
       rehearse_next: rehearseNext,
       archive_as_artifact: archiveAsArtifact,
       summarize_only: summarizeOnly,
+      revalidate,
       never_promote: neverPromote,
     },
     learning_loop: {
@@ -5713,6 +6863,540 @@ export function buildAwisWorkspaceStartupOrchestrationProjection(input: {
   }
 }
 
+export function buildAwisWorkspacePreflightProjection(input: {
+  workspaceRootKnown: boolean
+  executionDoctrine: AwisWorkspaceExecutionDoctrineProjection | null
+  startupOrchestration: AwisWorkspaceStartupOrchestrationProjection | null
+  memoryConsolidation: AwisWorkspaceMemoryConsolidationProjection | null
+  impactMap: AwisWorkspaceImpactMapProjection | null
+  semanticIndex: AwisWorkspaceSemanticIndexProjection | null
+  taskRouter: AwisWorkspaceTaskRouterProjection | null
+  retention: AwisWorkspaceRetentionProjection | null
+  memoryFreshness: AwisWorkspaceMemoryFreshnessProjection | null
+  componentMemory: AwisWorkspaceComponentMemoryProjection | null
+  contextKernel: AwisWorkspaceContextKernelProjection | null
+  spaces: AwisWorkspaceSpaceProjection | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+}): AwisWorkspacePreflightProjection | null {
+  const validationCommands = unique([
+    ...(input.executionDoctrine?.command_policy.revalidate ?? []),
+    ...(input.contextKernel?.validation_plan.commands ?? []),
+    ...(input.taskRouter?.routes.flatMap((route) => route.validate_with) ?? []),
+    ...(input.impactMap?.component_impacts.flatMap((impact) => impact.validation_cascade) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const evidence = unique([
+    ...(input.memoryConsolidation?.next_session_seed ?? []),
+    ...(input.retention?.lifecycle.keep_hot ?? []),
+    ...(input.semanticIndex?.query_aliases.slice(0, 3).map((alias) => `semântico:${alias.alias}`) ?? []),
+    ...(input.componentMemory?.strongest_components.slice(0, 3).map((component) => `área:${component.key}:${component.maturity}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const highImpact = (input.impactMap?.component_impacts ?? [])
+    .filter((impact) => impact.risk === 'high')
+    .slice(0, 3)
+  const staleMemory = input.memoryFreshness?.state === 'cold' || input.memoryFreshness?.state === 'stale'
+  const requiresHuman = input.startupOrchestration?.revalidation_gate.needs_human_confirmation === true
+    || input.contextKernel?.validation_plan.requires_human_confirmation === true
+    || highImpact.length > 0
+
+  const gates: AwisWorkspacePreflightProjection['gates'] = [
+    {
+      gate: 'context',
+      status: input.workspaceRootKnown || evidence.length > 0 ? (staleMemory ? 'warn' : 'ready') : 'blocked',
+      label: input.workspaceRootKnown ? 'pasta e memória disponíveis' : 'vincular pasta ou usar artifact replay',
+      required: true,
+      evidence: unique([
+        ...(input.workspaceRootKnown ? ['pasta local pronta'] : []),
+        ...(input.artifactReplay ? ['artifact replay disponível'] : []),
+        ...evidence.slice(0, 4),
+      ]).slice(0, MAX_STARTUP_ITEMS),
+    },
+    {
+      gate: 'evidence',
+      status: evidence.length > 0 || input.memoryConsolidation ? (staleMemory ? 'warn' : 'ready') : 'warn',
+      label: staleMemory ? 'revalidar memória antes de confiar' : 'usar evidências promovidas',
+      required: true,
+      evidence: unique([
+        ...(input.memoryConsolidation?.consolidate.promote_to_gold.slice(0, 3) ?? []),
+        ...(input.retention?.lifecycle.revalidate.slice(0, 3) ?? []),
+        ...(input.memoryFreshness?.evidence.revalidate.slice(0, 3) ?? []),
+      ]).slice(0, MAX_STARTUP_ITEMS),
+    },
+    {
+      gate: 'impact',
+      status: highImpact.length > 0 ? 'warn' : input.impactMap ? 'ready' : 'warn',
+      label: highImpact[0] ? `impacto alto em ${highImpact[0].component_key}` : 'raio de impacto calculado',
+      required: validationCommands.length > 0,
+      evidence: unique([
+        ...(input.impactMap?.component_impacts.slice(0, 4).map((impact) => `${impact.component_key}:${impact.risk}`) ?? []),
+        ...(input.impactMap?.cross_workspace_impacts.slice(0, 2).map((impact) => `workspace:${impact.workspace_hint}`) ?? []),
+      ]).slice(0, MAX_STARTUP_ITEMS),
+    },
+    {
+      gate: 'validation',
+      status: validationCommands.length > 0 ? 'ready' : 'warn',
+      label: validationCommands[0] ?? 'definir validação mínima antes de alterar',
+      required: true,
+      evidence: validationCommands,
+    },
+    {
+      gate: 'human',
+      status: requiresHuman ? 'warn' : 'ready',
+      label: requiresHuman ? 'confirmação humana para risco ou side effect' : 'sem confirmação humana pendente',
+      required: requiresHuman,
+      evidence: unique([
+        ...(input.executionDoctrine?.preflight.human_responsibility ?? []),
+        ...(highImpact.map((impact) => `impacto:${impact.component_key}:${impact.reason}`)),
+      ]).slice(0, MAX_STARTUP_ITEMS),
+    },
+    {
+      gate: 'learning',
+      status: input.memoryConsolidation || input.startupOrchestration?.learning_loop.capture_outcome ? 'ready' : 'warn',
+      label: 'registrar outcome e atualizar memória',
+      required: true,
+      evidence: unique([
+        ...(input.memoryConsolidation?.learning_loop.capture_after_send ?? []),
+        ...(input.startupOrchestration?.learning_loop.update_space_pack ? ['atualizar pack do Space'] : []),
+        ...(input.startupOrchestration?.learning_loop.preserve_artifact_after_success ? ['preservar artifact após sucesso'] : []),
+      ]).slice(0, MAX_STARTUP_ITEMS),
+    },
+  ]
+
+  const blockedCount = gates.filter((gate) => gate.status === 'blocked').length
+  const warnCount = gates.filter((gate) => gate.status === 'warn').length
+  const readiness = normalizePercent(
+    100
+    - blockedCount * 34
+    - warnCount * 10
+    + Math.min(12, evidence.length * 2)
+    + Math.min(12, validationCommands.length * 2),
+  )
+  const mode: AwisWorkspacePreflightProjection['mode'] = blockedCount > 0
+    ? 'blocked'
+    : warnCount > 1
+      ? 'guarded'
+      : 'ready'
+
+  const beforeSend = unique([
+    ...(input.startupOrchestration?.startup_sequence.filter((item) => item.required).map((item) => `${item.step}:${item.label}`) ?? []),
+    ...(input.startupOrchestration?.revalidation_gate.required_before_send.map((item) => `revalidar:${item}`) ?? []),
+    ...(input.memoryConsolidation?.next_session_seed.slice(0, 4).map((item) => `seed:${item}`) ?? []),
+    ...(input.semanticIndex?.retrieval_policy.load_full_when.slice(0, 3).map((item) => `semântico:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const beforeExecution = unique([
+    ...(input.executionDoctrine?.preflight.required_before_execution ?? []),
+    ...validationCommands,
+    ...(highImpact.map((impact) => `validar impacto:${impact.component_key}`)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const afterSuccess = unique([
+    ...(input.memoryConsolidation?.consolidate.promote_to_gold.slice(0, 4) ?? []),
+    ...(input.memoryConsolidation?.consolidate.archive_as_artifact.slice(0, 3).map((item) => `artifact:${item}`) ?? []),
+    ...(input.startupOrchestration?.learning_loop.update_space_pack ? ['atualizar Space/context pack'] : []),
+    'registrar outcome com componentKeys',
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const afterFailure = unique([
+    ...(input.memoryConsolidation?.learning_loop.recalibrate_after_failure ?? []),
+    ...(input.executionDoctrine?.learning_contract.demote_after_failure ?? []),
+    ...(input.retention?.lifecycle.revalidate.map((item) => `revalidar:${item}`) ?? []),
+    'não promover contexto sem evidência',
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+
+  if (gates.length === 0 && beforeSend.length === 0 && beforeExecution.length === 0) return null
+
+  return {
+    schema_version: 'atlas.awis.workspace_preflight_projection.v1',
+    source: 'local_awis_preflight_compiler',
+    readiness_score: readiness,
+    mode,
+    gates,
+    execution_lanes: {
+      before_send: beforeSend,
+      before_execution: beforeExecution,
+      after_success: afterSuccess,
+      after_failure: afterFailure,
+    },
+    promotion_contract: {
+      promote_when: unique([
+        ...(input.executionDoctrine?.learning_contract.promote_after_success ?? []),
+        ...(input.memoryConsolidation?.consolidate.promote_to_gold ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      demote_when: unique([
+        ...(input.executionDoctrine?.learning_contract.demote_after_failure ?? []),
+        ...(input.memoryConsolidation?.consolidate.never_promote ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      preserve_as_artifact: Boolean(input.startupOrchestration?.learning_loop.preserve_artifact_after_success || input.memoryConsolidation?.consolidate.archive_as_artifact.length),
+      update_space_pack: Boolean(input.startupOrchestration?.learning_loop.update_space_pack || input.spaces?.space_count),
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+export function buildAwisWorkspaceTwinProjection(input: {
+  workspaceKey: string
+  topology: AwisWorkspaceTopologyProjection | null
+  componentMemory: AwisWorkspaceComponentMemoryProjection | null
+  semanticIndex: AwisWorkspaceSemanticIndexProjection | null
+  impactMap: AwisWorkspaceImpactMapProjection | null
+  executionDoctrine: AwisWorkspaceExecutionDoctrineProjection | null
+  memoryFreshness: AwisWorkspaceMemoryFreshnessProjection | null
+  sessionGold: AwisWorkspaceSessionGoldProjection | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+  preflight: AwisWorkspacePreflightProjection | null
+}): AwisWorkspaceTwinProjection | null {
+  const components = input.componentMemory?.strongest_components ?? []
+  const topologyComponents = input.topology?.components ?? []
+  if (components.length === 0 && topologyComponents.length === 0) return null
+
+  const stack = unique([
+    ...(input.topology?.components.flatMap((component) => component.stack) ?? []),
+    ...(input.semanticIndex?.stack_map.map((item) => item.stack) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const apps = unique((components.length > 0 ? components : topologyComponents).map((component) => component.key))
+    .map(sanitizeComponentKey)
+    .filter(isString)
+    .slice(0, MAX_TOPOLOGY_COMPONENTS)
+  const ownerDocs = unique([
+    ...(input.topology?.knowledge_map.load_first_docs ?? []),
+    ...(input.topology?.components.flatMap((component) => component.docs) ?? []),
+    ...(components.flatMap((component) => component.docs) ?? []),
+  ].map(sanitizeRelativePath).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const commands = unique([
+    ...(input.topology?.execution_map.test_commands ?? []),
+    ...(input.topology?.execution_map.check_commands ?? []),
+    ...(input.topology?.execution_map.build_commands ?? []),
+    ...(components.flatMap((component) => component.commands) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const testFamilies = unique(commands
+    .filter((command) => /test|spec|phpunit|vitest|jest|tsx --test|tsc|lint|check/i.test(command))
+    .map((command) => {
+      if (/php|artisan|phpunit/i.test(command)) return 'php/laravel'
+      if (/tsx --test|vitest|jest|npm|pnpm|tsc|lint/i.test(command)) return 'typescript/desktop'
+      return 'validation'
+    })).slice(0, MAX_STARTUP_ITEMS)
+  const riskZones = unique([
+    ...(input.impactMap?.component_impacts
+      .filter((impact) => impact.risk !== 'low')
+      .map((impact) => `${impact.component_key}:${impact.risk}`) ?? []),
+    ...(components.flatMap((component) => component.cautions.map((caution) => `${component.key}:${caution}`)) ?? []),
+    ...(input.memoryFreshness?.evidence.revalidate.map((item) => `frescor:${item}`) ?? []),
+    ...(input.preflight?.gates.filter((gate) => gate.status !== 'ready').map((gate) => `pré-voo:${gate.gate}:${gate.label}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const liveComponents = (components.length > 0
+    ? components.map((component) => ({
+        key: component.key,
+        role: component.role,
+        maturity: component.maturity,
+        confidence: component.confidence,
+      }))
+    : topologyComponents.map((component) => ({
+        key: component.key,
+        role: component.role,
+        maturity: 'learning' as const,
+        confidence: component.confidence,
+      })))
+    .slice(0, MAX_TOPOLOGY_COMPONENTS)
+  const fragileAreas = unique([
+    ...(components.filter((component) => component.reuse_policy.validate_before_execution).map((component) => component.key)),
+    ...(input.impactMap?.component_impacts.filter((impact) => impact.risk === 'high').map((impact) => impact.component_key) ?? []),
+  ]).slice(0, MAX_STARTUP_ITEMS)
+  const validate = unique([
+    ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
+    ...(input.impactMap?.component_impacts.flatMap((impact) => impact.validation_cascade) ?? []),
+    ...(input.executionDoctrine?.command_policy.revalidate ?? []),
+    ...(input.preflight?.execution_lanes.before_execution ?? []),
+    ...commands.filter((command) => /test|tsc|lint|check|build/i.test(command)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const loadFirst = unique([
+    ...(components.filter((component) => component.reuse_policy.can_autoload).flatMap((component) => component.load_first) ?? []),
+    ...(input.preflight?.execution_lanes.before_send ?? []),
+    ...(input.topology?.knowledge_map.load_first_docs.map((doc) => `doc:${doc}`) ?? []),
+    ...(input.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+    ...ownerDocs.map((doc) => `doc:${doc}`),
+    ...apps.slice(0, 3).map((app) => `área:${app}`),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const summarize = unique([
+    ...(components.filter((component) => !component.reuse_policy.can_autoload).map((component) => `área:${component.key}`) ?? []),
+    ...(input.topology?.knowledge_map.summarize_only.map((item) => `resumo:${item}`) ?? []),
+    ...(input.artifactReplay?.reusable_startup_gold.reusable_patterns.slice(0, 3).map((item) => `artifact:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const avoid = unique([
+    input.topology?.root.scan_truncated ? 'varredura bruta completa sem foco' : null,
+    ...(input.topology?.knowledge_map.sensitive_zones.map((zone) => `sensível:${zone}`) ?? []),
+    ...(input.executionDoctrine?.command_policy.avoid ?? []),
+    ...(input.preflight?.gates.filter((gate) => gate.status === 'blocked').map((gate) => `bloqueado:${gate.label}`) ?? []),
+    'paths absolutos do Mac',
+    'conversa bruta como contexto principal',
+  ].filter(isString).map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const learnedFromOutcomes = unique([
+    ...(input.sessionGold?.strongest_outcomes.map((outcome) => `ouro:${outcome.label}:${outcome.confidence}`) ?? []),
+    ...(input.sessionGold?.proven_commands.map((command) => `comando:${command.command}:${command.success_count}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const stale = input.memoryFreshness?.state === 'stale' || input.memoryFreshness?.state === 'cold'
+  const readiness = normalizePercent(
+    34
+    + Math.min(18, stack.length * 3)
+    + Math.min(18, liveComponents.length * 4)
+    + Math.min(14, validate.length * 2)
+    + Math.min(10, learnedFromOutcomes.length * 2)
+    - (stale ? 16 : 0)
+    - Math.min(12, riskZones.length * 2),
+  )
+  const genomeSeed = JSON.stringify({ stack, apps, ownerDocs, commands, riskZones, testFamilies })
+  const codeMapSeed = JSON.stringify({ components: liveComponents, connections: input.topology?.connections ?? [] })
+  const commandSeed = JSON.stringify({ commands, validate })
+  const riskSeed = JSON.stringify({ riskZones, fragileAreas })
+
+  return {
+    schema_version: 'atlas.awis.workspace_twin_projection.v1',
+    source: 'local_awis_workspace_twin_compiler',
+    workspace_id: sanitizeComponentKey(input.workspaceKey) || 'workspace',
+    readiness_score: readiness,
+    stale,
+    hashes: {
+      genome_hash: `twin-${stableStringHash(genomeSeed)}`,
+      code_map_hash: `twin-${stableStringHash(codeMapSeed)}`,
+      command_registry_hash: `twin-${stableStringHash(commandSeed)}`,
+      risk_map_hash: `twin-${stableStringHash(riskSeed)}`,
+    },
+    genome: {
+      stack,
+      apps,
+      owner_docs: ownerDocs,
+      commands,
+      risk_zones: riskZones,
+      test_families: testFamilies,
+    },
+    live_map: {
+      components: liveComponents,
+      connections: (input.topology?.connections ?? []).map((connection) => `${connection.from}->${connection.to}:${connection.reason}`).slice(0, MAX_STARTUP_ITEMS),
+      fragile_areas: fragileAreas,
+    },
+    context_autopilot: {
+      load_first: loadFirst,
+      summarize,
+      validate,
+      avoid,
+      reason: stale
+        ? 'twin útil, mas memória precisa revalidação antes de executar'
+        : 'twin local compila mapa, comandos, riscos e aprendizado do workspace',
+    },
+    learning_loop: {
+      learned_from_outcomes: learnedFromOutcomes,
+      next_refresh: unique([
+        ...(input.memoryFreshness?.next_refresh.actions ?? []),
+        ...(input.preflight?.execution_lanes.after_success ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      reuse_next_session: unique([
+        ...loadFirst,
+        ...(input.artifactReplay?.reusable_startup_gold.reusable_patterns.slice(0, 3) ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+export function buildAwisWorkspaceLaunchContractProjection(input: {
+  startupOrchestration: AwisWorkspaceStartupOrchestrationProjection | null
+  preflight: AwisWorkspacePreflightProjection | null
+  workspaceTwin: AwisWorkspaceTwinProjection | null
+  memoryConsolidation: AwisWorkspaceMemoryConsolidationProjection | null
+  retention: AwisWorkspaceRetentionProjection | null
+  contextKernel: AwisWorkspaceContextKernelProjection | null
+  automation: AwisWorkspaceAutomationProjection | null
+  selfImprovement: AwisWorkspaceSelfImprovementProjection | null
+  providerStrategy: AwisWorkspaceProviderStrategyProjection | null
+  memoryFreshness: AwisWorkspaceMemoryFreshnessProjection | null
+  spaces: AwisWorkspaceSpaceProjection | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+}): AwisWorkspaceLaunchContractProjection | null {
+  const firstLoad = unique([
+    ...(input.startupOrchestration?.revalidation_gate.can_autoload ?? []),
+    ...(input.startupOrchestration?.startup_sequence.filter((item) => item.required).map((item) => `${item.step}:${item.label}`) ?? []),
+    ...(input.workspaceTwin?.context_autopilot.load_first ?? []),
+    ...(input.memoryConsolidation?.next_session_seed ?? []),
+    ...(input.retention?.lifecycle.keep_hot ?? []),
+    ...(input.contextKernel?.priority_load.slice(0, 4).map((item) => `${item.kind}:${item.label}`) ?? []),
+    ...(input.spaces?.strongest_spaces.slice(0, 2).map((space) => `Space:${space.title}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const validateBeforeTrust = unique([
+    ...(input.startupOrchestration?.revalidation_gate.required_before_send ?? []),
+    ...(input.preflight?.execution_lanes.before_execution ?? []),
+    ...(input.workspaceTwin?.context_autopilot.validate ?? []),
+    ...(input.memoryFreshness?.evidence.revalidate ?? []),
+    ...(input.contextKernel?.validation_plan.commands ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const summarizeOnly = unique([
+    ...(input.workspaceTwin?.context_autopilot.summarize ?? []),
+    ...(input.memoryConsolidation?.consolidate.summarize_only ?? []),
+    ...(input.contextKernel?.compression_plan.summarize ?? []),
+    ...(input.artifactReplay?.reusable_startup_gold.reusable_patterns.slice(0, 3).map((item) => `artifact:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const avoidLoading = unique([
+    ...(input.workspaceTwin?.context_autopilot.avoid ?? []),
+    ...(input.memoryConsolidation?.consolidate.never_promote ?? []),
+    ...(input.contextKernel?.compression_plan.omit ?? []),
+    ...(input.preflight?.gates.filter((gate) => gate.status === 'blocked').map((gate) => `bloqueado:${gate.label}`) ?? []),
+    ...(input.memoryFreshness?.state === 'stale' || input.memoryFreshness?.state === 'cold'
+      ? ['memória fria:usar só como resumo até revalidar']
+      : []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const promoteAfterSuccess = unique([
+    ...(input.preflight?.promotion_contract.promote_when ?? []),
+    ...(input.memoryConsolidation?.consolidate.promote_to_gold ?? []),
+    ...(input.selfImprovement?.promotion_policy.promote_when ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const demoteAfterFailure = unique([
+    ...(input.preflight?.promotion_contract.demote_when ?? []),
+    ...(input.memoryConsolidation?.consolidate.never_promote ?? []),
+    ...(input.selfImprovement?.promotion_policy.demote_when ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const beforeSend = unique([
+    ...firstLoad.map((item) => `carregar:${item}`),
+    ...(input.preflight?.execution_lanes.before_send ?? []),
+    ...(input.automation?.autopilot_context.before_send ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const afterSuccess = unique([
+    ...(input.preflight?.execution_lanes.after_success ?? []),
+    ...(input.memoryConsolidation?.learning_loop.capture_after_send ?? []),
+    ...(input.startupOrchestration?.learning_loop.update_space_pack ? ['atualizar Space/context pack'] : []),
+    ...(input.startupOrchestration?.learning_loop.preserve_artifact_after_success ? ['preservar artifact de partida'] : []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const afterFailure = unique([
+    ...(input.preflight?.execution_lanes.after_failure ?? []),
+    ...(input.memoryConsolidation?.learning_loop.recalibrate_after_failure ?? []),
+    ...(input.retention?.lifecycle.revalidate.map((item) => `revalidar:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const recoveryDemoteContext = unique([
+    ...demoteAfterFailure,
+    ...(input.memoryConsolidation?.consolidate.revalidate.map((item) => `revalidar:${item}`) ?? []),
+    ...(input.memoryFreshness?.evidence.revalidate.map((item) => `frescor:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const recoverySafeResume = unique([
+    ...(validateBeforeTrust[0] ? [`validar:${validateBeforeTrust[0]}`] : []),
+    ...(firstLoad[0] ? [`retomar:${firstLoad[0]}`] : []),
+    ...(input.providerStrategy?.fallback_order.slice(0, 2).map((provider) => `provider:${provider}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const maintenanceActions = unique([
+    ...(input.automation?.maintenance_queue.map((item) => `${item.action}:${item.label}`) ?? []),
+    ...(input.selfImprovement?.improvement_queue.map((item) => `${item.action}:${item.label}`) ?? []),
+    ...(input.memoryFreshness?.next_refresh.actions.map((item) => `frescor:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const confirmBefore = unique([
+    ...(input.preflight?.gates.filter((gate) => gate.required && gate.status !== 'ready').map((gate) => `${gate.gate}:${gate.label}`) ?? []),
+    ...(input.contextKernel?.validation_plan.requires_human_confirmation ? ['mudança com risco ou side effect'] : []),
+    ...(input.startupOrchestration?.revalidation_gate.needs_human_confirmation ? ['partida pede confirmação humana'] : []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const humanOwns = unique([
+    ...(input.preflight?.gates.filter((gate) => gate.gate === 'human').flatMap((gate) => gate.evidence) ?? []),
+    ...(input.workspaceTwin?.live_map.fragile_areas.map((area) => `área frágil:${area}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const doNotDelegate = unique([
+    'aprovar execução destrutiva',
+    'promover contexto sem evidência',
+    ...avoidLoading.slice(0, 4),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const readiness = normalizePercent(Math.max(
+    input.startupOrchestration?.readiness_score ?? 0,
+    input.preflight?.readiness_score ?? 0,
+    input.workspaceTwin?.readiness_score ?? 0,
+    input.contextKernel?.readiness_score ?? 0,
+  ))
+  const launchMode: AwisWorkspaceLaunchContractProjection['launch_mode'] = input.preflight?.mode === 'blocked'
+    ? 'guarded'
+    : input.startupOrchestration?.launch_mode ?? (readiness >= 78 ? 'deep' : readiness >= 45 ? 'warm' : 'guarded')
+  const loadOrder = unique([
+    ...firstLoad,
+    ...(input.startupOrchestration?.startup_sequence.map((item) => `${item.step}:${item.source}:${item.label}`) ?? []),
+    ...(input.workspaceTwin?.learning_loop.reuse_next_session ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const seedHash = `launch-${stableStringHash(JSON.stringify({
+    firstLoad,
+    validateBeforeTrust,
+    summarizeOnly,
+    avoidLoading,
+    promoteAfterSuccess,
+    demoteAfterFailure,
+    maintenanceActions,
+  }))}`
+  if (firstLoad.length === 0 && validateBeforeTrust.length === 0 && maintenanceActions.length === 0) return null
+  return {
+    schema_version: 'atlas.awis.workspace_launch_contract_projection.v1',
+    source: 'local_awis_launch_contract_compiler',
+    readiness_score: readiness,
+    launch_mode: launchMode,
+    seed_hash: seedHash,
+    startup_contract: {
+      never_start_cold: true,
+      first_load: firstLoad,
+      validate_before_trust: validateBeforeTrust,
+      summarize_only: summarizeOnly,
+      avoid_loading: avoidLoading,
+      promote_after_success: promoteAfterSuccess,
+      demote_after_failure: demoteAfterFailure,
+      preserve_artifact_after_success: Boolean(input.startupOrchestration?.learning_loop.preserve_artifact_after_success || input.preflight?.promotion_contract.preserve_as_artifact),
+      update_space_pack: Boolean(input.startupOrchestration?.learning_loop.update_space_pack || input.preflight?.promotion_contract.update_space_pack || input.spaces?.space_count),
+      needs_human_confirmation: confirmBefore.length > 0,
+    },
+    automation_contract: {
+      before_send: beforeSend,
+      after_success: afterSuccess,
+      after_failure: afterFailure,
+      maintenance_actions: maintenanceActions,
+    },
+    recovery_contract: {
+      demote_context: recoveryDemoteContext,
+      safe_resume: recoverySafeResume,
+      reason: recoveryDemoteContext.length > 0
+        ? 'falhas ou contexto stale exigem revalidação antes de promover memória'
+        : 'sem falha crítica recente; usar validação padrão antes de retry',
+    },
+    human_contract: {
+      owns: humanOwns,
+      confirm_before: confirmBefore,
+      do_not_delegate: doNotDelegate,
+    },
+    next_conversation: {
+      load_order: loadOrder,
+      context_budget: {
+        max_items: input.startupOrchestration?.context_budget.max_items ?? input.contextKernel?.budget.max_context_items ?? (launchMode === 'deep' ? MAX_STARTUP_ITEMS : 5),
+        prefer_summary: Boolean(input.startupOrchestration?.context_budget.prefer_summary || validateBeforeTrust.length > 0 || summarizeOnly.length > 0),
+        reason: input.startupOrchestration?.context_budget.reason
+          ?? input.contextKernel?.budget.reason
+          ?? 'contrato de partida AWIS compila memória, Spaces, artifacts e validação',
+      },
+      provider_note: input.providerStrategy?.preferred[0]?.reason
+        ?? 'usar contexto provider-safe e aprender pelo outcome da sessão',
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
 export function buildAwisWorkspaceTaskContextProjection(
   pack: AwisWorkspaceContextPack | null | undefined,
   userInput: string | null | undefined,
@@ -5778,11 +7462,15 @@ export function buildAwisWorkspaceTaskContextProjection(
   const folderFocus = buildFolderFocusPlan(pack, taskKind, selectedTopologyComponents, componentContextPacks)
   const taskGold = buildTaskGoldSelection(pack, taskKind, fallbackComponents, folderFocus)
   const workingSet = {
-    files: unique(selectedTopologyComponents.flatMap((component) => component.manifests))
+    files: unique([
+      ...selectedTopologyComponents.flatMap((component) => component.manifests),
+      ...(topology?.knowledge_map.manifest_refs ?? []),
+    ])
       .map(sanitizeRelativePath)
       .filter(isString)
       .slice(0, MAX_STARTUP_ITEMS),
     docs: unique([
+      ...(topology?.knowledge_map.load_first_docs ?? []),
       ...selectedTopologyComponents.flatMap((component) => component.docs),
       ...(pack.startup_briefing?.focus.owner_docs ?? []),
       ...(topology?.components.flatMap((component) => component.docs) ?? []),
@@ -5790,16 +7478,22 @@ export function buildAwisWorkspaceTaskContextProjection(
       .map(sanitizeRelativePath)
       .filter(isString)
       .slice(0, MAX_STARTUP_ITEMS),
-    commands: unique(selectedTopologyComponents.flatMap((component) => component.commands.map((command) => command.command)))
+    commands: unique([
+      ...(topology?.knowledge_map.validation_entrypoints ?? []),
+      ...(topology?.knowledge_map.runtime_entrypoints ?? []),
+      ...selectedTopologyComponents.flatMap((component) => component.commands.map((command) => command.command)),
+    ])
       .concat(semanticMatches.flatMap((match) => match.validate))
       .slice(0, MAX_STARTUP_ITEMS),
     reason: fallbackComponents[0]?.why ?? 'working set derivado do mapa de pasta AWIS',
   }
   const validationCommands = unique([
+    ...(pack.artifact_replay?.cold_start_seed.validate_with ?? []),
     ...(pack.learning?.task_memory.validation_plans
       .filter((plan) => plan.task_kind === taskKind && plan.confidence >= 60)
       .flatMap((plan) => plan.commands) ?? []),
     ...(pack.context_kernel?.validation_plan.commands ?? []),
+    ...(topology?.knowledge_map.validation_entrypoints ?? []),
     ...(pack.self_improvement?.next_review.validate_with ?? []),
     ...(pack.startup_orchestration?.startup_sequence
       .filter((item) => item.step === 'validate')
@@ -5811,8 +7505,13 @@ export function buildAwisWorkspaceTaskContextProjection(
     ...(taskRoute?.validate_with ?? []),
     ...semanticMatches.flatMap((match) => match.validate),
     ...impactRadius.validation_cascade,
+    ...(pack.workspace_mesh?.next_conversation.validate_with ?? []),
+    ...(pack.repository_constellation?.next_conversation.validate_with ?? []),
+    ...(pack.current_truth_pack?.proof.validate_with ?? []),
+    ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
   ]).slice(0, MAX_STARTUP_ITEMS)
   const cautions = unique([
+    ...(pack.artifact_replay?.cold_start_seed.warnings.map((item) => `partida fria:${item}`) ?? []),
     ...(pack.learning?.caution_signals ?? []),
     ...(pack.startup_playbook?.risk_controls ?? []),
     ...(pack.startup_briefing?.automation_plan.warnings ?? []),
@@ -5822,14 +7521,28 @@ export function buildAwisWorkspaceTaskContextProjection(
     ...(pack.memory_freshness?.evidence.revalidate.map((item) => `frescor:${item}`) ?? []),
     ...(pack.retention?.lifecycle.revalidate.map((item) => `retenção:${item}`) ?? []),
     ...(pack.startup_orchestration?.revalidation_gate.required_before_send.map((item) => `partida:${item}`) ?? []),
+    ...(topology?.knowledge_map.sensitive_zones.map((zone) => `pasta sensível:${zone}`) ?? []),
+    ...(topology?.knowledge_map.summarize_only.map((item) => `pasta resumida:${item}`) ?? []),
     ...(taskRoute?.automation_hooks.after_failure.map((item) => `rota:${item}`) ?? []),
     ...(pack.semantic_index?.retrieval_policy.revalidate_when.map((item) => `semântico:${item}`) ?? []),
+    ...(pack.preflight?.gates.filter((gate) => gate.status !== 'ready').map((gate) => `pré-voo:${gate.gate}:${gate.label}`) ?? []),
+    ...(pack.workspace_twin?.stale ? ['twin:revalidar antes de executar'] : []),
+    ...(pack.artifact_replay?.cold_start_seed.human_boundary.map((item) => `humano:${item}`) ?? []),
+    ...(pack.workspace_mesh?.next_conversation.human_boundary.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.repository_constellation?.next_conversation.human_boundary.map((item) => `repo:${item}`) ?? []),
+    ...(pack.current_truth_pack?.proof.stale_or_unproven.map((item) => `truth:${item}`) ?? []),
   ]).slice(0, MAX_STARTUP_ITEMS)
   const evidenceGate = buildTaskEvidenceGate(pack, taskKind, taskGold, componentContextPacks, validationCommands, cautions)
   const taskContextBudget = buildTaskContextBudget(pack, taskKind, folderFocus, componentContextPacks, evidenceGate)
   const recoveryPlaybook = buildTaskRecoveryPlaybook(pack, taskKind, evidenceGate, taskContextBudget, validationCommands)
   const loadOrder = unique([
+    ...(pack.living_graph?.golden_path ?? []),
+    ...semanticMatches.flatMap((match) => match.load.map((item) => `semântico:${match.alias}:${item}`)),
+    ...(topology?.knowledge_map.load_first_docs.map((path) => `doc-guia:${path}`) ?? []),
+    ...(topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
     ...(pack.startup_orchestration?.startup_sequence.map((item) => `${item.step}:${item.label}`) ?? []),
+    ...(pack.preflight?.execution_lanes.before_send.map((item) => `pré-voo:${item}`) ?? []),
+    ...(pack.workspace_twin?.context_autopilot.load_first.map((item) => `twin:${item}`) ?? []),
     ...(selectedComponentMemory.flatMap((component) => component.load_first.map((item) => `área:${component.key}:${item}`))),
     ...(pack.memory_freshness?.state === 'stale' || pack.memory_freshness?.state === 'cold'
       ? pack.memory_freshness.next_refresh.actions.map((action) => `frescor:${action}`)
@@ -5837,11 +7550,10 @@ export function buildAwisWorkspaceTaskContextProjection(
     ...(pack.retention?.lifecycle.keep_hot.map((item) => `retenção:${item}`) ?? []),
     ...(pack.self_improvement?.improvement_queue.map((item) => `melhoria:${item.action}:${item.label}`) ?? []),
     ...(pack.context_kernel?.priority_load.map((item) => `${item.kind}:${item.label}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.load_order.map((item) => `seed:${item}`) ?? []),
     ...(taskRoute?.load_first ?? []),
-    ...semanticMatches.flatMap((match) => match.load.map((item) => `semântico:${match.alias}:${item}`)),
     impactRadius.primary_component ? `impacto:${impactRadius.primary_component}:${impactRadius.reason}` : null,
     folderFocus.primary_component ? `pasta foco:${folderFocus.primary_component}` : null,
-    ...(pack.living_graph?.golden_path ?? []),
     ...(pack.continuity?.next_session_plan.first_load ?? []),
     taskKind === 'bug_fix' || taskKind === 'code_change' ? 'mapa de componentes' : null,
     ...(pack.startup_briefing?.focus.load_sequence ?? []),
@@ -5849,7 +7561,9 @@ export function buildAwisWorkspaceTaskContextProjection(
     ...(pack.startup_playbook?.context_loading.must_load ?? []),
     pack.spaces?.strongest_spaces[0] ? 'Space mais forte' : null,
     pack.artifact_replay ? 'replay de artefatos' : null,
-  ].filter(isString)).slice(0, MAX_STARTUP_ITEMS * 7)
+    ...(pack.workspace_mesh?.next_conversation.load_order.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.current_truth_pack?.next_conversation.load_first.map((item) => `truth:${item}`) ?? []),
+  ].filter(isString)).slice(0, MAX_STARTUP_ITEMS * 10)
   const spaces = (pack.spaces?.strongest_spaces ?? [])
     .filter((space) => taskKind !== 'unknown' || space.session_count >= 2)
     .map((space) => `${space.title} · ${space.session_count} sessões`)
@@ -5887,17 +7601,27 @@ export function buildAwisWorkspaceTaskContextProjection(
       impact_radius: impactRadius,
       spaces,
       artifacts: unique([
+        pack.live_execution_memory?.memory_hash ?? null,
         ...(pack.continuity?.hot_context.artifacts ?? []),
         ...(pack.startup_briefing?.context_gold.artifact_refs ?? []),
         ...(pack.living_graph?.nodes.filter((node) => node.kind === 'artifact').map((node) => node.label) ?? []),
+        pack.current_truth_pack?.truth_hash ?? null,
+        pack.artifact_replay?.cold_start_seed.seed_hash ?? null,
         pack.artifact_lake?.latest_artifact_hash ?? null,
         pack.artifact_replay?.latest_artifact_hash ?? null,
       ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
       owner_docs: pack.startup_briefing?.focus.owner_docs.slice(0, MAX_STARTUP_ITEMS) ?? [],
       related_workspace_hints: unique([
+        ...(pack.artifact_replay?.cold_start_seed.repository_hints.map((hint) => `seed:${hint}`) ?? []),
+        ...(pack.current_truth_pack?.current_truth.mesh_routes.map((route) => `truth:${route}`) ?? []),
+        ...(pack.repository_constellation?.repositories.map((repo) => `repo:${repo.key}:${repo.maturity}`) ?? []),
+        ...(pack.repository_constellation?.bridges.map((bridge) => `repo-bridge:${bridge.from}->${bridge.to}`) ?? []),
+        ...(pack.workspace_mesh?.routes.map((route) => `mesh:${route.workspace_hint}:${route.relationship}`) ?? []),
         ...(pack.relations?.related_workspaces.map((workspace) => workspace.workspace_hint) ?? []),
         ...(pack.living_graph?.nodes.filter((node) => node.kind === 'related_workspace').map((node) => node.label) ?? []),
         ...(pack.relations?.transfer_matrix.map((item) => `transfer:${item.workspace_hint}:${item.reuse[0] ?? 'provider-safe'}`) ?? []),
+        ...(pack.live_execution_memory?.workspace_learning.repositories.map((repo) => `live-repo:${repo}`) ?? []),
+        ...(pack.live_execution_memory?.workspace_learning.components.map((component) => `live-component:${component}`) ?? []),
       ]).slice(0, MAX_STARTUP_ITEMS),
     },
     execution_plan: {
@@ -5908,7 +7632,9 @@ export function buildAwisWorkspaceTaskContextProjection(
         ...(pack.execution_doctrine?.doctrine_drivers
           .filter((driver) => driver.required && driver.applies_to.includes(taskKind))
           .map((driver) => `${driver.name}:${driver.gate}`) ?? []),
-      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+        ...(pack.preflight?.gates.filter((gate) => gate.required).map((gate) => `pré-voo:${gate.gate}:${gate.status}:${gate.label}`) ?? []),
+        ...(pack.workspace_twin?.context_autopilot.validate.map((item) => `twin:${item}`) ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2),
       validation_commands: validationCommands,
       commands_to_avoid: unique([
         ...selectedComponentMemory
@@ -5927,6 +7653,8 @@ export function buildAwisWorkspaceTaskContextProjection(
         ...(taskRoute?.avoid_loading ?? []),
         ...(pack.semantic_index?.retrieval_policy.never_load_raw ?? []),
         ...(impactRadius.risk === 'high' ? [`impacto alto:${impactRadius.reason}`] : []),
+        ...(pack.preflight?.gates.filter((gate) => gate.status === 'blocked').map((gate) => `pré-voo bloqueado:${gate.label}`) ?? []),
+        ...(pack.workspace_twin?.context_autopilot.avoid.map((item) => `twin:${item}`) ?? []),
       ]).slice(0, MAX_STARTUP_ITEMS),
       recovery_playbook: recoveryPlaybook,
       requires_local_folder: pack.workspace.root_path_known && (taskKind === 'bug_fix' || taskKind === 'code_change' || validationCommands.length > 0),
@@ -5936,7 +7664,48 @@ export function buildAwisWorkspaceTaskContextProjection(
       update_command_confidence: true,
       watch_for_workspace_drift: pack.startup_playbook?.learning_hooks.watch_for_drift === true
         || pack.context_kernel?.learning_contract.refresh_folder_map_on_drift === true,
-      next_session_contract: nextSessionContract,
+      next_session_contract: {
+      first_load: unique([
+          ...(pack.artifact_replay?.cold_start_seed.load_order ?? []),
+          ...(topology?.knowledge_map.load_first_docs.map((path) => `doc-guia:${path}`) ?? []),
+          ...(topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+          ...nextSessionContract.first_load,
+          ...(pack.preflight?.execution_lanes.before_send ?? []),
+          ...(pack.workspace_twin?.learning_loop.reuse_next_session ?? []),
+          ...(pack.workspace_mesh?.next_conversation.load_order ?? []),
+          ...(pack.repository_constellation?.next_conversation.load_first ?? []),
+          ...(pack.current_truth_pack?.next_conversation.load_first ?? []),
+          ...(pack.live_execution_memory?.startup_packet.load_first ?? []),
+        ]).slice(0, MAX_STARTUP_ITEMS),
+      validate_with: unique([
+          ...(pack.artifact_replay?.cold_start_seed.validate_with ?? []),
+          ...(topology?.knowledge_map.validation_entrypoints ?? []),
+          ...(pack.preflight?.execution_lanes.before_execution ?? []),
+          ...(pack.workspace_twin?.context_autopilot.validate ?? []),
+          ...nextSessionContract.validate_with,
+          ...(pack.workspace_mesh?.next_conversation.validate_with ?? []),
+          ...(pack.repository_constellation?.next_conversation.validate_with ?? []),
+          ...(pack.current_truth_pack?.proof.validate_with ?? []),
+          ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
+        ]).slice(0, MAX_STARTUP_ITEMS),
+        preserve_as_artifact: nextSessionContract.preserve_as_artifact || pack.preflight?.promotion_contract.preserve_as_artifact === true,
+        promote_when: unique([
+          ...nextSessionContract.promote_when,
+          ...(pack.current_truth_pack?.next_conversation.promote_when ?? []),
+          ...(pack.repository_constellation?.learning_loop.promote_when ?? []),
+          ...(pack.artifact_replay?.cold_start_seed.automation_hooks ?? []),
+          ...(pack.workspace_mesh?.next_conversation.reuse_rules.map((item) => `mesh:${item}`) ?? []),
+          ...(pack.preflight?.promotion_contract.promote_when ?? []),
+          ...(pack.live_execution_memory?.promotion_rules.promote_to_gold ?? []),
+        ]).slice(0, MAX_STARTUP_ITEMS),
+        demote_when: unique([
+          ...nextSessionContract.demote_when,
+          ...(pack.current_truth_pack?.next_conversation.demote_when ?? []),
+          ...(pack.repository_constellation?.learning_loop.demote_when ?? []),
+          ...(pack.preflight?.promotion_contract.demote_when ?? []),
+          ...(pack.live_execution_memory?.promotion_rules.demote ?? []),
+        ]).slice(0, MAX_STARTUP_ITEMS),
+      },
     },
     risk: {
       cautions,
@@ -5965,6 +7734,15 @@ export function buildAwisWorkspaceProviderCapsule(
   if (!pack) return null
   const startup = pack.startup_orchestration
   const loadFirst = unique([
+    pack.live_execution_memory ? `live:${pack.live_execution_memory.memory_hash}` : null,
+    ...(pack.artifact_replay?.cold_start_seed.load_order.map((item) => `cold-start:${item}`) ?? []),
+    ...(pack.current_truth_pack ? [`truth:${pack.current_truth_pack.truth_hash}`] : []),
+    ...(pack.repository_constellation ? [`repo-constellation:${pack.repository_constellation.constellation_hash}`] : []),
+    ...(pack.workspace_mesh?.next_conversation.load_order.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.topology?.knowledge_map.load_first_docs.map((path) => `folder-doc:${path}`) ?? []),
+    ...(pack.topology?.knowledge_map.manifest_refs.map((path) => `folder-manifest:${path}`) ?? []),
+    ...(pack.launch_contract?.startup_contract.first_load.map((item) => `launch:${item}`) ?? []),
+    ...(pack.launch_contract?.next_conversation.load_order.slice(0, 4).map((item) => `launch-order:${item}`) ?? []),
     taskContext?.recommended_context.folder_focus.primary_component
       ? `pasta:${taskContext.recommended_context.folder_focus.primary_component}:${taskContext.recommended_context.folder_focus.load_scope}`
       : null,
@@ -5974,6 +7752,7 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(pack.memory_consolidation?.next_session_seed.slice(0, 4).map((item) => `seed:${item}`) ?? []),
     ...(taskContext?.recommended_context.folder_focus.include.map((item) => `pasta:${item}`) ?? []),
     ...(taskContext?.recommended_context.semantic_matches.flatMap((match) => match.load.map((item) => `semântico:${match.alias}:${item}`)) ?? []),
+    ...(taskContext?.recommended_context.impact_radius.affected_components.map((item) => `impacto:${item}`) ?? []),
     ...(taskContext?.recommended_context.load_order
       .filter((item) => /mapa de componentes/i.test(item))
       .slice(0, 2) ?? []),
@@ -5983,16 +7762,39 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(taskContext?.recommended_context.component_context_packs.flatMap((pack) => pack.load.map((item) => `pack:${pack.key}:${item}`)) ?? []),
     ...(taskContext?.recommended_context.context_budget.load_full.map((item) => `budget-full:${item}`) ?? []),
     ...(taskContext?.recommended_context.load_order ?? []),
+    ...(pack.preflight?.execution_lanes.before_send.map((item) => `pré-voo:${item}`) ?? []),
+    ...(pack.workspace_twin?.context_autopilot.load_first.map((item) => `twin:${item}`) ?? []),
+    ...(pack.relations?.connection_contracts
+      .filter((contract) => contract.confidence >= 60)
+      .flatMap((contract) => contract.load_when.map((item) => `conexão:${contract.workspace_hint}:${item}`)) ?? []),
     ...(startup?.startup_sequence.filter((item) => item.required).map((item) => `${item.step}:${item.label}`) ?? []),
     ...(pack.context_kernel?.priority_load.slice(0, 4).map((item) => `${item.kind}:${item.label}`) ?? []),
     ...(pack.retention?.lifecycle.keep_hot ?? []),
-  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 5)
+    ...(pack.repository_constellation?.next_conversation.load_first.map((item) => `repo:${item}`) ?? []),
+    ...(pack.current_truth_pack?.next_conversation.load_first.map((item) => `truth:${item}`) ?? []),
+    ...(pack.live_execution_memory?.startup_packet.load_first.map((item) => `live:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 10)
   const useAsSummary = unique([
+    ...(pack.component_memory?.strongest_components.slice(0, 3).map((component) => `área:${component.key}:${component.maturity}:${component.role}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.seed_hash ? [`cold-start-seed:${pack.artifact_replay.cold_start_seed.seed_hash}:${pack.artifact_replay.cold_start_seed.readiness_score}`] : []),
+    ...(pack.artifact_replay?.cold_start_seed.context_signals.slice(0, 5).map((item) => `cold-context:${item}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.reuse_spaces.slice(0, 3).map((item) => `cold-space:${item}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.repository_hints.slice(0, 4).map((item) => `cold-repo:${item}`) ?? []),
+    ...(pack.current_truth_pack ? [`current-truth:${pack.current_truth_pack.truth_hash}:${pack.current_truth_pack.readiness_score}`] : []),
+    ...(pack.repository_constellation ? [`repository-constellation:${pack.repository_constellation.constellation_hash}:${pack.repository_constellation.readiness_score}`] : []),
+    ...(pack.current_truth_pack?.current_truth.must_keep.slice(0, 6).map((item) => `truth-keep:${item}`) ?? []),
+    ...(pack.current_truth_pack?.proof.evidence_refs.slice(0, 5).map((item) => `truth-evidence:${item}`) ?? []),
+    ...(pack.workspace_mesh ? [`workspace-mesh:${pack.workspace_mesh.mesh_hash}:${pack.workspace_mesh.readiness_score}`] : []),
+    ...(pack.workspace_mesh?.routes.slice(0, 6).map((route) => `mesh-route:${route.workspace_hint}:${route.relationship}:${route.confidence}`) ?? []),
+    ...(pack.workspace_mesh?.next_conversation.reuse_rules.slice(0, 5).map((item) => `mesh-reuse:${item}`) ?? []),
     ...(pack.provider_strategy?.preferred.slice(0, 3).map((item) => `provider:${item.policy}:${item.model ? `${item.provider}:${item.model}` : item.provider}:${item.reason}`) ?? []),
     ...(taskContext?.recommended_context.task_gold.map((item) => `task-gold:${item.kind}:${item.label}:${item.why}`) ?? []),
     ...(taskContext?.recommended_context.evidence_gate.trusted.map((item) => `evidência confiável:${item}`) ?? []),
     taskContext?.recommended_context.evidence_gate.reason
       ? `evidence-gate:${taskContext.recommended_context.evidence_gate.reason}`
+      : null,
+    taskContext?.recommended_context.context_budget.reason
+      ? `budget:${taskContext.recommended_context.context_budget.mode}:${taskContext.recommended_context.context_budget.reason}`
       : null,
     ...(pack.learning?.task_memory.validation_plans
       .filter((plan) => plan.confidence >= 60 && (!taskContext || plan.task_kind === taskContext.task_kind))
@@ -6001,7 +7803,21 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(pack.execution_doctrine?.doctrine_drivers.slice(0, 4).map((driver) => `doutrina:${driver.name}:${driver.reason}`) ?? []),
     ...(taskContext?.recommended_context.component_context_packs.map((pack) => `component-pack:${pack.key}:${pack.mode}:${pack.reason}`) ?? []),
     ...(taskContext?.recommended_context.semantic_matches.map((match) => `semantic-match:${match.alias}:${match.intent}:${match.confidence}`) ?? []),
-    ...(pack.component_memory?.strongest_components.slice(0, 3).map((component) => `área:${component.key}:${component.maturity}:${component.role}`) ?? []),
+    ...(taskContext ? [`impact-radius:${taskContext.recommended_context.impact_radius.primary_component}:${taskContext.recommended_context.impact_radius.risk}:${taskContext.recommended_context.impact_radius.reason}`] : []),
+    ...(pack.preflight?.gates.map((gate) => `preflight:${gate.gate}:${gate.status}:${gate.label}`) ?? []),
+    ...(pack.preflight ? [`preflight-mode:${pack.preflight.mode}:${pack.preflight.readiness_score}`] : []),
+    ...(pack.workspace_twin ? [`workspace-twin:${pack.workspace_twin.readiness_score}:${pack.workspace_twin.hashes.genome_hash}`] : []),
+    ...(pack.workspace_twin?.genome.apps.map((app) => `twin-app:${app}`) ?? []),
+    ...(pack.workspace_twin?.context_autopilot.summarize.map((item) => `twin-summary:${item}`) ?? []),
+    ...(pack.launch_contract ? [`launch-contract:${pack.launch_contract.launch_mode}:${pack.launch_contract.seed_hash}`] : []),
+    ...(pack.launch_contract?.startup_contract.summarize_only.map((item) => `launch-summary:${item}`) ?? []),
+    pack.launch_contract?.next_conversation.provider_note
+      ? `launch-provider:${pack.launch_contract.next_conversation.provider_note}`
+      : null,
+    ...(pack.relations?.connection_contracts.flatMap((contract) => [
+      `repo-connection:${contract.workspace_hint}:${contract.relationship}:${contract.confidence}`,
+      ...contract.reuse.slice(0, 3).map((item) => `repo-reuse:${contract.workspace_hint}:${item}`),
+    ]) ?? []),
     ...(taskContext?.recommended_context.working_set.files.map((item) => `arquivo:${item}`) ?? []),
     ...(taskContext?.recommended_context.working_set.docs.map((item) => `doc:${item}`) ?? []),
     ...(taskContext?.recommended_context.working_set.commands.map((item) => `comando:${item}`) ?? []),
@@ -6014,44 +7830,77 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(pack.relations?.transfer_matrix.flatMap((item) => item.reuse.slice(0, 3).map((reuse) => `transfer:${item.workspace_hint}:${reuse}`)) ?? []),
     ...(taskContext?.recommended_context.spaces.map((item) => `Space:${item}`) ?? []),
     ...(taskContext?.recommended_context.components.map((item) => `componente:${item.key}:${item.why}`) ?? []),
+    ...(pack.topology?.knowledge_map.command_sources.map((path) => `folder-command-source:${path}`) ?? []),
+    ...(pack.topology?.knowledge_map.runtime_entrypoints.map((command) => `folder-runtime:${command}`) ?? []),
+    ...(pack.topology?.knowledge_map.summarize_only.map((item) => `folder-summary:${item}`) ?? []),
+    ...(pack.repository_constellation?.repositories.slice(0, 5).map((repo) => `repo-node:${repo.key}:${repo.maturity}:${repo.role}`) ?? []),
+    ...(pack.repository_constellation?.bridges.slice(0, 5).map((bridge) => `repo-bridge:${bridge.from}->${bridge.to}:${bridge.reason}`) ?? []),
     ...(taskContext?.recommended_context.artifacts.map((item) => `artefato:${item}`) ?? []),
-    taskContext?.recommended_context.context_budget.reason
-      ? `budget:${taskContext.recommended_context.context_budget.mode}:${taskContext.recommended_context.context_budget.reason}`
-      : null,
     ...(pack.session_gold?.strongest_outcomes.slice(0, 3).map((item) => `ouro:${item.label}:${item.confidence}`) ?? []),
     ...(pack.memory_consolidation?.consolidate.rehearse_next.slice(0, 4).map((item) => `consolidar:${item}`) ?? []),
     ...(pack.memory_consolidation?.consolidate.archive_as_artifact.slice(0, 2).map((item) => `artifact-candidato:${item}`) ?? []),
+    ...(pack.live_execution_memory ? [`live-memory:${pack.live_execution_memory.memory_hash}:${pack.live_execution_memory.readiness_score}`] : []),
+    ...(pack.live_execution_memory?.startup_packet.use_as_summary.map((item) => `live-summary:${item}`) ?? []),
+    ...(pack.live_execution_memory?.workspace_learning.repositories.map((item) => `live-repo:${item}`) ?? []),
     ...(pack.artifact_replay?.reusable_startup_gold.reusable_patterns.slice(0, 4) ?? []),
-  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 5)
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 10)
   const validateWith = unique([
+    ...(taskContext?.execution_plan.validation_commands ?? []),
+    ...(taskContext?.execution_plan.preflight_gates.map((item) => `gate:${item}`) ?? []),
+    ...(taskContext?.recommended_context.component_context_packs.flatMap((pack) => pack.validate.map((item) => `pack:${pack.key}:${item}`)) ?? []),
+    ...(pack.preflight?.execution_lanes.before_execution.map((item) => `pré-execução:${item}`) ?? []),
+    ...(pack.preflight?.gates.filter((gate) => gate.status !== 'ready').map((gate) => `pré-voo:${gate.gate}:${gate.label}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.validate_with.map((item) => `cold-start:${item}`) ?? []),
+    ...(pack.workspace_twin?.context_autopilot.validate.map((item) => `twin:${item}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.human_boundary.map((item) => `humano:${item}`) ?? []),
+    ...(pack.topology?.knowledge_map.validation_entrypoints.map((command) => `folder-validation:${command}`) ?? []),
+    ...(pack.relations?.connection_contracts.flatMap((contract) => contract.validate.slice(0, 3).map((item) => `conexão:${contract.workspace_hint}:${item}`)) ?? []),
+    ...(pack.launch_contract?.startup_contract.validate_before_trust.map((item) => `launch:${item}`) ?? []),
+    ...(pack.launch_contract?.human_contract.confirm_before.map((item) => `humano:${item}`) ?? []),
     ...(taskContext?.recommended_context.evidence_gate.verify_before_trust.map((item) => `evidência:${item}`) ?? []),
     ...(taskContext?.recommended_context.evidence_gate.missing_or_stale.map((item) => `evidência stale:${item}`) ?? []),
     ...(taskContext?.recommended_context.evidence_gate.human_boundary.map((item) => `humano:${item}`) ?? []),
-    ...(taskContext?.recommended_context.component_context_packs.flatMap((pack) => pack.validate.map((item) => `pack:${pack.key}:${item}`)) ?? []),
-    ...(taskContext?.execution_plan.validation_commands ?? []),
-    ...(taskContext?.execution_plan.preflight_gates.map((item) => `gate:${item}`) ?? []),
+    ...(taskContext?.recommended_context.impact_radius.validation_cascade.map((item) => `impacto:${item}`) ?? []),
     ...(startup?.revalidation_gate.required_before_send.map((item) => `revalidar:${item}`) ?? []),
     ...(pack.memory_freshness?.evidence.revalidate.map((item) => `frescor:${item}`) ?? []),
     ...(taskContext?.execution_plan.recovery_playbook.fallback_validation.map((item) => `fallback:${item}`) ?? []),
     ...(pack.relations?.transfer_matrix.flatMap((item) => item.revalidate.slice(0, 2)) ?? []),
     ...(pack.context_kernel?.validation_plan.commands ?? []),
-  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 5)
+    ...(pack.workspace_mesh?.next_conversation.validate_with.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.repository_constellation?.next_conversation.validate_with.map((item) => `repo:${item}`) ?? []),
+    ...(pack.current_truth_pack?.proof.validate_with.map((item) => `truth:${item}`) ?? []),
+    ...(pack.live_execution_memory?.startup_packet.validate_before_trust.map((item) => `live:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 10)
   const avoidLoading = unique([
-    ...(pack.relations?.transfer_matrix.flatMap((item) => item.do_not_transfer) ?? []),
-    ...(taskContext?.recommended_context.folder_focus.avoid.map((item) => `fora da pasta foco:${item}`) ?? []),
-    ...(taskContext?.recommended_context.component_context_packs.flatMap((pack) => pack.avoid.map((item) => `pack:${pack.key}:${item}`)) ?? []),
     ...(pack.memory_freshness?.state === 'stale' || pack.memory_freshness?.state === 'cold'
       ? ['memória stale:usar resumo até revalidar']
       : []),
     ...(pack.memory_consolidation?.consolidate.never_promote.map((item) => `não promover:${item}`) ?? []),
+    ...(pack.topology?.knowledge_map.sensitive_zones.map((zone) => `folder-sensitive:${zone}`) ?? []),
+    ...(pack.topology?.knowledge_map.summarize_only.map((item) => `folder-summary-only:${item}`) ?? []),
+    ...(pack.relations?.transfer_matrix.flatMap((item) => item.do_not_transfer) ?? []),
+    ...(taskContext?.recommended_context.folder_focus.avoid.map((item) => `fora da pasta foco:${item}`) ?? []),
+    ...(taskContext?.recommended_context.component_context_packs.flatMap((pack) => pack.avoid.map((item) => `pack:${pack.key}:${item}`)) ?? []),
     ...(pack.memory_consolidation?.consolidate.summarize_only.map((item) => `só resumo:${item}`) ?? []),
+    ...(pack.artifact_replay?.cold_start_seed.warnings.map((item) => `cold-start:${item}`) ?? []),
     ...(taskContext?.execution_plan.commands_to_avoid ?? []),
     ...(taskContext?.execution_plan.recovery_playbook.demote_context.map((item) => `recovery:${item}`) ?? []),
     ...(taskContext?.recommended_context.context_budget.omit.map((item) => `budget:${item}`) ?? []),
     ...(pack.execution_doctrine?.command_policy.avoid.map((item) => `doutrina:${item}`) ?? []),
     ...(pack.provider_strategy?.caution_signals.map((item) => `provider:${item}`) ?? []),
+    ...(pack.preflight?.gates.filter((gate) => gate.status === 'blocked').map((gate) => `pré-voo bloqueado:${gate.label}`) ?? []),
+    ...(pack.workspace_twin?.context_autopilot.avoid.map((item) => `twin:${item}`) ?? []),
+    ...(pack.launch_contract?.startup_contract.avoid_loading.map((item) => `launch:${item}`) ?? []),
+    ...(pack.launch_contract?.human_contract.do_not_delegate.map((item) => `não delegar:${item}`) ?? []),
+    ...(pack.relations?.connection_contracts.flatMap((contract) => contract.never_transfer) ?? []),
+    ...(pack.workspace_mesh?.next_conversation.human_boundary.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.repository_constellation?.next_conversation.human_boundary.map((item) => `repo:${item}`) ?? []),
     ...(startup?.context_budget.prefer_summary ? ['conteúdo grande:preferir resumo'] : []),
     ...(pack.retention?.lifecycle.drop_or_summarize ?? []),
+    ...(pack.current_truth_pack?.proof.stale_or_unproven.map((item) => `truth:${item}`) ?? []),
+    ...(pack.current_truth_pack?.proof.human_boundary.map((item) => `truth-human:${item}`) ?? []),
+    ...(pack.live_execution_memory?.startup_packet.avoid.map((item) => `live:${item}`) ?? []),
+    ...(pack.live_execution_memory?.startup_packet.human_boundary.map((item) => `live-human:${item}`) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
   const confidence = Math.max(
     taskContext?.confidence ?? 0,
@@ -6085,8 +7934,9 @@ export function buildAwisWorkspaceProviderCapsule(
     continue_learning: {
       record_outcome: true,
       update_memory: true,
-      update_space_pack: Boolean(startup?.learning_loop.update_space_pack || pack.context_kernel?.learning_contract.update_space_pack),
-      preserve_artifact_after_success: Boolean(startup?.learning_loop.preserve_artifact_after_success || pack.context_kernel?.learning_contract.promote_artifact_after_success),
+      update_space_pack: Boolean(startup?.learning_loop.update_space_pack || pack.context_kernel?.learning_contract.update_space_pack || pack.preflight?.promotion_contract.update_space_pack || pack.workspace_twin?.learning_loop.next_refresh.length || pack.launch_contract?.startup_contract.update_space_pack),
+      preserve_artifact_after_success: Boolean(startup?.learning_loop.preserve_artifact_after_success || pack.context_kernel?.learning_contract.promote_artifact_after_success || pack.preflight?.promotion_contract.preserve_as_artifact || pack.launch_contract?.startup_contract.preserve_artifact_after_success || pack.live_execution_memory?.promotion_rules.preserve_as_artifact.length || pack.live_execution_memory?.automation_loop.after_success.length),
+      maintenance_recent: pack.memory?.operational.recent_maintenance ?? [],
       recovery_playbook: taskContext?.execution_plan.recovery_playbook
         ? {
             retry_order: taskContext.execution_plan.recovery_playbook.retry_order,
@@ -6102,16 +7952,63 @@ export function buildAwisWorkspaceProviderCapsule(
           },
       next_session_contract: taskContext?.learning_hooks.next_session_contract
         ? {
-            first_load: taskContext.learning_hooks.next_session_contract.first_load,
-            validate_with: taskContext.learning_hooks.next_session_contract.validate_with,
-            promote_when: taskContext.learning_hooks.next_session_contract.promote_when,
-            demote_when: taskContext.learning_hooks.next_session_contract.demote_when,
+            first_load: unique([
+              ...(pack.artifact_replay?.cold_start_seed.load_order ?? []),
+              ...taskContext.learning_hooks.next_session_contract.first_load,
+              ...(pack.launch_contract?.startup_contract.first_load ?? []),
+              ...(pack.workspace_mesh?.next_conversation.load_order ?? []),
+              ...(pack.repository_constellation?.next_conversation.load_first ?? []),
+              ...(pack.current_truth_pack?.next_conversation.load_first ?? []),
+              ...(pack.live_execution_memory?.startup_packet.load_first ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
+            validate_with: unique([
+              ...(pack.artifact_replay?.cold_start_seed.validate_with ?? []),
+              ...taskContext.learning_hooks.next_session_contract.validate_with,
+              ...(pack.launch_contract?.startup_contract.validate_before_trust ?? []),
+              ...(pack.workspace_mesh?.next_conversation.validate_with ?? []),
+              ...(pack.repository_constellation?.next_conversation.validate_with ?? []),
+              ...(pack.current_truth_pack?.proof.validate_with ?? []),
+              ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
+            promote_when: unique([
+              ...taskContext.learning_hooks.next_session_contract.promote_when,
+              ...(pack.current_truth_pack?.next_conversation.promote_when ?? []),
+              ...(pack.repository_constellation?.learning_loop.promote_when ?? []),
+              ...(pack.artifact_replay?.cold_start_seed.automation_hooks ?? []),
+              ...(pack.workspace_mesh?.next_conversation.reuse_rules.map((item) => `mesh:${item}`) ?? []),
+              ...(pack.launch_contract?.startup_contract.promote_after_success ?? []),
+              ...(pack.live_execution_memory?.promotion_rules.promote_to_gold ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
+            demote_when: unique([
+              ...taskContext.learning_hooks.next_session_contract.demote_when,
+              ...(pack.current_truth_pack?.next_conversation.demote_when ?? []),
+              ...(pack.repository_constellation?.learning_loop.demote_when ?? []),
+              ...(pack.artifact_replay?.cold_start_seed.warnings ?? []),
+              ...(pack.launch_contract?.startup_contract.demote_after_failure ?? []),
+              ...(pack.live_execution_memory?.promotion_rules.demote ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
           }
         : {
-            first_load: [],
-            validate_with: [],
-            promote_when: [],
-            demote_when: [],
+            first_load: unique([
+              ...(pack.artifact_replay?.cold_start_seed.load_order ?? []),
+              ...(pack.launch_contract?.startup_contract.first_load ?? []),
+              ...(pack.live_execution_memory?.startup_packet.load_first ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
+            validate_with: unique([
+              ...(pack.artifact_replay?.cold_start_seed.validate_with ?? []),
+              ...(pack.launch_contract?.startup_contract.validate_before_trust ?? []),
+              ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
+            promote_when: unique([
+              ...(pack.artifact_replay?.cold_start_seed.automation_hooks ?? []),
+              ...(pack.launch_contract?.startup_contract.promote_after_success ?? []),
+              ...(pack.live_execution_memory?.promotion_rules.promote_to_gold ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
+            demote_when: unique([
+              ...(pack.artifact_replay?.cold_start_seed.warnings ?? []),
+              ...(pack.launch_contract?.startup_contract.demote_after_failure ?? []),
+              ...(pack.live_execution_memory?.promotion_rules.demote ?? []),
+            ]).slice(0, MAX_STARTUP_ITEMS),
           },
     },
     safety: {
@@ -6141,6 +8038,10 @@ export function buildAwisWorkspaceSpaceProjection(
     space_count: validPacks.length,
     total_session_count: validPacks.reduce((sum, pack) => sum + pack.thread_count, 0),
     total_message_count: validPacks.reduce((sum, pack) => sum + pack.message_count, 0),
+    spaces: validPacks.map((pack) => ({
+      name: pack.title,
+      session_count: pack.thread_count,
+    })),
     strongest_spaces: validPacks.map((pack) => ({
       title: pack.title,
       session_count: pack.thread_count,
@@ -6298,9 +8199,47 @@ export function buildAwisWorkspaceRelationProjection(
       'paths absolutos',
       'ids internos',
       'decisões sensíveis sem confirmação',
+      'segredos ou decisões sensíveis',
     ],
     confidence: workspace.overlap_score,
   }))
+  const connectionContracts = related.map((workspace) => {
+    const relationship: AwisWorkspaceRelationProjection['connection_contracts'][number]['relationship'] =
+      workspace.shared_context_gold.length > 0
+        ? 'shared_context'
+        : workspace.shared_recovery_patterns.length > 0
+          ? 'shared_recovery'
+          : workspace.shared_commands.length > 0
+            ? 'shared_command'
+            : 'shared_stack'
+    return {
+      workspace_hint: workspace.workspace_hint,
+      relationship,
+      load_when: unique([
+        workspace.shared_context_gold.length > 0 ? 'tarefa toca contexto já validado em outro workspace' : null,
+        workspace.shared_commands.length > 0 ? 'tarefa depende de comando semelhante' : null,
+        workspace.shared_recovery_patterns.length > 0 ? 'erro recente parece recuperação já vista' : null,
+        workspace.shared_languages.length > 0 || workspace.shared_signals.length > 0 ? 'stack compatível aparece no mapa local' : null,
+      ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      reuse: unique([
+        ...workspace.shared_context_gold.map((item) => `contexto validado:${item}`),
+        ...workspace.shared_validation_plans.map((item) => `plano validado:${item}`),
+        ...workspace.recommended_transfer,
+      ]).slice(0, MAX_STARTUP_ITEMS),
+      validate: unique([
+        ...workspace.shared_commands.map((item) => `rodar/confirmar equivalente local:${item}`),
+        ...workspace.shared_validation_plans.map((item) => `provar novamente:${item}`),
+        ...workspace.shared_recovery_patterns.map((item) => `não aplicar recovery sem evidência local:${item}`),
+      ]).slice(0, MAX_STARTUP_ITEMS),
+      never_transfer: [
+        'conteúdo bruto de conversas',
+        'paths absolutos',
+        'ids internos',
+        'segredos ou decisões sensíveis',
+      ],
+      confidence: workspace.overlap_score,
+    }
+  }).slice(0, MAX_RELATED_WORKSPACES)
 
   return {
     schema_version: 'atlas.awis.workspace_relation_projection.v1',
@@ -6309,6 +8248,7 @@ export function buildAwisWorkspaceRelationProjection(
     current_workspace_seen: true,
     related_workspaces: related,
     transfer_matrix: transferMatrix,
+    connection_contracts: connectionContracts,
     transfer_policy: {
       privacy_level: 'provider_safe_hints',
       raw_workspace_names_returned: false,
@@ -6322,6 +8262,807 @@ export function buildAwisWorkspaceRelationProjection(
       raw_conversation_included: false,
       absolute_paths_included: false,
       internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function buildAwisWorkspaceMeshProjection(input: {
+  workspaceKey: string
+  relations?: AwisWorkspaceRelationProjection | null
+  topology?: AwisWorkspaceTopologyProjection | null
+  spaces?: AwisWorkspaceSpaceProjection | null
+  artifactReplay?: AwisWorkspaceArtifactReplayProjection | null
+  workspaceTwin?: AwisWorkspaceTwinProjection | null
+  launchContract?: AwisWorkspaceLaunchContractProjection | null
+}): AwisWorkspaceMeshProjection | null {
+  const routes: AwisWorkspaceMeshProjection['routes'] = []
+  const pushRoute = (route: Omit<AwisWorkspaceMeshProjection['routes'][number], 'route_id'>) => {
+    const workspaceHint = sanitizeProviderSafeText(route.workspace_hint).slice(0, 80)
+    if (!workspaceHint) return
+    const normalizedRoute = {
+      workspace_hint: workspaceHint,
+      relationship: route.relationship,
+      load_when: unique(route.load_when.map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      reuse: unique(route.reuse.map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      validate_with: unique(route.validate_with.map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      never_transfer: unique(route.never_transfer.map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      linked_components: unique(route.linked_components.map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      linked_spaces: unique(route.linked_spaces.map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      confidence: normalizePercent(route.confidence),
+    }
+    routes.push({
+      route_id: `mesh-${stableStringHash(JSON.stringify(normalizedRoute))}`,
+      ...normalizedRoute,
+    })
+  }
+
+  for (const contract of input.relations?.connection_contracts ?? []) {
+    pushRoute({
+      workspace_hint: contract.workspace_hint,
+      relationship: contract.relationship,
+      load_when: contract.load_when,
+      reuse: contract.reuse,
+      validate_with: contract.validate,
+      never_transfer: contract.never_transfer,
+      linked_components: (input.topology?.components ?? [])
+        .filter((component) => contract.reuse.some((item) => item.includes(component.key)))
+        .map((component) => component.key),
+      linked_spaces: input.spaces?.strongest_spaces.map((space) => space.title) ?? [],
+      confidence: contract.confidence,
+    })
+  }
+
+  for (const component of input.topology?.components.slice(0, MAX_STARTUP_ITEMS) ?? []) {
+    pushRoute({
+      workspace_hint: component.key,
+      relationship: 'local_component',
+      load_when: [
+        component.role,
+        ...component.stack.map((stack) => `stack:${stack}`),
+      ],
+      reuse: [
+        ...component.docs.map((doc) => `doc:${doc}`),
+        ...component.manifests.map((manifest) => `manifest:${manifest}`),
+      ],
+      validate_with: component.commands.map((command) => command.command),
+      never_transfer: input.topology?.knowledge_map.sensitive_zones ?? [],
+      linked_components: [
+        component.key,
+        ...(input.topology?.connections
+          .filter((connection) => connection.from === component.key || connection.to === component.key)
+          .flatMap((connection) => [connection.from, connection.to]) ?? []),
+      ],
+      linked_spaces: input.spaces?.strongest_spaces
+        .filter((space) => space.recommended_use.some((context) => context.toLowerCase().includes(component.key.toLowerCase())))
+        .map((space) => space.title) ?? [],
+      confidence: input.workspaceTwin?.readiness_score ?? 60,
+    })
+  }
+
+  for (const space of input.spaces?.strongest_spaces ?? []) {
+    pushRoute({
+      workspace_hint: `space:${space.title}`,
+      relationship: 'space_context',
+      load_when: [`Space com ${space.session_count} sessões`, ...space.recommended_use],
+      reuse: space.recommended_use,
+      validate_with: input.launchContract?.startup_contract.validate_before_trust ?? [],
+      never_transfer: ['conteúdo bruto de conversas', 'ids internos', 'segredos ou decisões sensíveis'],
+      linked_components: input.topology?.components
+        .filter((component) => space.recommended_use.some((context) => context.toLowerCase().includes(component.key.toLowerCase())))
+        .map((component) => component.key) ?? [],
+      linked_spaces: [space.title],
+      confidence: clampConfidence(56 + space.session_count * 5 + space.decision_count * 4 + space.artifact_count * 4),
+    })
+  }
+
+  const artifactSeed = input.artifactReplay?.cold_start_seed
+  if (artifactSeed) {
+    for (const hint of artifactSeed.repository_hints.slice(0, MAX_STARTUP_ITEMS)) {
+      pushRoute({
+        workspace_hint: hint,
+        relationship: 'artifact_replay',
+        load_when: artifactSeed.load_order,
+        reuse: artifactSeed.context_signals,
+        validate_with: artifactSeed.validate_with,
+        never_transfer: artifactSeed.warnings,
+        linked_components: input.topology?.components.filter((component) => hint.includes(component.key)).map((component) => component.key) ?? [],
+        linked_spaces: artifactSeed.reuse_spaces,
+        confidence: artifactSeed.readiness_score,
+      })
+    }
+  }
+
+  const dedupedRoutes = Array.from(new Map(
+    routes
+      .filter((route) => route.load_when.length > 0 || route.reuse.length > 0 || route.validate_with.length > 0)
+      .sort((a, b) => b.confidence - a.confidence || a.workspace_hint.localeCompare(b.workspace_hint))
+      .map((route) => [`${route.workspace_hint}:${route.relationship}`, route] as const),
+  ).values()).slice(0, MAX_STARTUP_ITEMS * 2)
+  if (dedupedRoutes.length === 0) return null
+
+  const loadOrder = unique([
+    ...(input.launchContract?.next_conversation.load_order.map((item) => `launch:${item}`) ?? []),
+    ...dedupedRoutes.flatMap((route) => route.load_when.map((item) => `mesh:${route.workspace_hint}:${item}`)),
+  ]).slice(0, MAX_STARTUP_ITEMS)
+  const reuseRules = unique(dedupedRoutes.flatMap((route) => (
+    route.reuse.map((item) => `mesh:${route.workspace_hint}:${item}`)
+  ))).slice(0, MAX_STARTUP_ITEMS)
+  const validateWith = unique([
+    ...(input.launchContract?.startup_contract.validate_before_trust ?? []),
+    ...dedupedRoutes.flatMap((route) => route.validate_with.map((item) => `mesh:${route.workspace_hint}:${item}`)),
+  ]).slice(0, MAX_STARTUP_ITEMS)
+  const humanBoundary = unique([
+    ...(input.launchContract?.human_contract.confirm_before ?? []),
+    ...dedupedRoutes.flatMap((route) => route.never_transfer.map((item) => `mesh:${route.workspace_hint}:${item}`)),
+  ]).slice(0, MAX_STARTUP_ITEMS)
+  const readinessScore = normalizePercent(
+    28
+      + Math.min(26, dedupedRoutes.length * 4)
+      + Math.min(18, validateWith.length * 2)
+      + Math.min(18, reuseRules.length * 2)
+      + (input.relations ? 8 : 0)
+      + (artifactSeed ? 6 : 0),
+  )
+  const meshPayload = {
+    workspace: sanitizeProviderSafeText(input.workspaceKey),
+    routes: dedupedRoutes.map((route) => ({
+      workspace_hint: route.workspace_hint,
+      relationship: route.relationship,
+      confidence: route.confidence,
+    })),
+    loadOrder,
+    reuseRules,
+    validateWith,
+  }
+
+  return {
+    schema_version: 'atlas.awis.workspace_mesh_projection.v1',
+    source: 'local_awis_operational_mesh',
+    readiness_score: readinessScore,
+    mesh_hash: `mesh-${stableStringHash(JSON.stringify(meshPayload))}`,
+    routes: dedupedRoutes,
+    next_conversation: {
+      load_order: loadOrder,
+      reuse_rules: reuseRules,
+      validate_with: validateWith,
+      human_boundary: humanBoundary,
+    },
+    transfer_policy: {
+      privacy_level: 'provider_safe_operational_mesh',
+      raw_workspace_names_returned: false,
+      raw_paths_returned: false,
+      raw_source_returned: false,
+      raw_conversation_returned: false,
+      apply_only_when_stack_matches: true,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function buildAwisWorkspaceCurrentTruthPackProjection(input: {
+  workspaceKey: string
+  topology: AwisWorkspaceTopologyProjection | null
+  learning?: AwisWorkspaceLearningProjection | null
+  sessionGold: AwisWorkspaceSessionGoldProjection | null
+  spaces: AwisWorkspaceSpaceProjection | null
+  artifactLake: AwisWorkspaceArtifactLakeSummary | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+  continuity: AwisWorkspaceContinuityProjection | null
+  contextKernel: AwisWorkspaceContextKernelProjection | null
+  memoryFreshness: AwisWorkspaceMemoryFreshnessProjection | null
+  retention: AwisWorkspaceRetentionProjection | null
+  memoryConsolidation: AwisWorkspaceMemoryConsolidationProjection | null
+  startupOrchestration: AwisWorkspaceStartupOrchestrationProjection | null
+  preflight: AwisWorkspacePreflightProjection | null
+  workspaceTwin: AwisWorkspaceTwinProjection | null
+  launchContract: AwisWorkspaceLaunchContractProjection | null
+  workspaceMesh: AwisWorkspaceMeshProjection | null
+  handoffPack: AwisWorkspaceHandoffProjection | null
+}): AwisWorkspaceCurrentTruthPackProjection | null {
+  const mustKeep = unique([
+    ...(input.contextKernel?.priority_load.map((item) => `${item.kind}:${item.label}:${item.confidence}`) ?? []),
+    ...(input.sessionGold?.strongest_outcomes.map((outcome) => `outcome:${outcome.label}:${outcome.confidence}`) ?? []),
+    ...(input.memoryConsolidation?.consolidate.promote_to_gold.map((item) => `promover:${item}`) ?? []),
+    ...(input.artifactReplay?.cold_start_seed.context_signals.map((item) => `artifact:${item}`) ?? []),
+    ...(input.workspaceMesh?.routes.slice(0, 6).map((route) => `mesh:${route.workspace_hint}:${route.relationship}:${route.confidence}`) ?? []),
+    ...(input.handoffPack?.context_units.map((unit) => `handoff:${unit.artifact_type}:${unit.status ?? 'unknown'}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const activeComponents = unique([
+    ...(input.topology?.components.slice(0, MAX_STARTUP_ITEMS).map((component) => `${component.key}:${component.role}`) ?? []),
+    ...(input.sessionGold?.strongest_outcomes
+      .filter((outcome) => outcome.label.startsWith('component:'))
+      .map((outcome) => outcome.label.replace(/^component:/, '')) ?? []),
+    ...(input.workspaceTwin?.context_autopilot.load_first ?? []),
+    ...(input.continuity?.hot_context.components ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const activeSpaces = unique([
+    ...(input.spaces?.strongest_spaces.map((space) => `${space.title}:${space.session_count} sessões`) ?? []),
+    ...(input.continuity?.hot_context.spaces ?? []),
+    ...(input.artifactReplay?.cold_start_seed.reuse_spaces ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const activeArtifacts = unique([
+    input.artifactLake?.latest_artifact_hash ?? null,
+    input.artifactReplay?.latest_artifact_hash ?? null,
+    input.artifactReplay?.cold_start_seed.seed_hash ?? null,
+    ...(input.continuity?.hot_context.artifacts ?? []),
+    ...(input.handoffPack?.context_units.map((unit) => unit.artifact_hash).filter(isString) ?? []),
+  ].filter(isString).map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const provenCommands = unique([
+    ...(input.sessionGold?.proven_commands.map((command) => `${command.command}:${command.success_count}`) ?? []),
+    ...(input.learning?.trusted_commands ?? []),
+    ...(input.learning?.task_memory.trusted_task_commands ?? []),
+    ...(input.workspaceTwin?.context_autopilot.validate ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const meshRoutes = unique([
+    ...(input.workspaceMesh?.routes.map((route) => `${route.workspace_hint}:${route.relationship}:${route.confidence}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const evidenceRefs = unique([
+    ...(input.preflight?.gates.flatMap((gate) => gate.evidence.map((item) => `preflight:${gate.gate}:${item}`)) ?? []),
+    ...(input.contextKernel?.priority_load.map((item) => `kernel:${item.kind}:${item.label}`) ?? []),
+    ...(input.workspaceTwin ? [`twin:${input.workspaceTwin.hashes.genome_hash}`] : []),
+    ...(input.launchContract ? [`launch:${input.launchContract.seed_hash}`] : []),
+    ...(input.workspaceMesh ? [`mesh:${input.workspaceMesh.mesh_hash}`] : []),
+    ...(input.artifactReplay?.latest_artifact_hash ? [`artifact:${input.artifactReplay.latest_artifact_hash}`] : []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const validateWith = unique([
+    ...(input.preflight?.execution_lanes.before_execution ?? []),
+    ...(input.launchContract?.startup_contract.validate_before_trust ?? []),
+    ...(input.workspaceTwin?.context_autopilot.validate ?? []),
+    ...(input.workspaceMesh?.next_conversation.validate_with ?? []),
+    ...(input.artifactReplay?.cold_start_seed.validate_with ?? []),
+    ...(input.sessionGold?.next_session_hooks.validate_with ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const staleOrUnproven = unique([
+    ...(input.memoryFreshness?.evidence.revalidate.map((item) => `revalidar:${item}`) ?? []),
+    ...(input.memoryFreshness?.evidence.missing.map((item) => `faltando:${item}`) ?? []),
+    ...(input.memoryConsolidation?.consolidate.never_promote.map((item) => `não promover:${item}`) ?? []),
+    ...(input.retention?.lifecycle.revalidate.map((item) => `retenção:${item}`) ?? []),
+    ...(input.artifactReplay?.cold_start_seed.warnings.map((item) => `artifact:${item}`) ?? []),
+    ...(input.workspaceTwin?.stale ? ['twin stale:revalidar antes de executar'] : []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const humanBoundary = unique([
+    ...(input.launchContract?.human_contract.confirm_before ?? []),
+    ...(input.preflight?.execution_lanes.before_execution ?? []),
+    ...(input.workspaceMesh?.next_conversation.human_boundary ?? []),
+    ...(input.artifactReplay?.cold_start_seed.human_boundary ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const loadFirst = unique([
+    ...(input.topology?.components.slice(0, MAX_STARTUP_ITEMS).map((component) => `mapa de componentes:${component.key}:${component.role}`) ?? []),
+    ...(input.launchContract?.next_conversation.load_order ?? []),
+    ...(input.workspaceMesh?.next_conversation.load_order ?? []),
+    ...(input.artifactReplay?.cold_start_seed.load_order ?? []),
+    ...(input.contextKernel?.priority_load.map((item) => `${item.kind}:${item.label}`) ?? []),
+    ...(input.startupOrchestration?.startup_sequence.map((item) => `${item.step}:${item.label}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const summarizeOnly = unique([
+    ...(input.contextKernel?.compression_plan.summarize ?? []),
+    ...(input.launchContract?.startup_contract.summarize_only ?? []),
+    ...(input.workspaceTwin?.context_autopilot.summarize ?? []),
+    ...(input.retention?.lifecycle.drop_or_summarize ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const promoteWhen = unique([
+    ...(input.preflight?.promotion_contract.promote_when ?? []),
+    ...(input.launchContract?.startup_contract.promote_after_success ?? []),
+    ...(input.memoryConsolidation?.consolidate.promote_to_gold ?? []),
+    ...(input.artifactReplay?.cold_start_seed.automation_hooks ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const demoteWhen = unique([
+    ...(input.preflight?.promotion_contract.demote_when ?? []),
+    ...(input.launchContract?.startup_contract.demote_after_failure ?? []),
+    ...staleOrUnproven,
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+
+  const hasTruth = mustKeep.length > 0 || activeComponents.length > 0 || activeSpaces.length > 0 || activeArtifacts.length > 0 || provenCommands.length > 0
+  if (!hasTruth && evidenceRefs.length === 0) return null
+  const readinessScore = normalizePercent(
+    20
+      + Math.min(20, mustKeep.length * 3)
+      + Math.min(18, evidenceRefs.length * 2)
+      + Math.min(18, validateWith.length * 2)
+      + Math.min(14, provenCommands.length * 2)
+      + Math.min(10, activeArtifacts.length * 2)
+      - Math.min(18, staleOrUnproven.length * 2),
+  )
+  const truthPayload = {
+    workspace: sanitizeProviderSafeText(input.workspaceKey),
+    mustKeep,
+    activeComponents,
+    activeSpaces,
+    activeArtifacts,
+    provenCommands,
+    meshRoutes,
+    evidenceRefs,
+    validateWith,
+    staleOrUnproven,
+  }
+
+  return {
+    schema_version: 'atlas.awis.current_truth_pack_projection.v1',
+    source: 'local_awis_truth_compiler',
+    workspace_key: sanitizeProviderSafeText(input.workspaceKey),
+    readiness_score: readinessScore,
+    truth_hash: `truth-${stableStringHash(JSON.stringify(truthPayload))}`,
+    current_truth: {
+      must_keep: mustKeep,
+      active_components: activeComponents,
+      active_spaces: activeSpaces,
+      active_artifacts: activeArtifacts,
+      proven_commands: provenCommands,
+      mesh_routes: meshRoutes,
+    },
+    proof: {
+      evidence_refs: evidenceRefs,
+      validate_with: validateWith,
+      stale_or_unproven: staleOrUnproven,
+      human_boundary: humanBoundary,
+    },
+    next_conversation: {
+      load_first: loadFirst,
+      summarize_only: summarizeOnly,
+      promote_when: promoteWhen,
+      demote_when: demoteWhen,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function buildAwisWorkspaceRepositoryConstellationProjection(input: {
+  topology: AwisWorkspaceTopologyProjection | null
+  componentMemory: AwisWorkspaceComponentMemoryProjection | null
+  semanticIndex: AwisWorkspaceSemanticIndexProjection | null
+  impactMap: AwisWorkspaceImpactMapProjection | null
+  relations: AwisWorkspaceRelationProjection | null
+  workspaceMesh: AwisWorkspaceMeshProjection | null
+  currentTruthPack: AwisWorkspaceCurrentTruthPackProjection | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+  sessionGold: AwisWorkspaceSessionGoldProjection | null
+  launchContract: AwisWorkspaceLaunchContractProjection | null
+}): AwisWorkspaceRepositoryConstellationProjection | null {
+  const topologyComponents = input.topology?.components ?? []
+  const memoryByComponent = new Map(
+    (input.componentMemory?.strongest_components ?? []).map((component) => [component.key, component]),
+  )
+  const connectionByComponent = new Map<string, string[]>()
+  for (const connection of input.topology?.connections ?? []) {
+    connectionByComponent.set(connection.from, unique([...(connectionByComponent.get(connection.from) ?? []), connection.to]))
+    connectionByComponent.set(connection.to, unique([...(connectionByComponent.get(connection.to) ?? []), connection.from]))
+  }
+  for (const route of input.workspaceMesh?.routes ?? []) {
+    for (const component of route.linked_components) {
+      connectionByComponent.set(component, unique([
+        ...(connectionByComponent.get(component) ?? []),
+        route.workspace_hint,
+      ]))
+    }
+  }
+
+  const repositories = topologyComponents
+    .map((component) => {
+      const memory = memoryByComponent.get(component.key) ?? null
+      const semanticMatches = (input.semanticIndex?.query_aliases ?? [])
+        .filter((alias) => alias.component_keys.includes(component.key))
+      const impact = input.impactMap?.component_impacts.find((item) => item.component_key === component.key) ?? null
+      const commands = unique([
+        ...(memory?.commands ?? []),
+        ...component.commands.map((command) => command.command),
+        ...(semanticMatches.flatMap((match) => match.validate)),
+        ...(impact?.validation_cascade ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+      const loadWhen = unique([
+        ...(memory?.load_first.map((item) => `memória:${item}`) ?? []),
+        ...component.manifests.map((path) => `manifest:${path}`),
+        ...component.docs.map((path) => `doc:${path}`),
+        ...semanticMatches.flatMap((match) => match.load.map((item) => `semântico:${match.alias}:${item}`)),
+        ...(input.currentTruthPack?.current_truth.active_components
+          .filter((item) => item.includes(component.key))
+          .map((item) => `verdade atual:${item}`) ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+      const summarizeWhen = unique([
+        ...(memory?.cautions.map((item) => `cautela:${item}`) ?? []),
+        ...(impact?.risk === 'high' ? [`impacto alto:${impact.reason}`] : []),
+        ...(input.artifactReplay?.cold_start_seed.warnings.filter((warning) => warning.includes(component.key)) ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+      const connectedTo = unique(connectionByComponent.get(component.key) ?? [])
+        .map(sanitizeProviderSafeText)
+        .filter(isString)
+        .slice(0, MAX_STARTUP_ITEMS)
+      const confidence = clampConfidence(
+        Math.max(component.confidence, memory?.confidence ?? 0)
+          + Math.min(10, connectedTo.length * 2)
+          + Math.min(8, commands.length)
+          - (impact?.risk === 'high' ? 10 : 0),
+      )
+      return {
+        key: component.key,
+        role: component.role,
+        stack: component.stack.slice(0, 6),
+        maturity: memory?.maturity ?? 'new',
+        manifests: component.manifests.slice(0, 6),
+        docs: component.docs.slice(0, 6),
+        commands,
+        connected_to: connectedTo,
+        load_when: loadWhen,
+        summarize_when: summarizeWhen,
+        validate_with: commands.filter((command) => /test|tsc|lint|check|build|artisan|cargo/i.test(command)).slice(0, MAX_STARTUP_ITEMS),
+        confidence,
+      }
+    })
+    .sort((a, b) => b.confidence - a.confidence || a.key.localeCompare(b.key))
+    .slice(0, MAX_TOPOLOGY_COMPONENTS)
+
+  const repositoryKeys = new Set(repositories.map((repo) => repo.key))
+  const bridges = unique([
+    ...(input.topology?.connections.map((connection) => `${connection.from}:::${connection.to}:::${connection.reason}`) ?? []),
+    ...(input.impactMap?.component_impacts.flatMap((impact) => (
+      impact.affected_components.map((target) => `${impact.component_key}:::${target}:::${impact.reason}`)
+    )) ?? []),
+  ])
+    .map((item) => {
+      const [fromRaw, toRaw, reasonRaw] = item.split(':::')
+      const from = sanitizeComponentKey(fromRaw)
+      const to = sanitizeComponentKey(toRaw)
+      if (!from || !to || from === to || !repositoryKeys.has(from) || !repositoryKeys.has(to)) return null
+      const fromRepo = repositories.find((repo) => repo.key === from)
+      const toRepo = repositories.find((repo) => repo.key === to)
+      const sharedStack = unique([
+        ...(fromRepo?.stack ?? []),
+      ].filter((stack) => (toRepo?.stack ?? []).includes(stack))).slice(0, 4)
+      const impact = input.impactMap?.component_impacts.find((candidate) => (
+        candidate.component_key === from && candidate.affected_components.includes(to)
+      )) ?? null
+      const validationBridge = unique([
+        ...(impact?.validation_cascade ?? []),
+        ...(fromRepo?.validate_with ?? []),
+        ...(toRepo?.validate_with ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+      const contextBridge = unique([
+        ...(input.workspaceMesh?.routes
+          .filter((route) => route.linked_components.includes(from) || route.linked_components.includes(to))
+          .flatMap((route) => route.reuse.map((reuse) => `mesh:${route.workspace_hint}:${reuse}`)) ?? []),
+        ...(input.relations?.connection_contracts
+          .filter((contract) => contract.workspace_hint === from || contract.workspace_hint === to)
+          .flatMap((contract) => contract.reuse.map((reuse) => `relation:${contract.workspace_hint}:${reuse}`)) ?? []),
+        ...(input.currentTruthPack?.current_truth.must_keep.filter((truth) => truth.includes(from) || truth.includes(to)) ?? []),
+      ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+      return {
+        from,
+        to,
+        reason: sanitizeProviderSafeText(reasonRaw ?? 'componentes relacionados').slice(0, 160),
+        shared_stack: sharedStack,
+        validation_bridge: validationBridge,
+        context_bridge: contextBridge,
+        confidence: clampConfidence(
+          50
+            + sharedStack.length * 8
+            + Math.min(18, validationBridge.length * 3)
+            + Math.min(14, contextBridge.length * 2),
+        ),
+      }
+    })
+    .filter((bridge): bridge is AwisWorkspaceRepositoryConstellationProjection['bridges'][number] => Boolean(bridge))
+    .sort((a, b) => b.confidence - a.confidence || a.from.localeCompare(b.from) || a.to.localeCompare(b.to))
+    .slice(0, MAX_TOPOLOGY_CONNECTIONS)
+
+  const crossWorkspaceHints = unique([
+    ...(input.relations?.connection_contracts.map((contract) => `${contract.workspace_hint}:${contract.relationship}`) ?? []),
+    ...(input.workspaceMesh?.routes
+      .filter((route) => route.relationship !== 'local_component')
+      .map((route) => `${route.workspace_hint}:${route.relationship}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const loadFirst = unique([
+    ...repositories.slice(0, 4).map((repo) => `repo:${repo.key}:${repo.role}`),
+    ...bridges.slice(0, 4).map((bridge) => `bridge:${bridge.from}->${bridge.to}`),
+    ...crossWorkspaceHints.map((hint) => `workspace:${hint}`),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const validateWith = unique([
+    ...repositories.flatMap((repo) => repo.validate_with),
+    ...bridges.flatMap((bridge) => bridge.validation_bridge),
+    ...(input.launchContract?.startup_contract.validate_before_trust ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const humanBoundary = unique([
+    ...(input.workspaceMesh?.next_conversation.human_boundary ?? []),
+    ...(input.relations?.connection_contracts.flatMap((contract) => contract.never_transfer) ?? []),
+    'não carregar conversa bruta para provar ligação entre repositórios',
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const compareWhen = unique([
+    ...bridges.map((bridge) => `alteração cruza ${bridge.from} e ${bridge.to}`),
+    ...crossWorkspaceHints.map((hint) => `reusar aprendizado de ${hint}`),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const preserveAsArtifact = unique([
+    ...bridges.slice(0, 3).map((bridge) => `bridge:${bridge.from}->${bridge.to}`),
+    ...(input.sessionGold?.strongest_outcomes.slice(0, 3).map((outcome) => `ouro:${outcome.label}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const promoteWhen = unique([
+    ...validateWith.slice(0, 4).map((command) => `validação verde:${command}`),
+    ...bridges.slice(0, 3).map((bridge) => `ponte confirmada:${bridge.from}->${bridge.to}`),
+  ]).slice(0, MAX_STARTUP_ITEMS)
+  const revalidateWhen = unique([
+    'manifesto muda',
+    'comando de validação falha',
+    ...repositories.flatMap((repo) => repo.summarize_when).slice(0, 4),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const demoteWhen = unique([
+    'workspace muda antes da prova',
+    'ponte cruza área sensível sem confirmação',
+    ...humanBoundary.slice(0, 3),
+  ]).slice(0, MAX_STARTUP_ITEMS)
+  if (repositories.length === 0 && bridges.length === 0 && crossWorkspaceHints.length === 0) return null
+  const readinessScore = normalizePercent(
+    24
+      + Math.min(24, repositories.length * 5)
+      + Math.min(20, bridges.length * 5)
+      + Math.min(16, validateWith.length * 2)
+      + Math.min(12, crossWorkspaceHints.length * 3),
+  )
+  const hashSeed = JSON.stringify({
+    repositories: repositories.map((repo) => `${repo.key}:${repo.maturity}:${repo.confidence}`),
+    bridges: bridges.map((bridge) => `${bridge.from}->${bridge.to}:${bridge.confidence}`),
+    crossWorkspaceHints,
+    validateWith,
+  })
+
+  return {
+    schema_version: 'atlas.awis.repository_constellation_projection.v1',
+    source: 'local_awis_repository_constellation',
+    readiness_score: readinessScore,
+    constellation_hash: `repo-constellation-${stableStringHash(hashSeed)}`,
+    repositories,
+    bridges,
+    next_conversation: {
+      load_first: loadFirst,
+      compare_when: compareWhen,
+      validate_with: validateWith,
+      preserve_as_artifact: preserveAsArtifact,
+      human_boundary: humanBoundary,
+    },
+    learning_loop: {
+      promote_when: promoteWhen,
+      revalidate_when: revalidateWhen,
+      demote_when: demoteWhen,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function buildAwisWorkspaceLiveExecutionMemoryProjection(input: {
+  topology: AwisWorkspaceTopologyProjection | null
+  learning: AwisWorkspaceLearningProjection | null
+  sessionGold: AwisWorkspaceSessionGoldProjection | null
+  spaces: AwisWorkspaceSpaceProjection | null
+  artifactLake: AwisWorkspaceArtifactLakeSummary | null
+  artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+  continuity: AwisWorkspaceContinuityProjection | null
+  automation: AwisWorkspaceAutomationProjection | null
+  contextKernel: AwisWorkspaceContextKernelProjection | null
+  memoryFreshness: AwisWorkspaceMemoryFreshnessProjection | null
+  retention: AwisWorkspaceRetentionProjection | null
+  memoryConsolidation: AwisWorkspaceMemoryConsolidationProjection | null
+  startupOrchestration: AwisWorkspaceStartupOrchestrationProjection | null
+  preflight: AwisWorkspacePreflightProjection | null
+  workspaceTwin: AwisWorkspaceTwinProjection | null
+  launchContract: AwisWorkspaceLaunchContractProjection | null
+  nextSessionBrain: AwisWorkspaceNextSessionBrainProjection | null
+  workspaceMesh: AwisWorkspaceMeshProjection | null
+  currentTruthPack: AwisWorkspaceCurrentTruthPackProjection | null
+  repositoryConstellation: AwisWorkspaceRepositoryConstellationProjection | null
+}): AwisWorkspaceLiveExecutionMemoryProjection | null {
+  const loadFirst = unique([
+    ...(input.nextSessionBrain?.load_order.map((item) => `brain:${item}`) ?? []),
+    ...(input.launchContract?.startup_contract.first_load.map((item) => `launch:${item}`) ?? []),
+    ...(input.currentTruthPack?.next_conversation.load_first.map((item) => `truth:${item}`) ?? []),
+    ...(input.repositoryConstellation?.next_conversation.load_first.map((item) => `repo:${item}`) ?? []),
+    ...(input.workspaceMesh?.next_conversation.load_order.map((item) => `mesh:${item}`) ?? []),
+    ...(input.artifactReplay?.cold_start_seed.load_order.map((item) => `artifact:${item}`) ?? []),
+    ...(input.contextKernel?.priority_load.map((item) => `kernel:${item.kind}:${item.label}`) ?? []),
+    ...(input.continuity?.next_session_plan.first_load.map((item) => `continuidade:${item}`) ?? []),
+    ...(input.topology?.knowledge_map.load_first_docs.map((path) => `doc:${path}`) ?? []),
+    ...(input.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const useAsSummary = unique([
+    ...(input.currentTruthPack ? [`truth:${input.currentTruthPack.truth_hash}:${input.currentTruthPack.readiness_score}`] : []),
+    ...(input.repositoryConstellation ? [`repo-constellation:${input.repositoryConstellation.constellation_hash}:${input.repositoryConstellation.readiness_score}`] : []),
+    ...(input.artifactReplay?.cold_start_seed.context_signals.map((item) => `artifact-context:${item}`) ?? []),
+    ...(input.sessionGold?.strongest_outcomes.slice(0, 4).map((outcome) => `ouro:${outcome.label}:${outcome.confidence}`) ?? []),
+    ...(input.memoryConsolidation?.next_session_seed.map((item) => `seed:${item}`) ?? []),
+    ...(input.workspaceTwin ? [`twin:${input.workspaceTwin.hashes.genome_hash}:${input.workspaceTwin.readiness_score}`] : []),
+    ...(input.repositoryConstellation?.repositories.slice(0, 6).map((repo) => `repo:${repo.key}:${repo.maturity}:${repo.confidence}`) ?? []),
+    ...(input.repositoryConstellation?.bridges.slice(0, 6).map((bridge) => `bridge:${bridge.from}->${bridge.to}:${bridge.confidence}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const validateBeforeTrust = unique([
+    ...(input.nextSessionBrain?.execution_priority.map((priority) => priority.command) ?? []),
+    ...(input.launchContract?.startup_contract.validate_before_trust ?? []),
+    ...(input.currentTruthPack?.proof.validate_with.map((item) => `truth:${item}`) ?? []),
+    ...(input.repositoryConstellation?.next_conversation.validate_with.map((item) => `repo:${item}`) ?? []),
+    ...(input.workspaceMesh?.next_conversation.validate_with.map((item) => `mesh:${item}`) ?? []),
+    ...(input.artifactReplay?.cold_start_seed.validate_with.map((item) => `artifact:${item}`) ?? []),
+    ...(input.preflight?.execution_lanes.before_execution.map((item) => `pré-execução:${item}`) ?? []),
+    ...(input.contextKernel?.validation_plan.commands ?? []),
+    ...(input.learning?.trusted_commands.filter((command) => /test|tsc|lint|check|build/i.test(command)) ?? []),
+    ...(input.topology?.knowledge_map.validation_entrypoints ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const avoid = unique([
+    ...(input.launchContract?.startup_contract.avoid_loading.map((item) => `launch:${item}`) ?? []),
+    ...(input.currentTruthPack?.proof.stale_or_unproven.map((item) => `truth:${item}`) ?? []),
+    ...(input.repositoryConstellation?.next_conversation.human_boundary.map((item) => `repo:${item}`) ?? []),
+    ...(input.workspaceMesh?.next_conversation.human_boundary.map((item) => `mesh:${item}`) ?? []),
+    ...(input.memoryFreshness?.evidence.missing.map((item) => `frescor:${item}`) ?? []),
+    ...(input.memoryConsolidation?.consolidate.never_promote.map((item) => `não promover:${item}`) ?? []),
+    ...(input.retention?.lifecycle.drop_or_summarize.map((item) => `retenção:${item}`) ?? []),
+    ...(input.topology?.knowledge_map.sensitive_zones.map((zone) => `sensível:${zone}`) ?? []),
+    ...(input.topology?.knowledge_map.summarize_only.map((item) => `resumir:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const humanBoundary = unique([
+    ...(input.launchContract?.human_contract.confirm_before.map((item) => `confirmar:${item}`) ?? []),
+    ...(input.launchContract?.human_contract.do_not_delegate.map((item) => `não delegar:${item}`) ?? []),
+    ...(input.currentTruthPack?.proof.human_boundary.map((item) => `truth:${item}`) ?? []),
+    ...(input.repositoryConstellation?.next_conversation.human_boundary.map((item) => `repo:${item}`) ?? []),
+    ...(input.artifactReplay?.cold_start_seed.human_boundary.map((item) => `artifact:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const beforeSend = unique([
+    ...(input.automation?.autopilot_context.before_send ?? []),
+    ...(input.sessionGold?.next_session_hooks.before_send ?? []),
+    ...(input.preflight?.execution_lanes.before_send ?? []),
+    ...(input.startupOrchestration?.revalidation_gate.required_before_send ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const afterSuccess = unique([
+    ...(input.launchContract?.automation_contract.after_success ?? []),
+    ...(input.automation?.autopilot_context.after_send ?? []),
+    ...(input.sessionGold?.next_session_hooks.after_send ?? []),
+    ...(input.memoryConsolidation?.consolidate.archive_as_artifact.map((item) => `arquivar:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const afterFailure = unique([
+    ...(input.launchContract?.recovery_contract.demote_context ?? []),
+    ...(input.currentTruthPack?.next_conversation.demote_when ?? []),
+    ...(input.repositoryConstellation?.learning_loop.demote_when ?? []),
+    ...(input.memoryConsolidation?.consolidate.revalidate.map((item) => `revalidar:${item}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const onDrift = unique([
+    ...(input.memoryFreshness?.next_refresh.actions ?? []),
+    ...(input.workspaceTwin?.learning_loop.next_refresh ?? []),
+    ...(input.repositoryConstellation?.learning_loop.revalidate_when ?? []),
+    ...(input.currentTruthPack?.proof.stale_or_unproven ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const promoteToGold = unique([
+    ...(input.memoryConsolidation?.consolidate.promote_to_gold ?? []),
+    ...(input.currentTruthPack?.next_conversation.promote_when ?? []),
+    ...(input.repositoryConstellation?.learning_loop.promote_when ?? []),
+    ...(input.workspaceMesh?.next_conversation.reuse_rules.map((item) => `mesh:${item}`) ?? []),
+    ...(input.sessionGold?.strongest_outcomes.slice(0, 4).map((outcome) => `resultado:${outcome.label}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const preserveAsArtifact = unique([
+    ...(input.repositoryConstellation?.next_conversation.preserve_as_artifact.map((item) => `repo:${item}`) ?? []),
+    ...(input.launchContract?.startup_contract.preserve_artifact_after_success ? ['partida validada'] : []),
+    ...(input.preflight?.promotion_contract.preserve_as_artifact ? ['pré-voo validado'] : []),
+    ...(input.currentTruthPack?.current_truth.active_artifacts.map((item) => `truth:${item}`) ?? []),
+    input.artifactLake?.latest_artifact_hash ? `artifact:${input.artifactLake.latest_artifact_hash}` : null,
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const revalidate = unique([
+    ...validateBeforeTrust,
+    ...(input.memoryFreshness?.evidence.revalidate ?? []),
+    ...(input.repositoryConstellation?.learning_loop.revalidate_when ?? []),
+    ...(input.retention?.lifecycle.revalidate ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
+  const demote = unique([
+    ...afterFailure,
+    ...(input.memoryConsolidation?.consolidate.never_promote ?? []),
+    ...(input.currentTruthPack?.next_conversation.demote_when ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const repositories = unique([
+    ...(input.nextSessionBrain?.focused_repositories.map((repo) => `${repo.repo_key}:${repo.score}`) ?? []),
+    ...(input.repositoryConstellation?.repositories.map((repo) => `${repo.key}:${repo.maturity}:${repo.confidence}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const components = unique([
+    ...(input.topology?.components.map((component) => `${component.key}:${component.role}`) ?? []),
+    ...(input.workspaceTwin?.genome.apps.map((app) => `app:${app}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const spaces = unique([
+    ...(input.spaces?.strongest_spaces.map((space) => `${space.title}:${space.session_count}`) ?? []),
+    ...(input.continuity?.hot_context.spaces ?? []),
+    ...(input.artifactReplay?.cold_start_seed.reuse_spaces ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const artifacts = unique([
+    input.artifactLake?.latest_artifact_hash ?? null,
+    input.artifactReplay?.latest_artifact_hash ?? null,
+    input.artifactReplay?.cold_start_seed.seed_hash ?? null,
+    input.currentTruthPack?.truth_hash ?? null,
+    input.nextSessionBrain?.brain_hash ?? null,
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const commands = unique([
+    ...validateBeforeTrust,
+    ...(input.sessionGold?.proven_commands.map((command) => `${command.command}:${command.success_count}`) ?? []),
+    ...(input.learning?.task_memory.trusted_task_commands ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+
+  if (
+    loadFirst.length === 0
+    && useAsSummary.length === 0
+    && validateBeforeTrust.length === 0
+    && repositories.length === 0
+    && components.length === 0
+  ) return null
+
+  const readinessScore = normalizePercent(
+    22
+      + Math.min(18, loadFirst.length * 2)
+      + Math.min(18, validateBeforeTrust.length * 2)
+      + Math.min(12, promoteToGold.length * 2)
+      + Math.min(12, repositories.length * 2)
+      + Math.min(10, artifacts.length * 3)
+      + (input.memoryFreshness?.state === 'fresh' || input.memoryFreshness?.state === 'warm' ? 8 : 0),
+  )
+  const hashSeed = JSON.stringify({
+    loadFirst,
+    useAsSummary,
+    validateBeforeTrust,
+    promoteToGold,
+    repositories,
+    components,
+    artifacts,
+  })
+
+  return {
+    schema_version: 'atlas.awis.live_execution_memory_projection.v1',
+    source: 'local_awis_live_execution_memory_compiler',
+    readiness_score: readinessScore,
+    memory_hash: `live-${stableStringHash(hashSeed)}`,
+    startup_packet: {
+      load_first: loadFirst,
+      use_as_summary: useAsSummary,
+      validate_before_trust: validateBeforeTrust,
+      avoid,
+      human_boundary: humanBoundary,
+    },
+    automation_loop: {
+      before_send: beforeSend,
+      after_success: afterSuccess,
+      after_failure: afterFailure,
+      on_drift: onDrift,
+    },
+    promotion_rules: {
+      promote_to_gold: promoteToGold,
+      preserve_as_artifact: preserveAsArtifact,
+      revalidate,
+      demote,
+    },
+    workspace_learning: {
+      repositories,
+      components,
+      spaces,
+      artifacts,
+      commands,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
       bounded: true,
       provider_safe: true,
     },
@@ -6407,6 +9148,7 @@ function normalizeMemory(raw: unknown): AwisWorkspaceMemorySnapshot | null {
     contextPackAppliedCount: typeof value.contextPackAppliedCount === 'number' ? value.contextPackAppliedCount : 0,
     lastInteractionAt: isString(value.lastInteractionAt) ? value.lastInteractionAt : null,
     recentOutcomes: normalizeOutcomes(value.recentOutcomes),
+    recentMaintenance: normalizeMaintenanceEvents(value.recentMaintenance),
     observations: Array.isArray(value.observations) ? value.observations.filter(isString).slice(0, MAX_OBSERVATIONS) : [],
     driftEvents: Array.isArray(value.driftEvents) ? value.driftEvents.filter(isString).slice(0, MAX_DRIFT_EVENTS) : [],
   }
@@ -6455,6 +9197,10 @@ function normalizeSpaceProjection(raw: unknown): AwisWorkspaceSpaceProjection | 
     space_count: normalizeCount(value.space_count) || strongestSpaces.length,
     total_session_count: normalizeCount(value.total_session_count) || strongestSpaces.reduce((sum, space) => sum + space.session_count, 0),
     total_message_count: normalizeCount(value.total_message_count) || strongestSpaces.reduce((sum, space) => sum + space.message_count, 0),
+    spaces: strongestSpaces.map((space) => ({
+      name: space.title,
+      session_count: space.session_count,
+    })),
     strongest_spaces: strongestSpaces,
     safety: {
       raw_conversation_included: false,
@@ -6914,6 +9660,7 @@ function normalizeTopologyProjection(raw: unknown): AwisWorkspaceTopologyProject
       dev_commands: normalizeStringList(value.execution_map?.dev_commands, MAX_STARTUP_ITEMS),
       check_commands: normalizeStringList(value.execution_map?.check_commands, MAX_STARTUP_ITEMS),
     },
+    knowledge_map: normalizeTopologyKnowledgeMap(value.knowledge_map),
     safety: {
       raw_source_included: false,
       absolute_paths_included: false,
@@ -6921,6 +9668,21 @@ function normalizeTopologyProjection(raw: unknown): AwisWorkspaceTopologyProject
       bounded: true,
       provider_safe: true,
     },
+  }
+}
+
+function normalizeTopologyKnowledgeMap(raw: unknown): AwisWorkspaceTopologyProjection['knowledge_map'] {
+  const value = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? raw as Partial<AwisWorkspaceTopologyProjection['knowledge_map']>
+    : {}
+  return {
+    load_first_docs: normalizeStringList(value.load_first_docs, MAX_STARTUP_ITEMS).map(sanitizeRelativePath).filter(isString),
+    manifest_refs: normalizeStringList(value.manifest_refs, MAX_STARTUP_ITEMS).map(sanitizeRelativePath).filter(isString),
+    command_sources: normalizeStringList(value.command_sources, MAX_STARTUP_ITEMS).map(sanitizeRelativePath).filter(isString),
+    validation_entrypoints: normalizeStringList(value.validation_entrypoints, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    runtime_entrypoints: normalizeStringList(value.runtime_entrypoints, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    sensitive_zones: normalizeStringList(value.sensitive_zones, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    summarize_only: normalizeStringList(value.summarize_only, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
   }
 }
 
@@ -7056,6 +9818,57 @@ function normalizeSemanticIndexProjection(raw: unknown): AwisWorkspaceSemanticIn
   }
 }
 
+function normalizeImpactMapProjection(raw: unknown): AwisWorkspaceImpactMapProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceImpactMapProjection>
+  if (value.schema_version !== 'atlas.awis.workspace_impact_map_projection.v1') return null
+  const risks = new Set(['low', 'medium', 'high'])
+  const componentImpacts = Array.isArray(value.component_impacts)
+    ? value.component_impacts
+      .filter((impact) => Boolean(impact && typeof impact === 'object' && isString(impact.component_key)))
+      .map((impact) => ({
+        component_key: sanitizeComponentKey(impact.component_key),
+        change_signals: normalizeStringList(impact.change_signals, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        affected_components: normalizeStringList(impact.affected_components, MAX_STARTUP_ITEMS).map(sanitizeComponentKey).filter(isString),
+        validation_cascade: normalizeStringList(impact.validation_cascade, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        risk: risks.has(String(impact.risk)) ? impact.risk as AwisWorkspaceImpactMapProjection['component_impacts'][number]['risk'] : 'low',
+        reason: isString(impact.reason) ? sanitizeProviderSafeText(impact.reason).slice(0, 180) : 'impacto inferido localmente',
+        confidence: normalizePercent(impact.confidence),
+      }))
+      .filter((impact) => impact.component_key !== '')
+      .slice(0, MAX_TOPOLOGY_COMPONENTS)
+    : []
+  if (componentImpacts.length === 0) return null
+  return {
+    schema_version: 'atlas.awis.workspace_impact_map_projection.v1',
+    source: 'local_awis_impact_mapper',
+    readiness_score: normalizePercent(value.readiness_score),
+    component_impacts: componentImpacts,
+    cross_workspace_impacts: Array.isArray(value.cross_workspace_impacts)
+      ? value.cross_workspace_impacts
+        .filter((impact) => Boolean(impact && typeof impact === 'object' && isString(impact.workspace_hint)))
+        .map((impact) => ({
+          workspace_hint: sanitizeProviderSafeText(impact.workspace_hint).slice(0, 120),
+          trigger_components: normalizeStringList(impact.trigger_components, MAX_STARTUP_ITEMS).map(sanitizeComponentKey).filter(isString),
+          reuse: normalizeStringList(impact.reuse, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          revalidate: normalizeStringList(impact.revalidate, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          confidence: normalizePercent(impact.confidence),
+        }))
+        .filter((impact) => impact.workspace_hint !== '')
+        .slice(0, MAX_STARTUP_ITEMS)
+      : [],
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
 function normalizeRelationProjection(raw: unknown): AwisWorkspaceRelationProjection | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const value = raw as Partial<AwisWorkspaceRelationProjection>
@@ -7113,6 +9926,42 @@ function normalizeRelationProjection(raw: unknown): AwisWorkspaceRelationProject
         do_not_transfer: ['conteúdo bruto de conversas', 'paths absolutos', 'ids internos'],
         confidence: workspace.overlap_score,
       }))
+  const relationships = new Set(['shared_stack', 'shared_command', 'shared_context', 'shared_recovery'])
+  const connectionContracts = Array.isArray(value.connection_contracts)
+    ? value.connection_contracts
+      .filter((item) => Boolean(item && typeof item === 'object' && isString(item.workspace_hint)))
+      .map((item) => ({
+        workspace_hint: providerSafeWorkspaceHint({
+          workspaceKey: item.workspace_hint,
+          workspaceName: item.workspace_hint,
+          rootPath: '',
+        } as AwisWorkspaceMemorySnapshot),
+        relationship: relationships.has(String(item.relationship))
+          ? item.relationship as AwisWorkspaceRelationProjection['connection_contracts'][number]['relationship']
+          : 'shared_stack',
+        load_when: normalizeStringList(item.load_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        reuse: normalizeStringList(item.reuse, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        validate: normalizeStringList(item.validate, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        never_transfer: normalizeStringList(item.never_transfer, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        confidence: normalizePercent(item.confidence),
+      }))
+      .filter((item) => item.workspace_hint !== '')
+      .slice(0, MAX_RELATED_WORKSPACES)
+    : transferMatrix.map((item) => ({
+        workspace_hint: item.workspace_hint,
+        relationship: item.reuse.some((reuse) => reuse.startsWith('ouro:'))
+          ? 'shared_context' as const
+          : item.reuse.some((reuse) => reuse.startsWith('recovery:'))
+            ? 'shared_recovery' as const
+            : item.reuse.some((reuse) => reuse.startsWith('comando:') || reuse.startsWith('validação:'))
+              ? 'shared_command' as const
+              : 'shared_stack' as const,
+        load_when: ['stack compatível aparece no mapa local'],
+        reuse: item.reuse,
+        validate: item.revalidate,
+        never_transfer: item.do_not_transfer,
+        confidence: item.confidence,
+      }))
   return {
     schema_version: 'atlas.awis.workspace_relation_projection.v1',
     source: 'local_provider_safe_workspace_memories',
@@ -7120,6 +9969,7 @@ function normalizeRelationProjection(raw: unknown): AwisWorkspaceRelationProject
     current_workspace_seen: value.current_workspace_seen === true,
     related_workspaces: related,
     transfer_matrix: transferMatrix,
+    connection_contracts: connectionContracts,
     transfer_policy: {
       privacy_level: 'provider_safe_hints',
       raw_workspace_names_returned: false,
@@ -7362,8 +10212,9 @@ function normalizeMemoryConsolidationProjection(raw: unknown): AwisWorkspaceMemo
   const rehearse = normalizeStringList(value.consolidate?.rehearse_next, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
   const archive = normalizeStringList(value.consolidate?.archive_as_artifact, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
   const summarize = normalizeStringList(value.consolidate?.summarize_only, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const revalidate = normalizeStringList(value.consolidate?.revalidate, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
   const neverPromote = normalizeStringList(value.consolidate?.never_promote, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
-  if (nextSessionSeed.length === 0 && promote.length === 0 && rehearse.length === 0 && archive.length === 0 && summarize.length === 0 && neverPromote.length === 0) return null
+  if (nextSessionSeed.length === 0 && promote.length === 0 && rehearse.length === 0 && archive.length === 0 && summarize.length === 0 && revalidate.length === 0 && neverPromote.length === 0) return null
   const mode = modes.has(String(value.compaction_policy?.mode))
     ? value.compaction_policy?.mode as AwisWorkspaceMemoryConsolidationProjection['compaction_policy']['mode']
     : 'balanced'
@@ -7382,6 +10233,7 @@ function normalizeMemoryConsolidationProjection(raw: unknown): AwisWorkspaceMemo
       rehearse_next: rehearse,
       archive_as_artifact: archive,
       summarize_only: summarize,
+      revalidate,
       never_promote: neverPromote,
     },
     learning_loop: {
@@ -7493,6 +10345,136 @@ function normalizeStartupOrchestrationProjection(raw: unknown): AwisWorkspaceSta
       update_memory: true,
       update_space_pack: value.learning_loop?.update_space_pack === true,
       preserve_artifact_after_success: value.learning_loop?.preserve_artifact_after_success === true,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizePreflightProjection(raw: unknown): AwisWorkspacePreflightProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspacePreflightProjection>
+  if (value.schema_version !== 'atlas.awis.workspace_preflight_projection.v1') return null
+  const gates = new Set(['context', 'evidence', 'impact', 'validation', 'human', 'learning'])
+  const statuses = new Set(['ready', 'warn', 'blocked'])
+  const normalizedGates = Array.isArray(value.gates)
+    ? value.gates
+      .filter((gate) => Boolean(gate && typeof gate === 'object' && isString(gate.label)))
+      .map((gate) => ({
+        gate: gates.has(String(gate.gate)) ? gate.gate as AwisWorkspacePreflightProjection['gates'][number]['gate'] : 'context',
+        status: statuses.has(String(gate.status)) ? gate.status as AwisWorkspacePreflightProjection['gates'][number]['status'] : 'warn',
+        label: sanitizeProviderSafeText(gate.label).slice(0, 180),
+        required: gate.required === true,
+        evidence: normalizeStringList(gate.evidence, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      }))
+      .filter((gate) => gate.label !== '')
+      .slice(0, MAX_STARTUP_ITEMS)
+    : []
+  if (normalizedGates.length === 0) return null
+  const mode: AwisWorkspacePreflightProjection['mode'] =
+    value.mode === 'ready' || value.mode === 'guarded' || value.mode === 'blocked'
+      ? value.mode
+      : normalizedGates.some((gate) => gate.status === 'blocked')
+        ? 'blocked'
+        : normalizedGates.some((gate) => gate.status === 'warn')
+          ? 'guarded'
+          : 'ready'
+  return {
+    schema_version: 'atlas.awis.workspace_preflight_projection.v1',
+    source: 'local_awis_preflight_compiler',
+    readiness_score: normalizePercent(value.readiness_score),
+    mode,
+    gates: normalizedGates,
+    execution_lanes: {
+      before_send: normalizeStringList(value.execution_lanes?.before_send, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      before_execution: normalizeStringList(value.execution_lanes?.before_execution, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_success: normalizeStringList(value.execution_lanes?.after_success, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_failure: normalizeStringList(value.execution_lanes?.after_failure, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    promotion_contract: {
+      promote_when: normalizeStringList(value.promotion_contract?.promote_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      demote_when: normalizeStringList(value.promotion_contract?.demote_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      preserve_as_artifact: value.promotion_contract?.preserve_as_artifact === true,
+      update_space_pack: value.promotion_contract?.update_space_pack === true,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeWorkspaceTwinProjection(raw: unknown): AwisWorkspaceTwinProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceTwinProjection>
+  if (value.schema_version !== 'atlas.awis.workspace_twin_projection.v1') return null
+  const genome = {
+    stack: normalizeStringList(value.genome?.stack, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    apps: normalizeStringList(value.genome?.apps, MAX_TOPOLOGY_COMPONENTS).map(sanitizeComponentKey).filter(isString),
+    owner_docs: normalizeStringList(value.genome?.owner_docs, MAX_STARTUP_ITEMS).map(sanitizeRelativePath).filter(isString),
+    commands: normalizeStringList(value.genome?.commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    risk_zones: normalizeStringList(value.genome?.risk_zones, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    test_families: normalizeStringList(value.genome?.test_families, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+  }
+  const components = Array.isArray(value.live_map?.components)
+    ? value.live_map.components
+      .filter((component) => Boolean(component && typeof component === 'object' && isString(component.key)))
+      .map((component) => ({
+        key: sanitizeComponentKey(component.key),
+        role: isString(component.role) ? sanitizeProviderSafeText(component.role).slice(0, 120) : 'workspace area',
+        maturity: component.maturity === 'battle_tested' || component.maturity === 'stable' || component.maturity === 'learning' || component.maturity === 'new'
+          ? component.maturity
+          : 'learning',
+        confidence: normalizePercent(component.confidence),
+      }))
+      .filter((component) => component.key !== '')
+      .slice(0, MAX_TOPOLOGY_COMPONENTS)
+    : []
+  if (genome.apps.length === 0 && components.length === 0) return null
+  const hashes = {
+    genome_hash: isString(value.hashes?.genome_hash) ? sanitizeProviderSafeText(value.hashes.genome_hash).slice(0, 80) : `twin-${stableStringHash(JSON.stringify(genome))}`,
+    code_map_hash: isString(value.hashes?.code_map_hash) ? sanitizeProviderSafeText(value.hashes.code_map_hash).slice(0, 80) : `twin-${stableStringHash(JSON.stringify(components))}`,
+    command_registry_hash: isString(value.hashes?.command_registry_hash) ? sanitizeProviderSafeText(value.hashes.command_registry_hash).slice(0, 80) : `twin-${stableStringHash(JSON.stringify(genome.commands))}`,
+    risk_map_hash: isString(value.hashes?.risk_map_hash) ? sanitizeProviderSafeText(value.hashes.risk_map_hash).slice(0, 80) : `twin-${stableStringHash(JSON.stringify(genome.risk_zones))}`,
+  }
+  return {
+    schema_version: 'atlas.awis.workspace_twin_projection.v1',
+    source: 'local_awis_workspace_twin_compiler',
+    workspace_id: isString(value.workspace_id) ? sanitizeComponentKey(value.workspace_id) : 'workspace',
+    readiness_score: normalizePercent(value.readiness_score),
+    stale: value.stale === true,
+    hashes,
+    genome,
+    live_map: {
+      components,
+      connections: normalizeStringList(value.live_map?.connections, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      fragile_areas: normalizeStringList(value.live_map?.fragile_areas, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    context_autopilot: {
+      load_first: normalizeStringList(value.context_autopilot?.load_first, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      summarize: normalizeStringList(value.context_autopilot?.summarize, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      validate: normalizeStringList(value.context_autopilot?.validate, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      avoid: normalizeStringList(value.context_autopilot?.avoid, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      reason: isString(value.context_autopilot?.reason) ? sanitizeProviderSafeText(value.context_autopilot.reason).slice(0, 180) : 'twin AWIS provider-safe',
+    },
+    learning_loop: {
+      learned_from_outcomes: normalizeStringList(value.learning_loop?.learned_from_outcomes, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      next_refresh: normalizeStringList(value.learning_loop?.next_refresh, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      reuse_next_session: normalizeStringList(value.learning_loop?.reuse_next_session, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
     },
     safety: {
       raw_source_included: false,
@@ -7692,6 +10674,298 @@ function normalizeTaskRouterProjection(raw: unknown): AwisWorkspaceTaskRouterPro
   }
 }
 
+function normalizeWorkspaceMeshProjection(raw: unknown): AwisWorkspaceMeshProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceMeshProjection>
+  if (value.schema_version !== 'atlas.awis.workspace_mesh_projection.v1') return null
+  const relationships = new Set(['shared_stack', 'shared_command', 'shared_context', 'shared_recovery', 'local_component', 'space_context', 'artifact_replay'])
+  const routes = Array.isArray(value.routes)
+    ? value.routes
+      .filter((route) => Boolean(route && typeof route === 'object' && isString(route.workspace_hint)))
+      .map((route) => {
+        const workspaceHint = sanitizeProviderSafeText(String(route.workspace_hint)).slice(0, 80)
+        const relationship = relationships.has(String(route.relationship))
+          ? route.relationship as AwisWorkspaceMeshProjection['routes'][number]['relationship']
+          : 'local_component'
+        const normalized = {
+          workspace_hint: workspaceHint,
+          relationship,
+          load_when: normalizeStringList(route.load_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          reuse: normalizeStringList(route.reuse, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          validate_with: normalizeStringList(route.validate_with, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          never_transfer: normalizeStringList(route.never_transfer, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          linked_components: normalizeStringList(route.linked_components, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          linked_spaces: normalizeStringList(route.linked_spaces, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+          confidence: normalizePercent(route.confidence),
+        }
+        return {
+          route_id: isString(route.route_id) ? sanitizeProviderSafeText(route.route_id).slice(0, 80) : `mesh-${stableStringHash(JSON.stringify(normalized))}`,
+          ...normalized,
+        }
+      })
+      .filter((route) => route.workspace_hint !== '')
+      .slice(0, MAX_STARTUP_ITEMS * 2)
+    : []
+  if (routes.length === 0) return null
+  const nextConversation = value.next_conversation && typeof value.next_conversation === 'object'
+    ? value.next_conversation
+    : null
+  return {
+    schema_version: 'atlas.awis.workspace_mesh_projection.v1',
+    source: 'local_awis_operational_mesh',
+    readiness_score: normalizePercent(value.readiness_score),
+    mesh_hash: isString(value.mesh_hash)
+      ? sanitizeProviderSafeText(value.mesh_hash).slice(0, 80)
+      : `mesh-${stableStringHash(JSON.stringify(routes.map((route) => [route.workspace_hint, route.relationship, route.confidence])))}`
+    ,
+    routes,
+    next_conversation: {
+      load_order: normalizeStringList(nextConversation?.load_order, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      reuse_rules: normalizeStringList(nextConversation?.reuse_rules, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      validate_with: normalizeStringList(nextConversation?.validate_with, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      human_boundary: normalizeStringList(nextConversation?.human_boundary, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    transfer_policy: {
+      privacy_level: 'provider_safe_operational_mesh',
+      raw_workspace_names_returned: false,
+      raw_paths_returned: false,
+      raw_source_returned: false,
+      raw_conversation_returned: false,
+      apply_only_when_stack_matches: true,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeCurrentTruthPackProjection(raw: unknown): AwisWorkspaceCurrentTruthPackProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceCurrentTruthPackProjection>
+  if (value.schema_version !== 'atlas.awis.current_truth_pack_projection.v1') return null
+  const currentTruth = value.current_truth && typeof value.current_truth === 'object' ? value.current_truth : null
+  const proof = value.proof && typeof value.proof === 'object' ? value.proof : null
+  const nextConversation = value.next_conversation && typeof value.next_conversation === 'object' ? value.next_conversation : null
+  const mustKeep = normalizeStringList(currentTruth?.must_keep, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const activeComponents = normalizeStringList(currentTruth?.active_components, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const activeSpaces = normalizeStringList(currentTruth?.active_spaces, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const activeArtifacts = normalizeStringList(currentTruth?.active_artifacts, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const provenCommands = normalizeStringList(currentTruth?.proven_commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const meshRoutes = normalizeStringList(currentTruth?.mesh_routes, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const evidenceRefs = normalizeStringList(proof?.evidence_refs, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  if (
+    mustKeep.length === 0 &&
+    activeComponents.length === 0 &&
+    activeSpaces.length === 0 &&
+    activeArtifacts.length === 0 &&
+    provenCommands.length === 0 &&
+    evidenceRefs.length === 0
+  ) return null
+  const truthPayload = {
+    workspace: value.workspace_key,
+    mustKeep,
+    activeComponents,
+    activeSpaces,
+    activeArtifacts,
+    provenCommands,
+    meshRoutes,
+    evidenceRefs,
+  }
+  return {
+    schema_version: 'atlas.awis.current_truth_pack_projection.v1',
+    source: 'local_awis_truth_compiler',
+    workspace_key: isString(value.workspace_key) ? sanitizeProviderSafeText(value.workspace_key) : '',
+    readiness_score: normalizePercent(value.readiness_score),
+    truth_hash: isString(value.truth_hash)
+      ? sanitizeProviderSafeText(value.truth_hash).slice(0, 80)
+      : `truth-${stableStringHash(JSON.stringify(truthPayload))}`,
+    current_truth: {
+      must_keep: mustKeep,
+      active_components: activeComponents,
+      active_spaces: activeSpaces,
+      active_artifacts: activeArtifacts,
+      proven_commands: provenCommands,
+      mesh_routes: meshRoutes,
+    },
+    proof: {
+      evidence_refs: evidenceRefs,
+      validate_with: normalizeStringList(proof?.validate_with, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      stale_or_unproven: normalizeStringList(proof?.stale_or_unproven, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      human_boundary: normalizeStringList(proof?.human_boundary, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    next_conversation: {
+      load_first: normalizeStringList(nextConversation?.load_first, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      summarize_only: normalizeStringList(nextConversation?.summarize_only, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      promote_when: normalizeStringList(nextConversation?.promote_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      demote_when: normalizeStringList(nextConversation?.demote_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeRepositoryConstellationProjection(raw: unknown): AwisWorkspaceRepositoryConstellationProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceRepositoryConstellationProjection>
+  if (value.schema_version !== 'atlas.awis.repository_constellation_projection.v1') return null
+  const maturities = new Set(['new', 'learning', 'stable', 'battle_tested'])
+  const repositories = Array.isArray(value.repositories)
+    ? value.repositories
+      .filter((repo) => Boolean(repo && typeof repo === 'object' && isString(repo.key)))
+      .map((repo) => ({
+        key: sanitizeComponentKey(repo.key),
+        role: isString(repo.role) ? sanitizeProviderSafeText(repo.role).slice(0, 120) : 'workspace area',
+        stack: normalizeStringList(repo.stack, 6).map(sanitizeProviderSafeText).filter(isString),
+        maturity: maturities.has(String(repo.maturity))
+          ? repo.maturity as AwisWorkspaceRepositoryConstellationProjection['repositories'][number]['maturity']
+          : 'learning',
+        manifests: normalizeStringList(repo.manifests, 6).map(sanitizeRelativePath).filter(isString),
+        docs: normalizeStringList(repo.docs, 6).map(sanitizeRelativePath).filter(isString),
+        commands: normalizeStringList(repo.commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        connected_to: normalizeStringList(repo.connected_to, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        load_when: normalizeStringList(repo.load_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        summarize_when: normalizeStringList(repo.summarize_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        validate_with: normalizeStringList(repo.validate_with, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        confidence: normalizePercent(repo.confidence),
+      }))
+      .filter((repo) => repo.key !== '')
+      .slice(0, MAX_TOPOLOGY_COMPONENTS)
+    : []
+  const repoKeys = new Set(repositories.map((repo) => repo.key))
+  const bridges = Array.isArray(value.bridges)
+    ? value.bridges
+      .filter((bridge) => Boolean(bridge && typeof bridge === 'object' && isString(bridge.from) && isString(bridge.to)))
+      .map((bridge) => ({
+        from: sanitizeComponentKey(bridge.from),
+        to: sanitizeComponentKey(bridge.to),
+        reason: isString(bridge.reason) ? sanitizeProviderSafeText(bridge.reason).slice(0, 160) : 'componentes relacionados',
+        shared_stack: normalizeStringList(bridge.shared_stack, 4).map(sanitizeProviderSafeText).filter(isString),
+        validation_bridge: normalizeStringList(bridge.validation_bridge, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        context_bridge: normalizeStringList(bridge.context_bridge, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+        confidence: normalizePercent(bridge.confidence),
+      }))
+      .filter((bridge) => bridge.from !== '' && bridge.to !== '' && bridge.from !== bridge.to && repoKeys.has(bridge.from) && repoKeys.has(bridge.to))
+      .slice(0, MAX_TOPOLOGY_CONNECTIONS)
+    : []
+  if (repositories.length === 0 && bridges.length === 0) return null
+  const nextConversation = value.next_conversation && typeof value.next_conversation === 'object' ? value.next_conversation : null
+  const learningLoop = value.learning_loop && typeof value.learning_loop === 'object' ? value.learning_loop : null
+  const hashSeed = JSON.stringify({
+    repositories: repositories.map((repo) => `${repo.key}:${repo.maturity}:${repo.confidence}`),
+    bridges: bridges.map((bridge) => `${bridge.from}->${bridge.to}:${bridge.confidence}`),
+  })
+  return {
+    schema_version: 'atlas.awis.repository_constellation_projection.v1',
+    source: 'local_awis_repository_constellation',
+    readiness_score: normalizePercent(value.readiness_score),
+    constellation_hash: isString(value.constellation_hash)
+      ? sanitizeProviderSafeText(value.constellation_hash).slice(0, 96)
+      : `repo-constellation-${stableStringHash(hashSeed)}`,
+    repositories,
+    bridges,
+    next_conversation: {
+      load_first: normalizeStringList(nextConversation?.load_first, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      compare_when: normalizeStringList(nextConversation?.compare_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      validate_with: normalizeStringList(nextConversation?.validate_with, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      preserve_as_artifact: normalizeStringList(nextConversation?.preserve_as_artifact, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      human_boundary: normalizeStringList(nextConversation?.human_boundary, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    learning_loop: {
+      promote_when: normalizeStringList(learningLoop?.promote_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      revalidate_when: normalizeStringList(learningLoop?.revalidate_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      demote_when: normalizeStringList(learningLoop?.demote_when, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeLiveExecutionMemoryProjection(raw: unknown): AwisWorkspaceLiveExecutionMemoryProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceLiveExecutionMemoryProjection>
+  if (value.schema_version !== 'atlas.awis.live_execution_memory_projection.v1') return null
+  const startup = value.startup_packet && typeof value.startup_packet === 'object' ? value.startup_packet : null
+  const automation = value.automation_loop && typeof value.automation_loop === 'object' ? value.automation_loop : null
+  const promotion = value.promotion_rules && typeof value.promotion_rules === 'object' ? value.promotion_rules : null
+  const learning = value.workspace_learning && typeof value.workspace_learning === 'object' ? value.workspace_learning : null
+  const loadFirst = normalizeStringList(startup?.load_first, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const useAsSummary = normalizeStringList(startup?.use_as_summary, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const validateBeforeTrust = normalizeStringList(startup?.validate_before_trust, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const repositories = normalizeStringList(learning?.repositories, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const components = normalizeStringList(learning?.components, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const artifacts = normalizeStringList(learning?.artifacts, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const hashSeed = JSON.stringify({
+    loadFirst,
+    useAsSummary,
+    validateBeforeTrust,
+    repositories,
+    components,
+    artifacts,
+  })
+  if (loadFirst.length === 0 && useAsSummary.length === 0 && validateBeforeTrust.length === 0 && repositories.length === 0 && components.length === 0) return null
+  return {
+    schema_version: 'atlas.awis.live_execution_memory_projection.v1',
+    source: 'local_awis_live_execution_memory_compiler',
+    readiness_score: normalizePercent(value.readiness_score),
+    memory_hash: isString(value.memory_hash) ? sanitizeProviderSafeText(value.memory_hash).slice(0, 120) : `live-${stableStringHash(hashSeed)}`,
+    startup_packet: {
+      load_first: loadFirst,
+      use_as_summary: useAsSummary,
+      validate_before_trust: validateBeforeTrust,
+      avoid: normalizeStringList(startup?.avoid, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      human_boundary: normalizeStringList(startup?.human_boundary, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    automation_loop: {
+      before_send: normalizeStringList(automation?.before_send, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_success: normalizeStringList(automation?.after_success, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_failure: normalizeStringList(automation?.after_failure, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      on_drift: normalizeStringList(automation?.on_drift, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    promotion_rules: {
+      promote_to_gold: normalizeStringList(promotion?.promote_to_gold, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      preserve_as_artifact: normalizeStringList(promotion?.preserve_as_artifact, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      revalidate: normalizeStringList(promotion?.revalidate, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      demote: normalizeStringList(promotion?.demote, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    workspace_learning: {
+      repositories,
+      components,
+      spaces: normalizeStringList(learning?.spaces, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      artifacts,
+      commands: normalizeStringList(learning?.commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
 function normalizeArtifact(raw: unknown): AwisWorkspaceArtifactEntry | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const value = raw as Partial<AwisWorkspaceArtifactEntry>
@@ -7707,6 +10981,7 @@ function normalizeArtifact(raw: unknown): AwisWorkspaceArtifactEntry | null {
     created_at: isString(value.created_at) ? value.created_at : new Date().toISOString(),
     title: isString(value.title) ? value.title : `Partida AWIS · ${value.workspace_key}`,
     summary: isString(value.summary) ? value.summary : 'Snapshot AWIS provider-safe.',
+    manifest: normalizeArtifactManifest(value.manifest, value),
     payload: {
       startup_snapshot: value.payload.startup_snapshot,
       startup_briefing: normalizeStartupBriefing(value.payload.startup_briefing),
@@ -7725,19 +11000,156 @@ function normalizeArtifact(raw: unknown): AwisWorkspaceArtifactEntry | null {
       retention_projection: normalizeRetentionProjection(value.payload.retention_projection),
       memory_consolidation_projection: normalizeMemoryConsolidationProjection(value.payload.memory_consolidation_projection),
       startup_orchestration_projection: normalizeStartupOrchestrationProjection(value.payload.startup_orchestration_projection),
+      preflight_projection: normalizePreflightProjection(value.payload.preflight_projection),
+      workspace_twin_projection: normalizeWorkspaceTwinProjection(value.payload.workspace_twin_projection),
+      launch_contract_projection: normalizeLaunchContractProjection(value.payload.launch_contract_projection),
+      next_session_brain_projection: normalizeNextSessionBrainProjection(value.payload.next_session_brain_projection),
       learning_projection: normalizeLearningProjection(value.payload.learning_projection),
       topology_projection: normalizeTopologyProjection(value.payload.topology_projection),
       component_memory_projection: normalizeComponentMemoryProjection(value.payload.component_memory_projection),
       semantic_index_projection: normalizeSemanticIndexProjection(value.payload.semantic_index_projection),
+      impact_map_projection: normalizeImpactMapProjection(value.payload.impact_map_projection),
       space_projection: normalizeSpaceProjection(value.payload.space_projection),
       evolution_projection: value.payload.evolution_projection ?? null,
       relation_projection: normalizeRelationProjection(value.payload.relation_projection),
+      workspace_mesh_projection: normalizeWorkspaceMeshProjection(value.payload.workspace_mesh_projection),
+      current_truth_pack_projection: normalizeCurrentTruthPackProjection(value.payload.current_truth_pack_projection),
+      repository_constellation_projection: normalizeRepositoryConstellationProjection(value.payload.repository_constellation_projection),
+      live_execution_memory_projection: normalizeLiveExecutionMemoryProjection(value.payload.live_execution_memory_projection),
       memory_operational: value.payload.memory_operational ?? null,
     },
     safety: {
       raw_source_included: false,
       raw_conversation_included: false,
       internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeArtifactManifest(
+  raw: unknown,
+  artifact: Partial<AwisWorkspaceArtifactEntry>,
+): AwisWorkspaceArtifactEntry['manifest'] {
+  const value = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? raw as Partial<AwisWorkspaceArtifactEntry['manifest']>
+    : {}
+  const loadFirst = normalizeStringList(value.load_first, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const validateWith = normalizeStringList(value.validate_with, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const promoteSignals = normalizeStringList(value.promote_signals, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const cautionSignals = normalizeStringList(value.caution_signals, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const linkedSpaces = normalizeStringList(value.linked_spaces, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const repositoryHints = normalizeStringList(value.repository_hints, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const legacySeed = JSON.stringify({
+    hash: artifact.artifact_hash,
+    summary: artifact.summary,
+    loadFirst,
+    validateWith,
+    linkedSpaces,
+  })
+  const qualityScore = normalizePercent(value.quality_score) || normalizePercent(
+    28
+    + Math.min(18, loadFirst.length * 3)
+    + Math.min(18, validateWith.length * 3)
+    + Math.min(12, linkedSpaces.length * 2),
+  )
+  return {
+    schema_version: 'atlas.awis.workspace_artifact_manifest.v1',
+    quality_score: qualityScore,
+    replay_priority: normalizePercent(value.replay_priority) || qualityScore,
+    seed_hash: isString(value.seed_hash)
+      ? sanitizeProviderSafeText(value.seed_hash).slice(0, 80)
+      : `artifact-${stableStringHash(legacySeed)}`,
+    load_first: loadFirst,
+    validate_with: validateWith,
+    promote_signals: promoteSignals,
+    caution_signals: cautionSignals,
+    linked_spaces: linkedSpaces,
+    repository_hints: repositoryHints,
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeNextSessionBrainProjection(raw: unknown): AwisWorkspaceNextSessionBrainProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceNextSessionBrainProjection>
+  if (value.schema_version !== 'atlas.awis.workspace_next_session_brain_projection.v1') return null
+  const loadOrder = normalizeStringList(value.load_order, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const executionPriority = Array.isArray(value.execution_priority)
+    ? value.execution_priority
+      .filter((item) => Boolean(item && typeof item === 'object' && isString(item.command)))
+      .map((item) => ({
+        command: sanitizeProviderSafeText(String(item.command)).slice(0, 180),
+        why: isString(item.why) ? sanitizeProviderSafeText(item.why).slice(0, 120) : null,
+        requires_operator_approval: item.requires_operator_approval !== false,
+      }))
+      .slice(0, MAX_STARTUP_ITEMS)
+    : []
+  const focusedRepositories = Array.isArray(value.focused_repositories)
+    ? value.focused_repositories
+      .filter((repo) => Boolean(repo && typeof repo === 'object' && isString(repo.repo_key)))
+      .map((repo) => ({
+        repo_key: sanitizeProviderSafeText(String(repo.repo_key)).slice(0, 80),
+        score: normalizePercent(repo.score),
+        reasons: normalizeStringList(repo.reasons, 4).map(sanitizeProviderSafeText).filter(isString),
+        stack: normalizeStringList(repo.stack, 6).map(sanitizeProviderSafeText).filter(isString),
+      }))
+      .slice(0, MAX_STARTUP_ITEMS)
+    : []
+  const context = value.context_loading
+  const focusedManifestRefs = Array.isArray(context?.focused_manifest_refs)
+    ? context.focused_manifest_refs
+      .filter((ref) => Boolean(ref && typeof ref === 'object' && isString(ref.repo_key)))
+      .map((ref) => ({
+        repo_key: sanitizeProviderSafeText(String(ref.repo_key)).slice(0, 80),
+        manifest_files: normalizeStringList(ref.manifest_files, 6).map(sanitizeRelativePath).filter(isString),
+        stack: normalizeStringList(ref.stack, 6).map(sanitizeProviderSafeText).filter(isString),
+        script_names: normalizeStringList(ref.script_names, 8).map(sanitizeProviderSafeText).filter(isString),
+      }))
+      .slice(0, MAX_STARTUP_ITEMS)
+    : []
+  if (loadOrder.length === 0 && executionPriority.length === 0 && focusedRepositories.length === 0) return null
+  return {
+    schema_version: 'atlas.awis.workspace_next_session_brain_projection.v1',
+    source: value.source === 'server_awnsb' ? 'server_awnsb' : 'local_awis_seed',
+    status: isString(value.status) ? sanitizeProviderSafeText(value.status).slice(0, 60) : 'ready',
+    brain_hash: isString(value.brain_hash) ? sanitizeProviderSafeText(value.brain_hash).slice(0, 80) : null,
+    readiness_score: typeof value.readiness_score === 'number' ? normalizePercent(value.readiness_score) : null,
+    load_order: loadOrder,
+    focused_repositories: focusedRepositories,
+    focused_areas: normalizeStringList(value.focused_areas, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    artifact_refs: normalizeStringList(value.artifact_refs, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    owner_docs: normalizeStringList(value.owner_docs, MAX_STARTUP_ITEMS).map(sanitizeRelativePath).filter(isString),
+    execution_priority: executionPriority,
+    context_loading: {
+      mode: isString(context?.mode) ? sanitizeProviderSafeText(context.mode).slice(0, 60) : null,
+      repository_count: normalizeCount(context?.repository_count),
+      stack_tags: normalizeStringList(context?.stack_tags, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      command_hints: normalizeStringList(context?.command_hints, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      outcome_ranked_commands: normalizeStringList(context?.outcome_ranked_commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      avoid_commands: normalizeStringList(context?.avoid_commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      flaky_commands: normalizeStringList(context?.flaky_commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      slow_commands: normalizeStringList(context?.slow_commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      focused_manifest_refs: focusedManifestRefs,
+      hashes: {
+        repository_inventory_hash: isString(context?.hashes?.repository_inventory_hash) ? context.hashes.repository_inventory_hash : null,
+        working_set_hash: isString(context?.hashes?.working_set_hash) ? context.hashes.working_set_hash : null,
+        context_delta_plan_hash: isString(context?.hashes?.context_delta_plan_hash) ? context.hashes.context_delta_plan_hash : null,
+        learning_snapshot_hash: isString(context?.hashes?.learning_snapshot_hash) ? context.hashes.learning_snapshot_hash : null,
+      },
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      internal_ids_included: false,
+      absolute_paths_included: false,
       bounded: true,
       provider_safe: true,
     },
@@ -7757,6 +11169,205 @@ function summarizeAwisWorkspaceArtifacts(
     latest_artifact_type: latest?.artifact_type ?? null,
     latest_created_at: latest?.created_at ?? null,
     retained_limit: MAX_WORKSPACE_ARTIFACTS,
+  }
+}
+
+function buildAwisWorkspaceArtifactManifest(
+  pack: AwisWorkspaceContextPack,
+): AwisWorkspaceArtifactEntry['manifest'] {
+  const readinessFlags = pack.startup_snapshot
+    ? Object.values(pack.startup_snapshot.readiness).filter(Boolean).length
+    : 0
+  const loadFirst = unique([
+    ...(pack.live_execution_memory?.startup_packet.load_first ?? []),
+    ...(pack.launch_contract?.startup_contract.first_load ?? []),
+    ...(pack.current_truth_pack?.next_conversation.load_first ?? []),
+    ...(pack.repository_constellation?.next_conversation.load_first ?? []),
+    ...(pack.workspace_mesh?.next_conversation.load_order ?? []),
+    ...(pack.startup_briefing?.focus.load_sequence ?? []),
+    ...(pack.workspace_twin?.context_autopilot.load_first ?? []),
+    ...(pack.next_session_brain?.load_order.map((item) => `brain:${item}`) ?? []),
+    ...(pack.topology?.knowledge_map.load_first_docs.map((path) => `doc:${path}`) ?? []),
+    ...(pack.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+    ...(pack.context_kernel?.priority_load.map((item) => `${item.kind}:${item.label}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const validateWith = unique([
+    ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
+    ...(pack.launch_contract?.startup_contract.validate_before_trust ?? []),
+    ...(pack.current_truth_pack?.proof.validate_with ?? []),
+    ...(pack.repository_constellation?.next_conversation.validate_with ?? []),
+    ...(pack.workspace_mesh?.next_conversation.validate_with ?? []),
+    ...(pack.startup_briefing?.automation_plan.tests_to_run ?? []),
+    ...(pack.topology?.knowledge_map.validation_entrypoints ?? []),
+    ...(pack.context_kernel?.validation_plan.commands ?? []),
+    ...(pack.next_session_brain?.execution_priority.map((priority) => priority.command) ?? []),
+    ...(pack.next_session_brain?.context_loading.command_hints ?? []),
+    ...(pack.session_gold?.next_session_hooks.validate_with ?? []),
+    ...(pack.learning?.trusted_commands.filter((command) => /test|tsc|lint|check|build/i.test(command)) ?? []),
+    ...(pack.learning?.task_memory.trusted_task_commands ?? []),
+    ...(pack.learning?.task_memory.validation_plans.flatMap((plan) => plan.commands) ?? []),
+    ...(pack.memory?.stable_commands ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const promoteSignals = unique([
+    ...(pack.live_execution_memory?.promotion_rules.promote_to_gold ?? []),
+    ...(pack.memory_consolidation?.consolidate.promote_to_gold ?? []),
+    ...(pack.launch_contract?.startup_contract.promote_after_success ?? []),
+    ...(pack.current_truth_pack?.next_conversation.promote_when ?? []),
+    ...(pack.repository_constellation?.learning_loop.promote_when ?? []),
+    ...(pack.workspace_mesh?.next_conversation.reuse_rules.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.preflight?.promotion_contract.promote_when ?? []),
+    ...(pack.session_gold?.strongest_outcomes.map((outcome) => `session:${outcome.label}:${outcome.confidence}`) ?? []),
+    ...(pack.next_session_brain ? [`brain:${pack.next_session_brain.source}:${pack.next_session_brain.readiness_score ?? 0}`] : []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const cautionSignals = unique([
+    ...(pack.live_execution_memory?.startup_packet.avoid.map((item) => `live:${item}`) ?? []),
+    ...(pack.live_execution_memory?.startup_packet.human_boundary.map((item) => `live-human:${item}`) ?? []),
+    ...(pack.launch_contract?.startup_contract.avoid_loading ?? []),
+    ...(pack.startup_briefing?.automation_plan.warnings ?? []),
+    ...(pack.memory_freshness?.evidence.revalidate.map((item) => `revalidar:${item}`) ?? []),
+    ...(pack.next_session_brain?.context_loading.avoid_commands ?? []),
+    ...(pack.current_truth_pack?.proof.stale_or_unproven.map((item) => `truth:${item}`) ?? []),
+    ...(pack.repository_constellation?.next_conversation.human_boundary.map((item) => `repo:${item}`) ?? []),
+    ...(pack.workspace_mesh?.next_conversation.human_boundary.map((item) => `mesh:${item}`) ?? []),
+    ...(pack.topology?.knowledge_map.sensitive_zones.map((zone) => `sensível:${zone}`) ?? []),
+    ...(pack.preflight?.gates.filter((gate) => gate.status !== 'ready').map((gate) => `${gate.status}:${gate.label}`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const linkedSpaces = unique([
+    ...(pack.spaces?.strongest_spaces.map((space) => `${space.title}:${space.session_count}`) ?? []),
+    ...(pack.startup_snapshot?.startup_gold.strongest_spaces ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const repositoryHints = unique([
+    ...(pack.live_execution_memory?.workspace_learning.repositories.map((repo) => `live:${repo}`) ?? []),
+    ...(pack.live_execution_memory?.workspace_learning.components.map((component) => `live-component:${component}`) ?? []),
+    ...(pack.startup_briefing?.focus.repositories ?? []),
+    ...(pack.workspace_twin?.genome.apps ?? []),
+    ...(pack.current_truth_pack?.current_truth.active_components ?? []),
+    ...(pack.repository_constellation?.repositories.map((repo) => `${repo.key}:${repo.maturity}`) ?? []),
+    ...(pack.repository_constellation?.bridges.map((bridge) => `${bridge.from}->${bridge.to}`) ?? []),
+    ...(pack.workspace_mesh?.routes.map((route) => `${route.workspace_hint}:${route.relationship}`) ?? []),
+    ...(pack.relations?.connection_contracts.map((contract) => `${contract.workspace_hint}:${contract.relationship}`) ?? []),
+    ...(pack.topology?.components.map((component) => `${component.key}:${component.role}`) ?? []),
+    ...(pack.next_session_brain?.focused_repositories.map((repo) => `${repo.repo_key}:next-session`) ?? []),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const qualityScore = normalizePercent(
+    18
+    + readinessFlags * 6
+    + Math.min(14, loadFirst.length * 2)
+    + Math.min(16, validateWith.length * 3)
+    + Math.min(12, promoteSignals.length * 2)
+    + Math.min(10, linkedSpaces.length * 2)
+    - Math.min(16, cautionSignals.length * 2),
+  )
+  const replayPriority = normalizePercent(
+    qualityScore
+    + (pack.launch_contract?.launch_mode === 'deep' ? 8 : pack.launch_contract?.launch_mode === 'warm' ? 4 : 0)
+    + (pack.artifact_replay ? 4 : 0)
+    + (pack.memory_freshness?.state === 'fresh' ? 4 : 0)
+    + (pack.live_execution_memory ? 4 : 0),
+  )
+  const seedHash = `artifact-${stableStringHash(JSON.stringify({
+    loadFirst,
+    validateWith,
+    promoteSignals,
+    cautionSignals,
+    linkedSpaces,
+    repositoryHints,
+  }))}`
+
+  return {
+    schema_version: 'atlas.awis.workspace_artifact_manifest.v1',
+    quality_score: qualityScore,
+    replay_priority: replayPriority,
+    seed_hash: seedHash,
+    load_first: loadFirst,
+    validate_with: validateWith,
+    promote_signals: promoteSignals,
+    caution_signals: cautionSignals,
+    linked_spaces: linkedSpaces,
+    repository_hints: repositoryHints,
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      internal_ids_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+function normalizeLaunchContractProjection(raw: unknown): AwisWorkspaceLaunchContractProjection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Partial<AwisWorkspaceLaunchContractProjection>
+  if (value.schema_version !== 'atlas.awis.workspace_launch_contract_projection.v1') return null
+  const firstLoad = normalizeStringList(value.startup_contract?.first_load, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const validateBeforeTrust = normalizeStringList(value.startup_contract?.validate_before_trust, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const maintenanceActions = normalizeStringList(value.automation_contract?.maintenance_actions, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  if (firstLoad.length === 0 && validateBeforeTrust.length === 0 && maintenanceActions.length === 0) return null
+  const launchMode = value.launch_mode === 'deep' || value.launch_mode === 'warm' || value.launch_mode === 'guarded'
+    ? value.launch_mode
+    : 'guarded'
+  const seedHash = isString(value.seed_hash)
+    ? sanitizeProviderSafeText(value.seed_hash).slice(0, 80)
+    : `launch-${stableStringHash(JSON.stringify({ firstLoad, validateBeforeTrust, maintenanceActions }))}`
+  return {
+    schema_version: 'atlas.awis.workspace_launch_contract_projection.v1',
+    source: 'local_awis_launch_contract_compiler',
+    readiness_score: normalizePercent(value.readiness_score),
+    launch_mode: launchMode,
+    seed_hash: seedHash,
+    startup_contract: {
+      never_start_cold: true,
+      first_load: firstLoad,
+      validate_before_trust: validateBeforeTrust,
+      summarize_only: normalizeStringList(value.startup_contract?.summarize_only, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      avoid_loading: normalizeStringList(value.startup_contract?.avoid_loading, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      promote_after_success: normalizeStringList(value.startup_contract?.promote_after_success, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      demote_after_failure: normalizeStringList(value.startup_contract?.demote_after_failure, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      preserve_artifact_after_success: value.startup_contract?.preserve_artifact_after_success === true,
+      update_space_pack: value.startup_contract?.update_space_pack === true,
+      needs_human_confirmation: value.startup_contract?.needs_human_confirmation === true,
+    },
+    automation_contract: {
+      before_send: normalizeStringList(value.automation_contract?.before_send, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_success: normalizeStringList(value.automation_contract?.after_success, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_failure: normalizeStringList(value.automation_contract?.after_failure, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      maintenance_actions: maintenanceActions,
+    },
+    recovery_contract: {
+      demote_context: normalizeStringList(value.recovery_contract?.demote_context, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      safe_resume: normalizeStringList(value.recovery_contract?.safe_resume, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      reason: isString(value.recovery_contract?.reason)
+        ? sanitizeProviderSafeText(value.recovery_contract.reason).slice(0, 180)
+        : 'contrato de recuperação AWIS provider-safe',
+    },
+    human_contract: {
+      owns: normalizeStringList(value.human_contract?.owns, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      confirm_before: normalizeStringList(value.human_contract?.confirm_before, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      do_not_delegate: normalizeStringList(value.human_contract?.do_not_delegate, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    next_conversation: {
+      load_order: normalizeStringList(value.next_conversation?.load_order, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      context_budget: {
+        max_items: Math.max(1, Math.min(MAX_STARTUP_ITEMS, normalizeCount(value.next_conversation?.context_budget?.max_items))),
+        prefer_summary: value.next_conversation?.context_budget?.prefer_summary !== false,
+        reason: isString(value.next_conversation?.context_budget?.reason)
+          ? sanitizeProviderSafeText(value.next_conversation.context_budget.reason).slice(0, 180)
+          : 'contrato de partida AWIS provider-safe',
+      },
+      provider_note: isString(value.next_conversation?.provider_note)
+        ? sanitizeProviderSafeText(value.next_conversation.provider_note).slice(0, 180)
+        : 'usar contexto provider-safe',
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
+      bounded: true,
+      provider_safe: true,
+    },
   }
 }
 
@@ -7831,6 +11442,7 @@ function emptyMemory(
     contextPackAppliedCount: 0,
     lastInteractionAt: null,
     recentOutcomes: [],
+    recentMaintenance: [],
     observations: [],
     driftEvents: [],
   }
@@ -7872,6 +11484,31 @@ function normalizeOutcomes(raw: unknown): AwisWorkspaceMemoryOutcome[] {
       componentKeys: normalizeComponentKeys(item.componentKeys),
     }))
     .slice(0, MAX_RECENT_OUTCOMES)
+}
+
+function normalizeMaintenanceEvents(raw: unknown): AwisWorkspaceMaintenanceEvent[] {
+  if (!Array.isArray(raw)) return []
+  const actions = new Set<AwisWorkspaceMaintenanceAction>([
+    'refresh_folder_map',
+    'preserve_artifact',
+    'open_side_by_side',
+    'update_space_pack',
+    'revalidate_context',
+  ])
+  const statuses = new Set(['succeeded', 'failed', 'skipped'])
+  return raw
+    .filter((item): item is Partial<AwisWorkspaceMaintenanceEvent> => Boolean(item && typeof item === 'object'))
+    .map((item) => ({
+      occurredAt: isString(item.occurredAt) ? item.occurredAt : new Date().toISOString(),
+      action: actions.has(item.action as AwisWorkspaceMaintenanceAction)
+        ? item.action as AwisWorkspaceMaintenanceAction
+        : 'revalidate_context',
+      label: isString(item.label) ? sanitizeProviderSafeText(item.label).slice(0, 140) : 'manutenção AWIS',
+      status: statuses.has(String(item.status)) ? item.status as AwisWorkspaceMaintenanceEvent['status'] : 'skipped',
+      reason: isString(item.reason) ? sanitizeProviderSafeText(item.reason).slice(0, 180) : null,
+      evidence: normalizeStringList(item.evidence, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    }))
+    .slice(0, MAX_RECENT_MAINTENANCE)
 }
 
 function normalizeComponentKeys(raw: unknown): string[] {
@@ -8106,6 +11743,38 @@ function selectSemanticMatches(
     .sort((a, b) => b.confidence - a.confidence || b.matched - a.matched || a.alias.localeCompare(b.alias))
     .slice(0, 4)
     .map(({ matched: _matched, ...match }) => match)
+}
+
+function selectImpactRadius(
+  impactMap: AwisWorkspaceImpactMapProjection | null,
+  components: AwisWorkspaceTaskContextProjection['recommended_context']['components'],
+  semanticMatches: AwisWorkspaceTaskContextProjection['recommended_context']['semantic_matches'],
+): AwisWorkspaceTaskContextProjection['recommended_context']['impact_radius'] {
+  const componentKeys = unique([
+    ...components.map((component) => component.key),
+    ...semanticMatches.flatMap((match) => match.component_keys),
+  ].map(sanitizeComponentKey).filter(isString))
+  const impacts = (impactMap?.component_impacts ?? [])
+    .filter((impact) => componentKeys.includes(impact.component_key))
+    .sort((a, b) => riskWeight(b.risk) - riskWeight(a.risk) || b.confidence - a.confidence)
+  const primary = impacts[0] ?? null
+  const affectedComponents = unique(impacts.flatMap((impact) => impact.affected_components)).slice(0, MAX_STARTUP_ITEMS)
+  const validationCascade = unique(impacts.flatMap((impact) => impact.validation_cascade)).slice(0, MAX_STARTUP_ITEMS)
+  const crossWorkspace = unique((impactMap?.cross_workspace_impacts ?? [])
+    .filter((impact) => impact.trigger_components.some((component) => componentKeys.includes(component)))
+    .map((impact) => impact.workspace_hint)).slice(0, MAX_STARTUP_ITEMS)
+  return {
+    primary_component: primary?.component_key ?? componentKeys[0] ?? null,
+    affected_components: affectedComponents,
+    validation_cascade: validationCascade,
+    cross_workspace: crossWorkspace,
+    risk: primary?.risk ?? 'low',
+    reason: primary?.reason ?? (componentKeys[0] ? `impacto restrito a ${componentKeys[0]}` : 'sem componente dominante para calcular impacto'),
+  }
+}
+
+function riskWeight(risk: 'low' | 'medium' | 'high'): number {
+  return risk === 'high' ? 3 : risk === 'medium' ? 2 : 1
 }
 
 function buildComponentContextPacks(

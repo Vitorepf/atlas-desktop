@@ -38,6 +38,11 @@ assert.match(
 )
 assert.match(
   client,
+  /export async function getAtlasAwisLearningLoop[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisLearningLoop>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
+  'AWIS learning-loop hydration must be fail-soft so backend errors never replace the local brain.',
+)
+assert.match(
+  client,
   /getAtlasServerHealth/,
   'Desktop client must expose a local health probe so AWIS can explain backend/database failures before showing generic errors',
 )
@@ -58,8 +63,18 @@ assert.match(
 )
 assert.match(
   client,
+  /export async function persistAtlasAwisRuntimeSnapshot[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisRuntimeSnapshot>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
+  'AWIS runtime snapshot persistence must be fail-soft when the server is unavailable or returns 5xx.',
+)
+assert.match(
+  client,
   /getAtlasAwisArtifactIntelligence/,
   'Desktop client must read canonical server Artifact Intelligence so Space context survives beyond local UI state.',
+)
+assert.match(
+  client,
+  /export async function getAtlasAwisArtifactIntelligence[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisArtifactIntelligence>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
+  'AWIS artifact intelligence hydration must be fail-soft so stale/500 responses do not surface as user-facing errors.',
 )
 assert.match(
   client,
@@ -68,8 +83,18 @@ assert.match(
 )
 assert.match(
   client,
+  /export async function getAtlasAwisNextSessionBrain[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisNextSessionBrain>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
+  'AWIS next-session brain hydration must be fail-soft so new conversations fall back to local startup gold.',
+)
+assert.match(
+  client,
   /getAtlasAwisHandoffPack/,
   'Desktop client must read the canonical handoff pack for provider-safe workspace resume context.',
+)
+assert.match(
+  client,
+  /export async function getAtlasAwisHandoffPack[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisHandoffPack>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
+  'AWIS handoff pack hydration must be fail-soft so provider-safe context degrades gracefully.',
 )
 assert.match(
   client,
@@ -90,6 +115,31 @@ assert.match(
   client,
   /\/atlas-code\/workspace-intelligence\/handoff-pack\?\$\{params\.toString\(\)\}/,
   'Canonical AWIS handoff context must use the server handoff-pack endpoint.',
+)
+assert.match(
+  hook,
+  /lastTerminalTrace: AiTrace \| null/,
+  'Atlas AI hook must expose the terminal trace so AWIS learns from the real outcome, not only send start.',
+)
+assert.match(
+  hook,
+  /setLastTerminalTrace\(trace\)[\s\S]*setPendingTrace\(null\)/,
+  'Terminal polling must publish the completed trace before clearing pending state.',
+)
+assert.match(
+  hook,
+  /function awisThreadMetadataFromContext\(conversationContext\?: unknown\[\]\)/,
+  'New conversations must persist a compact AWIS metadata handshake instead of depending only on transient payload context.',
+)
+assert.match(
+  hook,
+  /awis_context_applied: true[\s\S]*awis_provider_safe: true[\s\S]*awis_load_first/,
+  'AWIS thread metadata must stay provider-safe and preserve the startup load contract.',
+)
+assert.match(
+  hook,
+  /\.\.\.awisThreadMetadataFromContext\(options\?\.conversationContext\)/,
+  'Thread creation metadata must include the AWIS startup handshake.',
 )
 assert.match(
   client,
@@ -185,6 +235,21 @@ assert.match(
   surface,
   /AWIS_RUNTIME_SNAPSHOT_TTL_MS/,
   'AWIS runtime snapshot persistence must be throttled so opening the app does not hammer the local service.',
+)
+assert.match(
+  surface,
+  /const ENABLE_AWIS_LOCAL_INTELLIGENCE = true/,
+  'AWIS local folder intelligence must stay enabled so a ready folder becomes a real map, not a decorative status.',
+)
+assert.match(
+  surface,
+  /const ENABLE_AWIS_SERVER_INTELLIGENCE = true/,
+  'AWIS server intelligence must be active so canonical next-session brain, handoff and artifacts can enrich the local brain when healthy.',
+)
+assert.match(
+  surface,
+  /awisServerHealth\?\.status !== 'ready'/,
+  'AWIS server intelligence must still be gated by health so backend failures do not replace the local brain.',
 )
 assert.match(
   surface,
@@ -498,7 +563,7 @@ assert.match(
 )
 assert.match(
   surface,
-  /setWorkbenchPendingThreadId\(threadId\)[\s\S]*const pendingThreadId =[\s\S]*atlas\.pendingTrace\?\.thread_id[\s\S]*workbenchPendingThreadId[\s\S]*const paneHasPending = threadId === pendingThreadId[\s\S]*sending=\{paneHasPending \? atlas\.sending : false\}/,
+  /setWorkbenchPendingThreadId\(threadId\)[\s\S]*const activePendingThreadId =[\s\S]*atlas\.pendingTrace\?\.thread_id[\s\S]*const paneHasPending = threadId === \(activePendingThreadId \?\? workbenchPendingThreadId\)[\s\S]*sending=\{paneHasPending \? atlas\.sending : false\}/,
   'Each side-by-side pane composer must keep its own usable state instead of globally disabling every pane composer.',
 )
 assert.doesNotMatch(
@@ -525,6 +590,11 @@ assert.match(
   threadList,
   /setLocalStorageItem\(PROJECT_SPACES_STORAGE, payload\)[\s\S]*setSessionStorageItem\(PROJECT_SPACES_STORAGE, payload\)/,
   'Project Spaces must persist redundantly across Atlas AI reloads when there is no backend Space API yet.',
+)
+assert.doesNotMatch(
+  threadList,
+  /criados nesta sessão/,
+  'Project Spaces are durable local workspace memory; the UI must not imply they disappear after the current session.',
 )
 assert.match(
   threadList,

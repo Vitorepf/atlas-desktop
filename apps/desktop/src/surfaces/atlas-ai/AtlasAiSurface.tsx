@@ -78,6 +78,7 @@ import {
   loadAwisWorkspaceMemory,
   loadAwisWorkspaceSpaceProjection,
   recordAwisWorkspaceInteraction,
+  recordAwisWorkspaceMaintenance,
   saveAwisWorkspaceArtifact,
   saveAwisWorkspaceMemory,
   saveAwisWorkspaceSpaceProjection,
@@ -90,14 +91,18 @@ import {
   type AwisWorkspaceContinuityProjection,
   type AwisWorkspaceEvolutionProjection,
   type AwisWorkspaceHandoffProjection,
+  type AwisWorkspaceLaunchContractProjection,
   type AwisWorkspaceLivingGraphProjection,
   type AwisWorkspaceMemorySnapshot,
+  type AwisWorkspaceMaintenanceAction,
   type AwisWorkspaceNextSessionBrainProjection,
+  type AwisWorkspacePreflightProjection,
   type AwisWorkspaceRelationProjection,
   type AwisWorkspaceRetentionProjection,
   type AwisWorkspaceSelfImprovementProjection,
   type AwisWorkspaceSpaceProjection,
   type AwisWorkspaceTaskContextProjection,
+  type AwisWorkspaceTwinProjection,
 } from './awisWorkspaceMemory'
 import {
   nextWorkbenchFocusAfterClose,
@@ -135,9 +140,12 @@ interface WorkbenchPaneDetail {
 const PINNED_STORAGE = 'atlas-desktop:atlas-ai-pinned-threads'
 const WORKBENCH_SNAPSHOTS_STORAGE = 'atlas-desktop:atlas-ai-workbench-snapshots'
 const WORKSPACE_BRAIN_CACHE_STORAGE = 'atlas-desktop:atlas-ai-workspace-brain-cache'
-const WORKSPACE_BRAIN_CACHE_TTL_MS = 5 * 60 * 1000
+const WORKSPACE_BRAIN_SESSION_CACHE_TTL_MS = 5 * 60 * 1000
+const WORKSPACE_BRAIN_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const AWIS_RUNTIME_SNAPSHOT_STORAGE = 'atlas-desktop:atlas-ai-awis-runtime-snapshots'
 const AWIS_RUNTIME_SNAPSHOT_TTL_MS = 10 * 60 * 1000
+const ENABLE_AWIS_LOCAL_INTELLIGENCE = true
+const ENABLE_AWIS_SERVER_INTELLIGENCE = true
 const VOICE_TURN_POLL_MS = 80
 const VOICE_MIN_RMS = 0.0015
 const VOICE_MIN_PEAK = 0.008
@@ -222,6 +230,11 @@ interface WorkspaceBrainCacheEntry {
   cachedAt: number
 }
 
+interface WorkspaceBrainCacheHit {
+  snapshot: AtlasWorkspaceBrainSnapshot
+  shouldRefresh: boolean
+}
+
 interface AwisRuntimeSnapshotCacheEntry {
   state: AwisRuntimeSnapshotState
   cachedAt: number
@@ -288,37 +301,73 @@ function workspaceBrainCacheKey(workspacePath: string): string {
   return workspacePath.trim().toLowerCase()
 }
 
-function loadWorkspaceBrainCache(workspacePath: string): AtlasWorkspaceBrainSnapshot | null {
+function readWorkspaceBrainCacheStore(storage: Storage): Record<string, WorkspaceBrainCacheEntry> {
   try {
-    const raw = sessionStorage.getItem(WORKSPACE_BRAIN_CACHE_STORAGE)
-    if (!raw) return null
+    const raw = storage.getItem(WORKSPACE_BRAIN_CACHE_STORAGE)
+    if (!raw) return {}
     const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
-    const entry = (parsed as Record<string, WorkspaceBrainCacheEntry>)[workspaceBrainCacheKey(workspacePath)]
-    if (!entry || typeof entry.cachedAt !== 'number') return null
-    if (Date.now() - entry.cachedAt > WORKSPACE_BRAIN_CACHE_TTL_MS) return null
-    return entry.snapshot ?? null
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return parsed as Record<string, WorkspaceBrainCacheEntry>
+  } catch {
+    return {}
+  }
+}
+
+function validWorkspaceBrainCacheEntry(entry: WorkspaceBrainCacheEntry | undefined, ttlMs: number): WorkspaceBrainCacheEntry | null {
+  if (!entry || typeof entry.cachedAt !== 'number') return null
+  if (!entry.snapshot || entry.snapshot.status !== 'ready') return null
+  if (Date.now() - entry.cachedAt > ttlMs) return null
+  return entry
+}
+
+function loadWorkspaceBrainCache(workspacePath: string): WorkspaceBrainCacheHit | null {
+  try {
+    const key = workspaceBrainCacheKey(workspacePath)
+    const sessionEntry = validWorkspaceBrainCacheEntry(
+      readWorkspaceBrainCacheStore(sessionStorage)[key],
+      WORKSPACE_BRAIN_SESSION_CACHE_TTL_MS,
+    )
+    if (sessionEntry) {
+      return { snapshot: sessionEntry.snapshot, shouldRefresh: false }
+    }
+
+    const durableEntry = validWorkspaceBrainCacheEntry(
+      readWorkspaceBrainCacheStore(localStorage)[key],
+      WORKSPACE_BRAIN_CACHE_TTL_MS,
+    )
+    if (!durableEntry) return null
+    return {
+      snapshot: durableEntry.snapshot,
+      shouldRefresh: Date.now() - durableEntry.cachedAt > WORKSPACE_BRAIN_SESSION_CACHE_TTL_MS,
+    }
   } catch {
     return null
   }
 }
 
-function saveWorkspaceBrainCache(workspacePath: string, snapshot: AtlasWorkspaceBrainSnapshot | null) {
-  if (!snapshot || snapshot.status !== 'ready') return
+function saveWorkspaceBrainCacheStore(storage: Storage, workspacePath: string, snapshot: AtlasWorkspaceBrainSnapshot) {
   try {
-    const raw = sessionStorage.getItem(WORKSPACE_BRAIN_CACHE_STORAGE)
-    const parsed = raw ? JSON.parse(raw) as unknown : {}
-    const cache = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed as Record<string, WorkspaceBrainCacheEntry>
-      : {}
+    const cache = readWorkspaceBrainCacheStore(storage)
     cache[workspaceBrainCacheKey(workspacePath)] = {
       snapshot,
       cachedAt: Date.now(),
     }
-    sessionStorage.setItem(WORKSPACE_BRAIN_CACHE_STORAGE, JSON.stringify(cache))
+    const boundedCache = Object.fromEntries(
+      Object.entries(cache)
+        .filter(([, entry]) => validWorkspaceBrainCacheEntry(entry, WORKSPACE_BRAIN_CACHE_TTL_MS))
+        .sort(([, a], [, b]) => b.cachedAt - a.cachedAt)
+        .slice(0, 12),
+    )
+    storage.setItem(WORKSPACE_BRAIN_CACHE_STORAGE, JSON.stringify(boundedCache))
   } catch {
     /* ignore */
   }
+}
+
+function saveWorkspaceBrainCache(workspacePath: string, snapshot: AtlasWorkspaceBrainSnapshot | null) {
+  if (!snapshot || snapshot.status !== 'ready') return
+  saveWorkspaceBrainCacheStore(sessionStorage, workspacePath, snapshot)
+  saveWorkspaceBrainCacheStore(localStorage, workspacePath, snapshot)
 }
 
 function awisRuntimeSnapshotCacheKey(workspaceSlug: string, task: string): string {
@@ -756,6 +805,77 @@ export function AtlasAiSurface({
     showWorkbenchNotice,
   ])
 
+  const rememberAwisMaintenance = useCallback((input: {
+    action: AwisWorkspaceMaintenanceAction
+    label: string
+    status: 'succeeded' | 'failed' | 'skipped'
+    reason?: string | null
+    evidence?: string[] | null
+  }) => {
+    const key = workspaceMemoryKey(effectiveWorkspacePath, effectiveWorkspaceSlug)
+    const previous = loadAwisWorkspaceMemory(key)
+    const update = recordAwisWorkspaceMaintenance(previous, {
+      workspaceKey: key,
+      workspaceName: effectiveWorkspaceName ?? previous?.workspaceName ?? key,
+      rootPath: effectiveWorkspacePath ?? previous?.rootPath ?? '',
+      action: input.action,
+      label: input.label,
+      status: input.status,
+      reason: input.reason,
+      evidence: input.evidence,
+    })
+    saveAwisWorkspaceMemory(update.memory)
+    const memories = loadAwisWorkspaceMemories()
+    setWorkspaceMemory(update.memory)
+    setWorkspaceEvolution(buildAwisWorkspaceEvolutionProjection(memories, key))
+    setWorkspaceRelations(buildAwisWorkspaceRelationProjection(memories, key))
+  }, [effectiveWorkspaceName, effectiveWorkspacePath, effectiveWorkspaceSlug])
+
+  const handleAwisRefreshFolderMap = useCallback(async () => {
+    const workspacePath = effectiveWorkspacePath?.trim()
+    if (!effectiveWorkspaceHasRepo || !workspacePath) {
+      showWorkbenchNotice('Escolha a pasta local para atualizar o mapa.')
+      rememberAwisMaintenance({
+        action: 'refresh_folder_map',
+        label: 'mapa local',
+        status: 'skipped',
+        reason: 'pasta local ausente',
+      })
+      return
+    }
+    setWorkspaceBrainLoading(true)
+    try {
+      const snapshot = await bridge.scanWorkspaceBrain(workspacePath)
+      setWorkspaceBrain(snapshot)
+      saveWorkspaceBrainCache(workspacePath, snapshot)
+      rememberAwisMaintenance({
+        action: 'refresh_folder_map',
+        label: 'mapa local',
+        status: snapshot?.status === 'ready' ? 'succeeded' : 'failed',
+        reason: snapshot?.status === 'ready' ? 'scan local concluído' : 'scan local não ficou pronto',
+        evidence: snapshot?.status === 'ready'
+          ? [
+              `${snapshot.filesSeen} arquivos`,
+              ...snapshot.signals.slice(0, 3),
+            ]
+          : [],
+      })
+      showWorkbenchNotice(snapshot?.status === 'ready'
+        ? 'Mapa local atualizado. AWIS vai reaprender este workspace.'
+        : 'Mapa local não ficou pronto agora.')
+      setWorkspaceBrainLoading(false)
+    } catch {
+      rememberAwisMaintenance({
+        action: 'refresh_folder_map',
+        label: 'mapa local',
+        status: 'failed',
+        reason: 'bridge não retornou scan',
+      })
+      showWorkbenchNotice('Não consegui atualizar o mapa local agora.')
+      setWorkspaceBrainLoading(false)
+    }
+  }, [effectiveWorkspaceHasRepo, effectiveWorkspacePath, rememberAwisMaintenance, showWorkbenchNotice])
+
   useEffect(() => () => {
     if (workbenchNoticeTimerRef.current !== null) {
       window.clearTimeout(workbenchNoticeTimerRef.current)
@@ -962,6 +1082,12 @@ export function AtlasAiSurface({
   }, [atlas.mode, awisHealthRefreshKey, retrying])
 
   useEffect(() => {
+    if (!ENABLE_AWIS_LOCAL_INTELLIGENCE) {
+      setWorkspaceBrain(null)
+      setWorkspaceBrainLoading(false)
+      return
+    }
+
     const workspacePath = effectiveWorkspacePath?.trim()
     if (!effectiveWorkspaceHasRepo || !workspacePath) {
       setWorkspaceBrain(null)
@@ -972,17 +1098,24 @@ export function AtlasAiSurface({
     let cancelled = false
     const cached = loadWorkspaceBrainCache(workspacePath)
     if (cached) {
-      setWorkspaceBrain(cached)
-      setWorkspaceBrainLoading(false)
-      return () => {
-        cancelled = true
+      setWorkspaceBrain(cached.snapshot)
+      setWorkspaceBrainLoading(cached.shouldRefresh)
+      if (!cached.shouldRefresh) {
+        return () => {
+          cancelled = true
+        }
       }
+    } else {
+      setWorkspaceBrainLoading(true)
     }
-    setWorkspaceBrainLoading(true)
     void bridge.scanWorkspaceBrain(workspacePath).then((snapshot) => {
       if (cancelled) return
       setWorkspaceBrain(snapshot)
       saveWorkspaceBrainCache(workspacePath, snapshot)
+      setWorkspaceBrainLoading(false)
+    }).catch(() => {
+      if (cancelled) return
+      if (!cached) setWorkspaceBrain(null)
       setWorkspaceBrainLoading(false)
     })
     return () => {
@@ -1051,6 +1184,11 @@ export function AtlasAiSurface({
   ])
 
   useEffect(() => {
+    if (!ENABLE_AWIS_SERVER_INTELLIGENCE) {
+      setAwisLearningLoop(null)
+      return
+    }
+
     const workspace = effectiveWorkspaceSlug?.trim()
     if (!workspace || atlas.mode === 'offline') {
       setAwisLearningLoop(null)
@@ -1086,6 +1224,11 @@ export function AtlasAiSurface({
   }, [atlas.mode, atlas.threadDetail?.title, effectiveWorkspaceSlug, effectiveWorkspaceProfile?.workspacePathExists, runtimeReadiness.status])
 
   useEffect(() => {
+    if (!ENABLE_AWIS_SERVER_INTELLIGENCE) {
+      setAwisRuntimeSnapshot(null)
+      return
+    }
+
     const workspace = effectiveWorkspaceSlug?.trim()
     if (!workspace || atlas.mode === 'offline' || !effectiveWorkspaceHasRepo || awisServerHealth?.status !== 'ready') {
       setAwisRuntimeSnapshot(null)
@@ -1119,6 +1262,10 @@ export function AtlasAiSurface({
   ])
 
   useEffect(() => {
+    if (!ENABLE_AWIS_SERVER_INTELLIGENCE) {
+      return
+    }
+
     const workspace = effectiveWorkspaceSlug?.trim()
     if (!workspace || atlas.mode === 'offline' || !effectiveWorkspaceHasRepo || awisServerHealth?.status !== 'ready') {
       return
@@ -1156,6 +1303,12 @@ export function AtlasAiSurface({
   }, [availableWorkspaceThreadIds, projectSpaceContextPacks, workbenchThreadIds])
 
   useEffect(() => {
+    if (!ENABLE_AWIS_SERVER_INTELLIGENCE) {
+      setWorkspaceNextSessionBrain(null)
+      setWorkspaceHandoffPack(null)
+      return
+    }
+
     const workspace = effectiveWorkspaceSlug?.trim()
     if (!workspace || atlas.mode === 'offline' || !effectiveWorkspaceHasRepo || awisServerHealth?.status !== 'ready') {
       setWorkspaceNextSessionBrain(null)
@@ -1239,13 +1392,26 @@ export function AtlasAiSurface({
 
     if (recommended.length < 2) {
       showWorkbenchNotice('Preciso de pelo menos 2 conversas neste projeto.')
+      rememberAwisMaintenance({
+        action: 'open_side_by_side',
+        label: 'comparar sessões',
+        status: 'skipped',
+        reason: 'menos de duas conversas disponíveis',
+      })
       return
     }
 
     setWorkbenchActive(true)
     setWorkbenchThreadIds(recommended)
     focusWorkbenchPane(recommended[0])
-  }, [activeWorkspaceScope, atlas.selectedThreadId, atlas.threads, focusWorkbenchPane, showWorkbenchNotice])
+    rememberAwisMaintenance({
+      action: 'open_side_by_side',
+      label: 'comparar sessões',
+      status: 'succeeded',
+      reason: 'sessões abertas lado a lado',
+      evidence: [`${recommended.length} sessões`],
+    })
+  }, [activeWorkspaceScope, atlas.selectedThreadId, atlas.threads, focusWorkbenchPane, rememberAwisMaintenance, showWorkbenchNotice])
 
   const closeWorkbenchPane = useCallback(
     (id: string) => {
@@ -1367,13 +1533,17 @@ export function AtlasAiSurface({
       workspaceMemory,
     ],
   )
+  const effectiveWorkspaceNextSessionBrain =
+    workspaceNextSessionBrain ?? awisWorkspaceContextPack?.next_session_brain ?? null
 
   useEffect(() => {
     if (!awisWorkspaceContextPack?.startup_snapshot) return
     const artifact = buildAwisWorkspaceArtifact(awisWorkspaceContextPack)
     if (!artifact) return
+    if (awisAutoSavedArtifactHashesRef.current.has(artifact.artifact_hash)) return
     const summary = saveAwisWorkspaceArtifact(artifact)
     if (summary) {
+      awisAutoSavedArtifactHashesRef.current.add(artifact.artifact_hash)
       setWorkspaceArtifactReplay(loadAwisWorkspaceArtifactReplayProjection(artifact.workspace_key))
       setWorkspaceArtifactLake((prev) => (
         prev?.latest_artifact_hash === summary.latest_artifact_hash &&
@@ -1384,6 +1554,55 @@ export function AtlasAiSurface({
       ))
     }
   }, [awisWorkspaceContextPack])
+
+  const handleAwisPreserveArtifact = useCallback(() => {
+    if (!awisWorkspaceContextPack?.startup_snapshot) {
+      rememberAwisMaintenance({
+        action: 'preserve_artifact',
+        label: 'snapshot AWIS',
+        status: 'skipped',
+        reason: 'contexto insuficiente',
+      })
+      showWorkbenchNotice('AWIS ainda não tem contexto suficiente para salvar ouro.')
+      return
+    }
+    const artifact = buildAwisWorkspaceArtifact(awisWorkspaceContextPack)
+    if (!artifact) {
+      rememberAwisMaintenance({
+        action: 'preserve_artifact',
+        label: 'snapshot AWIS',
+        status: 'skipped',
+        reason: 'snapshot indisponível',
+      })
+      showWorkbenchNotice('AWIS ainda não gerou um snapshot reutilizável.')
+      return
+    }
+    const summary = saveAwisWorkspaceArtifact(artifact)
+    if (!summary) {
+      rememberAwisMaintenance({
+        action: 'preserve_artifact',
+        label: 'snapshot AWIS',
+        status: 'failed',
+        reason: 'storage local recusou artifact',
+      })
+      showWorkbenchNotice('Não consegui preservar o snapshot AWIS agora.')
+      return
+    }
+    setWorkspaceArtifactReplay(loadAwisWorkspaceArtifactReplayProjection(artifact.workspace_key))
+    setWorkspaceArtifactLake(summary)
+    rememberAwisMaintenance({
+      action: 'preserve_artifact',
+      label: artifact.title,
+      status: 'succeeded',
+      reason: 'artifact salvo para próxima partida',
+      evidence: [
+        artifact.artifact_hash,
+        `${summary.artifact_count} artifact(s)`,
+      ],
+    })
+    showWorkbenchNotice('Ouro AWIS preservado para a próxima conversa.')
+  }, [awisWorkspaceContextPack, rememberAwisMaintenance, showWorkbenchNotice])
+
   const buildAwisSendContext = useCallback((userInput: string): {
     conversationContext: unknown[] | undefined
     taskContext: AwisWorkspaceTaskContextProjection | null
@@ -1405,6 +1624,13 @@ export function AtlasAiSurface({
       taskContext,
     }
   }, [awisWorkspaceContextPack])
+
+  const awisPendingTraceContextsRef = useRef(new Map<string, {
+    channel: 'conversation' | 'workbench' | 'voice'
+    taskContext: AwisWorkspaceTaskContextProjection | null
+  }>())
+  const awisRecordedTerminalTraceIdsRef = useRef(new Set<string>())
+  const awisAutoSavedArtifactHashesRef = useRef(new Set<string>())
 
   const rememberAwisInteraction = useCallback((
     channel: 'conversation' | 'workbench' | 'voice',
@@ -1444,6 +1670,24 @@ export function AtlasAiSurface({
     setWorkspaceRelations(buildAwisWorkspaceRelationProjection(memories, key))
   }, [awisWorkspaceContextPack, effectiveWorkspaceName, effectiveWorkspacePath, effectiveWorkspaceSlug])
 
+  const registerAwisTraceContext = useCallback((
+    trace: AiTrace | null,
+    channel: 'conversation' | 'workbench' | 'voice',
+    taskContext: AwisWorkspaceTaskContextProjection | null,
+  ) => {
+    if (!trace?.id) return
+    awisPendingTraceContextsRef.current.set(trace.id, { channel, taskContext })
+  }, [])
+
+  useEffect(() => {
+    const trace = atlas.lastTerminalTrace
+    if (!trace?.id || awisRecordedTerminalTraceIdsRef.current.has(trace.id)) return
+    awisRecordedTerminalTraceIdsRef.current.add(trace.id)
+    const context = awisPendingTraceContextsRef.current.get(trace.id)
+    awisPendingTraceContextsRef.current.delete(trace.id)
+    rememberAwisInteraction(context?.channel ?? 'conversation', trace, context?.taskContext ?? null)
+  }, [atlas.lastTerminalTrace, rememberAwisInteraction])
+
   const handleWorkbenchSend = useCallback(
     async (threadId: string, options?: AtlasAiComposerSendExtras) => {
       const sendingText = workbenchDrafts[threadId] ?? ''
@@ -1463,13 +1707,17 @@ export function AtlasAiSurface({
         conversationContext: sendContext.conversationContext,
       })
       if (sendingText.trim() !== '') {
-        rememberAwisInteraction('workbench', trace, sendContext.taskContext)
+        if (trace) {
+          registerAwisTraceContext(trace, 'workbench', sendContext.taskContext)
+        } else {
+          rememberAwisInteraction('workbench', null, sendContext.taskContext)
+        }
       }
       if (!trace && sendingText.trim() !== '') {
         setWorkbenchDrafts((prev) => ({ ...prev, [threadId]: sendingText }))
       }
     },
-    [atlas, buildAwisSendContext, focusWorkbenchPane, rememberAwisInteraction, workbenchDrafts],
+    [atlas, buildAwisSendContext, focusWorkbenchPane, registerAwisTraceContext, rememberAwisInteraction, workbenchDrafts],
   )
 
   useEffect(() => {
@@ -1529,13 +1777,17 @@ export function AtlasAiSurface({
         conversationContext: sendContext.conversationContext,
       })
       if (sendingText.trim() !== '') {
-        rememberAwisInteraction('conversation', trace, sendContext.taskContext)
+        if (trace) {
+          registerAwisTraceContext(trace, 'conversation', sendContext.taskContext)
+        } else {
+          rememberAwisInteraction('conversation', null, sendContext.taskContext)
+        }
       }
       if (!trace && sendingText.trim() !== '') {
         setComposerDraft(sendingText)
       }
     },
-    [atlas, buildAwisSendContext, composerDraft, rememberAwisInteraction],
+    [atlas, buildAwisSendContext, composerDraft, registerAwisTraceContext, rememberAwisInteraction],
   )
 
   const handleUseChip = useCallback((text: string) => {
@@ -2016,7 +2268,11 @@ export function AtlasAiSurface({
         voiceConversation: true,
         conversationContext: sendContext.conversationContext,
       })
-      rememberAwisInteraction('voice', trace, sendContext.taskContext)
+      if (trace) {
+        registerAwisTraceContext(trace, 'voice', sendContext.taskContext)
+      } else {
+        rememberAwisInteraction('voice', null, sendContext.taskContext)
+      }
       if (!trace && voiceReplyEnabledRef.current) {
         voiceTurnDispatchInFlightRef.current = false
         clearVoiceAwaitingReply()
@@ -2036,6 +2292,7 @@ export function AtlasAiSurface({
     atlas.sending,
     clearVoiceRearmTimer,
     rememberAwisInteraction,
+    registerAwisTraceContext,
     resetVoiceStreamingSpeech,
     resetVoiceTurnDetection,
     scheduleVoiceRearm,
@@ -2380,7 +2637,10 @@ export function AtlasAiSurface({
       workspaceSelfImprovement: awisWorkspaceContextPack?.self_improvement ?? null,
       workspaceRetention: awisWorkspaceContextPack?.retention ?? null,
       workspaceStartupOrchestration: awisWorkspaceContextPack?.startup_orchestration ?? null,
-      workspaceNextSessionBrain,
+      workspacePreflight: awisWorkspaceContextPack?.preflight ?? null,
+      workspaceTwin: awisWorkspaceContextPack?.workspace_twin ?? null,
+      workspaceLaunchContract: awisWorkspaceContextPack?.launch_contract ?? null,
+      workspaceNextSessionBrain: effectiveWorkspaceNextSessionBrain,
       workspaceHandoffPack,
       runtimeSnapshot: awisRuntimeSnapshot,
     }),
@@ -2399,9 +2659,9 @@ export function AtlasAiSurface({
       workspaceArtifactLake,
       workspaceArtifactReplay,
       awisWorkspaceContextPack,
+      effectiveWorkspaceNextSessionBrain,
       workspaceHandoffPack,
       awisWorkspaceContextPack?.learning,
-      workspaceNextSessionBrain,
       workspaceEvolution,
       workspaceRelations,
       workspaceMemory,
@@ -2420,6 +2680,17 @@ export function AtlasAiSurface({
     atlas.sendErrorThreadId === null || atlas.sendErrorThreadId === atlas.selectedThreadId
       ? atlas.sendError
       : null
+  const activePendingThreadId =
+    atlas.pendingTrace?.thread_id ??
+    atlas.pendingUserMessage?.threadId ??
+    atlas.currentAtlasDevPlan?.thread_id ??
+    null
+  const selectedComposerSending =
+    atlas.sending && (
+      atlas.selectedThreadId === null ||
+      activePendingThreadId === null ||
+      activePendingThreadId === atlas.selectedThreadId
+    )
   const leftRailToggle = (
     <button
       type="button"
@@ -2504,6 +2775,7 @@ export function AtlasAiSurface({
           conversationFusionArtifactError={atlas.conversationFusionArtifactError}
           onPersistConversationFusion={() => atlas.refreshConversationFusion(undefined, { persist: true })}
           onSelect={handleSelectThread}
+          onPrefetch={atlas.prefetchThread}
           onOpenBeside={handleOpenThreadBeside}
           onOpenInStage={handleOpenThreadInStage}
           onStageDragActive={setStageThreadDropActive}
@@ -2597,6 +2869,12 @@ export function AtlasAiSurface({
               workspaceContextKernel={awisWorkspaceContextPack?.context_kernel ?? null}
               workspaceSelfImprovement={awisWorkspaceContextPack?.self_improvement ?? null}
               workspaceRetention={awisWorkspaceContextPack?.retention ?? null}
+              workspaceRelations={workspaceRelations}
+              workspacePreflight={awisWorkspaceContextPack?.preflight ?? null}
+              workspaceTwin={awisWorkspaceContextPack?.workspace_twin ?? null}
+              workspaceLaunchContract={awisWorkspaceContextPack?.launch_contract ?? null}
+              workspaceNextSessionBrain={effectiveWorkspaceNextSessionBrain}
+              workspaceHandoffPack={workspaceHandoffPack}
               storedSessionCount={storedWorkbenchThreadIds.length}
               canResume={storedWorkbenchThreadIds.length > 0 && !isWorkbenchOpen}
               onResume={handleResumeWorkbench}
@@ -2604,6 +2882,8 @@ export function AtlasAiSurface({
               onConfigure={handleAwisConfigureProject}
               onChooseFolder={handleAwisChooseFolder}
               onRefreshHealth={refreshAwisHealth}
+              onRefreshFolderMap={handleAwisRefreshFolderMap}
+              onPreserveArtifact={handleAwisPreserveArtifact}
             />
           ) : null}
           {isHero ? (
@@ -2621,12 +2901,7 @@ export function AtlasAiSurface({
               {workbenchThreadIds.map((threadId) => {
                 const isFocused = workbenchFocusedThreadId === threadId
                 const cached = workbenchDetails[threadId] ?? { detail: null, loading: true, error: null }
-                const pendingThreadId =
-                  atlas.pendingTrace?.thread_id ??
-                  atlas.pendingUserMessage?.threadId ??
-                  atlas.currentAtlasDevPlan?.thread_id ??
-                  workbenchPendingThreadId
-                const paneHasPending = threadId === pendingThreadId
+                const paneHasPending = threadId === (activePendingThreadId ?? workbenchPendingThreadId)
                 const paneHasSendError = atlas.sendErrorThreadId === threadId
                 const paneDetail =
                   threadId === atlas.selectedThreadId && atlas.threadDetail
@@ -2665,6 +2940,10 @@ export function AtlasAiSurface({
                           setPromotionOpen(true)
                         }}
                         onCancel={atlas.cancelPending}
+                        onLoadOlder={threadId === atlas.selectedThreadId ? atlas.loadOlderThreadMessages : undefined}
+                        hasOlderMessages={threadId === atlas.selectedThreadId ? atlas.threadHasOlderMessages : false}
+                        olderMessagesLoading={threadId === atlas.selectedThreadId ? atlas.threadOlderMessagesLoading : false}
+                        olderMessagesError={threadId === atlas.selectedThreadId ? atlas.threadOlderMessagesError : null}
                         atlasDevPlan={paneHasPending ? atlas.currentAtlasDevPlan : null}
                       />
                     </div>
@@ -2708,12 +2987,7 @@ export function AtlasAiSurface({
             </div>
           ) : (
             (() => {
-              const pendingThreadId =
-                atlas.pendingTrace?.thread_id ??
-                atlas.pendingUserMessage?.threadId ??
-                atlas.currentAtlasDevPlan?.thread_id ??
-                null
-              const selectedHasPending = Boolean(atlas.selectedThreadId && pendingThreadId === atlas.selectedThreadId)
+              const selectedHasPending = Boolean(atlas.selectedThreadId && activePendingThreadId === atlas.selectedThreadId)
               return (
                 <AtlasAiConversation
                   loading={conversation.loading}
@@ -2726,6 +3000,10 @@ export function AtlasAiSurface({
                   onArchive={atlas.archiveSelectedThread}
                   onPromote={() => setPromotionOpen(true)}
                   onCancel={atlas.cancelPending}
+                  onLoadOlder={atlas.loadOlderThreadMessages}
+                  hasOlderMessages={atlas.threadHasOlderMessages}
+                  olderMessagesLoading={atlas.threadOlderMessagesLoading}
+                  olderMessagesError={atlas.threadOlderMessagesError}
                   atlasDevPlan={selectedHasPending ? atlas.currentAtlasDevPlan : null}
                 />
               )
@@ -2779,7 +3057,7 @@ export function AtlasAiSurface({
                 onProviderChange={atlas.setComposerProvider}
                 computeEffort={atlas.composerComputeEffort}
                 onComputeEffortChange={atlas.setComposerComputeEffort}
-                sending={atlas.sending}
+                sending={selectedComposerSending}
                 sendError={selectedComposerSendError}
                 workspaceSlug={atlas.workspaceSlug ?? atlas.threadDetail?.workspace ?? null}
                 textareaMaxPx={composerSize.size.height}
@@ -2807,7 +3085,7 @@ export function AtlasAiSurface({
               {voiceReplyEnabled ? (
                 <AtlasAiVoiceConversationOverlay
                   vox={vox}
-                  sending={atlas.sending}
+                  sending={selectedComposerSending}
                   awaitingResponse={atlas.pendingTrace !== null}
                   streaming={atlas.streamingText.trim().length > 0}
                   speechState={voiceSpeechState}
@@ -2900,6 +3178,12 @@ function AwisCommandCenter({
   workspaceContextKernel,
   workspaceSelfImprovement,
   workspaceRetention,
+  workspaceRelations,
+  workspacePreflight,
+  workspaceTwin,
+  workspaceLaunchContract,
+  workspaceNextSessionBrain,
+  workspaceHandoffPack,
   storedSessionCount,
   canResume,
   onResume,
@@ -2907,6 +3191,8 @@ function AwisCommandCenter({
   onConfigure,
   onChooseFolder,
   onRefreshHealth,
+  onRefreshFolderMap,
+  onPreserveArtifact,
 }: {
   intelligence: AwisWorkspaceIntelligence
   workspaceName: string | null
@@ -2923,6 +3209,12 @@ function AwisCommandCenter({
   workspaceContextKernel: AwisWorkspaceContextKernelProjection | null
   workspaceSelfImprovement: AwisWorkspaceSelfImprovementProjection | null
   workspaceRetention: AwisWorkspaceRetentionProjection | null
+  workspaceRelations: AwisWorkspaceRelationProjection | null
+  workspacePreflight: AwisWorkspacePreflightProjection | null
+  workspaceTwin: AwisWorkspaceTwinProjection | null
+  workspaceLaunchContract: AwisWorkspaceLaunchContractProjection | null
+  workspaceNextSessionBrain: AwisWorkspaceNextSessionBrainProjection | null
+  workspaceHandoffPack: AwisWorkspaceHandoffProjection | null
   storedSessionCount: number
   canResume: boolean
   onResume: () => void
@@ -2930,8 +3222,33 @@ function AwisCommandCenter({
   onConfigure: () => void
   onChooseFolder: () => Promise<void> | void
   onRefreshHealth: () => void
+  onRefreshFolderMap: () => Promise<void> | void
+  onPreserveArtifact: () => void
 }) {
-  const visibleCapabilities = intelligence.capabilities.slice(0, 4)
+  const preflightBlockingGate = workspacePreflight?.gates.find((gate) => gate.status === 'blocked') ?? null
+  const preflightWarningGate = workspacePreflight?.gates.find((gate) => gate.status === 'warn') ?? null
+  const preflightGate = preflightBlockingGate ?? preflightWarningGate ?? workspacePreflight?.gates[0] ?? null
+  const twinPrimaryComponent = workspaceTwin?.live_map.components[0] ?? null
+  const twinFragileArea = workspaceTwin?.live_map.fragile_areas[0] ?? null
+  const twinPrimaryApp = workspaceTwin?.genome.apps[0] ?? null
+  const launchPrimaryLoad = workspaceLaunchContract?.startup_contract.first_load[0] ?? workspaceLaunchContract?.next_conversation.load_order[0] ?? null
+  const launchPrimaryValidation = workspaceLaunchContract?.startup_contract.validate_before_trust[0] ?? workspaceLaunchContract?.human_contract.confirm_before[0] ?? null
+  const nextSessionReady = workspaceNextSessionBrain?.status === 'ready'
+  const handoffReady = workspaceHandoffPack?.status === 'ready'
+  const startupLoadLabel =
+    workspaceNextSessionBrain?.load_order[0]
+    ?? workspaceNextSessionBrain?.focused_areas[0]
+    ?? workspaceNextSessionBrain?.focused_repositories[0]?.repo_key
+    ?? null
+  const visibleCapabilities = Array.from(new Set([
+    workspacePreflight ? (workspacePreflight.mode === 'ready' ? 'pré-checagem pronta' : 'pré-checagem ativa') : null,
+    workspaceTwin ? 'mapa vivo do projeto' : null,
+    workspaceLaunchContract ? 'partida viva' : null,
+    nextSessionReady ? 'partida com memória' : null,
+    handoffReady ? 'handoff seguro' : null,
+    ...(workspaceTwin?.context_autopilot.load_first.length ? ['contexto guiado'] : []),
+    ...intelligence.capabilities,
+  ].filter((capability): capability is string => Boolean(capability)))).slice(0, 4)
   const visibleActions = intelligence.nextActions.slice(0, 2)
   const displayedScore = visibleActions.length > 0 ? Math.min(94, intelligence.score) : intelligence.score
   const canRefreshHealth = intelligence.liveSignal.label === 'serviço local' || intelligence.liveSignal.detail.includes('serviço local')
@@ -3001,8 +3318,129 @@ function AwisCommandCenter({
   const kernelLeader = workspaceContextKernel?.priority_load[0] ?? null
   const selfImprovementLeader = workspaceSelfImprovement?.improvement_queue[0] ?? null
   const retentionLeader = workspaceRetention?.lifecycle.revalidate[0] ?? workspaceRetention?.lifecycle.keep_hot[0] ?? null
+  const connectionLeader = workspaceRelations?.connection_contracts[0] ?? null
+  const launchMaintenance = workspaceLaunchContract?.automation_contract.maintenance_actions[0] ?? null
   const fallbackMaintenance = visibleActions[0] ?? (canRefreshHealth ? 'verificar serviço' : null)
+  const awisLivingQueue = [
+    maintenanceLeader ? {
+      key: `maintenance:${maintenanceLeader.action}:${maintenanceLeader.label}`,
+      label: 'Automação',
+      value: maintenanceLeader.label,
+      detail: maintenanceLeader.reason,
+      tone: maintenanceLeader.priority === 'high' ? 'warm' : 'quiet',
+      actionLabel: maintenanceLeader.action === 'refresh_folder_map'
+        ? 'atualizar'
+        : maintenanceLeader.action === 'replay_artifacts' || maintenanceLeader.action === 'update_space_pack' || maintenanceLeader.action === 'record_outcome'
+          ? 'salvar ouro'
+          : maintenanceLeader.action === 'cross_workspace_transfer' || maintenanceLeader.action === 'revalidate_command'
+            ? 'comparar'
+            : null,
+      onAction: maintenanceLeader.action === 'refresh_folder_map'
+        ? onRefreshFolderMap
+        : maintenanceLeader.action === 'replay_artifacts' || maintenanceLeader.action === 'update_space_pack' || maintenanceLeader.action === 'record_outcome'
+          ? onPreserveArtifact
+          : maintenanceLeader.action === 'cross_workspace_transfer' || maintenanceLeader.action === 'revalidate_command'
+            ? onOpenRecommendedSideBySide
+            : null,
+    } : null,
+    selfImprovementLeader ? {
+      key: `evolution:${selfImprovementLeader.action}:${selfImprovementLeader.label}`,
+      label: 'Evolução',
+      value: selfImprovementLeader.label,
+      detail: selfImprovementLeader.reason,
+      tone: selfImprovementLeader.priority === 'high' ? 'strong' : 'warm',
+      actionLabel: selfImprovementLeader.action === 'refresh_folder_map'
+        ? 'atualizar'
+        : selfImprovementLeader.action === 'preserve_artifact' || selfImprovementLeader.action === 'update_space_pack' || selfImprovementLeader.action === 'record_outcome'
+          ? 'salvar ouro'
+          : null,
+      onAction: selfImprovementLeader.action === 'refresh_folder_map'
+        ? onRefreshFolderMap
+        : selfImprovementLeader.action === 'preserve_artifact' || selfImprovementLeader.action === 'update_space_pack' || selfImprovementLeader.action === 'record_outcome'
+          ? onPreserveArtifact
+          : null,
+    } : null,
+    launchMaintenance ? {
+      key: `launch:${workspaceLaunchContract?.seed_hash ?? launchMaintenance}`,
+      label: 'Partida viva',
+      value: launchMaintenance,
+      detail: workspaceLaunchContract?.next_conversation.provider_note ?? 'contrato vivo prepara a próxima conversa',
+      tone: workspaceLaunchContract?.launch_mode === 'deep' ? 'strong' : workspaceLaunchContract?.launch_mode === 'warm' ? 'warm' : 'quiet',
+      actionLabel: workspaceLaunchContract?.startup_contract.preserve_artifact_after_success ? 'salvar ouro' : null,
+      onAction: workspaceLaunchContract?.startup_contract.preserve_artifact_after_success ? onPreserveArtifact : null,
+    } : null,
+    connectionLeader ? {
+      key: `connection:${connectionLeader.workspace_hint}:${connectionLeader.relationship}`,
+      label: 'Repos conectados',
+      value: connectionLeader.workspace_hint,
+      detail: connectionLeader.validate[0] ?? connectionLeader.reuse[0] ?? 'reusar só com validação local',
+      tone: connectionLeader.confidence >= 80 ? 'strong' : 'warm',
+      actionLabel: 'comparar',
+      onAction: onOpenRecommendedSideBySide,
+    } : null,
+    workspaceRetention?.lifecycle.revalidate[0] ? {
+      key: `retention:${workspaceRetention.lifecycle.revalidate[0]}`,
+      label: 'Revalidar',
+      value: workspaceRetention.lifecycle.revalidate[0],
+      detail: workspaceRetention.policy.reason,
+      tone: workspaceRetention.policy.mode === 'conservative' ? 'warm' : 'quiet',
+      actionLabel: 'salvar ouro',
+      onAction: onPreserveArtifact,
+    } : null,
+  ].filter((item): item is {
+    key: string
+    label: string
+    value: string
+    detail: string
+    tone: string
+    actionLabel: string | null
+    onAction: (() => Promise<void> | void) | null
+  } => Boolean(item)).slice(0, 3)
   const awisBrainSignals = [
+    workspaceLaunchContract ? {
+      key: 'launch-contract',
+      label: 'Partida viva',
+      value: `${workspaceLaunchContract.readiness_score}% · ${workspaceLaunchContract.launch_mode === 'deep' ? 'profunda' : workspaceLaunchContract.launch_mode === 'warm' ? 'quente' : 'guiada'}`,
+      detail: launchPrimaryValidation
+        ? `validar: ${launchPrimaryValidation}`
+        : launchPrimaryLoad
+          ? `carregar: ${launchPrimaryLoad}`
+          : 'nova conversa nasce com contrato de contexto',
+      tone: workspaceLaunchContract.launch_mode === 'deep' ? 'strong' : workspaceLaunchContract.launch_mode === 'warm' ? 'warm' : 'quiet',
+    } : null,
+    workspacePreflight ? {
+      key: 'preflight',
+      label: 'Pré-checagem',
+      value: `${workspacePreflight.readiness_score}% · ${workspacePreflight.mode === 'ready' ? 'pronto' : workspacePreflight.mode === 'guarded' ? 'com atenção' : 'bloqueado'}`,
+      detail: preflightGate
+        ? `${preflightGate.label} · ${preflightGate.status === 'ready' ? 'ok' : preflightGate.evidence[0] ?? 'requer atenção'}`
+        : 'confere contexto, validação, risco e aprendizado antes de executar',
+      tone: workspacePreflight.mode === 'ready' ? 'strong' : workspacePreflight.mode === 'guarded' ? 'warm' : 'quiet',
+    } : null,
+    workspaceTwin ? {
+      key: 'workspace-twin',
+      label: 'Mapa vivo',
+      value: twinPrimaryComponent
+        ? `${workspaceTwin.readiness_score}% · ${twinPrimaryComponent.key}`
+        : `${workspaceTwin.readiness_score}% · ${twinPrimaryApp ?? 'projeto mapeado'}`,
+      detail: twinFragileArea
+        ? `atenção em ${twinFragileArea}`
+        : workspaceTwin.context_autopilot.reason,
+      tone: workspaceTwin.stale ? 'warm' : workspaceTwin.readiness_score >= 70 ? 'strong' : 'quiet',
+    } : null,
+    handoffReady ? {
+      key: 'handoff-pack',
+      label: 'Handoff',
+      value: `${(workspaceHandoffPack.consumer ?? 'provider').replace('_', ' ')} · pronto`,
+      detail: `${workspaceHandoffPack.required_artifacts.slice(0, 3).join(', ')}${workspaceHandoffPack.required_artifacts.length > 3 ? '...' : ''}`,
+      tone: 'strong',
+    } : nextSessionReady ? {
+      key: 'next-session-brain',
+      label: 'Partida',
+      value: startupLoadLabel ?? 'memória pronta',
+      detail: workspaceNextSessionBrain?.context_loading.mode ?? 'nova conversa nasce com contexto reutilizável',
+      tone: 'strong',
+    } : null,
     confidenceLeader ? {
       key: 'confidence',
       label: 'Confiança',
@@ -3125,6 +3563,25 @@ function AwisCommandCenter({
             >
               <small>{signal.label}</small>
               <strong>{signal.value}</strong>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {awisLivingQueue.length > 0 ? (
+        <div className="atlas-ai-awis-living-queue" aria-label="Fila viva AWIS">
+          {awisLivingQueue.map((item) => (
+            <span key={item.key} className={`atlas-ai-awis-queue-item tone-${item.tone}`} title={item.detail}>
+              <small>{item.label}</small>
+              <strong>{item.value}</strong>
+              {item.actionLabel && item.onAction ? (
+                <button
+                  type="button"
+                  onClick={() => { void item.onAction?.() }}
+                  title={item.detail}
+                >
+                  {item.actionLabel}
+                </button>
+              ) : null}
             </span>
           ))}
         </div>

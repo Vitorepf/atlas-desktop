@@ -479,6 +479,16 @@ export interface AiThreadDetail extends AiThreadSummary {
   last_trace?: AiTrace | null
 }
 
+export interface AiThreadMessagesPage {
+  messages: AiThreadMessage[]
+  pagination: {
+    limit: number
+    has_more_before: boolean
+    oldest_position: number | null
+    next_before_position: number | null
+  }
+}
+
 export interface AtlasWorkspaceConversationFusion {
   schema_version?: 'atlas.workspace_conversation_fusion.v1' | string
   status?: 'ready' | 'empty' | 'blocked' | string

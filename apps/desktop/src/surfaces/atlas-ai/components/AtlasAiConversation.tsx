@@ -47,6 +47,10 @@ interface AtlasAiConversationProps {
   onArchive: () => void
   onPromote?: () => void
   onCancel?: () => void
+  onLoadOlder?: () => void
+  hasOlderMessages?: boolean
+  olderMessagesLoading?: boolean
+  olderMessagesError?: string | null
   /** Atlas Dev plan-only result for the current run (Claude 17 slice). */
   atlasDevPlan?: AtlasDevPlanResult | null
 }
@@ -309,16 +313,55 @@ export function AtlasAiConversation({
   onArchive,
   onPromote,
   onCancel,
+  onLoadOlder,
+  hasOlderMessages = false,
+  olderMessagesLoading = false,
+  olderMessagesError = null,
   atlasDevPlan,
 }: AtlasAiConversationProps) {
   // Auto-scroll para o fim quando mensagens chegam ou pending vira ativo.
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
-  const messageCount = detail?.messages?.length ?? 0
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null)
+  const olderLoadAnchorRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
+  const latestMessageKey = useMemo(() => {
+    const latest = (detail?.messages ?? []).reduce<AiThreadMessage | null>((current, message) => {
+      if (!current) return message
+      return message.position > current.position ? message : current
+    }, null)
+    return latest ? `${latest.id}:${latest.position}` : null
+  }, [detail?.messages])
   useEffect(() => {
     const node = messagesEndRef.current
     if (!node) return
-    node.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messageCount, pendingUserMessage?.startedAt, pendingTrace?.status, sending])
+    node.scrollIntoView({ behavior: 'auto', block: 'end' })
+  }, [latestMessageKey, pendingUserMessage?.startedAt, pendingTrace?.status, sending])
+
+  useEffect(() => {
+    if (olderMessagesLoading) return
+    const anchor = olderLoadAnchorRef.current
+    const node = messagesScrollRef.current
+    if (!anchor || !node) return
+    const delta = node.scrollHeight - anchor.scrollHeight
+    node.scrollTop = anchor.scrollTop + delta
+    olderLoadAnchorRef.current = null
+  }, [detail?.messages?.length, olderMessagesLoading])
+
+  const loadOlderWithAnchor = () => {
+    const node = messagesScrollRef.current
+    if (node) {
+      olderLoadAnchorRef.current = {
+        scrollHeight: node.scrollHeight,
+        scrollTop: node.scrollTop,
+      }
+    }
+    onLoadOlder?.()
+  }
+
+  const handleMessagesScroll = () => {
+    const node = messagesScrollRef.current
+    if (!node || !onLoadOlder || !hasOlderMessages || olderMessagesLoading) return
+    if (node.scrollTop <= 80) loadOlderWithAnchor()
+  }
 
   // Estamos no meio de criar uma thread nova? (sending true, sem detail ainda)
   const isCreatingThread = pendingUserMessage !== null && detail === null
@@ -438,7 +481,23 @@ export function AtlasAiConversation({
         </div>
       </header>
 
-      <div className="atlas-ai-messages">
+      <div className="atlas-ai-messages" ref={messagesScrollRef} onScroll={handleMessagesScroll}>
+        {hasOlderMessages || olderMessagesLoading || olderMessagesError ? (
+          <div className="atlas-ai-history-loader">
+            {olderMessagesError ? (
+              <button type="button" onClick={loadOlderWithAnchor}>
+                carregar histórico
+              </button>
+            ) : olderMessagesLoading ? (
+              <span>carregando histórico…</span>
+            ) : (
+              <button type="button" onClick={loadOlderWithAnchor}>
+                ver mensagens anteriores
+              </button>
+            )}
+          </div>
+        ) : null}
+
         {messages.length === 0 && !showOptimistic && !showStreamingBubble ? (
           <p className="atlas-ai-empty-line">primeira pergunta — escreva abaixo</p>
         ) : null}

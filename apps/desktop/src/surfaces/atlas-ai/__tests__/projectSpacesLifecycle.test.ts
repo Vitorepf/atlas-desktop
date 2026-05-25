@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   addThreadToLocalProjectSpace,
   buildLocalProjectSpaceContextPack,
+  buildLocalProjectSpaceFallbackContextPack,
   createOrUpdateLocalProjectSpace,
   evaluateLocalProjectSpaceBrain,
   evaluateLocalProjectSpaceIntelligence,
@@ -659,6 +660,29 @@ test('AWIS Space context pack · exports safe reusable context without raw conve
   assert.deepEqual(pack.source_thread_ids, ['a', 'b'])
   assert.equal(pack.sessions[0].mode, 'programming')
   assert.equal(pack.sessions[1].mode, 'research')
+})
+
+test('AWIS Space context pack · saved Space still exports a minimal startup pack before threads load', () => {
+  const pack = buildLocalProjectSpaceFallbackContextPack({
+    space: baseSpaces[0],
+    generatedAt: updatedAt,
+  })
+
+  assert.ok(pack)
+  assert.equal(pack.schema_version, 'atlas.desktop_ai.space_context_pack.v1')
+  assert.equal(pack.title, 'Fluxo Atlas AI')
+  assert.equal(pack.thread_count, 3)
+  assert.equal(pack.message_count, 0)
+  assert.equal(pack.raw_conversation_returned, false)
+  assert.equal(pack.full_message_content_returned, false)
+  assert.deepEqual(pack.reusable_by, ['Atlas AI', 'packs'])
+  assert.ok(pack.recommended_use.includes('recarregar sessões quando disponíveis'))
+  assert.deepEqual(pack.sessions.map((session) => session.title), [
+    'Sessão salva 1',
+    'Sessão salva 2',
+    'Sessão salva 3',
+  ])
+  assert.doesNotMatch(JSON.stringify(pack), /operator_input|response_text|raw_conversation_returned":true/)
 })
 
 test('AWIS Space context pack · markdown is operator-readable and provider-safe', () => {

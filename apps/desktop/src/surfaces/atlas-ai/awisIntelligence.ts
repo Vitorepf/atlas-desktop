@@ -9,16 +9,19 @@ import type {
   AwisWorkspaceContinuityProjection,
   AwisWorkspaceEvolutionProjection,
   AwisWorkspaceHandoffProjection,
+  AwisWorkspaceLaunchContractProjection,
   AwisWorkspaceLearningProjection,
   AwisWorkspaceLivingGraphProjection,
   AwisWorkspaceMemorySnapshot,
   AwisWorkspaceNextSessionBrainProjection,
+  AwisWorkspacePreflightProjection,
   AwisWorkspaceRelationProjection,
   AwisWorkspaceRetentionProjection,
   AwisWorkspaceSelfImprovementProjection,
   AwisWorkspaceSessionGoldProjection,
   AwisWorkspaceStartupOrchestrationProjection,
   AwisWorkspaceTopologyProjection,
+  AwisWorkspaceTwinProjection,
 } from './awisWorkspaceMemory'
 import type { RuntimeReadinessStatus } from './runtimeReadinessView'
 
@@ -49,6 +52,9 @@ export interface AwisWorkspaceIntelligenceInput {
   workspaceSelfImprovement?: AwisWorkspaceSelfImprovementProjection | null
   workspaceRetention?: AwisWorkspaceRetentionProjection | null
   workspaceStartupOrchestration?: AwisWorkspaceStartupOrchestrationProjection | null
+  workspacePreflight?: AwisWorkspacePreflightProjection | null
+  workspaceTwin?: AwisWorkspaceTwinProjection | null
+  workspaceLaunchContract?: AwisWorkspaceLaunchContractProjection | null
   workspaceNextSessionBrain?: AwisWorkspaceNextSessionBrainProjection | null
   workspaceHandoffPack?: AwisWorkspaceHandoffProjection | null
   runtimeSnapshot?: AwisRuntimeSnapshotState | null
@@ -186,6 +192,15 @@ export function evaluateAwisWorkspaceIntelligence(input: AwisWorkspaceIntelligen
   const workspaceSelfImprovementReady = Boolean(input.workspaceSelfImprovement && input.workspaceSelfImprovement.readiness_score >= 40)
   const workspaceRetentionReady = Boolean(input.workspaceRetention && input.workspaceRetention.readiness_score >= 40)
   const workspaceStartupOrchestrationReady = Boolean(input.workspaceStartupOrchestration && input.workspaceStartupOrchestration.readiness_score >= 40)
+  const workspacePreflight = input.workspacePreflight ?? null
+  const workspacePreflightReady = Boolean(workspacePreflight && workspacePreflight.readiness_score >= 40)
+  const workspacePreflightBlocked = workspacePreflight?.mode === 'blocked'
+  const workspaceTwin = input.workspaceTwin ?? null
+  const workspaceTwinReady = Boolean(workspaceTwin && workspaceTwin.readiness_score >= 40)
+  const workspaceTwinStale = workspaceTwin?.stale === true
+  const workspaceLaunchContract = input.workspaceLaunchContract ?? null
+  const workspaceLaunchContractReady = Boolean(workspaceLaunchContract && workspaceLaunchContract.readiness_score >= 40)
+  const workspaceLaunchContractGuarded = workspaceLaunchContract?.launch_mode === 'guarded'
   const workspaceNextSessionBrainReady = input.workspaceNextSessionBrain?.status === 'ready'
   const workspaceHandoffPackReady = input.workspaceHandoffPack?.status === 'ready'
   const runtimeSnapshot = input.runtimeSnapshot ?? null
@@ -213,6 +228,9 @@ export function evaluateAwisWorkspaceIntelligence(input: AwisWorkspaceIntelligen
   if (workspaceSelfImprovementReady) score += 5
   if (workspaceRetentionReady) score += 4
   if (workspaceStartupOrchestrationReady) score += 4
+  if (workspacePreflightReady) score += workspacePreflightBlocked ? 2 : 6
+  if (workspaceTwinReady) score += workspaceTwinStale ? 3 : 7
+  if (workspaceLaunchContractReady) score += workspaceLaunchContractGuarded ? 3 : 7
   if (workspaceNextSessionBrainReady) score += 6
   if (workspaceHandoffPackReady) score += 4
   if (runtimeSnapshotReady) score += 8
@@ -253,6 +271,9 @@ export function evaluateAwisWorkspaceIntelligence(input: AwisWorkspaceIntelligen
   }
   if (loopState?.status === 'blocked') gaps.push('fechar loop AWIS')
   if (runtimeSnapshot?.status === 'blocked') gaps.push('recriar snapshot AWIS')
+  if (workspacePreflightBlocked) gaps.push('resolver pré-checagem')
+  if (workspaceTwinStale) gaps.push('revalidar mapa vivo')
+  if (workspaceLaunchContractGuarded && workspaceLaunchContract?.startup_contract.validate_before_trust.length) gaps.push('validar partida viva')
   if (input.workspaceNextSessionBrain && !workspaceNextSessionBrainReady) gaps.push('preparar partida inteligente')
   if (input.workspaceHandoffPack && !workspaceHandoffPackReady) gaps.push('completar handoff AWIS')
   score = Math.min(gaps.length > 0 ? 94 : 100, score)
@@ -278,6 +299,9 @@ export function evaluateAwisWorkspaceIntelligence(input: AwisWorkspaceIntelligen
   if (workspaceSelfImprovementReady) capabilities.push('autoevolução')
   if (workspaceRetentionReady) capabilities.push('retenção viva')
   if (workspaceStartupOrchestrationReady) capabilities.push('partida orquestrada')
+  if (workspacePreflightReady) capabilities.push(workspacePreflightBlocked ? 'pré-checagem atenta' : 'pré-checagem pronta')
+  if (workspaceTwinReady) capabilities.push(workspaceTwinStale ? 'mapa vivo a revisar' : 'mapa vivo')
+  if (workspaceLaunchContractReady) capabilities.push(workspaceLaunchContractGuarded ? 'partida viva guiada' : 'partida viva')
   if (input.workspaceArtifactReplay?.reusable_startup_gold.reusable_patterns.some((pattern) => pattern.startsWith('playbook:'))) {
     capabilities.push('playbook de partida')
   }

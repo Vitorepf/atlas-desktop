@@ -566,6 +566,15 @@ test('AWIS intelligence exposes workspace topology as a compact command-center c
         dev_commands: [],
         check_commands: [],
       },
+      knowledge_map: {
+        load_first_docs: [],
+        manifest_refs: ['atlas-desktop/package.json'],
+        command_sources: ['atlas-desktop/package.json'],
+        validation_entrypoints: ['npm run test'],
+        runtime_entrypoints: ['npm run build'],
+        sensitive_zones: ['atlas-desktop'],
+        summarize_only: [],
+      },
       safety: {
         raw_source_included: false,
         absolute_paths_included: false,
@@ -669,6 +678,7 @@ test('AWIS intelligence rewards persistent local memory after the folder map lea
       contextPackAppliedCount: 0,
       lastInteractionAt: null,
       recentOutcomes: [],
+      recentMaintenance: [],
       observations: ['primeiro mapa local persistido'],
       driftEvents: [],
     },
@@ -783,6 +793,7 @@ test('AWIS intelligence rewards operational memory after the workspace is used',
         validationCommands: [],
         componentKeys: [],
       }],
+      recentMaintenance: [],
       observations: ['workspace usado em conversa real'],
       driftEvents: [],
     },
@@ -828,6 +839,20 @@ test('AWIS intelligence treats Artifact Lake replay as real startup power', () =
       source: 'local_workspace_artifacts',
       artifact_count: 3,
       latest_artifact_hash: 'awis-abc12345',
+      cold_start_seed: {
+        schema_version: 'atlas.awis.artifact_cold_start_seed.v1',
+        source: 'local_workspace_artifacts',
+        readiness_score: 84,
+        seed_hash: 'cold-awis-abc12345',
+        load_order: ['startup_snapshot', 'context_pack'],
+        validate_with: ['npm run atlas-ai:test'],
+        context_signals: ['maturidade:stable'],
+        reuse_spaces: ['Fluxo AWIS'],
+        repository_hints: ['atlas-desktop'],
+        automation_hooks: ['registrar resultado real'],
+        warnings: [],
+        human_boundary: ['confirmar execução local'],
+      },
       reusable_startup_gold: {
         strongest_spaces: ['Fluxo AWIS · 3 sessões · 21 mensagens'],
         reusable_patterns: ['command:npm run atlas-ai:test'],
@@ -1144,6 +1169,93 @@ test('AWIS intelligence treats Artifact Lake replay as real startup power', () =
         provider_safe: true,
       },
     },
+    workspacePreflight: {
+      schema_version: 'atlas.awis.workspace_preflight_projection.v1',
+      source: 'local_awis_preflight_compiler',
+      readiness_score: 86,
+      mode: 'ready',
+      gates: [
+        {
+          gate: 'validation',
+          status: 'ready',
+          label: 'Validação pronta',
+          required: true,
+          evidence: ['npm run atlas-ai:test'],
+        },
+      ],
+      execution_lanes: {
+        before_send: ['carregar contexto ouro'],
+        before_execution: ['npm run atlas-ai:test'],
+        after_success: ['promover artifact'],
+        after_failure: ['registrar falha'],
+      },
+      promotion_contract: {
+        promote_when: ['validação passou'],
+        demote_when: ['validação falhou'],
+        preserve_as_artifact: true,
+        update_space_pack: true,
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceTwin: {
+      schema_version: 'atlas.awis.workspace_twin_projection.v1',
+      source: 'local_awis_workspace_twin_compiler',
+      workspace_id: 'atlas',
+      readiness_score: 88,
+      stale: false,
+      hashes: {
+        genome_hash: 'twin-abc12345',
+        code_map_hash: 'code-abc12345',
+        command_registry_hash: 'cmd-abc12345',
+        risk_map_hash: 'risk-abc12345',
+      },
+      genome: {
+        stack: ['Tauri', 'React'],
+        apps: ['atlas-desktop'],
+        owner_docs: ['docs/engineering-knowledge-base/atlas-workspace-intelligence-system.md'],
+        commands: ['npm run atlas-ai:test'],
+        risk_zones: ['atlas-ai surface'],
+        test_families: ['atlas-ai:test'],
+      },
+      live_map: {
+        components: [
+          { key: 'atlas-desktop', role: 'app desktop', maturity: 'stable', confidence: 88 },
+        ],
+        connections: ['atlas-desktop -> atlas-server'],
+        fragile_areas: [],
+      },
+      context_autopilot: {
+        load_first: ['atlas-ai surface'],
+        summarize: ['docs grandes'],
+        validate: ['npm run atlas-ai:test'],
+        avoid: ['conversa bruta completa'],
+        reason: 'mapa vivo escolhe contexto e validação antes de executar',
+      },
+      learning_loop: {
+        learned_from_outcomes: ['bug_fix'],
+        next_refresh: ['scan local após mudanças'],
+        reuse_next_session: ['carregar atlas-ai surface primeiro'],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
   })
 
   assert.ok(intelligence.capabilities.includes('Artifact Lake local'))
@@ -1157,6 +1269,8 @@ test('AWIS intelligence treats Artifact Lake replay as real startup power', () =
   assert.ok(intelligence.capabilities.includes('autoevolução'))
   assert.ok(intelligence.capabilities.includes('retenção viva'))
   assert.ok(intelligence.capabilities.includes('partida orquestrada'))
+  assert.ok(intelligence.capabilities.includes('pré-checagem pronta'))
+  assert.ok(intelligence.capabilities.includes('mapa vivo'))
   assert.ok(!intelligence.capabilities.some((capability) => /learning|optimize|maintain|observe/.test(capability)))
   assert.ok(intelligence.score >= 65)
 })

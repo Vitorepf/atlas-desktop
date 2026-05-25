@@ -59,6 +59,7 @@ interface AtlasAiThreadListProps {
   onPersistConversationFusion?: () => AtlasWorkspaceConversationFusion | null | void | Promise<AtlasWorkspaceConversationFusion | null | void>
   onFuseThreads?: (threadIds: string[]) => void | Promise<void>
   onSelect: (id: string) => void
+  onPrefetch?: (id: string) => void
   onOpenBeside?: (id: string) => void
   onOpenInStage?: (id: string) => void
   onStageDragActive?: (active: boolean) => void
@@ -98,6 +99,7 @@ const SAVED_SPACE_RECEIPTS_STORAGE = 'atlas-desktop:atlas-ai-saved-space-receipt
 const SAVED_SPACE_RECEIPTS_SCHEMA_VERSION = 'atlas.desktop_ai.saved_space_receipts.v1'
 const THREAD_SEEN_STORAGE = 'atlas-desktop:atlas-ai-thread-seen-at'
 const DEFAULT_VISIBLE_PER_PROJECT = 5
+const THREAD_PREFETCH_HOVER_DELAY_MS = 90
 export const ATLAS_AI_THREAD_DRAG_CLEAR_EVENT = 'atlas-ai:thread-drag-clear'
 
 export interface LocalProjectSpace {
@@ -892,6 +894,52 @@ export function buildLocalProjectSpaceContextPack({
   }
 }
 
+export function buildLocalProjectSpaceFallbackContextPack({
+  space,
+  generatedAt = nowIso(),
+}: {
+  space: LocalProjectSpace
+  generatedAt?: string
+}): LocalProjectSpaceContextPack | null {
+  const threadIds = Array.from(new Set(space.threadIds.filter(Boolean)))
+  if (!(threadIds.length > 1)) return null
+  const source: LocalProjectSpaceContextPack['source'] = space.source === 'suggested'
+    ? 'suggested_space'
+    : 'local_space'
+  const sessionLabel = threadIds.length === 1 ? '1 sessão salva' : `${threadIds.length} sessões salvas`
+  return {
+    schema_version: 'atlas.desktop_ai.space_context_pack.v1',
+    title: space.title,
+    source,
+    generated_at: generatedAt,
+    thread_count: threadIds.length,
+    message_count: 0,
+    mode_count: 0,
+    decision_count: 0,
+    pending_count: 0,
+    risk_count: 0,
+    artifact_count: 0,
+    scope_label: sessionLabel,
+    reusable_by: ['Atlas AI', 'packs'],
+    source_thread_ids: threadIds,
+    raw_conversation_returned: false,
+    full_message_content_returned: false,
+    recommended_use: [
+      'preservar tema do Space',
+      'recarregar sessões quando disponíveis',
+      'abrir para comparar',
+    ],
+    sessions: threadIds.map((id, index) => ({
+      id,
+      title: `Sessão salva ${index + 1}`,
+      mode: 'general',
+      message_count: 0,
+      last_active_at: space.updatedAt ?? space.createdAt ?? null,
+      provider: null,
+    })),
+  }
+}
+
 export function localProjectSpaceContextPackMarkdown(pack: LocalProjectSpaceContextPack): string {
   const humanSessionLine = (session: LocalProjectSpaceContextPack['sessions'][number]) => {
     const date = session.last_active_at ? formatRelativeShort(session.last_active_at) : 'sem data'
@@ -1048,6 +1096,7 @@ export function AtlasAiThreadList({
   onPersistConversationFusion,
   onFuseThreads,
   onSelect,
+  onPrefetch,
   onOpenBeside,
   onOpenInStage,
   onStageDragActive,
@@ -1242,7 +1291,7 @@ export function AtlasAiThreadList({
         const spaceThreads = space.threadIds
           .map((id) => threadById.get(id))
           .filter((thread): thread is AiThreadSummary => Boolean(thread))
-        if (spaceThreads.length < 2) return null
+        if (spaceThreads.length < 2) return buildLocalProjectSpaceFallbackContextPack({ space })
         return buildLocalProjectSpaceContextPack({
           title: space.title,
           threads: spaceThreads,
@@ -1619,6 +1668,7 @@ export function AtlasAiThreadList({
                       thread={t}
                       selectedId={selectedId}
                       onSelect={selectThreadFromList}
+                      onPrefetch={onPrefetch}
                       onOpenBeside={onOpenBeside}
                       onOpenInStage={onOpenInStage}
                       onContextMenu={onContextMenu}
@@ -1790,6 +1840,7 @@ export function AtlasAiThreadList({
                             threadById={threadById}
                             selectedId={selectedId}
                             onSelect={onSelect}
+                            onPrefetch={onPrefetch}
                             onOpenSpace={onOpenSpace}
                             onRemoveSpace={removeProjectSpace}
                             onRenameSpace={renameProjectSpace}
@@ -1807,6 +1858,7 @@ export function AtlasAiThreadList({
                               thread={t}
                               selectedId={selectedId}
                               onSelect={selectThreadFromList}
+                              onPrefetch={onPrefetch}
                               onOpenBeside={onOpenBeside}
                               onOpenInStage={onOpenInStage}
                               onContextMenu={onContextMenu}
@@ -1856,6 +1908,7 @@ export function AtlasAiThreadList({
                 threads={orphans}
                 selectedId={selectedId}
                 onSelect={selectThreadFromList}
+                onPrefetch={onPrefetch}
                 onOpenBeside={onOpenBeside}
                 onOpenInStage={onOpenInStage}
                 onContextMenu={onContextMenu}
@@ -1906,6 +1959,7 @@ interface WorkspaceToolsProps {
   threadById: Map<string, AiThreadSummary>
   selectedId: string | null
   onSelect: (id: string) => void
+  onPrefetch?: (id: string) => void
   onOpenSpace?: (threadIds: string[]) => void
   onRemoveSpace?: (spaceId: string) => void
   onRenameSpace?: (spaceId: string, title: string) => void
@@ -1931,6 +1985,7 @@ function ProjectSpacesPanel({
   threadById,
   selectedId,
   onSelect,
+  onPrefetch,
   onOpenSpace,
   onRemoveSpace,
   onRenameSpace,
@@ -2003,7 +2058,7 @@ function ProjectSpacesPanel({
   return (
     <div className="atlas-ai-workspace-tools">
       {spaces.length > 0 ? (
-        <div className="atlas-ai-project-spaces-list" aria-label="Espaços criados nesta sessão">
+        <div className="atlas-ai-project-spaces-list" aria-label="Spaces salvos deste projeto">
           <div className="atlas-ai-project-spaces-label">
             <span>Spaces</span>
             <small>{spaces.length}</small>
@@ -2126,6 +2181,8 @@ function ProjectSpacesPanel({
                             type="button"
                             className={thread.id === selectedId ? 'is-selected' : undefined}
                             title="Abrir somente esta conversa"
+                            onPointerEnter={() => onPrefetch?.(thread.id)}
+                            onFocus={() => onPrefetch?.(thread.id)}
                             onClick={(event) => {
                               event.preventDefault()
                               event.stopPropagation()
@@ -2171,6 +2228,7 @@ function ProjectSpacesPanel({
           saving={Boolean(fusionLoading)}
           onOpenSpace={onOpenSpace}
           onSelect={onSelect}
+          onPrefetch={onPrefetch}
           onEditSpace={openSuggestedSpaceEditor}
           onSaveSpace={onPersistConversationFusion}
         />
@@ -2325,6 +2383,7 @@ function SuggestedProjectSpaceCard({
   saving,
   onOpenSpace,
   onSelect,
+  onPrefetch,
   onEditSpace,
   onSaveSpace,
 }: {
@@ -2334,6 +2393,7 @@ function SuggestedProjectSpaceCard({
   saving?: boolean
   onOpenSpace?: (threadIds: string[]) => void
   onSelect: (id: string) => void
+  onPrefetch?: (id: string) => void
   onEditSpace?: (threadIds: string[], title: string) => void | Promise<void>
   onSaveSpace?: () => AtlasWorkspaceConversationFusion | null | void | Promise<AtlasWorkspaceConversationFusion | null | void>
 }) {
@@ -2423,7 +2483,13 @@ function SuggestedProjectSpaceCard({
         <ul className="atlas-ai-project-space-thread-list" aria-label={`Conversas dentro de ${title}`}>
           {visibleThreads.map((thread) => (
             <li key={thread.id}>
-              <button type="button" title="Abrir somente esta conversa" onClick={() => onSelect(thread.id)}>
+              <button
+                type="button"
+                title="Abrir somente esta conversa"
+                onPointerEnter={() => onPrefetch?.(thread.id)}
+                onFocus={() => onPrefetch?.(thread.id)}
+                onClick={() => onSelect(thread.id)}
+              >
                 <span>{thread.title?.trim() || '(sem título)'}</span>
               </button>
             </li>
@@ -2534,6 +2600,7 @@ interface OrphanListProps {
   threads: AiThreadSummary[]
   selectedId: string | null
   onSelect: (id: string) => void
+  onPrefetch?: (id: string) => void
   onOpenBeside?: (id: string) => void
   onOpenInStage?: (id: string) => void
   onContextMenu?: (thread: AiThreadSummary, ev: React.MouseEvent) => void
@@ -2551,6 +2618,7 @@ function OrphanList({
   threads,
   selectedId,
   onSelect,
+  onPrefetch,
   onOpenBeside,
   onOpenInStage,
   onContextMenu,
@@ -2575,6 +2643,7 @@ function OrphanList({
             thread={t}
             selectedId={selectedId}
             onSelect={onSelect}
+            onPrefetch={onPrefetch}
             onOpenBeside={onOpenBeside}
             onOpenInStage={onOpenInStage}
             onContextMenu={onContextMenu}
@@ -2608,6 +2677,7 @@ interface ThreadRowProps {
   thread: AiThreadSummary
   selectedId: string | null
   onSelect: (id: string) => void
+  onPrefetch?: (id: string) => void
   onOpenBeside?: (id: string) => void
   onOpenInStage?: (id: string) => void
   onContextMenu?: (thread: AiThreadSummary, ev: React.MouseEvent) => void
@@ -2631,6 +2701,7 @@ function ThreadRow({
   thread,
   selectedId,
   onSelect,
+  onPrefetch,
   onOpenBeside,
   onOpenInStage,
   onContextMenu,
@@ -2653,6 +2724,24 @@ function ThreadRow({
   const time = formatRelativeShort(threadTimestamp(thread))
   const dragHandleTitle = 'Arrastar conversa'
   const [dropTarget, setDropTarget] = useState(false)
+  const prefetchTimerRef = useRef<number | null>(null)
+  const cancelPrefetchTimer = () => {
+    if (prefetchTimerRef.current === null) return
+    window.clearTimeout(prefetchTimerRef.current)
+    prefetchTimerRef.current = null
+  }
+  const prefetchNow = () => {
+    cancelPrefetchTimer()
+    if (!selected) onPrefetch?.(thread.id)
+  }
+  const schedulePrefetch = () => {
+    if (!onPrefetch || selected || prefetchTimerRef.current !== null) return
+    prefetchTimerRef.current = window.setTimeout(() => {
+      prefetchTimerRef.current = null
+      onPrefetch(thread.id)
+    }, THREAD_PREFETCH_HOVER_DELAY_MS)
+  }
+  useEffect(() => cancelPrefetchTimer, [])
   const startThreadDrag = (event: DragEvent<HTMLElement>) => {
     if (!draggable) return
     event.dataTransfer.effectAllowed = 'copyMove'
@@ -2685,6 +2774,9 @@ function ThreadRow({
       draggable={false}
       onDragStart={startThreadDrag}
       onDragEnd={finishThreadDrag}
+      onPointerEnter={schedulePrefetch}
+      onPointerLeave={cancelPrefetchTimer}
+      onFocus={prefetchNow}
       onDragOver={(event) => {
         if (!onFuseThreads) return
         event.preventDefault()

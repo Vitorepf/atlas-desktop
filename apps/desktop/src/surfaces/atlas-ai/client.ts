@@ -9,6 +9,7 @@
 import type {
   AiThreadDetail,
   AiThreadListFilters,
+  AiThreadMessagesPage,
   AiThreadSummary,
   AiTrace,
   AtlasAiInteractionRequest,
@@ -185,10 +186,35 @@ export async function createAiThread(input: {
   return result.thread
 }
 
-export async function getAiThread(id: string): Promise<AiThreadDetail> {
+export async function getAiThread(
+  id: string,
+  opts: { lean?: boolean; messageLimit?: number } = { lean: true, messageLimit: 6 },
+): Promise<AiThreadDetail> {
   ensureOnline('getAiThread')
-  const result = await fetchJson<{ thread: AiThreadDetail }>(`/ai/threads/${encodeURIComponent(id)}`)
+  const params = new URLSearchParams()
+  if (opts.lean !== false) params.set('lean', '1')
+  params.set('message_limit', String(opts.messageLimit ?? 6))
+  const qs = params.toString()
+  const result = await fetchJson<{ thread: AiThreadDetail }>(
+    `/ai/threads/${encodeURIComponent(id)}${qs ? `?${qs}` : ''}`,
+  )
   return result.thread
+}
+
+export async function getAiThreadMessages(
+  id: string,
+  opts: { beforePosition?: number | null; limit?: number } = {},
+): Promise<AiThreadMessagesPage> {
+  ensureOnline('getAiThreadMessages')
+  const params = new URLSearchParams()
+  params.set('limit', String(opts.limit ?? 12))
+  if (opts.beforePosition !== null && opts.beforePosition !== undefined) {
+    params.set('before_position', String(opts.beforePosition))
+  }
+  const qs = params.toString()
+  return fetchJson<AiThreadMessagesPage>(
+    `/ai/threads/${encodeURIComponent(id)}/messages${qs ? `?${qs}` : ''}`,
+  )
 }
 
 export async function updateAiThread(

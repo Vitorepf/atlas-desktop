@@ -67,6 +67,7 @@ export type OpsTab =
   | 'construction'
   | 'provider_arena'
   | 'operating_room'
+  | 'frontend'
 
 export interface RightRailContext {
   obra: Obra | null

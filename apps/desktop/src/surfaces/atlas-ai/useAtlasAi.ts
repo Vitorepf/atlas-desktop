@@ -17,6 +17,7 @@ import {
   createAiThread,
   deleteAiThread,
   getAiThread,
+  getAiThreadMessages,
   getAiTrace,
   getAtlasAiRouterBootstrap,
   getAtlasAiRouterReadiness,
@@ -35,6 +36,7 @@ import {
 import type { AtlasComputeEffortChoice, AtlasRichInputPayload } from '../../lib/rich-input'
 import type {
   AiThreadDetail,
+  AiThreadMessage,
   AiThreadSummary,
   AiTrace,
   AtlasAiMode,
@@ -70,9 +72,14 @@ export interface AtlasAiState {
 
   selectedThreadId: string | null
   selectThread: (id: string | null) => void
+  prefetchThread: (id: string) => void
   threadDetail: AiThreadDetail | null
   threadDetailLoading: boolean
   threadDetailError: string | null
+  threadOlderMessagesLoading: boolean
+  threadHasOlderMessages: boolean
+  threadOlderMessagesError: string | null
+  loadOlderThreadMessages: () => Promise<void>
 
   composerMode: AtlasAiMode
   setComposerMode: (mode: AtlasAiMode) => void
@@ -89,6 +96,9 @@ export interface AtlasAiState {
   routerReadiness: AtlasAiRouterReadiness | null
 
   pendingTrace: AiTrace | null
+  /** Último trace terminal observado pelo polling. Usado pelo AWIS para aprender
+   * com o outcome real, não com o estado inicial do envio. */
+  lastTerminalTrace: AiTrace | null
   /** Mensagem otimista do usuário — set ANTES dos awaits do send. Garante
    * feedback imediato (bolha + indicador) entre Enter e o trace aparecer. */
   pendingUserMessage: {
@@ -164,6 +174,138 @@ export interface AtlasAiState {
 const TRACE_POLL_INTERVAL_MS = 500
 const TRACE_POLL_INITIAL_DELAY_MS = 250
 const TRACE_POLL_TIMEOUT_MS = 120_000
+const INITIAL_THREAD_MESSAGE_LIMIT = 6
+const OLDER_THREAD_MESSAGE_PAGE_LIMIT = 12
+const THREADS_CACHE_STORAGE_KEY = 'atlas-desktop:atlas-ai:threads-cache:v1'
+const THREAD_DETAIL_CACHE_STORAGE_KEY = 'atlas-desktop:atlas-ai:thread-detail-cache:v1'
+const THREAD_DETAIL_CACHE_MAX_ENTRIES = 50
+const THREAD_DETAIL_CACHE_MAX_MESSAGES = 24
+
+function readStorageItem(key: string): string | null {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage.getItem(key)
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (typeof sessionStorage !== 'undefined') return sessionStorage.getItem(key)
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function writeStorageItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value)
+      return
+    }
+  } catch {
+    /* fallback below */
+  }
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, value)
+  } catch {
+    /* ignore */
+  }
+}
+
+function latestMessagesForCache(messages: AiThreadMessage[] = []): AiThreadMessage[] {
+  return messages
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .slice(-THREAD_DETAIL_CACHE_MAX_MESSAGES)
+}
+
+function compactThreadDetailForCache(detail: AiThreadDetail): AiThreadDetail {
+  return {
+    ...detail,
+    messages: latestMessagesForCache(detail.messages ?? []),
+  }
+}
+
+function readThreadListCache(): AiThreadSummary[] {
+  try {
+    const raw = readStorageItem(THREADS_CACHE_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as { threads?: unknown }
+    if (!Array.isArray(parsed.threads)) return []
+    return parsed.threads
+      .filter((thread): thread is AiThreadSummary => {
+        return !!thread && typeof thread === 'object' && typeof (thread as AiThreadSummary).id === 'string'
+      })
+      .slice(0, 100)
+  } catch {
+    return []
+  }
+}
+
+function writeThreadListCache(threads: AiThreadSummary[]): void {
+  writeStorageItem(THREADS_CACHE_STORAGE_KEY, JSON.stringify({
+    schema_version: 1,
+    cached_at: Date.now(),
+    threads: threads.slice(0, 100),
+  }))
+}
+
+function readThreadDetailCache(): Map<string, AiThreadDetail> {
+  const cache = new Map<string, AiThreadDetail>()
+  try {
+    const raw = readStorageItem(THREAD_DETAIL_CACHE_STORAGE_KEY)
+    if (!raw) return cache
+    const parsed = JSON.parse(raw) as { entries?: unknown }
+    if (!Array.isArray(parsed.entries)) return cache
+    for (const entry of parsed.entries) {
+      if (!entry || typeof entry !== 'object') continue
+      const detail = (entry as { detail?: unknown }).detail
+      if (!detail || typeof detail !== 'object') continue
+      const id = (detail as AiThreadDetail).id
+      if (typeof id !== 'string' || id.trim() === '') continue
+      cache.set(id, compactThreadDetailForCache(detail as AiThreadDetail))
+    }
+  } catch {
+    return new Map()
+  }
+  return cache
+}
+
+function writeThreadDetailCache(cache: Map<string, AiThreadDetail>): void {
+  const entries = Array.from(cache.entries())
+    .slice(-THREAD_DETAIL_CACHE_MAX_ENTRIES)
+    .map(([id, detail]) => ({
+      id,
+      cached_at: Date.now(),
+      detail: compactThreadDetailForCache(detail),
+    }))
+  writeStorageItem(THREAD_DETAIL_CACHE_STORAGE_KEY, JSON.stringify({
+    schema_version: 1,
+    cached_at: Date.now(),
+    entries,
+  }))
+}
+
+function rememberThreadDetail(
+  cache: Map<string, AiThreadDetail>,
+  id: string,
+  detail: AiThreadDetail,
+): void {
+  cache.delete(id)
+  cache.set(id, detail)
+  while (cache.size > THREAD_DETAIL_CACHE_MAX_ENTRIES) {
+    const firstKey = cache.keys().next().value
+    if (typeof firstKey !== 'string') break
+    cache.delete(firstKey)
+  }
+  writeThreadDetailCache(cache)
+}
+
+function mergeThreadMessages(current: AiThreadMessage[] = [], incoming: AiThreadMessage[] = []): AiThreadMessage[] {
+  const byId = new Map<string, AiThreadMessage>()
+  for (const message of current) byId.set(message.id, message)
+  for (const message of incoming) byId.set(message.id, message)
+  return Array.from(byId.values()).sort((a, b) => a.position - b.position)
+}
 
 function traceFailureMessage(trace: AiTrace): string {
   const failedJob = trace.job?.status === 'failed'
@@ -199,6 +341,63 @@ function traceFailureMessage(trace: AiTrace): string {
     : `Atlas ${action} esta resposta. Tente de novo ou verifique o serviço local.`
 }
 
+function providerSafeStringList(value: unknown, limit = 4): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+    .map((item) => item.trim().replace(/\s+/g, ' ').slice(0, 180))
+    .filter((item) => !/\/Users\/|thread_id|source_thread_ids|raw_conversation|response_text|operator_input/i.test(item))
+    .slice(0, limit)
+}
+
+function awisThreadMetadataFromContext(conversationContext?: unknown[]): Record<string, unknown> {
+  if (!conversationContext?.length) return {}
+
+  const schemaVersions = new Set<string>()
+  let providerCapsule: Record<string, unknown> | null = null
+  let contextPack: Record<string, unknown> | null = null
+  let taskContext: Record<string, unknown> | null = null
+
+  for (const entry of conversationContext) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+    const item = entry as Record<string, unknown>
+    const schema = typeof item.schema_version === 'string' ? item.schema_version : null
+    if (!schema?.startsWith('atlas.awis.')) continue
+    schemaVersions.add(schema)
+    if (schema === 'atlas.awis.workspace_provider_capsule.v1') providerCapsule = item
+    if (schema === 'atlas.awis.workspace_context_pack.v1') contextPack = item
+    if (schema === 'atlas.awis.workspace_task_context_projection.v1') taskContext = item
+  }
+
+  if (schemaVersions.size === 0) return {}
+
+  const preflight = contextPack?.preflight && typeof contextPack.preflight === 'object'
+    ? contextPack.preflight as Record<string, unknown>
+    : null
+  const twin = contextPack?.workspace_twin && typeof contextPack.workspace_twin === 'object'
+    ? contextPack.workspace_twin as Record<string, unknown>
+    : null
+
+  return {
+    awis_context_applied: true,
+    awis_context_schema_versions: Array.from(schemaVersions).slice(0, 6),
+    awis_provider_safe: true,
+    awis_task_kind: typeof taskContext?.task_kind === 'string'
+      ? taskContext.task_kind
+      : typeof providerCapsule?.task_kind === 'string'
+        ? providerCapsule.task_kind
+        : 'startup',
+    awis_capsule_confidence: typeof providerCapsule?.confidence === 'number' ? providerCapsule.confidence : null,
+    awis_preflight_mode: typeof preflight?.mode === 'string' ? preflight.mode : null,
+    awis_twin_hash: twin?.hashes && typeof twin.hashes === 'object' && typeof (twin.hashes as Record<string, unknown>).genome_hash === 'string'
+      ? (twin.hashes as Record<string, unknown>).genome_hash
+      : null,
+    awis_load_first: providerSafeStringList(providerCapsule?.load_first),
+    awis_validate_with: providerSafeStringList(providerCapsule?.validate_with),
+    awis_summary_gold: providerSafeStringList(providerCapsule?.use_as_summary, 6),
+  }
+}
+
 export function useAtlasAi(
   initialWorkspaceSlug: string | null = null,
   initialWorkspacePath: string | null = null,
@@ -210,8 +409,8 @@ export function useAtlasAi(
   const previousWorkspaceSlugRef = useRef<string | null>(initialWorkspaceSlug)
   const [modeFilter, setModeFilter] = useState<AtlasAiMode | 'all'>('all')
 
-  const [threads, setThreads] = useState<AiThreadSummary[]>([])
-  const [threadsLoading, setThreadsLoading] = useState<boolean>(mode !== 'offline')
+  const [threads, setThreads] = useState<AiThreadSummary[]>(() => readThreadListCache())
+  const [threadsLoading, setThreadsLoading] = useState<boolean>(() => mode !== 'offline' && readThreadListCache().length === 0)
   const [threadsError, setThreadsError] = useState<string | null>(null)
   const threadsRetryCountRef = useRef<number>(0)
   const [conversationFusion, setConversationFusion] = useState<AtlasWorkspaceConversationFusion | null>(null)
@@ -223,9 +422,15 @@ export function useAtlasAi(
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const selectedThreadIdRef = useRef<string | null>(null)
+  const threadDetailRequestSeqRef = useRef<number>(0)
+  const threadDetailCacheRef = useRef<Map<string, AiThreadDetail>>(readThreadDetailCache())
+  const threadDetailInflightRef = useRef<Map<string, Promise<AiThreadDetail>>>(new Map())
   const [threadDetail, setThreadDetail] = useState<AiThreadDetail | null>(null)
   const [threadDetailLoading, setThreadDetailLoading] = useState<boolean>(false)
   const [threadDetailError, setThreadDetailError] = useState<string | null>(null)
+  const [threadOlderMessagesLoading, setThreadOlderMessagesLoading] = useState<boolean>(false)
+  const [threadHasOlderMessages, setThreadHasOlderMessages] = useState<boolean>(false)
+  const [threadOlderMessagesError, setThreadOlderMessagesError] = useState<string | null>(null)
 
   // Default Hyperflow-first: o Desktop NÃO afirma "programming". `auto` =
   // backend Router Runtime decide domínio/flow pelo contexto. O operador pode
@@ -238,6 +443,7 @@ export function useAtlasAi(
   const [routerReadiness, setRouterReadiness] = useState<AtlasAiRouterReadiness | null>(null)
 
   const [pendingTrace, setPendingTrace] = useState<AiTrace | null>(null)
+  const [lastTerminalTrace, setLastTerminalTrace] = useState<AiTrace | null>(null)
   const [pendingUserMessage, setPendingUserMessage] = useState<{
     threadId: string | null
     text: string
@@ -267,6 +473,17 @@ export function useAtlasAi(
     setComposerTaskRaw(next)
   }, [])
 
+  const getLeanThreadDetail = useCallback((id: string): Promise<AiThreadDetail> => {
+    const inflight = threadDetailInflightRef.current.get(id)
+    if (inflight) return inflight
+    const request = getAiThread(id, { lean: true, messageLimit: INITIAL_THREAD_MESSAGE_LIMIT })
+      .finally(() => {
+        threadDetailInflightRef.current.delete(id)
+      })
+    threadDetailInflightRef.current.set(id, request)
+    return request
+  }, [])
+
   const refreshThreads = useCallback(async () => {
     if (mode === 'offline') {
       if (mountedRef.current) {
@@ -283,11 +500,11 @@ export function useAtlasAi(
       })
       if (!mountedRef.current) return
       setThreads(list)
+      writeThreadListCache(list)
       setThreadsError(null)
       threadsRetryCountRef.current = 0
     } catch (e) {
       if (!mountedRef.current) return
-      setThreads([])
       setThreadsError(e instanceof Error ? e.message : String(e))
     } finally {
       if (mountedRef.current) setThreadsLoading(false)
@@ -371,39 +588,110 @@ export function useAtlasAi(
   }, [conversationFusion, mode, workspaceSlug])
 
   const loadThreadDetail = useCallback(
-    async (id: string) => {
+    async (id: string, options: { background?: boolean } = {}) => {
       if (mode === 'offline') return
+      const requestSeq = ++threadDetailRequestSeqRef.current
+      if (!options.background) {
+        setThreadDetailLoading(true)
+      }
       try {
-        const detail = await getAiThread(id)
+        const detail = await getLeanThreadDetail(id)
         if (!mountedRef.current) return
+        rememberThreadDetail(threadDetailCacheRef.current, id, detail)
+        if (selectedThreadIdRef.current !== id || threadDetailRequestSeqRef.current !== requestSeq) return
         setThreadDetail(detail)
         setThreadDetailError(null)
+        setThreadOlderMessagesError(null)
+        setThreadHasOlderMessages((detail.message_count ?? 0) > (detail.messages?.length ?? 0))
       } catch (e) {
         if (!mountedRef.current) return
+        if (selectedThreadIdRef.current !== id || threadDetailRequestSeqRef.current !== requestSeq) return
         setThreadDetail(null)
         setThreadDetailError(e instanceof Error ? e.message : String(e))
+        setThreadHasOlderMessages(false)
       } finally {
-        if (mountedRef.current) setThreadDetailLoading(false)
+        if (
+          mountedRef.current &&
+          selectedThreadIdRef.current === id &&
+          threadDetailRequestSeqRef.current === requestSeq
+        ) {
+          setThreadDetailLoading(false)
+        }
       }
     },
-    [mode],
+    [getLeanThreadDetail, mode],
   )
+
+  const prefetchThread = useCallback((id: string) => {
+    if (mode === 'offline' || !id || threadDetailCacheRef.current.has(id)) return
+    void getLeanThreadDetail(id)
+      .then((detail) => {
+        if (!mountedRef.current) return
+        rememberThreadDetail(threadDetailCacheRef.current, id, detail)
+      })
+      .catch(() => {
+        /* Prefetch is speculative: never disturb visible UI. */
+      })
+  }, [getLeanThreadDetail, mode])
 
   const selectThread = useCallback(
     (id: string | null) => {
       selectedThreadIdRef.current = id
       setSelectedThreadId(id)
-      setThreadDetail(null)
+      const cached = id ? threadDetailCacheRef.current.get(id) ?? null : null
+      setThreadDetail(cached)
       setThreadDetailError(null)
+      setThreadOlderMessagesError(null)
+      setThreadOlderMessagesLoading(false)
+      setThreadHasOlderMessages(cached ? (cached.message_count ?? 0) > (cached.messages?.length ?? 0) : false)
       setCurrentAtlasDevPlan(null)
       setAtlasDevPlanError(null)
       if (id) {
-        setThreadDetailLoading(true)
-        void loadThreadDetail(id)
+        void loadThreadDetail(id, { background: cached !== null })
+      } else {
+        threadDetailRequestSeqRef.current += 1
+        setThreadDetailLoading(false)
+        setThreadHasOlderMessages(false)
       }
     },
     [loadThreadDetail],
   )
+
+  const loadOlderThreadMessages = useCallback(async () => {
+    const id = selectedThreadIdRef.current
+    const current = threadDetailCacheRef.current.get(id ?? '') ?? threadDetail
+    if (mode === 'offline' || !id || !current || threadOlderMessagesLoading || !threadHasOlderMessages) return
+    const oldestPosition = (current.messages ?? []).reduce<number | null>((oldest, message) => {
+      if (typeof message.position !== 'number') return oldest
+      return oldest === null ? message.position : Math.min(oldest, message.position)
+    }, null)
+    if (oldestPosition === null) return
+
+    setThreadOlderMessagesLoading(true)
+    setThreadOlderMessagesError(null)
+    try {
+      const page = await getAiThreadMessages(id, {
+        beforePosition: oldestPosition,
+        limit: OLDER_THREAD_MESSAGE_PAGE_LIMIT,
+      })
+      if (!mountedRef.current || selectedThreadIdRef.current !== id) return
+      const latest = threadDetailCacheRef.current.get(id) ?? current
+      const merged: AiThreadDetail = {
+        ...latest,
+        messages: mergeThreadMessages(latest.messages ?? [], page.messages),
+      }
+      rememberThreadDetail(threadDetailCacheRef.current, id, merged)
+      setThreadDetail(merged)
+      setThreadHasOlderMessages(page.pagination.has_more_before)
+    } catch (e) {
+      if (!mountedRef.current || selectedThreadIdRef.current !== id) return
+      setThreadOlderMessagesError(e instanceof Error ? e.message : String(e))
+    } finally {
+      if (mountedRef.current && selectedThreadIdRef.current === id) {
+        setThreadOlderMessagesLoading(false)
+      }
+    }
+  }, [mode, threadDetail, threadHasOlderMessages, threadOlderMessagesLoading])
 
   useEffect(() => {
     if (previousWorkspaceSlugRef.current === workspaceSlug) return
@@ -505,6 +793,7 @@ export function useAtlasAi(
             trace.status === 'cancelled'
           if (terminal) {
             stop()
+            setLastTerminalTrace(trace)
             setPendingTrace(null)
             setPendingUserMessage(null)
             if (trace.status === 'failed' || trace.status === 'rejected' || trace.status === 'cancelled') {
@@ -760,12 +1049,17 @@ export function useAtlasAi(
                     ? workspaceSlug
                     : composerMode,
               created_via: 'atlas_desktop_ai',
+              ...awisThreadMetadataFromContext(options?.conversationContext),
             },
           })
           threadId = newThread.id
           interactionThreadId = threadId
           if (mountedRef.current) {
-            setThreads((prev) => [newThread, ...prev.filter((thread) => thread.id !== newThread.id)])
+            setThreads((prev) => {
+              const next = [newThread, ...prev.filter((thread) => thread.id !== newThread.id)]
+              writeThreadListCache(next)
+              return next
+            })
             selectedThreadIdRef.current = threadId
             setSelectedThreadId(threadId)
             setThreadDetail(null)
@@ -835,6 +1129,7 @@ export function useAtlasAi(
         })
 
         if (!mountedRef.current) return response.trace
+        setLastTerminalTrace(null)
         setPendingTrace(response.trace)
         subscribeStream(response.trace.id)
         pollTrace(response.trace.id, threadId)
@@ -870,7 +1165,13 @@ export function useAtlasAi(
       try {
         await updateAiThread(id, { status: 'archived' })
         if (!mountedRef.current) return
-        setThreads((prev) => prev.filter((thread) => thread.id !== id))
+        setThreads((prev) => {
+          const next = prev.filter((thread) => thread.id !== id)
+          writeThreadListCache(next)
+          return next
+        })
+        threadDetailCacheRef.current.delete(id)
+        writeThreadDetailCache(threadDetailCacheRef.current)
         if (id === selectedThreadId) {
           selectedThreadIdRef.current = null
           setSelectedThreadId(null)
@@ -889,9 +1190,11 @@ export function useAtlasAi(
       try {
         const updated = await updateAiThread(id, { title })
         if (!mountedRef.current) return
-        setThreads((prev) =>
-          prev.map((thread) => (thread.id === id ? { ...thread, title: updated.title ?? title } : thread)),
-        )
+        setThreads((prev) => {
+          const next = prev.map((thread) => (thread.id === id ? { ...thread, title: updated.title ?? title } : thread))
+          writeThreadListCache(next)
+          return next
+        })
         if (id === selectedThreadId) {
           void loadThreadDetail(id)
         }
@@ -908,7 +1211,13 @@ export function useAtlasAi(
       try {
         await deleteAiThread(id)
         if (!mountedRef.current) return
-        setThreads((prev) => prev.filter((thread) => thread.id !== id))
+        setThreads((prev) => {
+          const next = prev.filter((thread) => thread.id !== id)
+          writeThreadListCache(next)
+          return next
+        })
+        threadDetailCacheRef.current.delete(id)
+        writeThreadDetailCache(threadDetailCacheRef.current)
         if (id === selectedThreadId) {
           selectedThreadIdRef.current = null
           setSelectedThreadId(null)
@@ -930,7 +1239,11 @@ export function useAtlasAi(
           metadata: workspaceMetadata(scope),
         })
         if (!mountedRef.current) return
-        setThreads((prev) => prev.map((thread) => (thread.id === id ? { ...thread, ...updated } : thread)))
+        setThreads((prev) => {
+          const next = prev.map((thread) => (thread.id === id ? { ...thread, ...updated } : thread))
+          writeThreadListCache(next)
+          return next
+        })
         if (id === selectedThreadId) {
           void loadThreadDetail(id)
         }
@@ -946,7 +1259,7 @@ export function useAtlasAi(
     async (id: string): Promise<AiThreadDetail | null> => {
       if (mode === 'offline') return null
       try {
-        return await getAiThread(id)
+        return await getAiThread(id, { lean: false, messageLimit: 200 })
       } catch {
         return null
       }
@@ -959,7 +1272,13 @@ export function useAtlasAi(
     try {
       await updateAiThread(selectedThreadId, { status: 'archived' })
       if (!mountedRef.current) return
-      setThreads((prev) => prev.filter((thread) => thread.id !== selectedThreadId))
+      setThreads((prev) => {
+        const next = prev.filter((thread) => thread.id !== selectedThreadId)
+        writeThreadListCache(next)
+        return next
+      })
+      threadDetailCacheRef.current.delete(selectedThreadId)
+      writeThreadDetailCache(threadDetailCacheRef.current)
       selectedThreadIdRef.current = null
       setSelectedThreadId(null)
       setThreadDetail(null)
@@ -1068,9 +1387,14 @@ export function useAtlasAi(
 
     selectedThreadId,
     selectThread,
+    prefetchThread,
     threadDetail,
     threadDetailLoading,
     threadDetailError,
+    threadOlderMessagesLoading,
+    threadHasOlderMessages,
+    threadOlderMessagesError,
+    loadOlderThreadMessages,
 
     composerMode,
     setComposerMode,
@@ -1085,6 +1409,7 @@ export function useAtlasAi(
     routerReadiness,
 
     pendingTrace,
+    lastTerminalTrace,
     pendingUserMessage,
     streamingText,
     sending,

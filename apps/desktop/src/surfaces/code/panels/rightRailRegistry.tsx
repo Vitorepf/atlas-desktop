@@ -8,6 +8,7 @@ import { ProviderArenaPanel } from './ProviderArenaPanel'
 import { ProviderOperatingRoomPanel } from './ProviderOperatingRoomPanel'
 import { VerifyPanel } from './VerifyPanel'
 import type { RightRailContext, RightRailPanelDefinition } from './rightRailTypes'
+import { AtlasFrontendRuntimePanel } from '../frontendRuntime/AtlasFrontendRuntimePanel'
 
 /**
  * Right rail canonical layout (Atlas Code Forge Human-First UX Orchestrator v1).
@@ -58,6 +59,17 @@ const PANELS: RightRailPanelDefinition[] = [
     label: 'Arena',
     priority: 5,
     render: (ctx: RightRailContext) => <ProviderArenaPanel {...ctx} />,
+  },
+  {
+    id: 'frontend',
+    label: 'Frontend',
+    priority: 7,
+    render: (ctx: RightRailContext) => (
+      <AtlasFrontendRuntimePanel
+        core={ctx.core}
+        busy={ctx.busy}
+      />
+    ),
   },
   {
     id: 'intake',
