@@ -1,9 +1,10 @@
 import type { AtlasWorkspaceBrainSnapshot } from '../../lib/bridge'
-import type { AtlasAwisArtifactIntelligence, AtlasAwisHandoffPack, AtlasAwisNextSessionBrain } from './types'
+import type { AtlasAwisArtifactIntelligence, AtlasAwisHandoffPack, AtlasAwisLiveExecutionMemory, AtlasAwisNextSessionBrain } from './types'
 
 export const AWIS_WORKSPACE_MEMORY_STORAGE = 'atlas-desktop:atlas-ai-workspace-memory'
 export const AWIS_WORKSPACE_ARTIFACT_STORAGE = 'atlas-desktop:atlas-ai-workspace-artifacts'
 export const AWIS_WORKSPACE_SPACE_PROJECTIONS_STORAGE = 'atlas-desktop:atlas-ai-workspace-space-projections'
+export const AWIS_WORKSPACE_LIVE_EXECUTION_MEMORY_STORAGE = 'atlas-desktop:atlas-ai-live-execution-memory'
 
 export interface AwisWorkspaceMemorySignal {
   label: string
@@ -26,6 +27,10 @@ export interface AwisWorkspaceMemoryOutcome {
   contextGoldLabels: string[]
   validationCommands: string[]
   componentKeys: string[]
+  spaceLabels: string[]
+  spaceBrainLabels: string[]
+  liveMemoryLabels: string[]
+  priorityLoadLabels: string[]
 }
 
 export type AwisWorkspaceMaintenanceAction =
@@ -34,6 +39,14 @@ export type AwisWorkspaceMaintenanceAction =
   | 'open_side_by_side'
   | 'update_space_pack'
   | 'revalidate_context'
+  | 'replay_artifacts'
+  | 'record_outcome'
+  | 'revalidate_command'
+  | 'review_risk'
+  | 'cross_workspace_transfer'
+  | 'promote_command'
+  | 'demote_context'
+  | 'transfer_learning'
 
 export interface AwisWorkspaceMaintenanceEvent {
   occurredAt: string
@@ -91,6 +104,10 @@ export interface AwisWorkspaceInteractionInput {
   contextGoldLabels?: string[] | null
   validationCommands?: string[] | null
   componentKeys?: string[] | null
+  spaceLabels?: string[] | null
+  spaceBrainLabels?: string[] | null
+  liveMemoryLabels?: string[] | null
+  priorityLoadLabels?: string[] | null
 }
 
 export interface AwisWorkspaceMaintenanceInput {
@@ -142,6 +159,10 @@ export interface AwisWorkspaceContextPack {
       context_gold: {
         promoted: string[]
         revalidate: string[]
+        space_brain: {
+          promoted: string[]
+          revalidate: string[]
+        }
       }
     }
   } | null
@@ -423,6 +444,7 @@ export interface AwisWorkspaceNextSessionBrainProjection {
       working_set_hash: string | null
       context_delta_plan_hash: string | null
       learning_snapshot_hash: string | null
+      live_execution_memory_hash: string | null
     }
   }
   safety: {
@@ -485,6 +507,7 @@ export interface AwisWorkspaceStartupSnapshot {
     evolution_ready: boolean
     relations_ready: boolean
     artifact_replay_ready: boolean
+    live_execution_memory_ready: boolean
     next_session_brain_ready: boolean
     handoff_pack_ready: boolean
   }
@@ -683,6 +706,18 @@ export interface AwisWorkspaceTaskContextProjection {
       risk: 'low' | 'medium' | 'high'
       reason: string
     }
+    space_brain: Array<{
+      title: string
+      state: 'vivo' | 'pronto' | 'leve'
+      load_first: string[]
+      carry_forward: string[]
+      validate_before_use: string[]
+      automation_hooks: string[]
+      human_boundary: string[]
+      artifact_refs: string[]
+      evidence: string[]
+      confidence: number
+    }>
     spaces: string[]
     artifacts: string[]
     owner_docs: string[]
@@ -1437,6 +1472,10 @@ export interface AwisWorkspaceRelationProjection {
     shared_context_gold: string[]
     shared_validation_plans: string[]
     shared_recovery_patterns: string[]
+    shared_spaces: string[]
+    shared_space_brain: string[]
+    shared_live_memory: string[]
+    shared_priority_load: string[]
     recommended_transfer: string[]
   }>
   transfer_matrix: Array<{
@@ -1604,7 +1643,7 @@ export interface AwisWorkspaceRepositoryConstellationProjection {
 
 export interface AwisWorkspaceLiveExecutionMemoryProjection {
   schema_version: 'atlas.awis.live_execution_memory_projection.v1'
-  source: 'local_awis_live_execution_memory_compiler'
+  source: 'local_awis_live_execution_memory_compiler' | 'server_awis_live_execution_memory'
   readiness_score: number
   memory_hash: string
   startup_packet: {
@@ -1810,6 +1849,8 @@ export interface AwisWorkspaceImpactMapProjection {
 
 export interface AwisWorkspaceSpacePackInput {
   title: string
+  source?: 'local_space' | 'suggested_space'
+  generated_at?: string
   thread_count: number
   message_count: number
   mode_count: number
@@ -1817,8 +1858,19 @@ export interface AwisWorkspaceSpacePackInput {
   pending_count: number
   risk_count: number
   artifact_count: number
+  scope_label?: string
   reusable_by: string[]
   recommended_use: string[]
+  brain_contract?: {
+    state?: 'vivo' | 'pronto' | 'leve'
+    load_first?: string[]
+    carry_forward?: string[]
+    validate_before_use?: string[]
+    automation_hooks?: string[]
+    human_boundary?: string[]
+    artifact_refs?: string[]
+    evidence?: string[]
+  }
   sessions: Array<{
     title: string
     mode: string
@@ -1838,8 +1890,16 @@ export interface AwisWorkspaceSpaceProjection {
     name: string
     session_count: number
   }>
+  continuity: {
+    never_start_cold: true
+    load_first: string[]
+    carry_forward: string[]
+    refresh_when: string[]
+    provider_safe: true
+  }
   strongest_spaces: Array<{
     title: string
+    source: 'local_space' | 'suggested_space'
     session_count: number
     message_count: number
     mode_count: number
@@ -1847,8 +1907,26 @@ export interface AwisWorkspaceSpaceProjection {
     pending_count: number
     risk_count: number
     artifact_count: number
+    strength_score: number
+    freshness: 'recente' | 'estavel' | 'frio'
+    scope_label: string
     reusable_by: string[]
     recommended_use: string[]
+    brain_contract: {
+      state: 'vivo' | 'pronto' | 'leve'
+      load_first: string[]
+      carry_forward: string[]
+      validate_before_use: string[]
+      automation_hooks: string[]
+      human_boundary: string[]
+      artifact_refs: string[]
+      evidence: string[]
+    }
+    continuity_contract: {
+      load_when: string[]
+      carry_forward: string[]
+      refresh_when: string[]
+    }
     session_summaries: Array<{
       title: string
       mode: string
@@ -1897,15 +1975,52 @@ export function loadAwisWorkspaceMemories(storage: Storage | null = safeLocalSto
     const raw = storage.getItem(AWIS_WORKSPACE_MEMORY_STORAGE)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    const memories: Record<string, AwisWorkspaceMemorySnapshot> = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      const memory = normalizeMemory(value)
-      if (memory) memories[key] = memory
-    }
-    return memories
+    return normalizeAwisWorkspaceMemoryStore(parsed)
   } catch {
     return {}
+  }
+}
+
+export function normalizeAwisWorkspaceMemoryStore(raw: unknown): Record<string, AwisWorkspaceMemorySnapshot> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const memories: Record<string, AwisWorkspaceMemorySnapshot> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    const memory = normalizeMemory(value)
+    if (memory) memories[key] = memory
+  }
+  return memories
+}
+
+export function mergeAwisWorkspaceMemoryStores(
+  first: Record<string, AwisWorkspaceMemorySnapshot>,
+  second: Record<string, AwisWorkspaceMemorySnapshot>,
+): Record<string, AwisWorkspaceMemorySnapshot> {
+  const merged: Record<string, AwisWorkspaceMemorySnapshot> = { ...first }
+  for (const [key, memory] of Object.entries(second)) {
+    const existingKey = Object.keys(merged).find((candidateKey) => {
+      const candidate = merged[candidateKey]
+      return legacyWorkspaceKeyMatches(key, candidateKey)
+        || legacyWorkspaceKeyMatches(memory.workspaceKey, candidate.workspaceKey)
+        || legacyWorkspaceKeyMatches(memory.rootPath, candidate.rootPath)
+    }) ?? key
+    const existing = merged[existingKey]
+    if (!existing || awisWorkspaceMemorySortScore(memory) >= awisWorkspaceMemorySortScore(existing)) {
+      if (existingKey !== key) delete merged[existingKey]
+      merged[memory.workspaceKey || key] = memory
+    }
+  }
+  return merged
+}
+
+export function saveAwisWorkspaceMemories(
+  memories: Record<string, AwisWorkspaceMemorySnapshot>,
+  storage: Storage | null = safeLocalStorage(),
+) {
+  if (!storage) return
+  try {
+    storage.setItem(AWIS_WORKSPACE_MEMORY_STORAGE, JSON.stringify(memories))
+  } catch {
+    /* ignore */
   }
 }
 
@@ -1923,26 +2038,107 @@ export function loadAwisWorkspaceMemory(
     ?? null
 }
 
+export function loadAwisWorkspaceLiveExecutionMemoryProjections(
+  storage: Storage | null = safeLocalStorage(),
+): Record<string, AwisWorkspaceLiveExecutionMemoryProjection> {
+  if (!storage) return {}
+  try {
+    const raw = storage.getItem(AWIS_WORKSPACE_LIVE_EXECUTION_MEMORY_STORAGE)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const projections: Record<string, AwisWorkspaceLiveExecutionMemoryProjection> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      const projection = normalizeLiveExecutionMemoryProjection(value)
+      if (projection) projections[key] = projection
+    }
+    return projections
+  } catch {
+    return {}
+  }
+}
+
+export function loadAwisWorkspaceLiveExecutionMemoryProjection(
+  workspaceKeyValue: string,
+  storage: Storage | null = safeLocalStorage(),
+): AwisWorkspaceLiveExecutionMemoryProjection | null {
+  const projections = loadAwisWorkspaceLiveExecutionMemoryProjections(storage)
+  return projections[workspaceKeyValue]
+    ?? Object.entries(projections).find(([key]) => legacyWorkspaceKeyMatches(workspaceKeyValue, key))?.[1]
+    ?? null
+}
+
 export function loadAwisWorkspaceArtifacts(
   workspaceKeyValue: string,
   storage: Storage | null = safeLocalStorage(),
 ): AwisWorkspaceArtifactEntry[] {
-  if (!storage) return []
-  try {
-    const raw = storage.getItem(AWIS_WORKSPACE_ARTIFACT_STORAGE)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return []
-    const buckets = parsed as Record<string, unknown>
-    const bucketKey = bucketKeyForWorkspace(buckets, workspaceKeyValue)
-    const items = bucketKey ? buckets[bucketKey] : null
-    if (!Array.isArray(items)) return []
-    return items
+  const artifacts = loadAwisWorkspaceArtifactStore(storage)
+  const bucketKey = bucketKeyForWorkspace(artifacts, workspaceKeyValue)
+  return bucketKey ? artifacts[bucketKey] ?? [] : []
+}
+
+export function normalizeAwisWorkspaceArtifactStore(raw: unknown): Record<string, AwisWorkspaceArtifactEntry[]> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const normalized: Record<string, AwisWorkspaceArtifactEntry[]> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (!Array.isArray(value)) continue
+    const artifacts = value
       .map(normalizeArtifact)
       .filter((item): item is AwisWorkspaceArtifactEntry => Boolean(item))
+      .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
       .slice(0, MAX_WORKSPACE_ARTIFACTS)
+    if (artifacts.length > 0) normalized[key] = artifacts
+  }
+  return normalized
+}
+
+export function loadAwisWorkspaceArtifactStore(
+  storage: Storage | null = safeLocalStorage(),
+): Record<string, AwisWorkspaceArtifactEntry[]> {
+  if (!storage) return {}
+  try {
+    const raw = storage.getItem(AWIS_WORKSPACE_ARTIFACT_STORAGE)
+    if (!raw) return {}
+    return normalizeAwisWorkspaceArtifactStore(JSON.parse(raw) as unknown)
   } catch {
-    return []
+    return {}
+  }
+}
+
+export function mergeAwisWorkspaceArtifactStores(
+  first: Record<string, AwisWorkspaceArtifactEntry[]>,
+  second: Record<string, AwisWorkspaceArtifactEntry[]>,
+): Record<string, AwisWorkspaceArtifactEntry[]> {
+  const merged: Record<string, AwisWorkspaceArtifactEntry[]> = {}
+  for (const key of unique([...Object.keys(first), ...Object.keys(second)])) {
+    const byHash = new Map<string, AwisWorkspaceArtifactEntry>()
+    for (const artifact of [...(first[key] ?? []), ...(second[key] ?? [])]) {
+      const existing = byHash.get(artifact.artifact_hash)
+      if (!existing || Date.parse(artifact.created_at) >= Date.parse(existing.created_at)) {
+        byHash.set(artifact.artifact_hash, artifact)
+      }
+    }
+    const artifacts = [...byHash.values()]
+      .sort((left, right) => {
+        const priorityDelta = right.manifest.replay_priority - left.manifest.replay_priority
+        if (priorityDelta !== 0) return priorityDelta
+        return Date.parse(right.created_at) - Date.parse(left.created_at)
+      })
+      .slice(0, MAX_WORKSPACE_ARTIFACTS)
+    if (artifacts.length > 0) merged[key] = artifacts
+  }
+  return merged
+}
+
+export function saveAwisWorkspaceArtifactStore(
+  artifacts: Record<string, AwisWorkspaceArtifactEntry[]>,
+  storage: Storage | null = safeLocalStorage(),
+): void {
+  if (!storage) return
+  try {
+    storage.setItem(AWIS_WORKSPACE_ARTIFACT_STORAGE, JSON.stringify(normalizeAwisWorkspaceArtifactStore(artifacts)))
+  } catch {
+    /* ignore */
   }
 }
 
@@ -2030,6 +2226,26 @@ export function recordAwisWorkspaceInteraction(
       .filter(isString)
       .slice(0, 3)
       .map((componentKey) => `área:${componentKey}`),
+    ...(input.spaceLabels ?? [])
+      .map(sanitizeProviderSafeText)
+      .filter(isString)
+      .slice(0, 3)
+      .map((space) => `space:${space}`),
+    ...(input.spaceBrainLabels ?? [])
+      .map(sanitizeProviderSafeText)
+      .filter(isString)
+      .slice(0, 4)
+      .map((label) => `space-brain:${label}`),
+    ...(input.liveMemoryLabels ?? [])
+      .map(sanitizeProviderSafeText)
+      .filter(isString)
+      .slice(0, 2)
+      .map((label) => `memória viva:${label}`),
+    ...(input.priorityLoadLabels ?? [])
+      .map(sanitizeProviderSafeText)
+      .filter(isString)
+      .slice(0, 3)
+      .map((label) => `prioridade:${label}`),
     ...(input.validationCommands ?? [])
       .filter((command) => /test|tsc|lint|check|build/i.test(command))
       .slice(0, 2)
@@ -2051,6 +2267,10 @@ export function recordAwisWorkspaceInteraction(
     contextGoldLabels: normalizeContextGoldLabels(input.contextGoldLabels),
     validationCommands: normalizeStringList(input.validationCommands, MAX_STARTUP_ITEMS),
     componentKeys: normalizeComponentKeys(input.componentKeys),
+    spaceLabels: normalizeStringList(input.spaceLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    spaceBrainLabels: normalizeStringList(input.spaceBrainLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    liveMemoryLabels: normalizeStringList(input.liveMemoryLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    priorityLoadLabels: normalizeStringList(input.priorityLoadLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
   }
   const memory: AwisWorkspaceMemorySnapshot = {
     ...baseMemory,
@@ -2123,7 +2343,24 @@ export function saveAwisWorkspaceMemory(
   try {
     const memories = loadAwisWorkspaceMemories(storage)
     memories[memory.workspaceKey] = memory
-    storage.setItem(AWIS_WORKSPACE_MEMORY_STORAGE, JSON.stringify(memories))
+    saveAwisWorkspaceMemories(memories, storage)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function saveAwisWorkspaceLiveExecutionMemoryProjection(
+  workspaceKeyValue: string,
+  projection: AwisWorkspaceLiveExecutionMemoryProjection | null,
+  storage: Storage | null = safeLocalStorage(),
+) {
+  if (!storage || !projection) return
+  const normalized = normalizeLiveExecutionMemoryProjection(projection)
+  if (!normalized) return
+  try {
+    const projections = loadAwisWorkspaceLiveExecutionMemoryProjections(storage)
+    projections[workspaceKeyValue] = normalized
+    storage.setItem(AWIS_WORKSPACE_LIVE_EXECUTION_MEMORY_STORAGE, JSON.stringify(projections))
   } catch {
     /* ignore */
   }
@@ -2199,11 +2436,7 @@ export function saveAwisWorkspaceArtifact(
 ): AwisWorkspaceArtifactLakeSummary | null {
   if (!storage) return null
   try {
-    const raw = storage.getItem(AWIS_WORKSPACE_ARTIFACT_STORAGE)
-    const parsed = raw ? JSON.parse(raw) as unknown : {}
-    const allArtifacts = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed as Record<string, AwisWorkspaceArtifactEntry[]>
-      : {}
+    const allArtifacts = loadAwisWorkspaceArtifactStore(storage)
     const current = Array.isArray(allArtifacts[artifact.workspace_key]) ? allArtifacts[artifact.workspace_key] : []
     if (current.some((item) => item.artifact_hash === artifact.artifact_hash)) {
       return summarizeAwisWorkspaceArtifacts(artifact.workspace_key, current)
@@ -2213,7 +2446,7 @@ export function saveAwisWorkspaceArtifact(
       ...current,
     ].slice(0, MAX_WORKSPACE_ARTIFACTS)
     allArtifacts[artifact.workspace_key] = next
-    storage.setItem(AWIS_WORKSPACE_ARTIFACT_STORAGE, JSON.stringify(allArtifacts))
+    saveAwisWorkspaceArtifactStore(allArtifacts, storage)
     return summarizeAwisWorkspaceArtifacts(artifact.workspace_key, next)
   } catch {
     return null
@@ -2288,6 +2521,7 @@ export function buildAwisWorkspaceContextPack(input: {
   artifactLake?: AwisWorkspaceArtifactLakeSummary | null
   artifactReplay?: AwisWorkspaceArtifactReplayProjection | null
   nextSessionBrain?: AwisWorkspaceNextSessionBrainProjection | null
+  liveExecutionMemory?: AwisWorkspaceLiveExecutionMemoryProjection | null
   handoffPack?: AwisWorkspaceHandoffProjection | null
 }): AwisWorkspaceContextPack | null {
   if (
@@ -2299,6 +2533,7 @@ export function buildAwisWorkspaceContextPack(input: {
     !input.artifactLake &&
     !input.artifactReplay &&
     !input.nextSessionBrain &&
+    !input.liveExecutionMemory &&
     !input.handoffPack
   ) return null
   const workspaceName = input.workspaceName?.trim()
@@ -2334,6 +2569,7 @@ export function buildAwisWorkspaceContextPack(input: {
     relations: input.relations ?? null,
     spaces: input.spaces ?? null,
     artifactReplay: input.artifactReplay ?? null,
+    liveExecutionMemory: input.liveExecutionMemory ?? null,
     nextSessionBrain,
     handoffPack: input.handoffPack ?? null,
   })
@@ -2620,7 +2856,7 @@ export function buildAwisWorkspaceContextPack(input: {
     sessionGold,
     launchContract,
   })
-  const liveExecutionMemory = buildAwisWorkspaceLiveExecutionMemoryProjection({
+  const liveExecutionMemory = input.liveExecutionMemory ?? buildAwisWorkspaceLiveExecutionMemoryProjection({
     topology,
     learning,
     sessionGold,
@@ -2829,6 +3065,12 @@ export function buildAwisWorkspaceArtifactReplayProjection(
   const nextSessionBrainProjections = replayArtifacts
     .map((artifact) => artifact.payload.next_session_brain_projection)
     .filter((brain): brain is AwisWorkspaceNextSessionBrainProjection => Boolean(brain))
+  const promotedSpaceBrain = replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.promoted ?? [])
+    .map(sanitizeProviderSafeText)
+    .filter(isString)
+  const revalidateSpaceBrain = replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.revalidate ?? [])
+    .map(sanitizeProviderSafeText)
+    .filter(isString)
   const coldStartSeed = buildAwisWorkspaceArtifactColdStartSeed({
     source: 'local_workspace_artifacts',
     artifactCount: validArtifacts.length,
@@ -2874,6 +3116,8 @@ export function buildAwisWorkspaceArtifactReplayProjection(
         ...repositoryConstellationProjections.flatMap((constellation) => constellation.repositories.map((repo) => `repo-node:${repo.key}:${repo.maturity}:${repo.confidence}`)).slice(0, 6),
         ...confidenceProjections.flatMap((confidence) => confidence.ranked.commands.map((item) => `confidence-command:${item.label}:${item.score}`)).slice(0, 2),
         ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.next_session_seed.map((item) => `seed:${item}`)).slice(0, 4),
+        ...promotedSpaceBrain.map((item) => `space-brain-gold:${item}`).slice(0, 6),
+        ...revalidateSpaceBrain.map((item) => `space-brain-revalidate:${item}`).slice(0, 4),
         ...memoryFreshnessProjections.map((freshness) => `freshness:${freshness.state}:${freshness.freshness_score}`),
         ...componentMemoryProjections.flatMap((memory) => memory.strongest_components.map((component) => `component-memory:${component.key}:${component.maturity}:${component.confidence}`)).slice(0, 4),
         ...preflightProjections.flatMap((preflight) => preflight.gates.map((gate) => `preflight:${gate.gate}:${gate.status}:${gate.label}`)).slice(0, 4),
@@ -2948,12 +3192,13 @@ export function buildAwisWorkspaceArtifactReplayProjection(
         ))).slice(0, 3),
       ]).slice(0, MAX_STARTUP_ITEMS * 12),
       warnings: unique([
-        ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.consolidate.never_promote.map((item) => `never-promote:${item}`)).slice(0, 4),
-        ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.revalidate.map((item) => `freshness-revalidate:${item}`)),
-        ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.missing.map((item) => `freshness-missing:${item}`)),
         ...relationProjections.flatMap((relations) => relations.connection_contracts.flatMap((contract) => (
           contract.never_transfer.map((item) => `repo-contract-never:${contract.workspace_hint}:${item}`)
-        ))).slice(0, 4),
+        ))).slice(0, MAX_STARTUP_ITEMS),
+        ...memoryConsolidationProjections.flatMap((consolidation) => consolidation.consolidate.never_promote.map((item) => `never-promote:${item}`)).slice(0, 4),
+        ...revalidateSpaceBrain.map((item) => `space-brain-revalidate:${item}`).slice(0, 4),
+        ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.revalidate.map((item) => `freshness-revalidate:${item}`)),
+        ...memoryFreshnessProjections.flatMap((freshness) => freshness.evidence.missing.map((item) => `freshness-missing:${item}`)),
         ...meshProjections.flatMap((mesh) => mesh.next_conversation.human_boundary.map((item) => `mesh-boundary:${item}`)).slice(0, 4),
         ...truthPackProjections.flatMap((truth) => truth.proof.stale_or_unproven.map((item) => `truth-stale:${item}`)).slice(0, 4),
         ...truthPackProjections.flatMap((truth) => truth.proof.human_boundary.map((item) => `truth-human:${item}`)).slice(0, 3),
@@ -2978,6 +3223,8 @@ export function buildAwisWorkspaceArtifactReplayProjection(
       ]).slice(0, MAX_STARTUP_ITEMS * 2),
       next_best_actions: unique([
         ...replayArtifacts.flatMap((artifact) => artifact.manifest.validate_with.map((command) => `validar artifact: ${command}`)).slice(0, 3),
+        ...promotedSpaceBrain.map((item) => `Space brain: preservar ${item}`).slice(0, 3),
+        ...revalidateSpaceBrain.map((item) => `Space brain: revalidar ${item}`).slice(0, 3),
         ...replayArtifacts.flatMap((artifact) => artifact.manifest.load_first.map((item) => `reusar artifact: ${item}`)).slice(0, 3),
         ...startupGold.flatMap((snapshot) => snapshot.startup_gold.next_best_actions),
         ...memoryFreshnessProjections.flatMap((freshness) => freshness.next_refresh.actions.map((action) => `frescor: ${action}`)),
@@ -3048,6 +3295,7 @@ function buildAwisWorkspaceArtifactColdStartSeed(input: {
   nextSessionBrainProjections: AwisWorkspaceNextSessionBrainProjection[]
 }): AwisWorkspaceArtifactReplayProjection['cold_start_seed'] {
   const loadOrder = unique([
+    ...input.replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.promoted.map((item) => `space-brain-gold:${item}`) ?? []),
     ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.load_first),
     ...input.nextSessionBrainProjections.flatMap((brain) => brain.load_order),
     ...input.launchContractProjections.flatMap((contract) => contract.next_conversation.load_order),
@@ -3061,6 +3309,7 @@ function buildAwisWorkspaceArtifactColdStartSeed(input: {
     ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.load_first),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
   const validateWith = unique([
+    ...input.replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.revalidate.map((item) => `space-brain:${item}`) ?? []),
     ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.validate_before_trust),
     ...input.nextSessionBrainProjections.flatMap((brain) => brain.execution_priority.map((priority) => priority.command)),
     ...input.launchContractProjections.flatMap((contract) => contract.startup_contract.validate_before_trust),
@@ -3073,6 +3322,7 @@ function buildAwisWorkspaceArtifactColdStartSeed(input: {
     ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.validate_with),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
   const contextSignals = unique([
+    ...input.replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.promoted.map((item) => `space-brain-gold:${item}`) ?? []),
     ...input.liveExecutionMemoryProjections.map((memory) => `live-memory:${memory.memory_hash}:${memory.readiness_score}`),
     ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.use_as_summary),
     ...input.nextSessionBrainProjections.flatMap((brain) => brain.context_loading.command_hints),
@@ -3086,6 +3336,7 @@ function buildAwisWorkspaceArtifactColdStartSeed(input: {
     ...input.topologyProjections.flatMap((topology) => topology.components.map((component) => `${component.key}:${component.role}`)),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
   const reuseSpaces = unique([
+    ...input.replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.promoted.map((item) => `brain:${item}`) ?? []),
     ...input.replayArtifacts.flatMap((artifact) => artifact.manifest.linked_spaces),
     ...input.continuityProjections.flatMap((continuity) => continuity.hot_context.spaces),
     ...input.startupBriefings.flatMap((briefing) => briefing.context_gold.strongest_spaces),
@@ -3108,6 +3359,7 @@ function buildAwisWorkspaceArtifactColdStartSeed(input: {
     ...input.retentionProjections.flatMap((retention) => retention.lifecycle.revalidate.map((item) => `revalidar:${item}`)),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const warnings = unique([
+    ...input.replayArtifacts.flatMap((artifact) => artifact.payload.memory_operational?.context_gold.space_brain.revalidate.map((item) => `space-brain-revalidate:${item}`) ?? []),
     ...input.liveExecutionMemoryProjections.flatMap((memory) => memory.startup_packet.avoid.map((item) => `live:${item}`)),
     ...input.nextSessionBrainProjections.flatMap((brain) => brain.context_loading.avoid_commands),
     ...input.launchContractProjections.flatMap((contract) => contract.startup_contract.avoid_loading),
@@ -4278,6 +4530,7 @@ export function buildAwisWorkspaceNextSessionBrainProjection(
         working_set_hash: plan?.working_set_hash ?? null,
         context_delta_plan_hash: plan?.context_delta_plan_hash ?? null,
         learning_snapshot_hash: plan?.learning_snapshot_hash ?? null,
+        live_execution_memory_hash: plan?.live_execution_memory_hash ?? null,
       },
     },
     safety: {
@@ -4285,6 +4538,76 @@ export function buildAwisWorkspaceNextSessionBrainProjection(
       raw_conversation_included: false,
       internal_ids_included: false,
       absolute_paths_included: false,
+      bounded: true,
+      provider_safe: true,
+    },
+  }
+}
+
+export function buildAwisWorkspaceLiveExecutionMemoryProjectionFromServer(
+  memory: AtlasAwisLiveExecutionMemory | null | undefined,
+): AwisWorkspaceLiveExecutionMemoryProjection | null {
+  if (!memory || memory.schema_version !== 'atlas.awis.workspace_live_execution_memory.v1') return null
+  const startup = memory.startup_packet
+  const automation = memory.automation_loop
+  const promotion = memory.promotion_rules
+  const learning = memory.workspace_learning
+  const loadFirst = normalizeStringList(startup?.load_first, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const useAsSummary = normalizeStringList(startup?.use_as_summary, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const validateBeforeTrust = normalizeStringList(startup?.validate_before_trust, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString)
+  const repositories = unique([
+    ...((Array.isArray(learning?.repositories) ? learning.repositories : [])
+      .map((repo) => repo?.repo_key)
+      .filter(isString)),
+    ...((Array.isArray(learning?.focused_repositories) ? learning.focused_repositories : [])
+      .map((repo) => repo?.repo_key)
+      .filter(isString)),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const components = normalizeStringList(learning?.focused_areas, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const commands = normalizeStringList(learning?.focused_commands, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  const artifacts = normalizeStringList(promotion?.preserve_as_artifact, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString)
+  if (loadFirst.length === 0 && useAsSummary.length === 0 && validateBeforeTrust.length === 0 && repositories.length === 0 && commands.length === 0) return null
+
+  return {
+    schema_version: 'atlas.awis.live_execution_memory_projection.v1',
+    source: 'server_awis_live_execution_memory',
+    readiness_score: memory.status === 'ready' ? 96 : 45,
+    memory_hash: isString(memory.live_memory_hash)
+      ? sanitizeProviderSafeText(memory.live_memory_hash).slice(0, 120)
+      : `server-live-${stableStringHash(JSON.stringify({ loadFirst, repositories, commands }))}`,
+    startup_packet: {
+      load_first: loadFirst,
+      use_as_summary: useAsSummary,
+      validate_before_trust: validateBeforeTrust,
+      avoid: normalizeStringList(startup?.avoid, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      human_boundary: normalizeStringList(startup?.human_boundary, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    automation_loop: {
+      before_send: normalizeStringList(automation?.before_send, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_success: normalizeStringList(automation?.after_success, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      after_failure: normalizeStringList(automation?.after_failure, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      on_drift: normalizeStringList(automation?.on_drift, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    promotion_rules: {
+      promote_to_gold: normalizeStringList(promotion?.promote_to_gold, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      preserve_as_artifact: artifacts,
+      revalidate: normalizeStringList(promotion?.revalidate, MAX_STARTUP_ITEMS * 2).map(sanitizeProviderSafeText).filter(isString),
+      demote: normalizeStringList(promotion?.demote, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+    },
+    workspace_learning: {
+      repositories,
+      components,
+      spaces: [],
+      artifacts,
+      commands,
+    },
+    safety: {
+      raw_source_included: false,
+      raw_conversation_included: false,
+      raw_message_content_included: false,
+      absolute_paths_included: false,
+      internal_ids_included: false,
+      external_side_effects_allowed: false,
       bounded: true,
       provider_safe: true,
     },
@@ -4426,6 +4749,7 @@ function buildAwisWorkspaceLocalNextSessionBrainProjection(input: {
         working_set_hash: input.topology ? `working-${stableStringHash(JSON.stringify(input.topology.knowledge_map))}` : null,
         context_delta_plan_hash: input.artifactReplay?.latest_artifact_hash ?? null,
         learning_snapshot_hash: input.memory ? `memory-${stableStringHash(JSON.stringify(input.memory.stableCommands.map((signal) => signal.label)))}` : null,
+        live_execution_memory_hash: null,
       },
     },
     safety: {
@@ -4502,6 +4826,7 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
   relations?: AwisWorkspaceRelationProjection | null
   spaces: AwisWorkspaceSpaceProjection | null
   artifactReplay: AwisWorkspaceArtifactReplayProjection | null
+  liveExecutionMemory?: AwisWorkspaceLiveExecutionMemoryProjection | null
   nextSessionBrain: AwisWorkspaceNextSessionBrainProjection | null
   handoffPack: AwisWorkspaceHandoffProjection | null
 }): AwisWorkspaceStartupSnapshot | null {
@@ -4517,6 +4842,7 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
   ))
   const relationsReady = Boolean(input.relations && input.relations.related_workspaces.length > 0)
   const artifactReplayReady = Boolean(input.artifactReplay && input.artifactReplay.artifact_count > 0)
+  const liveExecutionMemoryReady = Boolean(input.liveExecutionMemory && input.liveExecutionMemory.readiness_score >= 40)
   const nextSessionBrainReady = input.nextSessionBrain?.status === 'ready'
   const handoffPackReady = input.handoffPack?.status === 'ready'
   if (
@@ -4529,6 +4855,7 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
     !evolutionReady &&
     !relationsReady &&
     !artifactReplayReady &&
+    !liveExecutionMemoryReady &&
     !nextSessionBrainReady &&
     !handoffPackReady
   ) return null
@@ -4560,7 +4887,11 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
     learningReady ? input.learning?.next_learning_event : null,
     evolutionReady ? 'comparar padrões abstratos entre repositórios compatíveis' : 'acumular aprendizado entre repositórios',
     relationsReady ? 'reusar aprendizados de workspaces compatíveis' : null,
+    ...(input.spaces?.continuity.load_first.map((item) => `carregar ${item}`) ?? []),
+    ...(input.spaces?.continuity.carry_forward ?? []),
     ...((input.spaces?.strongest_spaces ?? []).flatMap((space) => space.recommended_use)),
+    ...((input.spaces?.strongest_spaces ?? []).flatMap((space) => space.brain_contract.load_first.map((item) => `Space brain: carregar ${item}`))),
+    ...((input.spaces?.strongest_spaces ?? []).flatMap((space) => space.brain_contract.automation_hooks.map((item) => `Space brain: ${item}`))),
   ].filter(isString)).slice(0, MAX_STARTUP_ITEMS)
 
   return {
@@ -4577,6 +4908,7 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
       evolution_ready: evolutionReady,
       relations_ready: relationsReady,
       artifact_replay_ready: artifactReplayReady,
+      live_execution_memory_ready: liveExecutionMemoryReady,
       next_session_brain_ready: nextSessionBrainReady,
       handoff_pack_ready: handoffPackReady,
     },
@@ -4619,6 +4951,12 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
         ...(input.relations?.related_workspaces.flatMap((workspace) => workspace.recommended_transfer.map((item) => `transfer:${workspace.workspace_hint}:${item}`)) ?? []),
         ...(input.topology?.knowledge_map.load_first_docs.map((path) => `knowledge-doc:${path}`) ?? []),
         ...(input.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
+        ...(input.spaces?.continuity.load_first.map((item) => `space-load:${item}`) ?? []),
+        ...(input.spaces?.continuity.carry_forward.map((item) => `space-carry:${item}`) ?? []),
+        ...(input.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.load_first.map((item) => `space-brain-load:${item}`)) ?? []),
+        ...(input.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.carry_forward.map((item) => `space-brain-carry:${item}`)) ?? []),
+        ...(input.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.artifact_refs.map((ref) => `space-artifact:${ref}`)) ?? []),
+        ...(input.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.evidence.map((item) => `space-evidence:${space.title}:${item}`)) ?? []),
         ...(input.topology?.knowledge_map.command_sources.map((path) => `command-source:${path}`) ?? []),
         ...(input.topology?.knowledge_map.sensitive_zones.map((zone) => `sensitive-zone:${zone}`) ?? []),
         ...(input.topology?.knowledge_map.summarize_only.map((item) => `summarize-only:${item}`) ?? []),
@@ -4627,6 +4965,9 @@ export function buildAwisWorkspaceStartupSnapshot(input: {
         ...(input.learning ? [`learning:${input.learning.maturity}`] : []),
         ...(input.learning?.task_memory.task_kinds.map((taskKind) => `task:${taskKind}`) ?? []),
         ...(input.artifactReplay?.reusable_startup_gold.reusable_patterns ?? []),
+        ...(input.liveExecutionMemory ? [`live-memory:${input.liveExecutionMemory.memory_hash}:${input.liveExecutionMemory.readiness_score}`] : []),
+        ...(input.liveExecutionMemory?.startup_packet.load_first.slice(0, 3).map((item) => `live-load:${item}`) ?? []),
+        ...(input.liveExecutionMemory?.startup_packet.use_as_summary.slice(0, 3).map((item) => `live-summary:${item}`) ?? []),
         ...(input.nextSessionBrain?.load_order.map((item) => `load:${item}`) ?? []),
         ...(input.nextSessionBrain?.focused_repositories.map((repo) => `repo:${repo.repo_key}`) ?? []),
         ...(input.topology?.components.map((component) => `component:${component.key}:${component.role}`) ?? []),
@@ -5063,6 +5404,7 @@ export function buildAwisWorkspaceAutomationProjection(input: {
     if (queue.some((existing) => existing.action === item.action && existing.label === item.label)) return
     queue.push(item)
   }
+  const maintenanceMemory = buildMaintenanceOperationalMemory(input.memory)
   if (input.continuity?.learning_hooks.refresh_folder_map) {
     push({
       action: 'refresh_folder_map',
@@ -5129,11 +5471,23 @@ export function buildAwisWorkspaceAutomationProjection(input: {
       requires_human_confirmation: false,
     })
   }
+  for (const item of maintenanceMemory.revalidate.slice(0, 4)) {
+    const action = automationActionForMaintenance(item.action)
+    push({
+      action,
+      label: item.label,
+      reason: item.status === 'skipped'
+        ? 'manutenção foi pulada recentemente; reavaliar antes de confiar de novo'
+        : 'manutenção falhou recentemente; AWIS precisa recalibrar este ponto',
+      priority: item.failures >= 2 ? 'high' : 'medium',
+      requires_human_confirmation: action === 'revalidate_command' || action === 'review_risk',
+    })
+  }
   const sortedQueue = queue
     .sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority) || a.action.localeCompare(b.action))
     .slice(0, MAX_STARTUP_ITEMS)
   if (sortedQueue.length === 0) return null
-  const automationScore = Math.min(100, 28 + sortedQueue.length * 10 + (input.continuity?.readiness_score ?? 0) / 2)
+  const automationScore = Math.min(100, 28 + sortedQueue.length * 10 + maintenanceMemory.proven.length * 3 + (input.continuity?.readiness_score ?? 0) / 2)
   const mode: AwisWorkspaceAutomationProjection['mode'] = automationScore >= 75
     ? 'optimize'
     : automationScore >= 50
@@ -5171,11 +5525,17 @@ export function buildAwisWorkspaceAutomationProjection(input: {
         'comando validado com sucesso',
         'Space reutilizado sem risco novo',
         'context pack aplicado em sessão real',
+        ...maintenanceMemory.proven
+          .slice(0, 3)
+          .map((item) => `manutenção comprovada:${item.action}:${item.label}`),
       ]).slice(0, MAX_STARTUP_ITEMS),
       demote_when: unique([
         'envio falha ou é cancelado',
         'workspace muda antes de revalidar',
         'handoff reporta artefato pendente',
+        ...maintenanceMemory.revalidate
+          .slice(0, 3)
+          .map((item) => `manutenção precisa revalidar:${item.action}:${item.label}`),
       ]).slice(0, MAX_STARTUP_ITEMS),
     },
     safety: {
@@ -5202,6 +5562,7 @@ export function buildAwisWorkspaceConfidenceProjection(input: {
   automation: AwisWorkspaceAutomationProjection | null
   handoffPack: AwisWorkspaceHandoffProjection | null
 }): AwisWorkspaceConfidenceProjection | null {
+  const maintenanceMemory = buildMaintenanceOperationalMemory(input.memory)
   const failedCommands = new Set(
     (input.memory?.recentOutcomes ?? [])
       .filter((outcome) => isFailedOutcome(outcome.status))
@@ -5214,18 +5575,22 @@ export function buildAwisWorkspaceConfidenceProjection(input: {
   ]).slice(0, MAX_STARTUP_ITEMS)
   const commands = commandLabels
     .map((command) => {
+      const provenMaintenance = maintenanceMemory.proven.find((item) => item.action === 'revalidate_command' && item.label === command)
+      const failedMaintenance = maintenanceMemory.revalidate.find((item) => item.action === 'revalidate_command' && item.label === command)
       const evidence = unique([
         input.learning?.trusted_commands.includes(command) ? 'aprendizado confiável' : null,
         input.learning?.task_memory.trusted_task_commands.includes(command) ? 'validou tarefa real' : null,
         input.continuity?.next_session_plan.validate_with.includes(command) ? 'plano de continuidade' : null,
         input.automation?.maintenance_queue.some((item) => item.action === 'revalidate_command' && item.label === command) ? 'fila de revalidação' : null,
+        provenMaintenance ? `manutenção validou ${provenMaintenance.successes}x` : null,
       ].filter(isString))
       const caution = failedCommands.has(command)
         ? 'falhou em outcome recente'
+        : failedMaintenance ? 'manutenção recente pediu revalidação'
         : input.memory?.driftEvents.length ? 'workspace mudou desde última confiança' : null
       return {
         label: command,
-        score: clampConfidence(48 + evidence.length * 13 - (caution ? 18 : 0)),
+        score: clampConfidence(48 + evidence.length * 13 + (provenMaintenance ? 5 : 0) - (caution ? 18 : 0)),
         evidence,
         caution,
       }
@@ -5234,19 +5599,27 @@ export function buildAwisWorkspaceConfidenceProjection(input: {
     .slice(0, MAX_STARTUP_ITEMS)
   const spaces = (input.spaces?.strongest_spaces ?? [])
     .map((space) => {
+      const provenMaintenance = maintenanceMemory.proven.find((item) => (
+        (item.action === 'update_space_pack' || item.action === 'open_side_by_side' || item.action === 'revalidate_context') && item.label === space.title
+      ))
+      const failedMaintenance = maintenanceMemory.revalidate.find((item) => (
+        (item.action === 'update_space_pack' || item.action === 'open_side_by_side' || item.action === 'revalidate_context') && item.label === space.title
+      ))
       const evidence = unique([
         `${space.session_count} sessões`,
         `${space.message_count} mensagens`,
         space.artifact_count > 0 ? `${space.artifact_count} artefato(s)` : null,
         space.decision_count > 0 ? `${space.decision_count} decisão(ões)` : null,
         input.continuity?.restore_priority.some((item) => item.kind === 'space' && item.label === space.title) ? 'prioridade de restauração' : null,
+        provenMaintenance ? `manutenção validou ${provenMaintenance.successes}x` : null,
       ].filter(isString))
       const caution = space.risk_count > 0
         ? `${space.risk_count} risco(s) no Space`
+        : failedMaintenance ? 'manutenção recente pediu revalidação'
         : space.pending_count > 0 ? `${space.pending_count} pendência(s)` : null
       return {
         label: space.title,
-        score: clampConfidence(44 + space.session_count * 8 + space.artifact_count * 8 + space.decision_count * 5 - space.risk_count * 12 - space.pending_count * 6),
+        score: clampConfidence(44 + space.session_count * 8 + space.artifact_count * 8 + space.decision_count * 5 + (provenMaintenance ? 5 : 0) - space.risk_count * 12 - space.pending_count * 6 - (failedMaintenance ? 8 : 0)),
         evidence,
         caution,
       }
@@ -5260,15 +5633,22 @@ export function buildAwisWorkspaceConfidenceProjection(input: {
   ].filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const artifacts = artifactLabels
     .map((artifact) => {
+      const provenMaintenance = maintenanceMemory.proven.find((item) => (
+        (item.action === 'preserve_artifact' || item.action === 'replay_artifacts') && item.label === artifact
+      ))
+      const failedMaintenance = maintenanceMemory.revalidate.find((item) => (
+        (item.action === 'preserve_artifact' || item.action === 'replay_artifacts') && item.label === artifact
+      ))
       const evidence = unique([
         input.artifactReplay?.latest_artifact_hash === artifact ? 'replay disponível' : null,
         input.artifactLake?.latest_artifact_hash === artifact ? 'Artifact Lake local' : null,
         input.handoffPack?.context_units.some((unit) => unit.artifact_hash === artifact) ? 'handoff referencia' : null,
+        provenMaintenance ? `manutenção validou ${provenMaintenance.successes}x` : null,
       ].filter(isString))
-      const caution = input.artifactReplay?.reusable_startup_gold.warnings[0] ?? null
+      const caution = failedMaintenance ? 'manutenção recente pediu revalidação' : input.artifactReplay?.reusable_startup_gold.warnings[0] ?? null
       return {
         label: artifact,
-        score: clampConfidence(50 + evidence.length * 14 - (caution ? 15 : 0)),
+        score: clampConfidence(50 + evidence.length * 14 + (provenMaintenance ? 5 : 0) - (caution ? 15 : 0)),
         evidence,
         caution,
       }
@@ -5276,16 +5656,25 @@ export function buildAwisWorkspaceConfidenceProjection(input: {
     .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
     .slice(0, MAX_STARTUP_ITEMS)
   const transfers = (input.relations?.related_workspaces ?? [])
-    .map((workspace) => ({
-      label: workspace.workspace_hint,
-      score: clampConfidence(workspace.overlap_score),
-      evidence: unique([
-        ...workspace.shared_languages.map((item) => `stack:${item}`),
-        ...workspace.shared_commands.map((item) => `comando:${item}`),
-        ...workspace.recommended_transfer,
-      ]).slice(0, MAX_STARTUP_ITEMS),
-      caution: workspace.overlap_score < 60 ? 'transferir só como pista fraca' : null,
-    }))
+    .map((workspace) => {
+      const provenMaintenance = maintenanceMemory.proven.find((item) => (
+        (item.action === 'cross_workspace_transfer' || item.action === 'transfer_learning') && item.label === workspace.workspace_hint
+      ))
+      const failedMaintenance = maintenanceMemory.revalidate.find((item) => (
+        (item.action === 'cross_workspace_transfer' || item.action === 'transfer_learning') && item.label === workspace.workspace_hint
+      ))
+      return {
+        label: workspace.workspace_hint,
+        score: clampConfidence(workspace.overlap_score + (provenMaintenance ? 8 : 0) - (failedMaintenance ? 12 : 0)),
+        evidence: unique([
+          ...workspace.shared_languages.map((item) => `stack:${item}`),
+          ...workspace.shared_commands.map((item) => `comando:${item}`),
+          ...workspace.recommended_transfer,
+          provenMaintenance ? `manutenção validou ${provenMaintenance.successes}x` : null,
+        ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+        caution: failedMaintenance ? 'transferência pediu revalidação recente' : workspace.overlap_score < 60 ? 'transferir só como pista fraca' : null,
+      }
+    })
     .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
     .slice(0, MAX_STARTUP_ITEMS)
   const strongestScores = [
@@ -6228,6 +6617,7 @@ function buildContextGoldOperationalMemory(
   memory: AwisWorkspaceMemorySnapshot,
 ): NonNullable<AwisWorkspaceContextPack['memory']>['operational']['context_gold'] {
   const stats = buildContextGoldOutcomeStats(memory.recentOutcomes)
+  const spaceBrain = buildSpaceBrainOperationalMemory(memory)
   const ranked = Array.from(stats.entries())
     .map(([label, stat]) => ({
       label,
@@ -6246,7 +6636,124 @@ function buildContextGoldOperationalMemory(
       .filter((item) => item.failure > 0 && item.failure >= item.success)
       .map((item) => item.label)
       .slice(0, MAX_STARTUP_ITEMS),
+    space_brain: {
+      promoted: spaceBrain.promoted.map((item) => item.label).slice(0, MAX_STARTUP_ITEMS),
+      revalidate: spaceBrain.revalidate.map((item) => item.label).slice(0, MAX_STARTUP_ITEMS),
+    },
   }
+}
+
+function buildSpaceBrainOperationalMemory(memory: AwisWorkspaceMemorySnapshot | null): {
+  promoted: Array<{ label: string; success: number; failure: number; lastUsedAt: string | null }>
+  revalidate: Array<{ label: string; success: number; failure: number; lastUsedAt: string | null }>
+} {
+  const stats = new Map<string, { success: number; failure: number; lastUsedAt: string | null }>()
+  for (const outcome of memory?.recentOutcomes ?? []) {
+    const labels = normalizeStringList(outcome.spaceBrainLabels, MAX_STARTUP_ITEMS)
+      .map(sanitizeProviderSafeText)
+      .filter(isString)
+    for (const label of labels) {
+      const existing = stats.get(label) ?? { success: 0, failure: 0, lastUsedAt: null }
+      if (isFailedOutcome(outcome.status)) existing.failure += 1
+      else existing.success += 1
+      if (!existing.lastUsedAt || Date.parse(outcome.occurredAt) > Date.parse(existing.lastUsedAt)) {
+        existing.lastUsedAt = outcome.occurredAt
+      }
+      stats.set(label, existing)
+    }
+  }
+  const ranked = Array.from(stats.entries())
+    .map(([label, stat]) => ({
+      label,
+      success: stat.success,
+      failure: stat.failure,
+      lastUsedAt: stat.lastUsedAt,
+    }))
+    .sort((a, b) => b.success - a.success || a.failure - b.failure || a.label.localeCompare(b.label))
+  return {
+    promoted: ranked.filter((item) => item.success > 0 && item.success >= item.failure),
+    revalidate: ranked.filter((item) => item.failure > 0 && item.failure >= item.success),
+  }
+}
+
+function buildMaintenanceOperationalMemory(memory: AwisWorkspaceMemorySnapshot | null): {
+  proven: Array<{
+    action: AwisWorkspaceMaintenanceAction
+    label: string
+    successes: number
+    failures: number
+    status: AwisWorkspaceMaintenanceEvent['status']
+    lastSeenAt: string | null
+  }>
+  revalidate: Array<{
+    action: AwisWorkspaceMaintenanceAction
+    label: string
+    successes: number
+    failures: number
+    status: AwisWorkspaceMaintenanceEvent['status']
+    lastSeenAt: string | null
+  }>
+} {
+  const stats = new Map<string, {
+    action: AwisWorkspaceMaintenanceAction
+    label: string
+    successes: number
+    failures: number
+    status: AwisWorkspaceMaintenanceEvent['status']
+    lastSeenAt: string | null
+  }>()
+  for (const event of memory?.recentMaintenance ?? []) {
+    const label = sanitizeProviderSafeText(event.label).slice(0, 140)
+    if (!label) continue
+    const key = `${event.action}:${label}`
+    const existing = stats.get(key) ?? {
+      action: event.action,
+      label,
+      successes: 0,
+      failures: 0,
+      status: event.status,
+      lastSeenAt: null,
+    }
+    if (event.status === 'succeeded') existing.successes += 1
+    else existing.failures += 1
+    if (!existing.lastSeenAt || Date.parse(event.occurredAt) > Date.parse(existing.lastSeenAt)) {
+      existing.lastSeenAt = event.occurredAt
+      existing.status = event.status
+    }
+    stats.set(key, existing)
+  }
+  const ranked = Array.from(stats.values())
+    .sort((a, b) => (Date.parse(b.lastSeenAt ?? '') || 0) - (Date.parse(a.lastSeenAt ?? '') || 0) || b.successes - a.successes || a.label.localeCompare(b.label))
+  return {
+    proven: ranked.filter((item) => item.successes > 0 && item.successes >= item.failures),
+    revalidate: ranked.filter((item) => item.failures > 0 && item.failures >= item.successes),
+  }
+}
+
+function automationActionForMaintenance(
+  action: AwisWorkspaceMaintenanceAction,
+): AwisWorkspaceAutomationProjection['maintenance_queue'][number]['action'] {
+  if (action === 'refresh_folder_map') return 'refresh_folder_map'
+  if (action === 'replay_artifacts' || action === 'preserve_artifact') return 'replay_artifacts'
+  if (action === 'update_space_pack' || action === 'open_side_by_side') return 'update_space_pack'
+  if (action === 'record_outcome') return 'record_outcome'
+  if (action === 'revalidate_command' || action === 'promote_command') return 'revalidate_command'
+  if (action === 'cross_workspace_transfer' || action === 'transfer_learning') return 'cross_workspace_transfer'
+  return 'review_risk'
+}
+
+function selfImprovementActionForMaintenance(
+  action: AwisWorkspaceMaintenanceAction,
+  succeeded: boolean,
+): AwisWorkspaceSelfImprovementProjection['improvement_queue'][number]['action'] {
+  if (!succeeded) return action === 'refresh_folder_map' ? 'refresh_folder_map' : 'demote_context'
+  if (action === 'refresh_folder_map') return 'refresh_folder_map'
+  if (action === 'preserve_artifact' || action === 'replay_artifacts') return 'preserve_artifact'
+  if (action === 'update_space_pack' || action === 'open_side_by_side' || action === 'revalidate_context') return 'update_space_pack'
+  if (action === 'record_outcome') return 'record_outcome'
+  if (action === 'revalidate_command' || action === 'promote_command') return 'promote_command'
+  if (action === 'cross_workspace_transfer' || action === 'transfer_learning') return 'transfer_learning'
+  return 'demote_context'
 }
 
 function buildContextGoldOutcomeStats(outcomes: AwisWorkspaceMemoryOutcome[]): Map<string, {
@@ -6256,7 +6763,7 @@ function buildContextGoldOutcomeStats(outcomes: AwisWorkspaceMemoryOutcome[]): M
 }> {
   const stats = new Map<string, { success: number; failure: number; lastUsedAt: string | null }>()
   for (const outcome of outcomes) {
-    for (const label of outcome.contextGoldLabels) {
+    for (const label of contextGoldLabelsForOutcome(outcome)) {
       const existing = stats.get(label) ?? { success: 0, failure: 0, lastUsedAt: null }
       if (isFailedOutcome(outcome.status)) existing.failure += 1
       else existing.success += 1
@@ -6267,6 +6774,16 @@ function buildContextGoldOutcomeStats(outcomes: AwisWorkspaceMemoryOutcome[]): M
     }
   }
   return stats
+}
+
+function contextGoldLabelsForOutcome(outcome: AwisWorkspaceMemoryOutcome): string[] {
+  return unique([
+    ...outcome.contextGoldLabels,
+    ...outcome.spaceLabels.map((space) => `space:${space}`),
+    ...outcome.spaceBrainLabels.map((label) => `space-brain:${label}`),
+    ...outcome.liveMemoryLabels.map((label) => `live-memory:${label}`),
+    ...outcome.priorityLoadLabels.map((label) => `priority:${label}`),
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS * 2)
 }
 
 export function buildAwisWorkspaceSelfImprovementProjection(input: {
@@ -6293,6 +6810,7 @@ export function buildAwisWorkspaceSelfImprovementProjection(input: {
       evidence: normalizeStringList(item.evidence, 4).map(sanitizeProviderSafeText).filter(isString),
     })
   }
+  const maintenanceMemory = buildMaintenanceOperationalMemory(input.memory)
 
   for (const command of input.sessionGold?.proven_commands ?? []) {
     push({
@@ -6310,6 +6828,47 @@ export function buildAwisWorkspaceSelfImprovementProjection(input: {
       reason: 'sinal exige revalidação antes de continuar carregando automaticamente',
       priority: 'high',
       evidence: ['política de confiança'],
+    })
+  }
+  const spaceBrainMemory = buildSpaceBrainOperationalMemory(input.memory)
+  for (const item of spaceBrainMemory.promoted.slice(0, 3)) {
+    push({
+      action: 'update_space_pack',
+      label: item.label,
+      reason: 'cérebro do Space ajudou sessão real e deve ficar mais quente',
+      priority: item.success >= 2 ? 'high' : 'medium',
+      evidence: [`${item.success} sucesso(s)`, item.lastUsedAt ? `último uso:${item.lastUsedAt}` : 'uso recente'],
+    })
+  }
+  for (const item of spaceBrainMemory.revalidate.slice(0, 3)) {
+    push({
+      action: 'demote_context',
+      label: `space-brain:${item.label}`,
+      reason: 'cérebro do Space apareceu em falha recente; revalidar antes de autocarregar',
+      priority: 'high',
+      evidence: [`${item.failure} falha(s)`, item.lastUsedAt ? `último uso:${item.lastUsedAt}` : 'uso recente'],
+    })
+  }
+  for (const item of maintenanceMemory.proven.slice(0, 4)) {
+    const action = selfImprovementActionForMaintenance(item.action, true)
+    push({
+      action,
+      label: item.label,
+      reason: 'manutenção recente deu certo; transformar em comportamento mais automático',
+      priority: item.successes >= 2 ? 'high' : 'medium',
+      evidence: [`${item.successes} sucesso(s)`, item.lastSeenAt ? `último uso:${item.lastSeenAt}` : 'uso recente'],
+    })
+  }
+  for (const item of maintenanceMemory.revalidate.slice(0, 4)) {
+    const action = selfImprovementActionForMaintenance(item.action, false)
+    push({
+      action,
+      label: item.label,
+      reason: item.status === 'skipped'
+        ? 'manutenção foi pulada; manter como revisão explícita'
+        : 'manutenção falhou; reduzir confiança até nova evidência',
+      priority: item.failures >= 2 ? 'high' : 'medium',
+      evidence: [`${item.failures} alerta(s)`, item.lastSeenAt ? `último uso:${item.lastSeenAt}` : 'uso recente'],
     })
   }
   if (input.contextKernel?.learning_contract.refresh_folder_map_on_drift || input.memory?.driftEvents[0]) {
@@ -6373,10 +6932,12 @@ export function buildAwisWorkspaceSelfImprovementProjection(input: {
       promote_when: unique([
         ...(input.automation?.feedback_loop.promote_when ?? []),
         ...(input.contextKernel?.validation_plan.commands.length ? ['validação comprovada passa novamente'] : []),
+        ...maintenanceMemory.proven.slice(0, 3).map((item) => `manutenção comprovada:${item.action}:${item.label}`),
         'resultado real sem novo risco',
       ]).slice(0, MAX_STARTUP_ITEMS),
       demote_when: unique([
         ...(input.automation?.feedback_loop.demote_when ?? []),
+        ...maintenanceMemory.revalidate.slice(0, 3).map((item) => `manutenção precisa revalidar:${item.action}:${item.label}`),
         'falha recente ou drift sem revalidação',
       ]).slice(0, MAX_STARTUP_ITEMS),
       transfer_when: unique([
@@ -6508,8 +7069,10 @@ export function buildAwisWorkspaceMemoryConsolidationProjection(input: {
   startupOrchestration: AwisWorkspaceStartupOrchestrationProjection | null
   artifactReplay: AwisWorkspaceArtifactReplayProjection | null
 }): AwisWorkspaceMemoryConsolidationProjection | null {
+  const spaceBrainMemory = buildSpaceBrainOperationalMemory(input.memory)
   const promoteToGold = unique([
     ...(input.retention?.lifecycle.promote ?? []),
+    ...spaceBrainMemory.promoted.slice(0, 4).map((item) => `space-brain:${item.label}:${item.success}`),
     ...(input.sessionGold?.strongest_outcomes.filter((item) => item.confidence >= 72).map((item) => `ouro:${item.label}`) ?? []),
     ...(input.sessionGold?.proven_commands.map((item) => `comando:${item.command}`) ?? []),
     ...(input.componentMemory?.strongest_components
@@ -6557,6 +7120,7 @@ export function buildAwisWorkspaceMemoryConsolidationProjection(input: {
     ...(input.memoryFreshness?.evidence.revalidate ?? []),
     ...(input.retention?.lifecycle.revalidate ?? []),
     ...(input.selfImprovement?.promotion_policy.demote_when.map((item) => `demote:${item}`) ?? []),
+    ...spaceBrainMemory.revalidate.slice(0, 4).map((item) => `space-brain:${item.label}:${item.failure}`),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const nextSessionSeed = unique([
     ...promoteToGold.slice(0, 4),
@@ -7226,7 +7790,23 @@ export function buildAwisWorkspaceLaunchContractProjection(input: {
   spaces: AwisWorkspaceSpaceProjection | null
   artifactReplay: AwisWorkspaceArtifactReplayProjection | null
 }): AwisWorkspaceLaunchContractProjection | null {
+  const shouldPrioritizeColdSeed = input.memoryFreshness?.state === 'stale'
+    || input.memoryFreshness?.state === 'cold'
+    || input.workspaceTwin?.stale === true
+  const artifactSeedLoad = shouldPrioritizeColdSeed
+    ? input.artifactReplay?.cold_start_seed.load_order.map((item) => `artifact-seed:${item}`) ?? []
+    : []
+  const artifactSeedValidate = shouldPrioritizeColdSeed
+    ? input.artifactReplay?.cold_start_seed.validate_with.map((item) => `artifact-seed:${item}`) ?? []
+    : []
+  const artifactSeedWarnings = shouldPrioritizeColdSeed
+    ? input.artifactReplay?.cold_start_seed.warnings.map((item) => `artifact-seed:${item}`) ?? []
+    : []
+  const artifactSeedPromote = shouldPrioritizeColdSeed
+    ? input.artifactReplay?.cold_start_seed.automation_hooks.map((item) => `artifact-seed:${item}`) ?? []
+    : []
   const firstLoad = unique([
+    ...artifactSeedLoad,
     ...(input.startupOrchestration?.revalidation_gate.can_autoload ?? []),
     ...(input.startupOrchestration?.startup_sequence.filter((item) => item.required).map((item) => `${item.step}:${item.label}`) ?? []),
     ...(input.workspaceTwin?.context_autopilot.load_first ?? []),
@@ -7236,6 +7816,7 @@ export function buildAwisWorkspaceLaunchContractProjection(input: {
     ...(input.spaces?.strongest_spaces.slice(0, 2).map((space) => `Space:${space.title}`) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const validateBeforeTrust = unique([
+    ...artifactSeedValidate,
     ...(input.startupOrchestration?.revalidation_gate.required_before_send ?? []),
     ...(input.preflight?.execution_lanes.before_execution ?? []),
     ...(input.workspaceTwin?.context_autopilot.validate ?? []),
@@ -7258,16 +7839,19 @@ export function buildAwisWorkspaceLaunchContractProjection(input: {
       : []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const promoteAfterSuccess = unique([
+    ...artifactSeedPromote,
     ...(input.preflight?.promotion_contract.promote_when ?? []),
     ...(input.memoryConsolidation?.consolidate.promote_to_gold ?? []),
     ...(input.selfImprovement?.promotion_policy.promote_when ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const demoteAfterFailure = unique([
+    ...artifactSeedWarnings,
     ...(input.preflight?.promotion_contract.demote_when ?? []),
     ...(input.memoryConsolidation?.consolidate.never_promote ?? []),
     ...(input.selfImprovement?.promotion_policy.demote_when ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const beforeSend = unique([
+    ...artifactSeedLoad.map((item) => `carregar:${item}`),
     ...firstLoad.map((item) => `carregar:${item}`),
     ...(input.preflight?.execution_lanes.before_send ?? []),
     ...(input.automation?.autopilot_context.before_send ?? []),
@@ -7285,10 +7869,12 @@ export function buildAwisWorkspaceLaunchContractProjection(input: {
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const recoveryDemoteContext = unique([
     ...demoteAfterFailure,
+    ...artifactSeedWarnings.map((item) => `revalidar:${item}`),
     ...(input.memoryConsolidation?.consolidate.revalidate.map((item) => `revalidar:${item}`) ?? []),
     ...(input.memoryFreshness?.evidence.revalidate.map((item) => `frescor:${item}`) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const recoverySafeResume = unique([
+    ...(artifactSeedLoad[0] ? [`retomar:${artifactSeedLoad[0]}`] : []),
     ...(validateBeforeTrust[0] ? [`validar:${validateBeforeTrust[0]}`] : []),
     ...(firstLoad[0] ? [`retomar:${firstLoad[0]}`] : []),
     ...(input.providerStrategy?.fallback_order.slice(0, 2).map((provider) => `provider:${provider}`) ?? []),
@@ -7322,6 +7908,7 @@ export function buildAwisWorkspaceLaunchContractProjection(input: {
     ? 'guarded'
     : input.startupOrchestration?.launch_mode ?? (readiness >= 78 ? 'deep' : readiness >= 45 ? 'warm' : 'guarded')
   const loadOrder = unique([
+    ...artifactSeedLoad,
     ...firstLoad,
     ...(input.startupOrchestration?.startup_sequence.map((item) => `${item.step}:${item.source}:${item.label}`) ?? []),
     ...(input.workspaceTwin?.learning_loop.reuse_next_session ?? []),
@@ -7461,6 +8048,7 @@ export function buildAwisWorkspaceTaskContextProjection(
   const componentContextPacks = buildComponentContextPacks(pack, componentIntentRanking, selectedComponentKeys)
   const folderFocus = buildFolderFocusPlan(pack, taskKind, selectedTopologyComponents, componentContextPacks)
   const taskGold = buildTaskGoldSelection(pack, taskKind, fallbackComponents, folderFocus)
+  const spaceBrain = selectSpaceBrainForTask(pack.spaces, promptSignals, taskKind, pack.memory?.operational.context_gold ?? null)
   const workingSet = {
     files: unique([
       ...selectedTopologyComponents.flatMap((component) => component.manifests),
@@ -7511,6 +8099,8 @@ export function buildAwisWorkspaceTaskContextProjection(
     ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
   ]).slice(0, MAX_STARTUP_ITEMS)
   const cautions = unique([
+    ...spaceBrain.flatMap((space) => space.validate_before_use.map((item) => `Space:${space.title}:${item}`)),
+    ...spaceBrain.flatMap((space) => space.human_boundary.map((item) => `humano:${space.title}:${item}`)),
     ...(pack.artifact_replay?.cold_start_seed.warnings.map((item) => `partida fria:${item}`) ?? []),
     ...(pack.learning?.caution_signals ?? []),
     ...(pack.startup_playbook?.risk_controls ?? []),
@@ -7550,6 +8140,8 @@ export function buildAwisWorkspaceTaskContextProjection(
     ...(pack.retention?.lifecycle.keep_hot.map((item) => `retenção:${item}`) ?? []),
     ...(pack.self_improvement?.improvement_queue.map((item) => `melhoria:${item.action}:${item.label}`) ?? []),
     ...(pack.context_kernel?.priority_load.map((item) => `${item.kind}:${item.label}`) ?? []),
+    ...spaceBrain.flatMap((space) => space.load_first.map((item) => `space-brain:${space.title}:${item}`)),
+    ...spaceBrain.flatMap((space) => space.carry_forward.map((item) => `space-brain-carry:${space.title}:${item}`)),
     ...(pack.artifact_replay?.cold_start_seed.load_order.map((item) => `seed:${item}`) ?? []),
     ...(taskRoute?.load_first ?? []),
     impactRadius.primary_component ? `impacto:${impactRadius.primary_component}:${impactRadius.reason}` : null,
@@ -7599,8 +8191,10 @@ export function buildAwisWorkspaceTaskContextProjection(
       working_set: workingSet,
       semantic_matches: semanticMatches,
       impact_radius: impactRadius,
+      space_brain: spaceBrain,
       spaces,
       artifacts: unique([
+        ...spaceBrain.flatMap((space) => space.artifact_refs),
         pack.live_execution_memory?.memory_hash ?? null,
         ...(pack.continuity?.hot_context.artifacts ?? []),
         ...(pack.startup_briefing?.context_gold.artifact_refs ?? []),
@@ -7753,6 +8347,7 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(taskContext?.recommended_context.folder_focus.include.map((item) => `pasta:${item}`) ?? []),
     ...(taskContext?.recommended_context.semantic_matches.flatMap((match) => match.load.map((item) => `semântico:${match.alias}:${item}`)) ?? []),
     ...(taskContext?.recommended_context.impact_radius.affected_components.map((item) => `impacto:${item}`) ?? []),
+    ...(taskContext?.recommended_context.space_brain.flatMap((space) => space.load_first.map((item) => `space-brain:${space.title}:${item}`)) ?? []),
     ...(taskContext?.recommended_context.load_order
       .filter((item) => /mapa de componentes/i.test(item))
       .slice(0, 2) ?? []),
@@ -7804,6 +8399,11 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(taskContext?.recommended_context.component_context_packs.map((pack) => `component-pack:${pack.key}:${pack.mode}:${pack.reason}`) ?? []),
     ...(taskContext?.recommended_context.semantic_matches.map((match) => `semantic-match:${match.alias}:${match.intent}:${match.confidence}`) ?? []),
     ...(taskContext ? [`impact-radius:${taskContext.recommended_context.impact_radius.primary_component}:${taskContext.recommended_context.impact_radius.risk}:${taskContext.recommended_context.impact_radius.reason}`] : []),
+    ...(taskContext?.recommended_context.space_brain.flatMap((space) => [
+      `space-brain:${space.title}:${space.state}:${space.confidence}`,
+      ...space.carry_forward.map((item) => `space-carry:${space.title}:${item}`),
+      ...space.evidence.map((item) => `space-evidence:${space.title}:${item}`),
+    ]) ?? []),
     ...(pack.preflight?.gates.map((gate) => `preflight:${gate.gate}:${gate.status}:${gate.label}`) ?? []),
     ...(pack.preflight ? [`preflight-mode:${pack.preflight.mode}:${pack.preflight.readiness_score}`] : []),
     ...(pack.workspace_twin ? [`workspace-twin:${pack.workspace_twin.readiness_score}:${pack.workspace_twin.hashes.genome_hash}`] : []),
@@ -7829,6 +8429,7 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(taskContext?.execution_plan.recovery_playbook.safe_resume.map((item) => `recovery:${item}`) ?? []),
     ...(pack.relations?.transfer_matrix.flatMap((item) => item.reuse.slice(0, 3).map((reuse) => `transfer:${item.workspace_hint}:${reuse}`)) ?? []),
     ...(taskContext?.recommended_context.spaces.map((item) => `Space:${item}`) ?? []),
+    ...(taskContext?.recommended_context.space_brain.flatMap((space) => space.artifact_refs.map((ref) => `space-artifact:${space.title}:${ref}`)) ?? []),
     ...(taskContext?.recommended_context.components.map((item) => `componente:${item.key}:${item.why}`) ?? []),
     ...(pack.topology?.knowledge_map.command_sources.map((path) => `folder-command-source:${path}`) ?? []),
     ...(pack.topology?.knowledge_map.runtime_entrypoints.map((command) => `folder-runtime:${command}`) ?? []),
@@ -7860,6 +8461,7 @@ export function buildAwisWorkspaceProviderCapsule(
     ...(taskContext?.recommended_context.evidence_gate.verify_before_trust.map((item) => `evidência:${item}`) ?? []),
     ...(taskContext?.recommended_context.evidence_gate.missing_or_stale.map((item) => `evidência stale:${item}`) ?? []),
     ...(taskContext?.recommended_context.evidence_gate.human_boundary.map((item) => `humano:${item}`) ?? []),
+    ...(taskContext?.recommended_context.space_brain.flatMap((space) => space.validate_before_use.map((item) => `space-validate:${space.title}:${item}`)) ?? []),
     ...(taskContext?.recommended_context.impact_radius.validation_cascade.map((item) => `impacto:${item}`) ?? []),
     ...(startup?.revalidation_gate.required_before_send.map((item) => `revalidar:${item}`) ?? []),
     ...(pack.memory_freshness?.evidence.revalidate.map((item) => `frescor:${item}`) ?? []),
@@ -8042,8 +8644,23 @@ export function buildAwisWorkspaceSpaceProjection(
       name: pack.title,
       session_count: pack.thread_count,
     })),
+    continuity: {
+      never_start_cold: true,
+      load_first: unique(validPacks.map((pack) => `Space:${pack.title}`)).slice(0, MAX_STARTUP_ITEMS),
+      carry_forward: unique(validPacks.flatMap((pack) => [
+        `${pack.title}: ${pack.thread_count} sessões`,
+        ...pack.recommended_use,
+      ])).slice(0, MAX_STARTUP_ITEMS),
+      refresh_when: unique([
+        'Space aberto para comparar',
+        'sessão adicionada ou removida do Space',
+        'conversa do Space recebe nova decisão, pendência ou risco',
+      ]).slice(0, MAX_STARTUP_ITEMS),
+      provider_safe: true,
+    },
     strongest_spaces: validPacks.map((pack) => ({
       title: pack.title,
+      source: pack.source === 'suggested_space' ? 'suggested_space' : 'local_space',
       session_count: pack.thread_count,
       message_count: pack.message_count,
       mode_count: pack.mode_count,
@@ -8051,8 +8668,30 @@ export function buildAwisWorkspaceSpaceProjection(
       pending_count: pack.pending_count,
       risk_count: pack.risk_count,
       artifact_count: pack.artifact_count,
+      strength_score: spacePackStrength(pack),
+      freshness: spacePackFreshness(pack),
+      scope_label: pack.scope_label ?? `${pack.thread_count} sessões · ${pack.mode_count} ${pack.mode_count === 1 ? 'modo' : 'modos'}`,
       reusable_by: pack.reusable_by.slice(0, 4),
       recommended_use: pack.recommended_use.slice(0, 4),
+      brain_contract: normalizeSpaceBrainContract(pack),
+      continuity_contract: {
+        load_when: unique([
+          `trabalho voltar para ${pack.title}`,
+          pack.pending_count > 0 ? 'há pendências neste Space' : null,
+          pack.risk_count > 0 ? 'há riscos neste Space' : null,
+          pack.artifact_count > 0 ? 'há artefatos reutilizáveis neste Space' : null,
+        ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+        carry_forward: unique([
+          `${pack.thread_count} sessões relacionadas`,
+          `${pack.message_count} mensagens resumidas`,
+          ...pack.recommended_use,
+        ]).slice(0, MAX_STARTUP_ITEMS),
+        refresh_when: unique([
+          'nova mensagem em uma sessão do Space',
+          'renomear, desfazer ou editar Space',
+          pack.generated_at ? `pack gerado em ${pack.generated_at}` : null,
+        ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
+      },
       session_summaries: pack.sessions.slice(0, MAX_SPACE_PROJECTION_SESSIONS).map((session) => ({
         title: session.title,
         mode: session.mode,
@@ -8135,6 +8774,10 @@ export function buildAwisWorkspaceRelationProjection(
   const currentContextGold = contextGoldLabelsForRelation(current)
   const currentValidationPlans = validationPlanLabelsForRelation(current)
   const currentRecoveryPatterns = recoveryPatternLabelsForRelation(current)
+  const currentSpaces = spaceLabelsForRelation(current)
+  const currentSpaceBrain = spaceBrainLabelsForRelation(current)
+  const currentLiveMemory = liveMemoryLabelsForRelation(current)
+  const currentPriorityLoad = priorityLoadLabelsForRelation(current)
   const related = entries
     .filter(([key, memory]) => key !== currentEntry?.[0] && memory.workspaceKey !== current.workspaceKey)
     .map(([, memory]) => {
@@ -8144,6 +8787,10 @@ export function buildAwisWorkspaceRelationProjection(
       const sharedContextGold = overlap(currentContextGold, contextGoldLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
       const sharedValidationPlans = overlap(currentValidationPlans, validationPlanLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
       const sharedRecoveryPatterns = overlap(currentRecoveryPatterns, recoveryPatternLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
+      const sharedSpaces = overlap(currentSpaces, spaceLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
+      const sharedSpaceBrain = overlap(currentSpaceBrain, spaceBrainLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
+      const sharedLiveMemory = overlap(currentLiveMemory, liveMemoryLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
+      const sharedPriorityLoad = overlap(currentPriorityLoad, priorityLoadLabelsForRelation(memory)).slice(0, MAX_STARTUP_ITEMS)
       const overlapScore = Math.min(
         100,
         sharedSignals.length * 12 +
@@ -8151,7 +8798,11 @@ export function buildAwisWorkspaceRelationProjection(
           sharedCommands.length * 20 +
           sharedContextGold.length * 16 +
           sharedValidationPlans.length * 14 +
-          sharedRecoveryPatterns.length * 12,
+          sharedRecoveryPatterns.length * 12 +
+          sharedSpaces.length * 15 +
+          sharedSpaceBrain.length * 18 +
+          sharedLiveMemory.length * 10 +
+          sharedPriorityLoad.length * 12,
       )
       return {
         workspace_hint: providerSafeWorkspaceHint(memory),
@@ -8162,6 +8813,10 @@ export function buildAwisWorkspaceRelationProjection(
         shared_context_gold: sharedContextGold,
         shared_validation_plans: sharedValidationPlans,
         shared_recovery_patterns: sharedRecoveryPatterns,
+        shared_spaces: sharedSpaces,
+        shared_space_brain: sharedSpaceBrain,
+        shared_live_memory: sharedLiveMemory,
+        shared_priority_load: sharedPriorityLoad,
         recommended_transfer: relationTransferHints(
           sharedSignals,
           sharedLanguages,
@@ -8169,6 +8824,10 @@ export function buildAwisWorkspaceRelationProjection(
           sharedContextGold,
           sharedValidationPlans,
           sharedRecoveryPatterns,
+          sharedSpaces,
+          sharedSpaceBrain,
+          sharedLiveMemory,
+          sharedPriorityLoad,
         ),
       }
     })
@@ -8184,14 +8843,19 @@ export function buildAwisWorkspaceRelationProjection(
       ...workspace.shared_signals.map((item) => `stack:${item}`),
       ...workspace.shared_commands.map((item) => `comando:${item}`),
       ...workspace.shared_context_gold.map((item) => `ouro:${item}`),
+      ...workspace.shared_spaces.map((item) => `space:${item}`),
+      ...workspace.shared_space_brain.map((item) => `space-brain:${item}`),
+      ...workspace.shared_live_memory.map((item) => `memória viva:${item}`),
+      ...workspace.shared_priority_load.map((item) => `prioridade:${item}`),
       ...workspace.shared_validation_plans.map((item) => `validação:${item}`),
       ...workspace.shared_recovery_patterns.map((item) => `recovery:${item}`),
       ...workspace.recommended_transfer,
-    ]).slice(0, MAX_STARTUP_ITEMS),
+    ]).slice(0, MAX_STARTUP_ITEMS * 2),
     revalidate: unique([
       ...workspace.shared_commands.map((item) => `validar comando antes de aplicar:${item}`),
       ...workspace.shared_validation_plans.map((item) => `confirmar validação transferida:${item}`),
       ...workspace.shared_recovery_patterns.map((item) => `aplicar recovery só com evidência local:${item}`),
+      ...workspace.shared_space_brain.map((item) => `revalidar Space Brain no workspace atual:${item}`),
       workspace.overlap_score < 60 ? `revalidar compatibilidade:${workspace.workspace_hint}` : null,
     ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
     do_not_transfer: [
@@ -8219,11 +8883,19 @@ export function buildAwisWorkspaceRelationProjection(
         workspace.shared_context_gold.length > 0 ? 'tarefa toca contexto já validado em outro workspace' : null,
         workspace.shared_commands.length > 0 ? 'tarefa depende de comando semelhante' : null,
         workspace.shared_recovery_patterns.length > 0 ? 'erro recente parece recuperação já vista' : null,
+        workspace.shared_spaces.length > 0 ? 'Space operacional reaparece em outro workspace' : null,
+        workspace.shared_space_brain.length > 0 ? 'Space Brain validado reaparece em outro workspace' : null,
+        workspace.shared_live_memory.length > 0 ? 'memória viva compatível já foi usada' : null,
+        workspace.shared_priority_load.length > 0 ? 'prioridade de carregamento já foi validada' : null,
         workspace.shared_languages.length > 0 || workspace.shared_signals.length > 0 ? 'stack compatível aparece no mapa local' : null,
       ].filter(isString)).slice(0, MAX_STARTUP_ITEMS),
       reuse: unique([
         ...workspace.shared_context_gold.map((item) => `contexto validado:${item}`),
         ...workspace.shared_validation_plans.map((item) => `plano validado:${item}`),
+        ...workspace.shared_spaces.map((item) => `Space validado:${item}`),
+        ...workspace.shared_space_brain.map((item) => `Space Brain transferível:${item}`),
+        ...workspace.shared_live_memory.map((item) => `memória viva validada:${item}`),
+        ...workspace.shared_priority_load.map((item) => `prioridade validada:${item}`),
         ...workspace.recommended_transfer,
       ]).slice(0, MAX_STARTUP_ITEMS),
       validate: unique([
@@ -8784,14 +9456,29 @@ function buildAwisWorkspaceRepositoryConstellationProjection(input: {
   const compareWhen = unique([
     ...bridges.map((bridge) => `alteração cruza ${bridge.from} e ${bridge.to}`),
     ...crossWorkspaceHints.map((hint) => `reusar aprendizado de ${hint}`),
+    ...(input.relations?.transfer_matrix.flatMap((transfer) => (
+      transfer.reuse
+        .filter((item) => item.startsWith('space-brain:'))
+        .map((item) => `comparar Space Brain de ${transfer.workspace_hint}: ${item.replace(/^space-brain:/, '')}`)
+    )) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const preserveAsArtifact = unique([
     ...bridges.slice(0, 3).map((bridge) => `bridge:${bridge.from}->${bridge.to}`),
     ...(input.sessionGold?.strongest_outcomes.slice(0, 3).map((outcome) => `ouro:${outcome.label}`) ?? []),
+    ...(input.relations?.transfer_matrix.flatMap((transfer) => (
+      transfer.reuse
+        .filter((item) => item.startsWith('space-brain:'))
+        .map((item) => `space-brain-transfer:${transfer.workspace_hint}:${item.replace(/^space-brain:/, '')}`)
+    )) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const promoteWhen = unique([
     ...validateWith.slice(0, 4).map((command) => `validação verde:${command}`),
     ...bridges.slice(0, 3).map((bridge) => `ponte confirmada:${bridge.from}->${bridge.to}`),
+    ...(input.relations?.transfer_matrix.flatMap((transfer) => (
+      transfer.reuse
+        .filter((item) => item.startsWith('space-brain:'))
+        .map((item) => `Space Brain reaproveitado com sucesso:${transfer.workspace_hint}:${item.replace(/^space-brain:/, '')}`)
+    )) ?? []),
   ]).slice(0, MAX_STARTUP_ITEMS)
   const revalidateWhen = unique([
     'manifesto muda',
@@ -9154,6 +9841,23 @@ function normalizeMemory(raw: unknown): AwisWorkspaceMemorySnapshot | null {
   }
 }
 
+function awisWorkspaceMemorySortScore(memory: AwisWorkspaceMemorySnapshot): number {
+  const timestamps = [
+    memory.lastInteractionAt,
+    memory.lastSeenAt,
+    memory.recentOutcomes[0]?.occurredAt,
+    memory.recentMaintenance[0]?.occurredAt,
+  ]
+    .map((value) => value ? Date.parse(value) : 0)
+    .filter((value) => Number.isFinite(value))
+  const latest = Math.max(0, ...timestamps)
+  return latest
+    + memory.scanCount
+    + memory.interactionCount * 10
+    + memory.successCount * 20
+    - memory.failureCount
+}
+
 function normalizeSpaceProjection(raw: unknown): AwisWorkspaceSpaceProjection | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const value = raw as Partial<AwisWorkspaceSpaceProjection>
@@ -9172,8 +9876,33 @@ function normalizeSpaceProjection(raw: unknown): AwisWorkspaceSpaceProjection | 
         pending_count: normalizeCount(candidate.pending_count),
         risk_count: normalizeCount(candidate.risk_count),
         artifact_count: normalizeCount(candidate.artifact_count),
+        strength_score: normalizeCount(candidate.strength_score),
+        freshness: candidate.freshness === 'recente' || candidate.freshness === 'estavel' || candidate.freshness === 'frio'
+          ? candidate.freshness
+          : 'estavel',
+        source: candidate.source === 'suggested_space' ? 'suggested_space' as const : 'local_space' as const,
+        scope_label: isString(candidate.scope_label)
+          ? candidate.scope_label.slice(0, 96)
+          : `${normalizeCount(candidate.session_count)} sessões`,
         reusable_by: Array.isArray(candidate.reusable_by) ? candidate.reusable_by.filter(isString).slice(0, 4) : [],
         recommended_use: Array.isArray(candidate.recommended_use) ? candidate.recommended_use.filter(isString).slice(0, 4) : [],
+        brain_contract: {
+          state: candidate.brain_contract?.state === 'vivo' || candidate.brain_contract?.state === 'pronto' || candidate.brain_contract?.state === 'leve'
+            ? candidate.brain_contract.state
+            : 'pronto',
+          load_first: normalizeStringList(candidate.brain_contract?.load_first, MAX_STARTUP_ITEMS),
+          carry_forward: normalizeStringList(candidate.brain_contract?.carry_forward, MAX_STARTUP_ITEMS),
+          validate_before_use: normalizeStringList(candidate.brain_contract?.validate_before_use, MAX_STARTUP_ITEMS),
+          automation_hooks: normalizeStringList(candidate.brain_contract?.automation_hooks, MAX_STARTUP_ITEMS),
+          human_boundary: normalizeStringList(candidate.brain_contract?.human_boundary, MAX_STARTUP_ITEMS),
+          artifact_refs: normalizeStringList(candidate.brain_contract?.artifact_refs, MAX_STARTUP_ITEMS),
+          evidence: normalizeStringList(candidate.brain_contract?.evidence, MAX_STARTUP_ITEMS),
+        },
+        continuity_contract: {
+          load_when: normalizeStringList(candidate.continuity_contract?.load_when, MAX_STARTUP_ITEMS),
+          carry_forward: normalizeStringList(candidate.continuity_contract?.carry_forward, MAX_STARTUP_ITEMS),
+          refresh_when: normalizeStringList(candidate.continuity_contract?.refresh_when, MAX_STARTUP_ITEMS),
+        },
         session_summaries: Array.isArray(candidate.session_summaries)
           ? candidate.session_summaries
             .filter((session) => Boolean(session && typeof session === 'object'))
@@ -9201,6 +9930,13 @@ function normalizeSpaceProjection(raw: unknown): AwisWorkspaceSpaceProjection | 
       name: space.title,
       session_count: space.session_count,
     })),
+    continuity: {
+      never_start_cold: true,
+      load_first: normalizeStringList(value.continuity?.load_first, MAX_STARTUP_ITEMS),
+      carry_forward: normalizeStringList(value.continuity?.carry_forward, MAX_STARTUP_ITEMS),
+      refresh_when: normalizeStringList(value.continuity?.refresh_when, MAX_STARTUP_ITEMS),
+      provider_safe: true,
+    },
     strongest_spaces: strongestSpaces,
     safety: {
       raw_conversation_included: false,
@@ -9893,6 +10629,18 @@ function normalizeRelationProjection(raw: unknown): AwisWorkspaceRelationProject
         shared_recovery_patterns: normalizeStringList(workspace.shared_recovery_patterns, MAX_STARTUP_ITEMS)
           .map(sanitizeProviderSafeText)
           .filter(isString),
+        shared_spaces: normalizeStringList(workspace.shared_spaces, MAX_STARTUP_ITEMS)
+          .map(sanitizeProviderSafeText)
+          .filter(isString),
+        shared_space_brain: normalizeStringList(workspace.shared_space_brain, MAX_STARTUP_ITEMS)
+          .map(sanitizeProviderSafeText)
+          .filter(isString),
+        shared_live_memory: normalizeStringList(workspace.shared_live_memory, MAX_STARTUP_ITEMS)
+          .map(sanitizeProviderSafeText)
+          .filter(isString),
+        shared_priority_load: normalizeStringList(workspace.shared_priority_load, MAX_STARTUP_ITEMS)
+          .map(sanitizeProviderSafeText)
+          .filter(isString),
         recommended_transfer: normalizeStringList(workspace.recommended_transfer, MAX_STARTUP_ITEMS),
       }))
       .filter((workspace) => workspace.workspace_hint !== '' && workspace.overlap_score > 0)
@@ -9922,6 +10670,10 @@ function normalizeRelationProjection(raw: unknown): AwisWorkspaceRelationProject
           ...workspace.shared_commands.map((item) => `validar comando antes de aplicar:${item}`),
           ...workspace.shared_validation_plans.map((item) => `confirmar validação transferida:${item}`),
           ...workspace.shared_recovery_patterns.map((item) => `aplicar recovery só com evidência local:${item}`),
+          ...workspace.shared_spaces.map((item) => `revalidar Space no workspace atual:${item}`),
+          ...workspace.shared_space_brain.map((item) => `revalidar Space Brain no workspace atual:${item}`),
+          ...workspace.shared_live_memory.map((item) => `confirmar memória viva local:${item}`),
+          ...workspace.shared_priority_load.map((item) => `confirmar prioridade local:${item}`),
         ],
         do_not_transfer: ['conteúdo bruto de conversas', 'paths absolutos', 'ids internos'],
         confidence: workspace.overlap_score,
@@ -10922,9 +11674,12 @@ function normalizeLiveExecutionMemoryProjection(raw: unknown): AwisWorkspaceLive
     artifacts,
   })
   if (loadFirst.length === 0 && useAsSummary.length === 0 && validateBeforeTrust.length === 0 && repositories.length === 0 && components.length === 0) return null
+  const source = value.source === 'server_awis_live_execution_memory'
+    ? 'server_awis_live_execution_memory'
+    : 'local_awis_live_execution_memory_compiler'
   return {
     schema_version: 'atlas.awis.live_execution_memory_projection.v1',
-    source: 'local_awis_live_execution_memory_compiler',
+    source,
     readiness_score: normalizePercent(value.readiness_score),
     memory_hash: isString(value.memory_hash) ? sanitizeProviderSafeText(value.memory_hash).slice(0, 120) : `live-${stableStringHash(hashSeed)}`,
     startup_packet: {
@@ -11143,6 +11898,7 @@ function normalizeNextSessionBrainProjection(raw: unknown): AwisWorkspaceNextSes
         working_set_hash: isString(context?.hashes?.working_set_hash) ? context.hashes.working_set_hash : null,
         context_delta_plan_hash: isString(context?.hashes?.context_delta_plan_hash) ? context.hashes.context_delta_plan_hash : null,
         learning_snapshot_hash: isString(context?.hashes?.learning_snapshot_hash) ? context.hashes.learning_snapshot_hash : null,
+        live_execution_memory_hash: isString(context?.hashes?.live_execution_memory_hash) ? context.hashes.live_execution_memory_hash : null,
       },
     },
     safety: {
@@ -11179,6 +11935,7 @@ function buildAwisWorkspaceArtifactManifest(
     ? Object.values(pack.startup_snapshot.readiness).filter(Boolean).length
     : 0
   const loadFirst = unique([
+    ...(pack.memory?.operational.context_gold.space_brain.promoted.map((item) => `space-brain-gold:${item}`) ?? []),
     ...(pack.live_execution_memory?.startup_packet.load_first ?? []),
     ...(pack.launch_contract?.startup_contract.first_load ?? []),
     ...(pack.current_truth_pack?.next_conversation.load_first ?? []),
@@ -11190,8 +11947,10 @@ function buildAwisWorkspaceArtifactManifest(
     ...(pack.topology?.knowledge_map.load_first_docs.map((path) => `doc:${path}`) ?? []),
     ...(pack.topology?.knowledge_map.manifest_refs.map((path) => `manifest:${path}`) ?? []),
     ...(pack.context_kernel?.priority_load.map((item) => `${item.kind}:${item.label}`) ?? []),
+    ...(pack.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.load_first.map((item) => `space-brain:${item}`)) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const validateWith = unique([
+    ...(pack.memory?.operational.context_gold.space_brain.revalidate.map((item) => `space-brain:${item}`) ?? []),
     ...(pack.live_execution_memory?.startup_packet.validate_before_trust ?? []),
     ...(pack.launch_contract?.startup_contract.validate_before_trust ?? []),
     ...(pack.current_truth_pack?.proof.validate_with ?? []),
@@ -11200,6 +11959,7 @@ function buildAwisWorkspaceArtifactManifest(
     ...(pack.startup_briefing?.automation_plan.tests_to_run ?? []),
     ...(pack.topology?.knowledge_map.validation_entrypoints ?? []),
     ...(pack.context_kernel?.validation_plan.commands ?? []),
+    ...(pack.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.validate_before_use.map((item) => `Space:${space.title}:${item}`)) ?? []),
     ...(pack.next_session_brain?.execution_priority.map((priority) => priority.command) ?? []),
     ...(pack.next_session_brain?.context_loading.command_hints ?? []),
     ...(pack.session_gold?.next_session_hooks.validate_with ?? []),
@@ -11209,6 +11969,7 @@ function buildAwisWorkspaceArtifactManifest(
     ...(pack.memory?.stable_commands ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const promoteSignals = unique([
+    ...(pack.memory?.operational.context_gold.space_brain.promoted.map((item) => `space-brain:${item}`) ?? []),
     ...(pack.live_execution_memory?.promotion_rules.promote_to_gold ?? []),
     ...(pack.memory_consolidation?.consolidate.promote_to_gold ?? []),
     ...(pack.launch_contract?.startup_contract.promote_after_success ?? []),
@@ -11218,8 +11979,10 @@ function buildAwisWorkspaceArtifactManifest(
     ...(pack.preflight?.promotion_contract.promote_when ?? []),
     ...(pack.session_gold?.strongest_outcomes.map((outcome) => `session:${outcome.label}:${outcome.confidence}`) ?? []),
     ...(pack.next_session_brain ? [`brain:${pack.next_session_brain.source}:${pack.next_session_brain.readiness_score ?? 0}`] : []),
+    ...(pack.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.automation_hooks.map((item) => `space-brain:${space.title}:${item}`)) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const cautionSignals = unique([
+    ...(pack.memory?.operational.context_gold.space_brain.revalidate.map((item) => `space-brain-revalidate:${item}`) ?? []),
     ...(pack.live_execution_memory?.startup_packet.avoid.map((item) => `live:${item}`) ?? []),
     ...(pack.live_execution_memory?.startup_packet.human_boundary.map((item) => `live-human:${item}`) ?? []),
     ...(pack.launch_contract?.startup_contract.avoid_loading ?? []),
@@ -11231,8 +11994,10 @@ function buildAwisWorkspaceArtifactManifest(
     ...(pack.workspace_mesh?.next_conversation.human_boundary.map((item) => `mesh:${item}`) ?? []),
     ...(pack.topology?.knowledge_map.sensitive_zones.map((zone) => `sensível:${zone}`) ?? []),
     ...(pack.preflight?.gates.filter((gate) => gate.status !== 'ready').map((gate) => `${gate.status}:${gate.label}`) ?? []),
+    ...(pack.spaces?.strongest_spaces.flatMap((space) => space.brain_contract.human_boundary.map((item) => `space-human:${space.title}:${item}`)) ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
   const linkedSpaces = unique([
+    ...(pack.memory?.operational.context_gold.space_brain.promoted.map((item) => `brain:${item}`) ?? []),
     ...(pack.spaces?.strongest_spaces.map((space) => `${space.title}:${space.session_count}`) ?? []),
     ...(pack.startup_snapshot?.startup_gold.strongest_spaces ?? []),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
@@ -11292,6 +12057,65 @@ function buildAwisWorkspaceArtifactManifest(
       bounded: true,
       provider_safe: true,
     },
+  }
+}
+
+function normalizeSpaceBrainContract(
+  pack: AwisWorkspaceSpacePackInput,
+): AwisWorkspaceSpaceProjection['strongest_spaces'][number]['brain_contract'] {
+  const contract = pack.brain_contract
+  const state = contract?.state === 'vivo' || contract?.state === 'pronto' || contract?.state === 'leve'
+    ? contract.state
+    : pack.decision_count + pack.pending_count + pack.risk_count + pack.artifact_count > 0
+      ? 'vivo'
+      : pack.message_count >= 2 ? 'pronto' : 'leve'
+  const loadFirst = unique([
+    ...(contract?.load_first ?? []),
+    `Space:${pack.title}`,
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const carryForward = unique([
+    ...(contract?.carry_forward ?? []),
+    `${pack.thread_count} sessões relacionadas`,
+    `${pack.message_count} mensagens resumidas`,
+    ...pack.recommended_use,
+  ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
+  const validateBeforeUse = unique([
+    ...(contract?.validate_before_use ?? []),
+    pack.risk_count > 0 ? 'revalidar riscos do Space' : null,
+    pack.pending_count > 0 ? 'checar pendências antes de executar' : null,
+    pack.artifact_count > 0 ? 'confirmar artifact/context pack ainda atual' : null,
+  ].filter(isString).map(sanitizeProviderSafeText)).slice(0, MAX_STARTUP_ITEMS)
+  const automationHooks = unique([
+    ...(contract?.automation_hooks ?? []),
+    'atualizar pack quando sessão do Space mudar',
+    pack.message_count >= 2 ? 'promover resumo do Space para próxima conversa' : null,
+  ].filter(isString).map(sanitizeProviderSafeText)).slice(0, MAX_STARTUP_ITEMS)
+  const humanBoundary = unique([
+    ...(contract?.human_boundary ?? []),
+    pack.risk_count > 0 ? 'humano confirma mudança em área de risco' : null,
+    pack.pending_count > 0 ? 'humano decide pendência ambígua' : null,
+  ].filter(isString).map(sanitizeProviderSafeText)).slice(0, MAX_STARTUP_ITEMS)
+  const artifactRefs = unique((contract?.artifact_refs ?? [])
+    .map(sanitizeProviderSafeText)
+    .filter(isString))
+    .slice(0, MAX_STARTUP_ITEMS)
+  const evidence = unique([
+    ...(contract?.evidence ?? []),
+    `${pack.thread_count} sessões protegidas`,
+    pack.decision_count > 0 ? `${pack.decision_count} decisão(ões)` : null,
+    pack.pending_count > 0 ? `${pack.pending_count} pendência(s)` : null,
+    pack.risk_count > 0 ? `${pack.risk_count} risco(s)` : null,
+    pack.artifact_count > 0 ? `${pack.artifact_count} artifact(s)` : null,
+  ].filter(isString).map(sanitizeProviderSafeText)).slice(0, MAX_STARTUP_ITEMS)
+  return {
+    state,
+    load_first: loadFirst,
+    carry_forward: carryForward,
+    validate_before_use: validateBeforeUse,
+    automation_hooks: automationHooks,
+    human_boundary: humanBoundary,
+    artifact_refs: artifactRefs,
+    evidence,
   }
 }
 
@@ -11482,6 +12306,10 @@ function normalizeOutcomes(raw: unknown): AwisWorkspaceMemoryOutcome[] {
       contextGoldLabels: normalizeContextGoldLabels(item.contextGoldLabels),
       validationCommands: normalizeStringList(item.validationCommands, MAX_STARTUP_ITEMS),
       componentKeys: normalizeComponentKeys(item.componentKeys),
+      spaceLabels: normalizeStringList(item.spaceLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      spaceBrainLabels: normalizeStringList(item.spaceBrainLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      liveMemoryLabels: normalizeStringList(item.liveMemoryLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
+      priorityLoadLabels: normalizeStringList(item.priorityLoadLabels, MAX_STARTUP_ITEMS).map(sanitizeProviderSafeText).filter(isString),
     }))
     .slice(0, MAX_RECENT_OUTCOMES)
 }
@@ -11494,6 +12322,14 @@ function normalizeMaintenanceEvents(raw: unknown): AwisWorkspaceMaintenanceEvent
     'open_side_by_side',
     'update_space_pack',
     'revalidate_context',
+    'replay_artifacts',
+    'record_outcome',
+    'revalidate_command',
+    'review_risk',
+    'cross_workspace_transfer',
+    'promote_command',
+    'demote_context',
+    'transfer_learning',
   ])
   const statuses = new Set(['succeeded', 'failed', 'skipped'])
   return raw
@@ -11529,6 +12365,60 @@ function normalizeContextGoldLabels(raw: unknown): string[] {
 
 function contextGoldLabel(kind: AwisWorkspaceTaskContextProjection['recommended_context']['task_gold'][number]['kind'], label: string): string {
   return `${kind}:${sanitizeProviderSafeText(label).slice(0, 120)}`
+}
+
+function selectSpaceBrainForTask(
+  spaces: AwisWorkspaceSpaceProjection | null | undefined,
+  promptSignals: string[],
+  taskKind: AwisWorkspaceTaskContextProjection['task_kind'],
+  contextGold: NonNullable<NonNullable<AwisWorkspaceContextPack['memory']>['operational']['context_gold']> | null = null,
+): AwisWorkspaceTaskContextProjection['recommended_context']['space_brain'] {
+  const signals = promptSignals.map((signal) => signal.toLowerCase())
+  const promoted = contextGold?.space_brain.promoted ?? []
+  const revalidate = contextGold?.space_brain.revalidate ?? []
+  return (spaces?.strongest_spaces ?? [])
+    .map((space) => {
+      const haystack = [
+        space.title,
+        space.scope_label,
+        ...space.recommended_use,
+        ...space.brain_contract.load_first,
+        ...space.brain_contract.carry_forward,
+        ...space.brain_contract.evidence,
+        ...space.session_summaries.map((session) => session.title),
+      ].join(' ').toLowerCase()
+      const matchScore = signals.filter((signal) => haystack.includes(signal)).length * 10
+      const taskBoost = taskKind === 'analysis' || taskKind === 'research'
+        ? 8
+        : taskKind === 'bug_fix' || taskKind === 'code_change'
+          ? space.reusable_by.some((item) => /code|forge/i.test(item)) ? 8 : 0
+          : 0
+      const promotedMatches = promoted.filter((item) => item.toLowerCase().includes(space.title.toLowerCase()))
+      const revalidateMatches = revalidate.filter((item) => item.toLowerCase().includes(space.title.toLowerCase()))
+      const score = Math.min(100, Math.max(0, space.strength_score + matchScore + taskBoost + promotedMatches.length * 12 - revalidateMatches.length * 16))
+      return { space, score, promotedMatches, revalidateMatches }
+    })
+    .filter(({ space, score }) => score >= 18 || space.brain_contract.state === 'vivo')
+    .sort((a, b) => b.score - a.score || a.space.title.localeCompare(b.space.title))
+    .slice(0, 2)
+    .map(({ space, score, promotedMatches, revalidateMatches }) => ({
+      title: space.title,
+      state: revalidateMatches.length > 0 ? 'leve' : space.brain_contract.state,
+      load_first: space.brain_contract.load_first.slice(0, MAX_STARTUP_ITEMS),
+      carry_forward: unique([
+        ...promotedMatches.map((item) => `promovido por outcome:${item}`),
+        ...space.brain_contract.carry_forward,
+      ]).slice(0, MAX_STARTUP_ITEMS),
+      validate_before_use: unique([
+        ...revalidateMatches.map((item) => `revalidar outcome:${item}`),
+        ...space.brain_contract.validate_before_use,
+      ]).slice(0, MAX_STARTUP_ITEMS),
+      automation_hooks: space.brain_contract.automation_hooks.slice(0, MAX_STARTUP_ITEMS),
+      human_boundary: space.brain_contract.human_boundary.slice(0, MAX_STARTUP_ITEMS),
+      artifact_refs: space.brain_contract.artifact_refs.slice(0, MAX_STARTUP_ITEMS),
+      evidence: space.brain_contract.evidence.slice(0, MAX_STARTUP_ITEMS),
+      confidence: Math.min(100, Math.max(0, Math.round(score))),
+    }))
 }
 
 function sanitizeRouteKey(value: unknown): string | null {
@@ -11574,6 +12464,26 @@ function spacePackStrength(pack: AwisWorkspaceSpacePackInput): number {
     + pack.risk_count * 3
     + pack.artifact_count * 5
     + pack.mode_count
+}
+
+function spacePackFreshness(pack: AwisWorkspaceSpacePackInput): 'recente' | 'estavel' | 'frio' {
+  const latestSessionAt = pack.sessions
+    .map((session) => session.last_active_at)
+    .filter(isString)
+    .map((value) => Date.parse(value))
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a)[0]
+  const generatedAt = pack.generated_at ? Date.parse(pack.generated_at) : NaN
+  const timestamp = Number.isFinite(latestSessionAt)
+    ? latestSessionAt
+    : Number.isFinite(generatedAt)
+      ? generatedAt
+      : NaN
+  if (!Number.isFinite(timestamp)) return 'estavel'
+  const ageMs = Date.now() - timestamp
+  if (ageMs <= 1000 * 60 * 60 * 24 * 3) return 'recente'
+  if (ageMs <= 1000 * 60 * 60 * 24 * 21) return 'estavel'
+  return 'frio'
 }
 
 function collectFailureSignatureStats(
@@ -12456,7 +13366,7 @@ function contextGoldLabelsForRelation(memory: AwisWorkspaceMemorySnapshot): stri
   const operationalGold = buildContextGoldOperationalMemory(memory)
   return unique([
     ...operationalGold.promoted,
-    ...memory.recentOutcomes.flatMap((outcome) => isFailedOutcome(outcome.status) ? [] : outcome.contextGoldLabels),
+    ...memory.recentOutcomes.flatMap((outcome) => isFailedOutcome(outcome.status) ? [] : contextGoldLabelsForOutcome(outcome)),
   ].map(sanitizeProviderSafeText).filter(isString)).slice(0, MAX_STARTUP_ITEMS)
 }
 
@@ -12492,6 +13402,42 @@ function recoveryPatternLabelsForRelation(memory: AwisWorkspaceMemorySnapshot): 
     .slice(0, MAX_STARTUP_ITEMS)
 }
 
+function spaceLabelsForRelation(memory: AwisWorkspaceMemorySnapshot): string[] {
+  return unique(memory.recentOutcomes
+    .filter((outcome) => !isFailedOutcome(outcome.status))
+    .flatMap((outcome) => outcome.spaceLabels)
+    .map(sanitizeProviderSafeText)
+    .filter(isString))
+    .slice(0, MAX_STARTUP_ITEMS)
+}
+
+function spaceBrainLabelsForRelation(memory: AwisWorkspaceMemorySnapshot): string[] {
+  return unique(memory.recentOutcomes
+    .filter((outcome) => !isFailedOutcome(outcome.status))
+    .flatMap((outcome) => outcome.spaceBrainLabels)
+    .map(sanitizeProviderSafeText)
+    .filter(isString))
+    .slice(0, MAX_STARTUP_ITEMS)
+}
+
+function liveMemoryLabelsForRelation(memory: AwisWorkspaceMemorySnapshot): string[] {
+  return unique(memory.recentOutcomes
+    .filter((outcome) => !isFailedOutcome(outcome.status))
+    .flatMap((outcome) => outcome.liveMemoryLabels)
+    .map(sanitizeProviderSafeText)
+    .filter(isString))
+    .slice(0, MAX_STARTUP_ITEMS)
+}
+
+function priorityLoadLabelsForRelation(memory: AwisWorkspaceMemorySnapshot): string[] {
+  return unique(memory.recentOutcomes
+    .filter((outcome) => !isFailedOutcome(outcome.status))
+    .flatMap((outcome) => outcome.priorityLoadLabels)
+    .map(sanitizeProviderSafeText)
+    .filter(isString))
+    .slice(0, MAX_STARTUP_ITEMS)
+}
+
 function overlap(left: string[], right: string[]): string[] {
   const rightSet = new Set(right.map((item) => item.toLowerCase()))
   return left.filter((item) => rightSet.has(item.toLowerCase()))
@@ -12515,11 +13461,19 @@ function relationTransferHints(
   contextGold: string[] = [],
   validationPlans: string[] = [],
   recoveryPatterns: string[] = [],
+  spaces: string[] = [],
+  spaceBrain: string[] = [],
+  liveMemory: string[] = [],
+  priorityLoad: string[] = [],
 ): string[] {
   return unique([
     contextGold.length > 0 ? `ouro compatível: ${contextGold[0]}` : null,
     validationPlans.length > 0 ? `validação compatível: ${validationPlans[0]}` : null,
     recoveryPatterns.length > 0 ? `recovery compatível: ${recoveryPatterns[0]}` : null,
+    spaces.length > 0 ? `Space compatível: ${spaces[0]}` : null,
+    spaceBrain.length > 0 ? `Space Brain transferível: ${spaceBrain[0]}` : null,
+    liveMemory.length > 0 ? `memória viva compatível: ${liveMemory[0]}` : null,
+    priorityLoad.length > 0 ? `prioridade compatível: ${priorityLoad[0]}` : null,
     languages.length > 0 ? `stack compatível: ${languages.slice(0, 2).join(', ')}` : null,
     commands.length > 0 ? `validar comando equivalente: ${commands[0]}` : null,
     signals.length > 0 ? `reusar padrão abstrato: ${signals[0]}` : null,

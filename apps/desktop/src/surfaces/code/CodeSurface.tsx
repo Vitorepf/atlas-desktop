@@ -94,6 +94,9 @@ export function CodeSurface({ bridge: b, boot }: CodeSurfaceProps) {
             atlasCodeEnterpriseCertification={b.atlasCodeEnterpriseCertification}
             selfConstruction={b.selfConstruction}
             programmingGovernance={b.programmingGovernance}
+            activeWorkspaceSlug={b.activeWorkspaceSlug}
+            onSetActiveWorkspaceSlug={b.setActiveWorkspaceSlug}
+            onRefreshWorkspaces={b.refreshWorkspaces}
             boot={boot}
             busy={b.busy}
             onSignReceipt={b.signReceipt}

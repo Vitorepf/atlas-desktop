@@ -42,6 +42,8 @@ assert.equal(blocked.schema_version, 'atlas.frontend.desktop_competitive_readine
 assert.equal(blocked.status, 'blocked')
 assert.equal(blocked.claim_policy.space_runtime_required, false)
 assert.equal(blocked.claim_policy.world_best_claim_allowed, false)
+assert.equal(blocked.claim_policy.private_benchmark_for_internal_improvement_only, true)
+assert.equal(blocked.claim_policy.public_superiority_claims_disabled, true)
 assert.equal(blocked.proof_contract.status, 'not_available')
 assert.equal(blocked.operator_packet_verification.status, 'not_available')
 assert.equal(blocked.proof_bundle.status, 'unknown')
@@ -51,7 +53,7 @@ assert.ok(blocked.blockers.includes('rival_replay_runner_kit_prepared'))
 assert.ok(blocked.blockers.includes('operator_packet_verified'))
 assert.ok(blocked.blockers.includes('competitive_proof_bundle_compiled'))
 assert.ok(blocked.blockers.includes('external_rival_replay_receipts'))
-assert.ok(blocked.blockers.includes('public_distribution_receipt_verified'))
+assert.equal(blocked.proof_ladder.find((item) => item.id === 'optional_publication_receipt_verified')?.status, 'missing')
 assert.ok(blocked.hard_questions.some((question) => question.includes('Impeccable')))
 assert.ok(blocked.hard_questions.some((question) => question.includes('operator packet')))
 
@@ -170,7 +172,7 @@ assert.equal(proofBundleCompiled.proof_ladder.find((item) => item.id === 'compet
 assert.equal(proofBundleCompiled.proof_bundle.status, 'pending_external_replay_evidence')
 assert.deepEqual(proofBundleCompiled.proof_bundle.required_next_actions, ['fill_and_hash_missing_rival_replay_evidence_packs'])
 assert.ok(proofBundleCompiled.blockers.includes('external_rival_replay_receipts'))
-assert.ok(proofBundleCompiled.blockers.includes('public_distribution_receipt_verified'))
+assert.equal(proofBundleCompiled.blockers.includes('optional_publication_receipt_verified'), false)
 
 const publicationVerified = buildAtlasFrontendCompetitiveReadiness({
   artifactPlan,
@@ -188,7 +190,7 @@ const publicationVerified = buildAtlasFrontendCompetitiveReadiness({
   },
 })
 assert.equal(publicationVerified.status, 'publication_verified')
-assert.equal(publicationVerified.proof_ladder.find((item) => item.id === 'public_distribution_receipt_verified')?.status, 'passed')
+assert.equal(publicationVerified.proof_ladder.find((item) => item.id === 'optional_publication_receipt_verified')?.status, 'passed')
 assert.equal(publicationVerified.publication.status, 'public_verified')
 assert.equal(publicationVerified.publication.public_receipt_status, 'verified')
 
@@ -215,11 +217,11 @@ const handoffReady = buildAtlasFrontendCompetitiveReadiness({
   },
 })
 assert.equal(handoffReady.status, 'certified_handoff_ready')
-assert.equal(handoffReady.claim_policy.local_certification_is_not_world_best_proof, true)
+assert.equal(handoffReady.claim_policy.local_certification_is_not_private_benchmark_proof, true)
 assert.equal(handoffReady.proof_ladder.find((item) => item.id === 'external_rival_replay_receipts')?.status, 'missing')
 assert.ok(handoffReady.blockers.includes('external_rival_replay_receipts'))
 
-const worldBestReady = buildAtlasFrontendCompetitiveReadiness({
+const privateBenchmarkReady = buildAtlasFrontendCompetitiveReadiness({
   artifactPlan,
   reports: {
     prepare_rival_replay: envelope('atlas.frontend.workspace_api.prepare_rival_replay.v1', {
@@ -235,51 +237,43 @@ const worldBestReady = buildAtlasFrontendCompetitiveReadiness({
       },
       claim_policy: {
         may_claim_external_replay_completed: true,
-        may_claim_world_best_frontend_system: true,
+        may_claim_world_best_frontend_system: false,
       },
       competitive_proof_contract: {
-        status: 'world_best_proof_ready',
-        next_minimum_actions: ['preserve_verified_replay_evidence_and_publish_world_best_proof_packet'],
+        status: 'private_benchmark_ready',
+        next_minimum_actions: ['preserve_verified_replay_evidence_and_record_private_improvement_memory'],
         claim_policy: {
-          may_claim_world_best_frontend_system: true,
+          may_claim_world_best_frontend_system: false,
         },
       },
     }, {
-      world_best_claim_allowed: true,
+      world_best_claim_allowed: false,
     }),
     proof_bundle: envelope('atlas.frontend.workspace_api.proof_bundle.v1', {
-      status: 'world_best_replay_proof_ready',
+      status: 'private_benchmark_ready',
       proof_bundle_schema_version: 'atlas.frontend.rival_replay_competitive_proof_bundle.v1',
       readiness: {
         external_replay_completed: true,
       },
-      required_next_actions: ['preserve_verified_replay_evidence_and_attach_public_distribution_receipt_before_product_world_best_claim'],
+      required_next_actions: ['preserve_verified_replay_evidence_and_record_private_improvement_memory'],
       claim_policy: {
-        may_claim_world_best_frontend_system: true,
+        may_claim_world_best_frontend_system: false,
       },
     }, {
-      world_best_claim_allowed: true,
-    }),
-    publication_verify: envelope('atlas.frontend.workspace_api.publication_verify.v1', {
-      status: 'public_verified',
-      public_receipt_status: 'verified',
-      claim_policy: {
-        public_distribution_claim_allowed: true,
-      },
-    }, {
-      customer_handoff_allowed: true,
+      world_best_claim_allowed: false,
     }),
   },
 })
-assert.equal(worldBestReady.status, 'world_best_proof_ready')
-assert.equal(worldBestReady.claim_policy.world_best_claim_allowed, true)
-assert.equal(worldBestReady.proof_ladder.find((item) => item.id === 'external_rival_replay_receipts')?.status, 'passed')
-assert.equal(worldBestReady.proof_ladder.find((item) => item.id === 'operator_packet_verified')?.status, 'passed')
-assert.equal(worldBestReady.proof_ladder.find((item) => item.id === 'competitive_proof_bundle_compiled')?.status, 'passed')
-assert.equal(worldBestReady.proof_ladder.find((item) => item.id === 'public_distribution_receipt_verified')?.status, 'passed')
-assert.equal(worldBestReady.proof_ladder.find((item) => item.id === 'competitive_proof_contract_ready')?.status, 'passed')
-assert.equal(worldBestReady.proof_contract.status, 'world_best_proof_ready')
-assert.equal(worldBestReady.operator_packet_verification.status, 'passed')
-assert.equal(worldBestReady.proof_bundle.status, 'world_best_replay_proof_ready')
+assert.equal(privateBenchmarkReady.status, 'private_benchmark_ready')
+assert.equal(privateBenchmarkReady.claim_policy.world_best_claim_allowed, false)
+assert.equal(privateBenchmarkReady.claim_policy.public_superiority_claims_disabled, true)
+assert.equal(privateBenchmarkReady.proof_ladder.find((item) => item.id === 'external_rival_replay_receipts')?.status, 'passed')
+assert.equal(privateBenchmarkReady.proof_ladder.find((item) => item.id === 'operator_packet_verified')?.status, 'passed')
+assert.equal(privateBenchmarkReady.proof_ladder.find((item) => item.id === 'competitive_proof_bundle_compiled')?.status, 'passed')
+assert.equal(privateBenchmarkReady.proof_ladder.find((item) => item.id === 'optional_publication_receipt_verified')?.status, 'missing')
+assert.equal(privateBenchmarkReady.proof_ladder.find((item) => item.id === 'private_benchmark_contract_ready')?.status, 'passed')
+assert.equal(privateBenchmarkReady.proof_contract.status, 'private_benchmark_ready')
+assert.equal(privateBenchmarkReady.operator_packet_verification.status, 'passed')
+assert.equal(privateBenchmarkReady.proof_bundle.status, 'private_benchmark_ready')
 
 console.log('ok - Atlas Frontend competitive readiness keeps rival proof honest')

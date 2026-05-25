@@ -1,7 +1,7 @@
 import type { AtlasFrontendWorkspaceApiEnvelope } from './api.ts'
 import type { AtlasFrontendArtifactPlan } from './artifactDefaults.ts'
 
-export type AtlasFrontendCompetitiveReadinessStatus = 'blocked' | 'evidence_ready' | 'rival_replay_prepared' | 'rival_replay_inspected' | 'proof_bundle_compiled' | 'publication_verified' | 'certified_handoff_ready' | 'world_best_proof_ready'
+export type AtlasFrontendCompetitiveReadinessStatus = 'blocked' | 'evidence_ready' | 'rival_replay_prepared' | 'rival_replay_inspected' | 'proof_bundle_compiled' | 'publication_verified' | 'certified_handoff_ready' | 'private_benchmark_ready'
 
 export interface AtlasFrontendCompetitiveReadiness {
   schema_version: 'atlas.frontend.desktop_competitive_readiness.v1'
@@ -38,7 +38,9 @@ export interface AtlasFrontendCompetitiveReadiness {
     frontend_app_is_subscope_only: true
     space_runtime_required: false
     provider_dispatch_performed_by_panel: false
-    local_certification_is_not_world_best_proof: true
+    local_certification_is_not_private_benchmark_proof: true
+    private_benchmark_for_internal_improvement_only: true
+    public_superiority_claims_disabled: true
     world_best_claim_allowed: boolean
   }
 }
@@ -66,7 +68,7 @@ export function buildAtlasFrontendCompetitiveReadiness(input: {
   const rivalReplayActionQueueCompiled = rivalReplayInspected
     && payloadString(rivalReplayInspection.payload, ['action_queue', 'schema_version']) === 'atlas.frontend.rival_replay_evidence_worklist.v1'
   const proofContractStatus = payloadString(rivalReplayInspection?.payload, ['competitive_proof_contract', 'status']) || 'not_available'
-  const proofContractWorldBestAllowed = payloadBoolean(rivalReplayInspection?.payload, ['competitive_proof_contract', 'claim_policy', 'may_claim_world_best_frontend_system'])
+  const proofContractComplete = ['private_benchmark_ready', 'world_best_proof_ready'].includes(proofContractStatus)
   const proofBundleStatus = payloadStatus(proofBundle?.payload)
   const proofBundleCompiled = proofBundle?.transport_status === 'ok'
     && payloadString(proofBundle.payload, ['proof_bundle_schema_version']) === 'atlas.frontend.rival_replay_competitive_proof_bundle.v1'
@@ -75,15 +77,11 @@ export function buildAtlasFrontendCompetitiveReadiness(input: {
   const publicationVerified = publication?.transport_status === 'ok'
     && payloadStatus(publication.payload) === 'public_verified'
     && payloadBoolean(publication.payload, ['claim_policy', 'public_distribution_claim_allowed'])
-  const worldBestProofReady = rivalReplayInspection?.meta.world_best_claim_allowed === true
-    && proofBundle?.meta.world_best_claim_allowed === true
-    && payloadBoolean(rivalReplayInspection.payload, ['claim_policy', 'may_claim_world_best_frontend_system'])
-    && payloadBoolean(proofBundle?.payload, ['claim_policy', 'may_claim_world_best_frontend_system'])
+  const privateBenchmarkReady = externalReplayCompleted
     && operatorPacketVerified
-    && proofBundleStatus === 'world_best_replay_proof_ready'
-    && proofContractStatus === 'world_best_proof_ready'
-    && proofContractWorldBestAllowed
-    && publicationVerified
+    && proofBundleCompiled
+    && ['private_benchmark_ready', 'world_best_replay_proof_ready'].includes(proofBundleStatus)
+    && proofContractComplete
   const runCertified = certification?.transport_status === 'ok'
     && ['certified', 'warning'].includes(payloadStatus(certification.payload))
     && certification.meta.frontend_completion_claim_allowed === true
@@ -99,17 +97,18 @@ export function buildAtlasFrontendCompetitiveReadiness(input: {
     { id: 'rival_replay_inspected', status: rivalReplayInspected ? 'passed' : 'missing', label: 'external rival replay evidence inspected by backend' },
     { id: 'rival_replay_action_queue_compiled', status: rivalReplayActionQueueCompiled ? 'passed' : 'missing', label: 'safe action queue names missing evidence, attestations and external receipts' },
     { id: 'competitive_proof_bundle_compiled', status: proofBundleCompiled ? 'passed' : 'missing', label: 'provider-safe proof bundle indexes replay evidence without raw artifacts' },
-    { id: 'competitive_proof_contract_ready', status: proofContractStatus === 'world_best_proof_ready' ? 'passed' : 'missing', label: 'backend proof contract authorizes the strongest market claim' },
+    { id: 'private_benchmark_contract_ready', status: proofContractComplete ? 'passed' : 'missing', label: 'backend proof contract proves the private benchmark without authorizing public claims' },
     { id: 'run_certified', status: runCertified ? 'passed' : 'missing', label: 'post-provider run certification allows completion claim' },
     { id: 'customer_handoff_ready', status: handoffReady ? 'passed' : 'missing', label: 'customer-safe handoff compiled from certified evidence' },
     { id: 'external_rival_replay_receipts', status: externalReplayCompleted ? 'passed' : 'missing', label: 'external rival replay receipts against Impeccable and Claude Design' },
-    { id: 'public_distribution_receipt_verified', status: publicationVerified ? 'passed' : 'missing', label: 'public publication receipt matches the product proof bundle' },
+    { id: 'optional_publication_receipt_verified', status: publicationVerified ? 'passed' : 'missing', label: 'optional publication receipt matches the product proof bundle without enabling public superiority claims' },
   ] as AtlasFrontendCompetitiveReadiness['proof_ladder']
   const blockers = proofLadder
+    .filter((item) => item.id !== 'optional_publication_receipt_verified')
     .filter((item) => item.status !== 'passed')
     .map((item) => item.id)
-  const status: AtlasFrontendCompetitiveReadinessStatus = worldBestProofReady
-    ? 'world_best_proof_ready'
+  const status: AtlasFrontendCompetitiveReadinessStatus = privateBenchmarkReady
+    ? 'private_benchmark_ready'
     : handoffReady
     ? 'certified_handoff_ready'
     : publicationVerified ? 'publication_verified' : proofBundleCompiled ? 'proof_bundle_compiled' : rivalReplayInspected ? 'rival_replay_inspected' : rivalReplayPrepared ? 'rival_replay_prepared' : evidencePrepared ? 'evidence_ready' : 'blocked'
@@ -126,7 +125,7 @@ export function buildAtlasFrontendCompetitiveReadiness(input: {
       'tem como deixar ainda mais impecavel?',
       'operator packet esta verificado sem path bruto e sem dispatch falso?',
       'proof bundle competitivo foi compilado sem guardar artefato bruto?',
-      'publication receipt publico foi verificado contra o bundle?',
+      'benchmark privado ja gerou aprendizado operacional sem claim publico?',
       'existe evidencia real ou so preparacao local?',
     ],
     blockers,
@@ -154,8 +153,10 @@ export function buildAtlasFrontendCompetitiveReadiness(input: {
       frontend_app_is_subscope_only: true,
       space_runtime_required: false,
       provider_dispatch_performed_by_panel: false,
-      local_certification_is_not_world_best_proof: true,
-      world_best_claim_allowed: worldBestProofReady,
+      local_certification_is_not_private_benchmark_proof: true,
+      private_benchmark_for_internal_improvement_only: true,
+      public_superiority_claims_disabled: true,
+      world_best_claim_allowed: false,
     },
   }
 }

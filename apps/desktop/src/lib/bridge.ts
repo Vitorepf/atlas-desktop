@@ -187,6 +187,26 @@ export interface AtlasWorkspaceBrainSnapshot {
   notes: string[]
 }
 
+export interface AtlasAwisNativeMemoryWriteAck {
+  ok: boolean
+  persistedAt: string
+  memoryCount: number
+}
+
+export interface AtlasAwisNativeArtifactWriteAck {
+  ok: boolean
+  persistedAt: string
+  workspaceCount: number
+  artifactCount: number
+}
+
+export interface AtlasAwisNativeProjectSpacesWriteAck {
+  ok: boolean
+  persistedAt: string
+  spaceCount: number
+  receiptCount: number
+}
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown
@@ -737,6 +757,114 @@ export const bridge = {
         commands: [],
         notes: ['mapa local indisponível'],
       }
+    }
+  },
+
+  async loadAwisWorkspaceMemoryStore(): Promise<Record<string, unknown> | null> {
+    if (MODE !== 'tauri') return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_awis_memory_load_all')
+      return objectValue(raw)
+    } catch (e) {
+      console.warn('[bridge] AWIS native memory load failed', e)
+      return null
+    }
+  },
+
+  async saveAwisWorkspaceMemory(workspaceKey: string, memory: unknown): Promise<AtlasAwisNativeMemoryWriteAck | null> {
+    if (MODE !== 'tauri') return null
+    const key = workspaceKey.trim()
+    if (!key) return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_awis_memory_save', {
+        input: {
+          workspace_key: key,
+          workspaceKey: key,
+          memory,
+        },
+      })
+      const record = objectValue(raw)
+      return {
+        ok: Boolean(record.ok),
+        persistedAt: stringValue(record.persistedAt ?? record.persisted_at),
+        memoryCount: numberValue(record.memoryCount ?? record.memory_count),
+      }
+    } catch (e) {
+      console.warn('[bridge] AWIS native memory save failed', e)
+      return null
+    }
+  },
+
+  async loadAwisWorkspaceArtifactStore(): Promise<Record<string, unknown> | null> {
+    if (MODE !== 'tauri') return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_awis_artifacts_load_all')
+      return objectValue(raw)
+    } catch (e) {
+      console.warn('[bridge] AWIS native artifact load failed', e)
+      return null
+    }
+  },
+
+  async saveAwisWorkspaceArtifacts(workspaceKey: string, artifacts: unknown[]): Promise<AtlasAwisNativeArtifactWriteAck | null> {
+    if (MODE !== 'tauri') return null
+    const key = workspaceKey.trim()
+    if (!key) return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_awis_artifacts_save', {
+        input: {
+          workspace_key: key,
+          workspaceKey: key,
+          artifacts,
+        },
+      })
+      const record = objectValue(raw)
+      return {
+        ok: Boolean(record.ok),
+        persistedAt: stringValue(record.persistedAt ?? record.persisted_at),
+        workspaceCount: numberValue(record.workspaceCount ?? record.workspace_count),
+        artifactCount: numberValue(record.artifactCount ?? record.artifact_count),
+      }
+    } catch (e) {
+      console.warn('[bridge] AWIS native artifact save failed', e)
+      return null
+    }
+  },
+
+  async loadAwisProjectSpacesStore(): Promise<{ spaces: unknown[]; receipts: unknown[] } | null> {
+    if (MODE !== 'tauri') return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_awis_project_spaces_load_all')
+      const record = objectValue(raw)
+      return {
+        spaces: Array.isArray(record.spaces) ? record.spaces : [],
+        receipts: Array.isArray(record.receipts) ? record.receipts : [],
+      }
+    } catch (e) {
+      console.warn('[bridge] AWIS native project Spaces load failed', e)
+      return null
+    }
+  },
+
+  async saveAwisProjectSpacesStore(spaces: unknown[], receipts: unknown[]): Promise<AtlasAwisNativeProjectSpacesWriteAck | null> {
+    if (MODE !== 'tauri') return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_awis_project_spaces_save', {
+        input: {
+          spaces,
+          receipts,
+        },
+      })
+      const record = objectValue(raw)
+      return {
+        ok: Boolean(record.ok),
+        persistedAt: stringValue(record.persistedAt ?? record.persisted_at),
+        spaceCount: numberValue(record.spaceCount ?? record.space_count),
+        receiptCount: numberValue(record.receiptCount ?? record.receipt_count),
+      }
+    } catch (e) {
+      console.warn('[bridge] AWIS native project Spaces save failed', e)
+      return null
     }
   },
 

@@ -113,7 +113,12 @@ fn open_linux(workspace_path: &str, command: Option<&str>) -> Result<String, Str
         (
             "xdg-terminal-exec",
             command
-                .map(|c| vec![format!("--working-directory={}", workspace_path), c.to_string()])
+                .map(|c| {
+                    vec![
+                        format!("--working-directory={}", workspace_path),
+                        c.to_string(),
+                    ]
+                })
                 .unwrap_or_else(|| vec![format!("--working-directory={}", workspace_path)]),
         ),
         (
@@ -217,11 +222,9 @@ mod tests {
 
     #[test]
     fn returns_blocker_when_workspace_missing() {
-        let r = bridge_open_terminal_in_workspace(
-            "/tmp/atlas-nonexistent-xyz-123".to_string(),
-            None,
-        )
-        .expect("ok");
+        let r =
+            bridge_open_terminal_in_workspace("/tmp/atlas-nonexistent-xyz-123".to_string(), None)
+                .expect("ok");
         assert!(!r.ok);
         assert_eq!(r.method, "preflight");
         assert!(r.error.is_some());

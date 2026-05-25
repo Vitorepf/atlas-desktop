@@ -19,7 +19,9 @@ import {
   savedProjectSpaceKeyFromFusion,
   serializeLocalProjectSpaces,
   serializeLocalSavedProjectSpaceReceipts,
+  summarizeLocalProjectSpaceBrainSignals,
   suggestedProjectSpaceThreadIds,
+  touchLocalProjectSpacesFromThreads,
   type LocalProjectSpace,
   type LocalSavedProjectSpaceReceipt,
 } from '../components/AtlasAiThreadList'
@@ -248,6 +250,26 @@ test('AWIS Space persistence · after threads load, a saved Space is not deleted
   assert.deepEqual(next, baseSpaces)
 })
 
+test('AWIS Space persistence · saved Space freshness follows activity from sessions inside it', () => {
+  const next = touchLocalProjectSpacesFromThreads(baseSpaces, [
+    thread({
+      id: 'thread-b',
+      title: 'Sessão ativa',
+      updated_at: '2026-05-23T15:30:00.000Z',
+    }),
+    thread({
+      id: 'thread-x',
+      title: 'Fora do Space',
+      updated_at: '2026-05-25T15:30:00.000Z',
+    }),
+  ])
+
+  assert.equal(next[0].updatedAt, '2026-05-23T15:30:00.000Z')
+  assert.equal(next[1].updatedAt, createdAt)
+  assert.equal(next[0].title, 'Fluxo Atlas AI')
+  assert.deepEqual(next[0].threadIds, ['thread-a', 'thread-b', 'thread-c'])
+})
+
 test('AWIS Space lifecycle · desfazer Space removes the entire group only', () => {
   const next = removeLocalProjectSpace(baseSpaces, 'thread-a|thread-b|thread-c')
 
@@ -474,6 +496,60 @@ test('AWIS Space brain · turns a Space into safe reusable context, not just gro
   assert.equal(brain.artifactCount, 1)
   assert.deepEqual(brain.reusableBy, ['Atlas AI', 'Code', 'Forge', 'packs'])
   assert.deepEqual(brain.recommendedActions, ['gerar pack seguro', 'trabalhar lado a lado', 'revisar pendências'])
+})
+
+test('AWIS Space brain contract carries reusable operational context without raw sessions', () => {
+  const pack = buildLocalProjectSpaceContextPack({
+    title: 'Cérebro vivo AWIS',
+    source: 'local_space',
+    generatedAt: createdAt,
+    threads: [
+      thread({
+        id: 'a',
+        title: 'Decisão aprovada para preservar artifact',
+        message_count: 4,
+        metadata: { atlas_mode: 'programming', decision_count: 1, artifact_refs: ['artifact-pack-a'] },
+      }),
+      thread({
+        id: 'b',
+        title: 'Pendência de risco no Workbench',
+        message_count: 3,
+        metadata: { atlas_mode: 'research', blocker_count: 1, risk_count: 1 },
+      }),
+    ],
+  })
+
+  assert.equal(pack.brain_contract.state, 'vivo')
+  assert.ok(pack.brain_contract.load_first.includes('Space:Cérebro vivo AWIS'))
+  assert.ok(pack.brain_contract.carry_forward.includes('artifact:artifact-pack-a'))
+  assert.ok(pack.brain_contract.validate_before_use.includes('revalidar riscos do Space'))
+  assert.ok(pack.brain_contract.automation_hooks.includes('reusar artifact do Space como contexto inicial'))
+  assert.ok(pack.brain_contract.human_boundary.includes('humano confirma mudança em área de risco'))
+  assert.deepEqual(pack.brain_contract.artifact_refs, ['artifact-pack-a'])
+  assert.doesNotMatch(JSON.stringify(pack.brain_contract), /source_thread_ids|thread_id|operator_input|response_text|full_message/)
+})
+
+test('AWIS Space brain signals explain reusable memory without opening raw sessions', () => {
+  const signals = summarizeLocalProjectSpaceBrainSignals([
+    thread({
+      id: 'a',
+      title: 'Decisão aprovada para preservar artifact',
+      message_count: 4,
+      metadata: { atlas_mode: 'programming', decision_count: 1, artifact_refs: ['artifact-pack-a'] },
+    }),
+    thread({
+      id: 'b',
+      title: 'Pendência de risco no Workbench',
+      message_count: 3,
+      metadata: { atlas_mode: 'research', blocker_count: 1, risk_count: 1 },
+    }),
+  ], { saved: true, source: 'local_space' })
+
+  assert.ok(signals.some((signal) => signal.label === 'cérebro vivo'))
+  assert.ok(signals.some((signal) => signal.label === 'reutilizável' && signal.detail.includes('packs')))
+  assert.ok(signals.some((signal) => signal.label === 'memória salva' && signal.detail === 'não começa zerado'))
+  assert.ok(signals.some((signal) => signal.label === 'revalidar' && signal.detail.includes('risco')))
+  assert.doesNotMatch(JSON.stringify(signals), /source_thread_ids|thread_id|operator_input|response_text|full_message|artifact-pack-a/)
 })
 
 test('AWIS Space storage · v2 envelope round-trips source and lifecycle metadata', () => {

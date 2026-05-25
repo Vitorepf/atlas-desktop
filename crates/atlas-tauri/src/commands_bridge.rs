@@ -235,6 +235,20 @@ pub async fn bridge_mcp_status(state: State<'_, AppState>) -> Result<serde_json:
 }
 
 #[tauri::command]
+pub async fn bridge_atlas_ai_http_json(
+    state: State<'_, AppState>,
+    method: String,
+    path: String,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    bridge_of(&state)
+        .await
+        .request_json(&method, &path, body)
+        .await
+        .map_err(into_str_err)
+}
+
+#[tauri::command]
 pub async fn bridge_get_atlas_code_enterprise_certification(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {

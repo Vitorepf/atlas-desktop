@@ -142,6 +142,9 @@ export interface RightRailContext {
    * canonical empty state, never invented values.
    */
   programmingGovernance: ProgrammingGovernanceSnapshot | null
+  activeWorkspaceSlug?: string | null
+  onSetActiveWorkspaceSlug?: (slug: string) => Promise<void>
+  onRefreshWorkspaces?: () => Promise<void>
   onSignReceipt: () => Promise<void>
   onRunGate: (gateId: string) => Promise<void>
   onRunForgeLiveExecution: () => Promise<void>

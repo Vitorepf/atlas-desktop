@@ -8,17 +8,21 @@
  *   4. POST /atlas-code/frontend/project-activation
  *   5. POST /atlas-code/frontend/runtime-projection
  *   6. POST /atlas-code/frontend/control-plane
- *   7. POST /atlas-code/frontend/prepare-evidence
- *   8. POST /atlas-code/frontend/prepare-rival-replay
- *   9. POST /atlas-code/frontend/inspect-rival-replay
- *   10. POST /atlas-code/frontend/replay-external-receipt-template
- *   11. POST /atlas-code/frontend/replay-score-template
- *   12. POST /atlas-code/frontend/replay-apply-patch
- *   13. POST /atlas-code/frontend/proof-bundle
- *   14. POST /atlas-code/frontend/publication-receipt-template
- *   15. POST /atlas-code/frontend/publication-verify
- *   16. POST /atlas-code/frontend/run-certification
- *   17. POST /atlas-code/frontend/handoff
+ *   7. POST /atlas-code/frontend/competitive-benchmark-plan
+ *   8. POST /atlas-code/frontend/live-source-patch
+ *   9. POST /atlas-code/frontend/live-visual-selection
+ *   10. POST /atlas-code/frontend/live-target-suggestions
+ *   11. POST /atlas-code/frontend/prepare-evidence
+ *   12. POST /atlas-code/frontend/prepare-rival-replay
+ *   13. POST /atlas-code/frontend/inspect-rival-replay
+ *   14. POST /atlas-code/frontend/replay-external-receipt-template
+ *   15. POST /atlas-code/frontend/replay-score-template
+ *   16. POST /atlas-code/frontend/replay-apply-patch
+ *   17. POST /atlas-code/frontend/proof-bundle
+ *   18. POST /atlas-code/frontend/publication-receipt-template
+ *   19. POST /atlas-code/frontend/publication-verify
+ *   20. POST /atlas-code/frontend/run-certification
+ *   21. POST /atlas-code/frontend/handoff
  *
  * The selected repository is always the primary workspace. `frontend_app` is a
  * relative sub-scope such as `apps/web`; it is never a Space runtime.
@@ -108,6 +112,69 @@ export interface AtlasFrontendControlPlaneRequest extends AtlasFrontendRuntimePr
   bundle?: string
   publication_receipt?: string
   benchmark_run?: boolean
+}
+
+export interface AtlasFrontendCompetitiveBenchmarkPlanRequest {
+  workspace: string
+  task: string
+  frontend_app?: string
+  rival_evidence?: string
+  bundle?: string
+  publication_receipt?: string
+}
+
+export interface AtlasFrontendLiveSourcePatchRequest {
+  workspace: string
+  action: 'prepare' | 'accept' | 'discard' | 'recover' | 'status'
+  file?: string
+  target?: string
+  variants?: Array<{ id: string; content?: string; path?: string }>
+  visual_selection?: {
+    route?: string
+    route_hash?: string
+    selector?: string
+    selector_hash?: string
+    text_excerpt?: string
+    text_excerpt_hash?: string
+    component_hint?: string
+    component_hint_hash?: string
+    screenshot_hash?: string
+    confidence?: number
+    bounding_box?: { x: number; y: number; width: number; height: number }
+    viewport?: { width: number; height: number }
+  }
+  session?: string
+  accept_variant?: string
+}
+
+export interface AtlasFrontendLiveVisualSelection {
+  route?: string
+  route_hash?: string
+  selector?: string
+  selector_hash?: string
+  text_excerpt?: string
+  text_excerpt_hash?: string
+  component_hint?: string
+  component_hint_hash?: string
+  screenshot_hash?: string
+  confidence?: number
+  bounding_box?: { x: number; y: number; width: number; height: number }
+  viewport?: { width: number; height: number }
+}
+
+export interface AtlasFrontendLiveVisualSelectionRequest {
+  workspace: string
+  action: 'record' | 'latest'
+  session?: string
+  selection?: AtlasFrontendLiveVisualSelection
+}
+
+export interface AtlasFrontendLiveTargetSuggestionsRequest {
+  workspace: string
+  session?: string
+  file_hint?: string
+  max_candidates?: number
+  visual_selection?: AtlasFrontendLiveVisualSelection
 }
 
 export interface AtlasFrontendPrepareRivalReplayRequest {
@@ -219,6 +286,10 @@ function payloadKey(schemaVersion: string): string {
   if (schemaVersion.endsWith('.project_activation.v1')) return 'project_activation'
   if (schemaVersion.endsWith('.runtime_projection.v1')) return 'runtime_projection'
   if (schemaVersion.endsWith('.control_plane.v1')) return 'control_plane'
+  if (schemaVersion.endsWith('.competitive_benchmark_plan.v1')) return 'competitive_benchmark_plan'
+  if (schemaVersion.endsWith('.live_source_patch.v1')) return 'live_source_patch'
+  if (schemaVersion.endsWith('.live_visual_selection.v1')) return 'live_visual_selection'
+  if (schemaVersion.endsWith('.live_target_suggestions.v1')) return 'live_target_suggestions'
   if (schemaVersion.endsWith('.prepare_evidence.v1')) return 'evidence_preparation'
   if (schemaVersion.endsWith('.prepare_rival_replay.v1')) return 'rival_replay_preparation'
   if (schemaVersion.endsWith('.inspect_rival_replay.v1')) return 'rival_replay_inspection'
@@ -338,6 +409,34 @@ export async function projectAtlasFrontendRuntime(input: AtlasFrontendRuntimePro
 
 export async function inspectAtlasFrontendControlPlane(input: AtlasFrontendControlPlaneRequest): Promise<AtlasFrontendWorkspaceApiEnvelope<unknown>> {
   return requestFrontend('/atlas-code/frontend/control-plane', {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export async function planAtlasFrontendCompetitiveBenchmark(input: AtlasFrontendCompetitiveBenchmarkPlanRequest): Promise<AtlasFrontendWorkspaceApiEnvelope<unknown>> {
+  return requestFrontend('/atlas-code/frontend/competitive-benchmark-plan', {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export async function runAtlasFrontendLiveSourcePatch(input: AtlasFrontendLiveSourcePatchRequest): Promise<AtlasFrontendWorkspaceApiEnvelope<unknown>> {
+  return requestFrontend('/atlas-code/frontend/live-source-patch', {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export async function syncAtlasFrontendLiveVisualSelection(input: AtlasFrontendLiveVisualSelectionRequest): Promise<AtlasFrontendWorkspaceApiEnvelope<unknown>> {
+  return requestFrontend('/atlas-code/frontend/live-visual-selection', {
+    method: 'POST',
+    body: input,
+  })
+}
+
+export async function suggestAtlasFrontendLiveTargets(input: AtlasFrontendLiveTargetSuggestionsRequest): Promise<AtlasFrontendWorkspaceApiEnvelope<unknown>> {
+  return requestFrontend('/atlas-code/frontend/live-target-suggestions', {
     method: 'POST',
     body: input,
   })

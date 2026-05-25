@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict'
 
 import {
+  extractAtlasFrontendOperatorFlow,
   extractAtlasFrontendPortfolioCandidates,
   extractAtlasFrontendSuggestedFrontendApp,
   joinAtlasFrontendLocalPath,
@@ -10,6 +11,44 @@ import {
 
 const portfolio = {
   schema_version: 'atlas.frontend.company_portfolio.v1',
+  operator_flow: {
+    schema_version: 'atlas.frontend.company_portfolio.operator_flow.v1',
+    status: 'ready_for_repository_choice',
+    purpose: 'drive_atlas_ai_or_atlas_code_from_parent_folder_to_selected_repo_frontend_runtime',
+    stages: [
+      {
+        id: 'choose_one_repository',
+        status: 'ready',
+        surface: 'operator_choice',
+        contract: 'atlas.frontend.selected_workspace.v1',
+        command: 'php artisan atlas:frontend:selected-workspace --workspace=<chosen-repo> --json --strict',
+        execution_allowed: false,
+      },
+      {
+        id: 'activate_atlas_code_project_workspace',
+        status: 'ready_after_repository_selection',
+        surface: 'atlas_code',
+        contract: 'atlas.frontend.selected_workspace.project_activation.v1',
+        endpoint: '/atlas-code/frontend/project-activation',
+        execution_allowed: false,
+      },
+    ],
+    invariants: {
+      selected_repository_is_primary_workspace: true,
+      frontend_app_is_relative_subscope_only: true,
+      portfolio_root_is_inventory_only: true,
+      provider_dispatch_requires_pre_execution_gate: true,
+      selection_or_activation_is_not_delivery_evidence: true,
+      space_runtime_required: false,
+      public_superiority_claims_disabled: true,
+    },
+    claim_policy: {
+      operator_flow_is_not_execution_evidence: true,
+      raw_absolute_paths_returned: false,
+      provider_dispatch_allowed: false,
+      world_best_claim_allowed: false,
+    },
+  },
   repositories: [
     {
       repo_ref: {
@@ -71,5 +110,19 @@ assert.equal(extractAtlasFrontendSuggestedFrontendApp({
 }), null)
 
 assert.deepEqual(extractAtlasFrontendPortfolioCandidates({ repositories: 'unsafe' }, '/Users/example/company'), [])
+
+const operatorFlow = extractAtlasFrontendOperatorFlow(portfolio)
+assert.equal(operatorFlow?.schema_version, 'atlas.frontend.company_portfolio.operator_flow.v1')
+assert.equal(operatorFlow?.status, 'ready_for_repository_choice')
+assert.equal(operatorFlow?.purpose, 'drive_atlas_ai_or_atlas_code_from_parent_folder_to_selected_repo_frontend_runtime')
+assert.equal(operatorFlow?.stages.length, 2)
+assert.equal(operatorFlow?.stages[0]!.id, 'choose_one_repository')
+assert.equal(operatorFlow?.stages[1]!.endpoint, '/atlas-code/frontend/project-activation')
+assert.equal(operatorFlow?.invariants.selected_repository_is_primary_workspace, true)
+assert.equal(operatorFlow?.invariants.frontend_app_is_relative_subscope_only, true)
+assert.equal(operatorFlow?.invariants.space_runtime_required, false)
+assert.equal(operatorFlow?.claim_policy.provider_dispatch_allowed, false)
+assert.equal(operatorFlow?.claim_policy.raw_absolute_paths_returned, false)
+assert.equal(extractAtlasFrontendOperatorFlow({ operator_flow: { schema_version: 'unknown' } }), null)
 
 console.log('ok - Atlas Frontend workspace selection turns portfolio candidates into selected-repo cockpit state')

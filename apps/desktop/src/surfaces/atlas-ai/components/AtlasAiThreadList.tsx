@@ -31,6 +31,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
 import { AtlasAiErrorBanner } from './AtlasAiErrorBanner'
 import { formatRelativeShort } from '../timeFormat'
+import { bridge } from '../../../lib/bridge'
 import type {
   AiThreadSummary,
   AtlasAiMode,
@@ -155,6 +156,12 @@ export interface LocalProjectSpaceBrain {
   recommendedActions: string[]
 }
 
+export interface LocalProjectSpaceBrainSignal {
+  tone: 'live' | 'ready' | 'safe' | 'warn' | 'saved'
+  label: string
+  detail: string
+}
+
 export interface LocalProjectSpaceContextPack {
   schema_version: 'atlas.desktop_ai.space_context_pack.v1'
   title: string
@@ -173,6 +180,16 @@ export interface LocalProjectSpaceContextPack {
   raw_conversation_returned: false
   full_message_content_returned: false
   recommended_use: string[]
+  brain_contract: {
+    state: LocalProjectSpaceBrain['state']
+    load_first: string[]
+    carry_forward: string[]
+    validate_before_use: string[]
+    automation_hooks: string[]
+    human_boundary: string[]
+    artifact_refs: string[]
+    evidence: string[]
+  }
   sessions: Array<{
     id: string
     title: string
@@ -784,11 +801,75 @@ function metadataNumber(meta: Record<string, unknown> | null, keys: string[]): n
   return 0
 }
 
+function metadataStringList(meta: Record<string, unknown> | null, keys: string[]): string[] {
+  if (!meta) return []
+  const values: string[] = []
+  for (const key of keys) {
+    const value = meta[key]
+    if (typeof value === 'string' && value.trim().length > 0) values.push(value.trim())
+    if (Array.isArray(value)) {
+      values.push(...value.filter((item): item is string => typeof item === 'string' && item.trim() !== '').map((item) => item.trim()))
+    }
+  }
+  return Array.from(new Set(values.map((item) => item.replace(/\s+/g, ' ').slice(0, 96)))).slice(0, 6)
+}
+
 function textSignalCount(threads: AiThreadSummary[], pattern: RegExp): number {
   return threads.reduce((sum, thread) => {
     const text = `${thread.title ?? ''} ${thread.summary ?? ''}`
     return sum + (pattern.test(text) ? 1 : 0)
   }, 0)
+}
+
+function buildLocalProjectSpaceBrainContract(
+  title: string,
+  threads: AiThreadSummary[],
+  brain: LocalProjectSpaceBrain,
+): LocalProjectSpaceContextPack['brain_contract'] {
+  const modes = Array.from(new Set(threads.map(inferThreadMode)))
+  const artifactRefs = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'artifact_refs',
+    'artifact_ref',
+    'artifact_hashes',
+    'context_pack_refs',
+    'context_pack',
+  ])))).slice(0, 6)
+  const evidence = [
+    `${threads.length} sessões protegidas`,
+    ...modes.map((mode) => `modo:${modeLabel(mode)}`),
+    brain.decisionCount > 0 ? `${brain.decisionCount} decisão(ões)` : null,
+    brain.pendingCount > 0 ? `${brain.pendingCount} pendência(s)` : null,
+    brain.riskCount > 0 ? `${brain.riskCount} risco(s)` : null,
+    brain.artifactCount > 0 ? `${brain.artifactCount} artifact(s)` : null,
+  ].filter((item): item is string => Boolean(item)).slice(0, 8)
+  return {
+    state: brain.state,
+    load_first: [
+      `Space:${title}`,
+      ...threads.slice(0, 4).map((thread) => `sessão:${thread.title?.trim() || '(sem título)'}`),
+    ].map((item) => item.slice(0, 120)),
+    carry_forward: [
+      brain.scopeLabel,
+      ...brain.recommendedActions,
+      ...artifactRefs.map((ref) => `artifact:${ref}`),
+    ].slice(0, 8),
+    validate_before_use: [
+      brain.riskCount > 0 ? 'revalidar riscos do Space' : null,
+      brain.pendingCount > 0 ? 'checar pendências antes de executar' : null,
+      brain.artifactCount > 0 ? 'confirmar artifact/context pack ainda atual' : null,
+    ].filter((item): item is string => Boolean(item)),
+    automation_hooks: [
+      'atualizar pack quando sessão do Space mudar',
+      brain.contextPackReady ? 'promover resumo do Space para próxima conversa' : null,
+      artifactRefs.length > 0 ? 'reusar artifact do Space como contexto inicial' : null,
+    ].filter((item): item is string => Boolean(item)),
+    human_boundary: [
+      brain.riskCount > 0 ? 'humano confirma mudança em área de risco' : null,
+      brain.pendingCount > 0 ? 'humano decide pendência ambígua' : null,
+    ].filter((item): item is string => Boolean(item)),
+    artifact_refs: artifactRefs,
+    evidence,
+  }
 }
 
 export function evaluateLocalProjectSpaceBrain(threads: AiThreadSummary[]): LocalProjectSpaceBrain {
@@ -852,6 +933,48 @@ export function evaluateLocalProjectSpaceBrain(threads: AiThreadSummary[]): Loca
   }
 }
 
+export function summarizeLocalProjectSpaceBrainSignals(
+  threads: AiThreadSummary[],
+  options: { saved?: boolean; source?: LocalProjectSpaceContextPack['source'] } = {},
+): LocalProjectSpaceBrainSignal[] {
+  const brain = evaluateLocalProjectSpaceBrain(threads)
+  const reuseDetail = brain.reusableBy.join(' · ')
+  const revalidationReasons = [
+    brain.riskCount > 0 ? `${brain.riskCount} risco${brain.riskCount === 1 ? '' : 's'}` : null,
+    brain.pendingCount > 0 ? `${brain.pendingCount} pendência${brain.pendingCount === 1 ? '' : 's'}` : null,
+    brain.artifactCount > 0 ? `${brain.artifactCount} artifact${brain.artifactCount === 1 ? '' : 's'}` : null,
+  ].filter((item): item is string => Boolean(item))
+  const signals: LocalProjectSpaceBrainSignal[] = [
+    {
+      tone: brain.state === 'vivo' ? 'live' : brain.state === 'pronto' ? 'ready' : 'safe',
+      label: brain.state === 'vivo' ? 'cérebro vivo' : brain.state === 'pronto' ? 'contexto pronto' : 'contexto leve',
+      detail: brain.scopeLabel,
+    },
+  ]
+  if (brain.contextPackReady) {
+    signals.push({
+      tone: 'safe',
+      label: 'reutilizável',
+      detail: reuseDetail || 'Atlas AI',
+    })
+  }
+  if (options.saved || options.source === 'local_space') {
+    signals.push({
+      tone: 'saved',
+      label: 'memória salva',
+      detail: 'não começa zerado',
+    })
+  }
+  if (revalidationReasons.length > 0) {
+    signals.push({
+      tone: 'warn',
+      label: 'revalidar',
+      detail: revalidationReasons.join(' · '),
+    })
+  }
+  return signals.slice(0, 4)
+}
+
 export function buildLocalProjectSpaceContextPack({
   title,
   threads,
@@ -865,6 +988,7 @@ export function buildLocalProjectSpaceContextPack({
 }): LocalProjectSpaceContextPack {
   const intelligence = evaluateLocalProjectSpaceIntelligence(threads)
   const brain = evaluateLocalProjectSpaceBrain(threads)
+  const brainContract = buildLocalProjectSpaceBrainContract(title, threads, brain)
   return {
     schema_version: 'atlas.desktop_ai.space_context_pack.v1',
     title,
@@ -883,6 +1007,7 @@ export function buildLocalProjectSpaceContextPack({
     raw_conversation_returned: false,
     full_message_content_returned: false,
     recommended_use: brain.recommendedActions,
+    brain_contract: brainContract,
     sessions: threads.map((thread) => ({
       id: thread.id,
       title: thread.title?.trim() || '(sem título)',
@@ -929,6 +1054,16 @@ export function buildLocalProjectSpaceFallbackContextPack({
       'recarregar sessões quando disponíveis',
       'abrir para comparar',
     ],
+    brain_contract: {
+      state: 'pronto',
+      load_first: [`Space:${space.title}`],
+      carry_forward: [sessionLabel, 'preservar tema do Space'],
+      validate_before_use: ['recarregar sessões quando disponíveis'],
+      automation_hooks: ['atualizar pack quando sessões voltarem'],
+      human_boundary: [],
+      artifact_refs: [],
+      evidence: [sessionLabel],
+    },
     sessions: threadIds.map((id, index) => ({
       id,
       title: `Sessão salva ${index + 1}`,
@@ -1077,6 +1212,35 @@ export function pruneLocalProjectSpacesForAvailableThreads(
   })
 }
 
+export function touchLocalProjectSpacesFromThreads(
+  spaces: LocalProjectSpace[],
+  threads: AiThreadSummary[],
+): LocalProjectSpace[] {
+  if (spaces.length === 0 || threads.length === 0) return spaces
+  const touchedAtByThreadId = new Map<string, number>()
+  for (const thread of threads) {
+    const touchedAt = threadTimestampMs(thread)
+    if (touchedAt > 0) touchedAtByThreadId.set(thread.id, touchedAt)
+  }
+  if (touchedAtByThreadId.size === 0) return spaces
+
+  let changed = false
+  const nextSpaces = spaces.map((space) => {
+    const latestTouchedAt = Math.max(
+      ...space.threadIds.map((threadId) => touchedAtByThreadId.get(threadId) ?? 0),
+    )
+    if (latestTouchedAt <= 0) return space
+    const currentTouchedAt = Date.parse(space.updatedAt ?? space.createdAt ?? '')
+    if (Number.isFinite(currentTouchedAt) && currentTouchedAt >= latestTouchedAt) return space
+    changed = true
+    return {
+      ...space,
+      updatedAt: new Date(latestTouchedAt).toISOString(),
+    }
+  })
+  return changed ? nextSpaces : spaces
+}
+
 export function AtlasAiThreadList({
   threads,
   loading,
@@ -1127,6 +1291,7 @@ export function AtlasAiThreadList({
   const [workspaceToolsOpen] = useState(false)
   const [projectSpaces, setProjectSpaces] = useState<LocalProjectSpace[]>(() => loadProjectSpaces())
   const [savedSpaceReceipts, setSavedSpaceReceipts] = useState<LocalSavedProjectSpaceReceipt[]>(() => loadSavedSpaceReceipts())
+  const [nativeProjectSpacesHydrated, setNativeProjectSpacesHydrated] = useState(false)
   const [threadSeenAt, setThreadSeenAt] = useState<Record<string, number>>(() => loadThreadSeenAt() ?? {})
   const threadSeenAtInitializedRef = useRef(loadThreadSeenAt() !== null)
 
@@ -1150,6 +1315,7 @@ export function AtlasAiThreadList({
 
   const clearThreadDragState = useCallback(() => {
     pointerFusionLastTargetRef.current = emptyPointerFusionDropSnapshot()
+    pointerFusionStartRef.current = null
     suppressClickThreadIdRef.current = null
     setDraggingThreadTitle(null)
     setPointerFusionPreview(null)
@@ -1173,7 +1339,32 @@ export function AtlasAiThreadList({
 
   useEffect(() => saveCollapsed(collapsed), [collapsed])
   useEffect(() => saveExpanded(expandedAll), [expandedAll])
-  useEffect(() => saveProjectSpaces(projectSpaces), [projectSpaces])
+  useEffect(() => {
+    let cancelled = false
+    void bridge.loadAwisProjectSpacesStore().then((nativeStore) => {
+      if (cancelled) return
+      if (nativeStore) {
+        setProjectSpaces((prev) => mergeLocalProjectSpaces(
+          prev,
+          parseLocalProjectSpaces(JSON.stringify({ spaces: nativeStore.spaces })),
+        ))
+        setSavedSpaceReceipts((prev) => mergeLocalSavedProjectSpaceReceipts(
+          prev,
+          parseLocalSavedProjectSpaceReceipts(JSON.stringify({ receipts: nativeStore.receipts })),
+        ))
+      }
+      setNativeProjectSpacesHydrated(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  useEffect(() => {
+    saveProjectSpaces(projectSpaces)
+    if (nativeProjectSpacesHydrated) {
+      void bridge.saveAwisProjectSpacesStore(projectSpaces, savedSpaceReceipts)
+    }
+  }, [nativeProjectSpacesHydrated, projectSpaces, savedSpaceReceipts])
   useEffect(() => saveSavedSpaceReceipts(savedSpaceReceipts), [savedSpaceReceipts])
   useEffect(() => saveThreadSeenAt(threadSeenAt), [threadSeenAt])
 
@@ -1194,6 +1385,10 @@ export function AtlasAiThreadList({
       return { ...prev, [selectedId]: seenAt }
     })
   }, [selectedId, threads])
+
+  useEffect(() => {
+    setProjectSpaces((prev) => touchLocalProjectSpacesFromThreads(prev, threads))
+  }, [threads])
 
   const statusForThread = useCallback((thread: AiThreadSummary): ThreadRowStatus => {
     if (runningThreadIds?.has(thread.id)) return 'running'
@@ -1575,21 +1770,30 @@ export function AtlasAiThreadList({
     const clearOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') clearThreadDragState()
     }
+    const clearOnHidden = () => {
+      if (document.visibilityState === 'hidden') clearThreadDragState()
+    }
     window.addEventListener('dragend', clearThreadDragState)
+    window.addEventListener('dragcancel', clearThreadDragState)
     window.addEventListener('drop', clearThreadDragState)
     window.addEventListener('mouseup', clearThreadDragState)
     window.addEventListener('pointerup', clearThreadDragState)
     window.addEventListener('blur', clearThreadDragState)
     window.addEventListener('keydown', clearOnEscape)
     window.addEventListener(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, clearThreadDragState)
+    document.addEventListener('mouseleave', clearThreadDragState)
+    document.addEventListener('visibilitychange', clearOnHidden)
     return () => {
       window.removeEventListener('dragend', clearThreadDragState)
+      window.removeEventListener('dragcancel', clearThreadDragState)
       window.removeEventListener('drop', clearThreadDragState)
       window.removeEventListener('mouseup', clearThreadDragState)
       window.removeEventListener('pointerup', clearThreadDragState)
       window.removeEventListener('blur', clearThreadDragState)
       window.removeEventListener('keydown', clearOnEscape)
       window.removeEventListener(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, clearThreadDragState)
+      document.removeEventListener('mouseleave', clearThreadDragState)
+      document.removeEventListener('visibilitychange', clearOnHidden)
     }
   }, [clearThreadDragState])
 
@@ -2173,6 +2377,11 @@ function ProjectSpacesPanel({
                       <time dateTime={intelligence.lastActiveAt}>{formatRelativeShort(intelligence.lastActiveAt)}</time>
                     ) : null}
                   </span>
+                  <ProjectSpaceBrainSignals
+                    threads={spaceThreads}
+                    saved
+                    source="local_space"
+                  />
                   {visibleSpaceThreads.length > 0 ? (
                     <ul className="atlas-ai-project-space-thread-list" aria-label={`Conversas dentro de ${space.title}`}>
                       {visibleSpaceThreads.map((thread) => (
@@ -2279,6 +2488,33 @@ function ProjectSpacesPanel({
   )
 }
 
+function ProjectSpaceBrainSignals({
+  threads,
+  saved,
+  source,
+}: {
+  threads: AiThreadSummary[]
+  saved?: boolean
+  source: LocalProjectSpaceContextPack['source']
+}) {
+  const signals = summarizeLocalProjectSpaceBrainSignals(threads, { saved, source })
+  if (signals.length === 0) return null
+  return (
+    <span className="atlas-ai-project-space-brain" aria-label="Memória viva deste Space">
+      {signals.map((signal) => (
+        <span
+          key={`${signal.tone}:${signal.label}:${signal.detail}`}
+          className={`atlas-ai-project-space-brain-chip is-${signal.tone}`}
+          title={`${signal.label}: ${signal.detail}`}
+        >
+          <span>{signal.label}</span>
+          <em>{signal.detail}</em>
+        </span>
+      ))}
+    </span>
+  )
+}
+
 function SpaceEditDialog({
   space,
   threads,
@@ -2337,6 +2573,8 @@ function SpaceEditDialog({
             autoFocus
           />
         </label>
+
+        <ProjectSpaceBrainSignals threads={threads} saved source="local_space" />
 
         <section className="atlas-ai-space-edit-sessions" aria-label="Sessões deste Space">
           <div className="atlas-ai-space-edit-section-head">
@@ -2480,6 +2718,11 @@ function SuggestedProjectSpaceCard({
             <time dateTime={intelligence.lastActiveAt}>{formatRelativeShort(intelligence.lastActiveAt)}</time>
           ) : null}
         </span>
+        <ProjectSpaceBrainSignals
+          threads={threads}
+          saved={saved}
+          source="suggested_space"
+        />
         <ul className="atlas-ai-project-space-thread-list" aria-label={`Conversas dentro de ${title}`}>
           {visibleThreads.map((thread) => (
             <li key={thread.id}>

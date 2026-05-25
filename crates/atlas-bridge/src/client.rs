@@ -62,6 +62,49 @@ impl AtlasBridge {
         self.client.request(method, self.url(path))
     }
 
+    pub async fn request_json(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<serde_json::Value>,
+    ) -> BridgeResult<serde_json::Value> {
+        if !path.starts_with('/') || path.contains("://") || path.contains('\n') || path.contains('\r') {
+            return Err(BridgeError::InvalidPayload(
+                "request path must be a local atlas-server path".to_string(),
+            ));
+        }
+
+        let allowed = path == endpoints::HEALTH
+            || path.starts_with("/ai/")
+            || path.starts_with("/atlas/")
+            || path.starts_with("/atlas-code/")
+            || path.starts_with("/projects")
+            || path.starts_with("/tools/");
+        if !allowed {
+            return Err(BridgeError::InvalidPayload(
+                "request path is outside the Atlas local API allowlist".to_string(),
+            ));
+        }
+
+        let method = match method.to_ascii_uppercase().as_str() {
+            "GET" => Method::GET,
+            "POST" => Method::POST,
+            "PATCH" => Method::PATCH,
+            "DELETE" => Method::DELETE,
+            other => {
+                return Err(BridgeError::InvalidPayload(format!(
+                    "unsupported method {other}"
+                )));
+            }
+        };
+
+        let mut request = self.build(method, path);
+        if let Some(body) = body {
+            request = request.json(&body);
+        }
+        self.execute(request).await
+    }
+
     async fn execute<T>(&self, req: RequestBuilder) -> BridgeResult<T>
     where
         T: serde::de::DeserializeOwned,

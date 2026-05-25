@@ -19,10 +19,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use atlas_platform::{
-    VoiceMode, VoxSettings, VoxSettingsError, VoxSettingsStore, VoxShortPhrase,
-};
 use atlas_platform::vox_stt::default_atlas_vox_home;
+use atlas_platform::{VoiceMode, VoxSettings, VoxSettingsError, VoxSettingsStore, VoxShortPhrase};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -336,7 +334,9 @@ pub async fn atlas_voice_speak(
 }
 
 #[tauri::command]
-pub async fn atlas_voice_stop(state: tauri::State<'_, VoxReplyState>) -> Result<AtlasVoiceSpeakResult, String> {
+pub async fn atlas_voice_stop(
+    state: tauri::State<'_, VoxReplyState>,
+) -> Result<AtlasVoiceSpeakResult, String> {
     let platform = std::env::consts::OS.to_string();
     let Some(pid) = state.atlas_voice_pid() else {
         return Ok(AtlasVoiceSpeakResult {
@@ -364,7 +364,11 @@ pub async fn atlas_voice_stop(state: tauri::State<'_, VoxReplyState>) -> Result<
             platform,
             chars_spoken: 0,
             voice: None,
-            reason: if status.success() { Some("stopped".to_string()) } else { Some(format!("kill_failed_status: {status}")) },
+            reason: if status.success() {
+                Some("stopped".to_string())
+            } else {
+                Some(format!("kill_failed_status: {status}"))
+            },
             latency_ms: None,
         });
     }
@@ -442,7 +446,10 @@ async fn speak_with_elevenlabs(
     if !status.is_success() {
         return Err(format!("http_status: {status}"));
     }
-    let bytes = response.bytes().await.map_err(|e| format!("read_audio_failed: {e}"))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("read_audio_failed: {e}"))?;
     let downloaded_at = Instant::now();
     if bytes.is_empty() {
         return Err("empty_audio".to_string());
@@ -508,9 +515,7 @@ async fn speak_with_elevenlabs(
 }
 
 fn millis_between(start: Instant, end: Instant) -> u64 {
-    end.duration_since(start)
-        .as_millis()
-        .min(u64::MAX as u128) as u64
+    end.duration_since(start).as_millis().min(u64::MAX as u128) as u64
 }
 
 #[cfg(target_os = "macos")]
@@ -585,7 +590,10 @@ mod tests {
         let res = state.try_speak_now(cooldown);
         assert!(res.is_err(), "deveria bloquear repeat imediato");
         let remaining = res.unwrap_err();
-        assert!(remaining > 0 && remaining <= 5_000, "remaining ms inválido: {remaining}");
+        assert!(
+            remaining > 0 && remaining <= 5_000,
+            "remaining ms inválido: {remaining}"
+        );
     }
 
     #[test]
@@ -595,7 +603,10 @@ mod tests {
         assert!(state.try_speak_now(cooldown).is_ok());
         // espera passar o cooldown
         std::thread::sleep(Duration::from_millis(35));
-        assert!(state.try_speak_now(cooldown).is_ok(), "deveria liberar após cooldown");
+        assert!(
+            state.try_speak_now(cooldown).is_ok(),
+            "deveria liberar após cooldown"
+        );
     }
 
     #[test]

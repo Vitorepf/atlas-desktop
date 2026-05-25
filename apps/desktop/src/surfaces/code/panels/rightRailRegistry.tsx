@@ -68,6 +68,9 @@ const PANELS: RightRailPanelDefinition[] = [
       <AtlasFrontendRuntimePanel
         core={ctx.core}
         busy={ctx.busy}
+        activeWorkspaceSlug={ctx.activeWorkspaceSlug ?? null}
+        onSetActiveWorkspaceSlug={ctx.onSetActiveWorkspaceSlug}
+        onRefreshWorkspaces={ctx.onRefreshWorkspaces}
       />
     ),
   },

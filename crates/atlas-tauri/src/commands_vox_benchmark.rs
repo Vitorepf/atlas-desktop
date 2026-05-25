@@ -240,7 +240,10 @@ pub fn vox_stt_benchmark_run(
     }
 
     if samples.is_empty() {
-        return Err("no samples to benchmark — register some via vox_stt_benchmark_record_sample first".to_string());
+        return Err(
+            "no samples to benchmark — register some via vox_stt_benchmark_record_sample first"
+                .to_string(),
+        );
     }
 
     let engine_set = if req.text_only {

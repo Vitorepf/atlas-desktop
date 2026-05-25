@@ -15,6 +15,9 @@ const errorBanner = readFileSync(new URL('../components/AtlasAiErrorBanner.tsx',
 const surface = readFileSync(new URL('../AtlasAiSurface.tsx', import.meta.url), 'utf8')
 const types = readFileSync(new URL('../types.ts', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../atlas-ai.css', import.meta.url), 'utf8')
+const tauriBridgeCommands = readFileSync(new URL('../../../../../../crates/atlas-tauri/src/commands_bridge.rs', import.meta.url), 'utf8')
+const tauriLib = readFileSync(new URL('../../../../../../crates/atlas-tauri/src/lib.rs', import.meta.url), 'utf8')
+const nativeBridgeClient = readFileSync(new URL('../../../../../../crates/atlas-bridge/src/client.rs', import.meta.url), 'utf8')
 
 assert.match(
   client,
@@ -30,6 +33,26 @@ assert.match(
   client,
   /getWorkspaceArtifactLakeEntry/,
   'Desktop client must expose persisted AWIS artifact inspection',
+)
+assert.match(
+  client,
+  /MODE === 'tauri'[\s\S]*bridge_atlas_ai_http_json/,
+  'Atlas AI packaged app must use the native bridge so AWIS does not depend on VITE_ATLAS_TOKEN baked into the bundle.',
+)
+assert.match(
+  tauriBridgeCommands,
+  /pub async fn bridge_atlas_ai_http_json[\s\S]*request_json\(&method, &path, body\)/,
+  'Tauri must expose an authenticated local JSON bridge for Atlas AI endpoints.',
+)
+assert.match(
+  tauriLib,
+  /commands_bridge::bridge_atlas_ai_http_json/,
+  'The authenticated Atlas AI JSON bridge must be registered in the Tauri invoke handler.',
+)
+assert.match(
+  nativeBridgeClient,
+  /pub async fn request_json[\s\S]*path\.starts_with\("\/ai\/"\)[\s\S]*path\.starts_with\("\/atlas-code\/"\)[\s\S]*self\.execute\(request\)\.await/,
+  'The native bridge must proxy only allowlisted local Atlas API paths with the kernel ATLAS_TOKEN.',
 )
 assert.match(
   client,
@@ -83,8 +106,18 @@ assert.match(
 )
 assert.match(
   client,
+  /getAtlasAwisLiveExecutionMemory/,
+  'Desktop client must read the canonical live execution memory so Spaces and sessions survive app restarts.',
+)
+assert.match(
+  client,
   /export async function getAtlasAwisNextSessionBrain[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisNextSessionBrain>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
   'AWIS next-session brain hydration must be fail-soft so new conversations fall back to local startup gold.',
+)
+assert.match(
+  client,
+  /export async function getAtlasAwisLiveExecutionMemory[\s\S]*try \{[\s\S]*fetchJson<AtlasAwisLiveExecutionMemory>[\s\S]*\} catch \{[\s\S]*return null[\s\S]*\}/,
+  'AWIS live execution memory hydration must be fail-soft so stale/500 responses never break the local workspace.',
 )
 assert.match(
   client,
@@ -113,6 +146,11 @@ assert.match(
 )
 assert.match(
   client,
+  /\/atlas-code\/workspace-intelligence\/live-execution-memory\?\$\{params\.toString\(\)\}/,
+  'Canonical AWIS live memory must use the server live-execution-memory endpoint.',
+)
+assert.match(
+  client,
   /\/atlas-code\/workspace-intelligence\/handoff-pack\?\$\{params\.toString\(\)\}/,
   'Canonical AWIS handoff context must use the server handoff-pack endpoint.',
 )
@@ -135,6 +173,11 @@ assert.match(
   hook,
   /awis_context_applied: true[\s\S]*awis_provider_safe: true[\s\S]*awis_load_first/,
   'AWIS thread metadata must stay provider-safe and preserve the startup load contract.',
+)
+assert.match(
+  hook,
+  /awis_space_focus[\s\S]*awis_space_continuity[\s\S]*awis_space_brain[\s\S]*awis_live_memory_hash[\s\S]*awis_live_load_first[\s\S]*awis_context_budget[\s\S]*awis_priority_load[\s\S]*awis_startup_gold/,
+  'New thread metadata must preserve the living AWIS handoff: Spaces, Space brain, live memory, context kernel and startup gold.',
 )
 assert.match(
   hook,
@@ -203,6 +246,11 @@ assert.match(
 )
 assert.match(
   surface,
+  /getAtlasAwisLiveExecutionMemory\(workspace, task, \{ latest: true \}\)/,
+  'Atlas AI surface must hydrate live execution memory from the dedicated endpoint before doing heavier snapshot work.',
+)
+assert.match(
+  surface,
   /getAtlasAwisArtifactIntelligence\(workspace, task, \{ latest: true \}\)/,
   'Atlas AI surface must hydrate Space replay from persisted server Artifact Intelligence on startup.',
 )
@@ -230,6 +278,11 @@ assert.match(
   surface,
   /handoffPack: workspaceHandoffPack/,
   'Atlas AI context pack must carry the bounded handoff projection.',
+)
+assert.match(
+  surface,
+  /liveExecutionMemory: workspaceLiveExecutionMemory/,
+  'Atlas AI context pack must carry the bounded live execution memory projection.',
 )
 assert.match(
   surface,
@@ -430,6 +483,21 @@ assert.match(
   threadList,
   /ProjectSpacesPanel/,
   'Conversation fusion must be presented as Project Spaces instead of a technical CTX/fusion block.',
+)
+assert.match(
+  threadList,
+  /ProjectSpaceBrainSignals/,
+  'Space cards must render the compact Space Brain signal strip.',
+)
+assert.match(
+  threadList,
+  /aria-label="Memória viva deste Space"/,
+  'Space Brain signal strip must be accessible without opening raw sessions.',
+)
+assert.match(
+  threadList,
+  /cérebro vivo[\s\S]*memória salva[\s\S]*revalidar/,
+  'Space cards must expose the living brain state, saved memory and revalidation hints without opening raw sessions.',
 )
 assert.match(
   threadList,
@@ -650,6 +718,41 @@ assert.match(
   threadList,
   /window\.addEventListener\('blur', clearThreadDragState\)/,
   'Thread drag state must clear when the window loses focus so no preview remains stuck.',
+)
+assert.match(
+  threadList,
+  /document\.addEventListener\('visibilitychange', clearOnHidden\)/,
+  'Thread drag state must clear when the WebView becomes hidden so no preview remains stuck across app/window transitions.',
+)
+assert.match(
+  threadList,
+  /document\.addEventListener\('mouseleave', clearThreadDragState\)/,
+  'Thread drag state must clear when the pointer leaves the document during a drag.',
+)
+assert.match(
+  threadList,
+  /window\.addEventListener\('dragcancel', clearThreadDragState\)/,
+  'Thread drag state must clear when the WebView emits dragcancel.',
+)
+assert.match(
+  threadList,
+  /pointerFusionStartRef\.current = null/,
+  'Thread drag cleanup must reset the duplicate-start guard as well as visible preview state.',
+)
+assert.match(
+  surface,
+  /document\.addEventListener\('visibilitychange', clearOnHidden\)/,
+  'Stage drop highlight must clear when the WebView becomes hidden.',
+)
+assert.match(
+  surface,
+  /document\.addEventListener\('mouseleave', clearStageDrop\)/,
+  'Stage drop highlight must clear when the pointer leaves the document.',
+)
+assert.match(
+  surface,
+  /window\.addEventListener\('dragcancel', clearStageDrop\)/,
+  'Stage drop highlight must clear when native drag is cancelled.',
 )
 assert.match(
   surface,

@@ -69,9 +69,7 @@ pub struct EscapeResolution {
 /// reflect the right state immediately while the dispatcher also fires
 /// the corresponding `vox://hotkey-*` event.
 #[tauri::command]
-pub fn vox_hotkey_record_escape(
-    runtime: State<'_, Arc<VoxHotkeyRuntime>>,
-) -> EscapeResolution {
+pub fn vox_hotkey_record_escape(runtime: State<'_, Arc<VoxHotkeyRuntime>>) -> EscapeResolution {
     let event = runtime.record_escape_press();
     EscapeResolution {
         event: match event {
@@ -196,10 +194,7 @@ fn bring_overlay_forward(app: &AppHandle) {
 /// runtime, manages it as Tauri state, and spawns the dispatcher async
 /// task. On registration failure the runtime is still managed (so the
 /// status command works) but `available=false` and `last_error` is set.
-pub fn install(
-    app_handle: &AppHandle,
-    edge: Arc<VoxEdge>,
-) {
+pub fn install(app_handle: &AppHandle, edge: Arc<VoxEdge>) {
     let runtime: Arc<VoxHotkeyRuntime> = Arc::new(VoxHotkeyRuntime::new());
 
     match runtime.start() {

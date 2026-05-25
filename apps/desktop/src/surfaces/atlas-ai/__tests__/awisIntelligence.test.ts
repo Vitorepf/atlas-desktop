@@ -91,6 +91,48 @@ test('AWIS intelligence reaches command level when workspace is executable and o
       brainHash: 'brain',
       projectionCount: 5,
     },
+    workspaceLiveExecutionMemory: {
+      schema_version: 'atlas.awis.live_execution_memory_projection.v1',
+      source: 'server_awis_live_execution_memory',
+      readiness_score: 96,
+      memory_hash: 'sha256:live',
+      startup_packet: {
+        load_first: ['workspace_live_execution_memory'],
+        use_as_summary: ['estado vivo canônico do workspace'],
+        validate_before_trust: ['hash da memória viva'],
+        avoid: ['usar contexto antigo sem validar'],
+        human_boundary: ['aprovar ações destrutivas'],
+      },
+      automation_loop: {
+        before_send: ['refresh_context_pack'],
+        after_success: ['promote_safe_evidence'],
+        after_failure: ['preserve_failure_signal'],
+        on_drift: ['revalidate_live_memory'],
+      },
+      promotion_rules: {
+        promote_to_gold: ['evidence_ready'],
+        preserve_as_artifact: ['session_closing'],
+        revalidate: ['workspace_changed'],
+        demote: ['stale_context'],
+      },
+      workspace_learning: {
+        repositories: ['atlas-desktop'],
+        components: ['Atlas AI'],
+        spaces: ['Fluxo Atlas AI'],
+        artifacts: ['live-memory:sha256:live'],
+        commands: ['npm run atlas-ai:test'],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
   })
 
   assert.equal(intelligence.level, 'command')
@@ -103,6 +145,7 @@ test('AWIS intelligence reaches command level when workspace is executable and o
   assert.ok(!intelligence.capabilities.some((capability) => capability.includes('runtime')))
   assert.ok(intelligence.capabilities.includes('loop vivo'))
   assert.ok(intelligence.capabilities.includes('snapshot AWIS salvo'))
+  assert.ok(intelligence.capabilities.includes('memória viva canônica'))
   assert.equal(intelligence.liveSignal.label, 'loop vivo')
   assert.equal(intelligence.liveSignal.tone, 'ok')
   assert.deepEqual(intelligence.gaps, [])
@@ -792,6 +835,10 @@ test('AWIS intelligence rewards operational memory after the workspace is used',
         contextGoldLabels: [],
         validationCommands: [],
         componentKeys: [],
+        spaceLabels: [],
+        spaceBrainLabels: [],
+        liveMemoryLabels: [],
+        priorityLoadLabels: [],
       }],
       recentMaintenance: [],
       observations: ['workspace usado em conversa real'],

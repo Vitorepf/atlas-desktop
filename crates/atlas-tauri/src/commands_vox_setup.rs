@@ -224,10 +224,16 @@ mod tests {
             classify_device_kind(Some("MacBook Air Microphone")),
             "built_in"
         );
-        assert_eq!(classify_device_kind(Some("Built-in Microphone")), "built_in");
+        assert_eq!(
+            classify_device_kind(Some("Built-in Microphone")),
+            "built_in"
+        );
         assert_eq!(classify_device_kind(Some("Internal Mic")), "built_in");
         assert_eq!(classify_device_kind(Some("Loopback Audio")), "external");
-        assert_eq!(classify_device_kind(Some("Yeti Stereo Microphone")), "external");
+        assert_eq!(
+            classify_device_kind(Some("Yeti Stereo Microphone")),
+            "external"
+        );
         assert_eq!(classify_device_kind(None), "none");
         assert_eq!(classify_device_kind(Some("")), "external");
     }

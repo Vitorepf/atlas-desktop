@@ -78,7 +78,10 @@ pub fn vox_edge_start_session(
             // as recovery: return the active session snapshot so the UI can
             // show "listening" and the operator can finish/cancel normally.
             edge.peek_session(existing).ok_or_else(|| {
-                let msg = format!("vox session already active but not recoverable: {}", existing);
+                let msg = format!(
+                    "vox session already active but not recoverable: {}",
+                    existing
+                );
                 tracing::warn!(target: "vox-edge", error = %msg, "vox edge command failed");
                 emit_error(&app, "vox_edge_start_session", &msg);
                 msg
@@ -143,10 +146,7 @@ pub struct VoxEclipseReport {
 }
 
 #[tauri::command]
-pub fn vox_edge_eclipse(
-    edge: State<'_, Arc<VoxEdge>>,
-    app: AppHandle,
-) -> VoxEclipseReport {
+pub fn vox_edge_eclipse(edge: State<'_, Arc<VoxEdge>>, app: AppHandle) -> VoxEclipseReport {
     let touched = edge.eclipse();
     let report = VoxEclipseReport {
         touched_sessions: touched,

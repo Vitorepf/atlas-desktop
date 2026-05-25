@@ -100,6 +100,9 @@ interface RightRailProps {
   boot: BootSnapshot | null
   busy: boolean
   programmingGovernance: ProgrammingGovernanceSnapshot | null
+  activeWorkspaceSlug?: string | null
+  onSetActiveWorkspaceSlug?: (slug: string) => Promise<void>
+  onRefreshWorkspaces?: () => Promise<void>
   onSignReceipt: () => Promise<void>
   onRunGate: (gateId: string) => Promise<void>
   onRunForgeLiveExecution: () => Promise<void>

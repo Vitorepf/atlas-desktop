@@ -1,9 +1,9 @@
 /**
  * Atlas AI · light-weight HTTP client.
  *
- * Tauri / HTTP / Offline aware. Não toca em `lib/bridge.ts` para evitar conflito
- * com trabalhos paralelos (Meta 2). Mantém o mesmo padrão (X-Atlas-Token via
- * VITE_ATLAS_TOKEN) usado pela bridge canônica.
+ * Tauri / HTTP / Offline aware. Em Tauri, usa o bridge nativo para herdar o
+ * ATLAS_TOKEN carregado pelo Kernel; no browser/dev HTTP, mantém X-Atlas-Token
+ * via VITE_ATLAS_TOKEN.
  */
 
 import type {
@@ -20,6 +20,7 @@ import type {
   AtlasAwisArtifactIntelligence,
   AtlasAwisHandoffPack,
   AtlasAwisLearningLoop,
+  AtlasAwisLiveExecutionMemory,
   AtlasAwisNextSessionBrain,
   AtlasAwisRuntimeSnapshot,
   AtlasServerHealth,
@@ -115,8 +116,35 @@ export function atlasAiBridgeMode(): AtlasAiBridgeMode {
 
 async function fetchJson<T>(
   path: string,
-  init?: { method?: string; body?: unknown },
+  init?: { method?: string; body?: unknown; signal?: AbortSignal },
 ): Promise<T> {
+  if (MODE === 'tauri') {
+    try {
+      const tauri = await import('@tauri-apps/api/core')
+      return await tauri.invoke<T>('bridge_atlas_ai_http_json', {
+        method: init?.method ?? 'GET',
+        path,
+        body: init?.body ?? null,
+      })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error
+      }
+      if (error && typeof error === 'object' && (error as { name?: unknown }).name === 'AbortError') {
+        throw error
+      }
+      const detail =
+        error instanceof Error
+          ? error.message.trim()
+          : typeof error === 'string'
+            ? error.trim()
+            : 'falha de bridge'
+      throw new Error(
+        `Atlas AI não conseguiu falar com o serviço local (${detail || 'falha de bridge'}). Verifique se o Atlas local está rodando e tente de novo.`,
+      )
+    }
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -130,8 +158,15 @@ async function fetchJson<T>(
       method: init?.method ?? 'GET',
       headers,
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+      signal: init?.signal,
     })
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
+    }
+    if (error && typeof error === 'object' && (error as { name?: unknown }).name === 'AbortError') {
+      throw error
+    }
     const detail = error instanceof Error && error.message.trim() !== '' ? error.message.trim() : 'falha de rede'
     throw new Error(`Atlas AI não conseguiu falar com o serviço local (${detail}). Verifique se o Atlas local está rodando e tente de novo.`)
   }
@@ -188,7 +223,7 @@ export async function createAiThread(input: {
 
 export async function getAiThread(
   id: string,
-  opts: { lean?: boolean; messageLimit?: number } = { lean: true, messageLimit: 6 },
+  opts: { lean?: boolean; messageLimit?: number; signal?: AbortSignal } = { lean: true, messageLimit: 6 },
 ): Promise<AiThreadDetail> {
   ensureOnline('getAiThread')
   const params = new URLSearchParams()
@@ -197,13 +232,14 @@ export async function getAiThread(
   const qs = params.toString()
   const result = await fetchJson<{ thread: AiThreadDetail }>(
     `/ai/threads/${encodeURIComponent(id)}${qs ? `?${qs}` : ''}`,
+    { signal: opts.signal },
   )
   return result.thread
 }
 
 export async function getAiThreadMessages(
   id: string,
-  opts: { beforePosition?: number | null; limit?: number } = {},
+  opts: { beforePosition?: number | null; limit?: number; signal?: AbortSignal } = {},
 ): Promise<AiThreadMessagesPage> {
   ensureOnline('getAiThreadMessages')
   const params = new URLSearchParams()
@@ -214,6 +250,7 @@ export async function getAiThreadMessages(
   const qs = params.toString()
   return fetchJson<AiThreadMessagesPage>(
     `/ai/threads/${encodeURIComponent(id)}/messages${qs ? `?${qs}` : ''}`,
+    { signal: opts.signal },
   )
 }
 
@@ -295,20 +332,9 @@ export async function getAiTrace(traceId: string): Promise<AiTrace> {
 export async function getAtlasAiRouterBootstrap(): Promise<AtlasAiRouterBootstrap | null> {
   if (MODE === 'offline') return null
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    }
-    const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
-    if (token) headers['X-Atlas-Token'] = token
-    const response = await fetch(apiUrl('/ai/router-runtime/bootstrap'), {
-      method: 'GET',
-      headers,
-    })
-    if (!response.ok) {
-      return null // endpoint não deployado (404) ou serviço quente: ignora silenciosamente
-    }
-    const body = (await response.json()) as { bootstrap?: AtlasAiRouterBootstrap } | AtlasAiRouterBootstrap
+    const body = await fetchJson<{ bootstrap?: AtlasAiRouterBootstrap } | AtlasAiRouterBootstrap>(
+      '/ai/router-runtime/bootstrap',
+    )
     if (body && typeof body === 'object' && 'bootstrap' in body && body.bootstrap) {
       return body.bootstrap
     }
@@ -326,19 +352,7 @@ export async function getAtlasAiRouterBootstrap(): Promise<AtlasAiRouterBootstra
 export async function getAtlasAiRuntimeReadiness(): Promise<AtlasAiRuntimeReadiness | null> {
   if (MODE === 'offline') return null
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    }
-    const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
-    if (token) headers['X-Atlas-Token'] = token
-    const response = await fetch(apiUrl('/atlas/ai/runtime-readiness'), {
-      method: 'GET',
-      headers,
-    })
-    if (!response.ok) return null
-
-    return (await response.json()) as AtlasAiRuntimeReadiness
+    return await fetchJson<AtlasAiRuntimeReadiness>('/atlas/ai/runtime-readiness')
   } catch {
     return null
   }
@@ -370,6 +384,24 @@ export async function persistAtlasAwisRuntimeSnapshot(
   try {
     return await fetchJson<AtlasAwisRuntimeSnapshot>(
       `/atlas-code/workspace-intelligence?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function getAtlasAwisLiveExecutionMemory(
+  workspace: string,
+  task = '',
+  opts: { latest?: boolean } = {},
+): Promise<AtlasAwisLiveExecutionMemory | null> {
+  if (MODE === 'offline') return null
+  const params = new URLSearchParams({ workspace })
+  if (task.trim() !== '') params.set('task', task.trim())
+  if (opts.latest) params.set('latest', '1')
+  try {
+    return await fetchJson<AtlasAwisLiveExecutionMemory>(
+      `/atlas-code/workspace-intelligence/live-execution-memory?${params.toString()}`,
     )
   } catch {
     return null
@@ -453,18 +485,9 @@ export async function getAtlasServerHealth(): Promise<AtlasServerHealth | null> 
 export async function getAtlasAiRouterReadiness(): Promise<AtlasAiRouterReadiness | null> {
   if (MODE === 'offline') return null
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    }
-    const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
-    if (token) headers['X-Atlas-Token'] = token
-    const response = await fetch(apiUrl('/ai/router-runtime/readiness'), {
-      method: 'GET',
-      headers,
-    })
-    if (!response.ok) return null
-    const body = (await response.json()) as { readiness?: AtlasAiRouterReadiness } | AtlasAiRouterReadiness
+    const body = await fetchJson<{ readiness?: AtlasAiRouterReadiness } | AtlasAiRouterReadiness>(
+      '/ai/router-runtime/readiness',
+    )
     if (body && typeof body === 'object' && 'readiness' in body && body.readiness) {
       return body.readiness
     }
@@ -504,6 +527,19 @@ export async function postAtlasDevPlan(
   request: AtlasDevPlanRequest,
 ): Promise<AtlasDevPlanResult> {
   ensureOnline('postAtlasDevPlan')
+  const body = toAtlasDevPlanHttpBody(request)
+
+  if (MODE === 'tauri') {
+    const parsed = await fetchJson<unknown>('/ai/interactions/atlas-dev/plan', {
+      method: 'POST',
+      body,
+    })
+    const normalised = normalisePlanResponse(parsed)
+    if (!normalised) {
+      throw new Error('Atlas AI · resposta inesperada do plan endpoint.')
+    }
+    return normalised
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -515,7 +551,7 @@ export async function postAtlasDevPlan(
   const response = await fetch(apiUrl('/ai/interactions/atlas-dev/plan'), {
     method: 'POST',
     headers,
-    body: JSON.stringify(toAtlasDevPlanHttpBody(request)),
+    body: JSON.stringify(body),
   })
 
   if (response.status === 404) {

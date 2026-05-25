@@ -632,7 +632,16 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       // Project that does not exist in the read-model. When workspaces is
       // null (Tauri before bridge), we accept any slug so the UI falls back
       // to fetching whatever the backend resolves.
-      const currentWorkspaces = snap.workspaces
+      let currentWorkspaces = snap.workspaces
+      if (currentWorkspaces && !currentWorkspaces.profiles.find((p) => p.slug === target)) {
+        currentWorkspaces = await bridge.listWorkspaces().catch((e: unknown) => {
+          pushError('setActiveWorkspaceSlug.refreshWorkspaces', e)
+          return currentWorkspaces
+        })
+        if (!cancelRef.current) {
+          setSnap((s) => ({ ...s, workspaces: currentWorkspaces, errors: [...errorBufRef.current] }))
+        }
+      }
       if (currentWorkspaces && !currentWorkspaces.profiles.find((p) => p.slug === target)) {
         pushError('setActiveWorkspaceSlug', new Error(`unknown workspace_slug: ${target}`))
         return
@@ -651,9 +660,13 @@ export function useBridge(): BridgeSnapshot & BridgeActions {
       if (cancelRef.current) return
       setSnap((s) => {
         const profile =
-          s.workspaces?.profiles.find((p) => p.slug === target) ?? s.activeWorkspace ?? null
+          currentWorkspaces?.profiles.find((p) => p.slug === target)
+          ?? s.workspaces?.profiles.find((p) => p.slug === target)
+          ?? s.activeWorkspace
+          ?? null
         return {
           ...s,
+          workspaces: currentWorkspaces ?? s.workspaces,
           busy: false,
           activeWorkspaceSlug: target,
           activeWorkspace: profile,

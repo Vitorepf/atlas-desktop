@@ -234,10 +234,7 @@ mod tests {
 
     #[test]
     fn cli_bare_flag_starts_listening() {
-        let r = detect_ambient_launch_request(
-            &args(&["atlas-code", VOX_AMBIENT_CLI_FLAG]),
-            None,
-        );
+        let r = detect_ambient_launch_request(&args(&["atlas-code", VOX_AMBIENT_CLI_FLAG]), None);
         assert!(r.start_listening);
         assert_eq!(r.source, AmbientLaunchSource::Cli);
     }
@@ -283,10 +280,8 @@ mod tests {
 
     #[test]
     fn both_cli_and_env_reports_combined_source() {
-        let r = detect_ambient_launch_request(
-            &args(&["atlas-code", VOX_AMBIENT_CLI_FLAG]),
-            Some("1"),
-        );
+        let r =
+            detect_ambient_launch_request(&args(&["atlas-code", VOX_AMBIENT_CLI_FLAG]), Some("1"));
         assert!(r.start_listening);
         assert_eq!(r.source, AmbientLaunchSource::CliAndEnv);
     }
@@ -294,10 +289,8 @@ mod tests {
     #[test]
     fn ignores_trailing_double_dash_flags() {
         // Convenção POSIX: tudo após `--` é argumento posicional, não flag.
-        let r = detect_ambient_launch_request(
-            &args(&["atlas-code", "--", VOX_AMBIENT_CLI_FLAG]),
-            None,
-        );
+        let r =
+            detect_ambient_launch_request(&args(&["atlas-code", "--", VOX_AMBIENT_CLI_FLAG]), None);
         assert!(!r.start_listening);
     }
 

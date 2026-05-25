@@ -237,6 +237,7 @@ export interface AtlasAwisRuntimeSnapshot {
     } | null
   } | null
   workspace_next_session_brain?: AtlasAwisNextSessionBrain | null
+  workspace_live_execution_memory?: AtlasAwisLiveExecutionMemory | null
 }
 
 export interface AtlasAwisArtifactIntelligence {
@@ -329,6 +330,7 @@ export interface AtlasAwisNextSessionBrain {
     focused_areas?: ReadonlyArray<string> | null
     owner_docs?: ReadonlyArray<string> | null
     artifact_refs?: ReadonlyArray<string> | null
+    live_execution_memory_ref?: string | null
     current_truth_pack_hash?: string | null
   } | null
   execution_priority?: ReadonlyArray<{
@@ -340,6 +342,8 @@ export interface AtlasAwisNextSessionBrain {
     schema_version?: 'atlas.awis.context_loading_plan.v1' | string
     mode?: string | null
     repository_inventory_hash?: string | null
+    live_execution_memory_hash?: string | null
+    live_execution_startup_packet?: AtlasAwisLiveExecutionMemory['startup_packet'] | null
     repository_count?: number | null
     working_set_hash?: string | null
     context_delta_plan_hash?: string | null
@@ -370,6 +374,67 @@ export interface AtlasAwisNextSessionBrain {
     raw_file_content_returned?: boolean | null
     raw_conversation_returned?: boolean | null
     absolute_workspace_path_returned?: boolean | null
+  } | null
+}
+
+export interface AtlasAwisLiveExecutionMemory {
+  schema_version?: 'atlas.awis.workspace_live_execution_memory.v1' | string
+  status?: 'ready' | 'blocked' | string
+  workspace_id?: string | null
+  task_hash?: string | null
+  live_memory_hash?: string | null
+  startup_packet?: {
+    load_first?: ReadonlyArray<string> | null
+    use_as_summary?: ReadonlyArray<string> | null
+    validate_before_trust?: ReadonlyArray<string> | null
+    avoid?: ReadonlyArray<string> | null
+    human_boundary?: ReadonlyArray<string> | null
+  } | null
+  automation_loop?: {
+    before_send?: ReadonlyArray<string> | null
+    after_success?: ReadonlyArray<string> | null
+    after_failure?: ReadonlyArray<string> | null
+    on_drift?: ReadonlyArray<string> | null
+  } | null
+  promotion_rules?: {
+    promote_to_gold?: ReadonlyArray<string> | null
+    preserve_as_artifact?: ReadonlyArray<string> | null
+    revalidate?: ReadonlyArray<string> | null
+    demote?: ReadonlyArray<string> | null
+  } | null
+  workspace_learning?: {
+    repositories?: ReadonlyArray<{
+      repo_key?: string | null
+      stack?: ReadonlyArray<string> | null
+      manifest_count?: number | null
+      script_count?: number | null
+    }> | null
+    focused_repositories?: ReadonlyArray<{
+      repo_key?: string | null
+      score?: number | null
+      reasons?: ReadonlyArray<string> | null
+    }> | null
+    focused_areas?: ReadonlyArray<string> | null
+    focused_commands?: ReadonlyArray<string> | null
+    changed_files_preview?: ReadonlyArray<string> | null
+    canonical_source_count?: number | null
+  } | null
+  persistence_contract?: {
+    stored_with_awis_snapshot?: boolean | null
+    embedded_in_artifact_lake?: string | null
+    cross_session_replay?: string | null
+    raw_conversation_stored?: boolean | null
+    auto_promotes_memory?: boolean | null
+  } | null
+  cache_keys?: Record<string, string | null | undefined> | null
+  source_policy?: {
+    raw_file_content_returned?: boolean | null
+    raw_diff_returned?: boolean | null
+    raw_log_returned?: boolean | null
+    raw_manifest_returned?: boolean | null
+    raw_conversation_returned?: boolean | null
+    absolute_workspace_path_returned?: boolean | null
+    provider_prompt_unit?: string | null
   } | null
 }
 
@@ -419,6 +484,7 @@ export interface AtlasAwisHandoffPack {
     execution_priority?: AtlasAwisNextSessionBrain['execution_priority']
     raw_content_returned?: boolean | null
   } | null
+  live_execution_memory?: AtlasAwisLiveExecutionMemory | null
   conversation_fusion?: unknown
   claim_policy?: {
     read_only?: boolean | null
@@ -428,6 +494,7 @@ export interface AtlasAwisHandoffPack {
     raw_conversation_returned?: boolean | null
     full_message_content_returned?: boolean | null
     next_session_brain_provider_safe?: boolean | null
+    live_execution_memory_provider_safe?: boolean | null
   } | null
   blockers?: ReadonlyArray<string> | null
 }

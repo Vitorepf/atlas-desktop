@@ -3,6 +3,7 @@ import test from 'node:test'
 import type { AtlasWorkspaceBrainSnapshot } from '../../../lib/bridge'
 import {
   AWIS_WORKSPACE_ARTIFACT_STORAGE,
+  AWIS_WORKSPACE_LIVE_EXECUTION_MEMORY_STORAGE,
   AWIS_WORKSPACE_MEMORY_STORAGE,
   AWIS_WORKSPACE_SPACE_PROJECTIONS_STORAGE,
   buildAwisWorkspaceArtifact,
@@ -20,6 +21,7 @@ import {
   buildAwisWorkspaceImpactMapProjection,
   buildAwisWorkspaceLaunchContractProjection,
   buildAwisWorkspaceLearningProjection,
+  buildAwisWorkspaceLiveExecutionMemoryProjectionFromServer,
   buildAwisWorkspaceLivingGraphProjection,
   buildAwisWorkspaceMemoryConsolidationProjection,
   buildAwisWorkspaceMemoryFreshnessProjection,
@@ -42,12 +44,21 @@ import {
   loadAwisWorkspaceArtifactLakeSummary,
   loadAwisWorkspaceArtifactReplayProjection,
   loadAwisWorkspaceArtifacts,
+  loadAwisWorkspaceArtifactStore,
+  loadAwisWorkspaceLiveExecutionMemoryProjection,
   learnAwisWorkspaceMemory,
   loadAwisWorkspaceMemory,
   loadAwisWorkspaceSpaceProjection,
+  mergeAwisWorkspaceArtifactStores,
+  mergeAwisWorkspaceMemoryStores,
+  normalizeAwisWorkspaceArtifactStore,
+  normalizeAwisWorkspaceMemoryStore,
   recordAwisWorkspaceInteraction,
   recordAwisWorkspaceMaintenance,
   saveAwisWorkspaceArtifact,
+  saveAwisWorkspaceArtifactStore,
+  saveAwisWorkspaceLiveExecutionMemoryProjection,
+  saveAwisWorkspaceMemories,
   saveAwisWorkspaceSpaceProjection,
   saveAwisWorkspaceMemory,
   workspaceMemoryKey,
@@ -99,6 +110,75 @@ test('AWIS workspace memory persists learned folder signals per workspace', () =
   assert.ok(loaded?.stableSignals.some((signal) => signal.label === 'Laravel'))
   assert.ok(loaded?.stableCommands.some((signal) => signal.label === 'npm run test'))
   assert.match(store.getItem(AWIS_WORKSPACE_MEMORY_STORAGE) ?? '', /atlas\.awis\.workspace_memory\.v1/)
+})
+
+test('AWIS native memory mirror keeps the newest workspace brain copy', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const local = learnAwisWorkspaceMemory(null, brain({ scannedAt: '2026-05-24T12:00:00Z' }), key).memory
+  const native = recordAwisWorkspaceInteraction(local, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-25T12:00:00Z',
+    channel: 'conversation',
+    status: 'succeeded',
+    contextPackApplied: true,
+    taskKind: 'bug_fix',
+    contextGoldLabels: ['component:atlas-desktop'],
+  }).memory
+  const merged = mergeAwisWorkspaceMemoryStores({ [key]: local }, normalizeAwisWorkspaceMemoryStore({ [key]: native }))
+  const store = storage()
+  saveAwisWorkspaceMemories(merged, store)
+  const loaded = loadAwisWorkspaceMemory(key, store)
+
+  assert.equal(loaded?.interactionCount, 1)
+  assert.equal(loaded?.lastInteractionAt, '2026-05-25T12:00:00Z')
+  assert.ok(loaded?.operationalSignals.some((signal) => signal.label === 'ouro:component:atlas-desktop'))
+})
+
+test('AWIS native artifact mirror keeps reusable startup snapshots durable', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const firstPack = buildAwisWorkspaceContextPack({
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    brain: brain(),
+    memory: learnAwisWorkspaceMemory(null, brain(), key).memory,
+    spaces: buildAwisWorkspaceSpaceProjection([{
+      title: 'Cérebro vivo AWIS',
+      source: 'local_space',
+      generated_at: '2026-05-24T12:00:00Z',
+      thread_count: 2,
+      message_count: 18,
+      mode_count: 2,
+      decision_count: 1,
+      pending_count: 0,
+      risk_count: 0,
+      artifact_count: 1,
+      reusable_by: ['code', 'forge'],
+      recommended_use: ['carregar antes de nova conversa AWIS'],
+      sessions: [
+        { title: 'Partida viva', mode: 'code', message_count: 9, last_active_at: '2026-05-24T12:00:00Z', provider: 'atlas' },
+        { title: 'Artifact replay', mode: 'forge', message_count: 9, last_active_at: '2026-05-24T12:00:00Z', provider: 'atlas' },
+      ],
+    }]),
+  })
+  const artifact = firstPack ? buildAwisWorkspaceArtifact(firstPack, '2026-05-25T12:00:00Z') : null
+  assert.ok(artifact)
+
+  const native = normalizeAwisWorkspaceArtifactStore({ [key]: [artifact] })
+  const merged = mergeAwisWorkspaceArtifactStores({}, native)
+  const store = storage()
+  saveAwisWorkspaceArtifactStore(merged, store)
+
+  const loadedArtifacts = loadAwisWorkspaceArtifacts(key, store)
+  const loadedStore = loadAwisWorkspaceArtifactStore(store)
+  const replay = loadAwisWorkspaceArtifactReplayProjection(key, store)
+
+  assert.equal(loadedArtifacts.length, 1)
+  assert.equal(loadedStore[key]?.[0]?.artifact_hash, artifact.artifact_hash)
+  assert.equal(loadAwisWorkspaceArtifactLakeSummary(key, store)?.latest_artifact_hash, artifact.artifact_hash)
+  assert.ok(replay?.reusable_startup_gold.strongest_spaces.some((space) => space.includes('Cérebro vivo AWIS')))
+  assert.doesNotMatch(store.getItem(AWIS_WORKSPACE_ARTIFACT_STORAGE) ?? '', /operator_input|response_text|source_thread_ids|thread_id|full_message|"raw_conversation_included":true/)
 })
 
 test('AWIS launch contract compiles the living brain into a next-conversation contract', () => {
@@ -308,6 +388,10 @@ test('AWIS workspace memory learns real interaction outcomes without prompts or 
     model: null,
     latencyMs: 420,
     contextPackApplied: true,
+    spaceLabels: ['Fluxo Atlas AI'],
+    spaceBrainLabels: ['Fluxo Atlas AI:comparar é ação explícita'],
+    liveMemoryLabels: ['sha256:live'],
+    priorityLoadLabels: ['atlas-desktop'],
   }).memory
 
   assert.equal(updated.interactionCount, 1)
@@ -317,6 +401,18 @@ test('AWIS workspace memory learns real interaction outcomes without prompts or 
   assert.equal(updated.lastInteractionAt, '2026-05-24T12:10:00Z')
   assert.ok(updated.operationalSignals.some((signal) => signal.label === 'canal:workbench'))
   assert.ok(updated.operationalSignals.some((signal) => signal.label === 'contexto aplicado'))
+  assert.ok(updated.operationalSignals.some((signal) => signal.label === 'space:Fluxo Atlas AI'))
+  assert.ok(updated.operationalSignals.some((signal) => signal.label === 'space-brain:Fluxo Atlas AI:comparar é ação explícita'))
+  assert.ok(updated.operationalSignals.some((signal) => signal.label === 'memória viva:sha256:live'))
+  assert.ok(updated.operationalSignals.some((signal) => signal.label === 'prioridade:atlas-desktop'))
+  const pack = buildAwisWorkspaceContextPack({
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    brain: brain(),
+    memory: updated,
+  })
+  assert.ok(pack?.memory?.operational.context_gold.promoted.includes('space-brain:Fluxo Atlas AI:comparar é ação explícita'))
+  assert.ok(pack?.memory?.operational.context_gold.space_brain.promoted.includes('Fluxo Atlas AI:comparar é ação explícita'))
   assert.deepEqual(updated.recentOutcomes[0], {
     occurredAt: '2026-05-24T12:10:00Z',
     channel: 'workbench',
@@ -331,6 +427,10 @@ test('AWIS workspace memory learns real interaction outcomes without prompts or 
     contextGoldLabels: [],
     validationCommands: [],
     componentKeys: [],
+    spaceLabels: ['Fluxo Atlas AI'],
+    spaceBrainLabels: ['Fluxo Atlas AI:comparar é ação explícita'],
+    liveMemoryLabels: ['sha256:live'],
+    priorityLoadLabels: ['atlas-desktop'],
   })
   assert.doesNotMatch(JSON.stringify(updated), /prompt|response_text|operator_input|function|class|import .* from/)
 })
@@ -389,6 +489,97 @@ test('AWIS maintenance actions teach the workspace what upkeep worked', () => {
   assert.ok(pack?.memory?.operational.recent_maintenance.some((item) => item.includes('preserve_artifact:succeeded')))
   assert.ok(capsule?.continue_learning.maintenance_recent.some((item) => item.includes('preserve_artifact:succeeded')))
   assert.doesNotMatch(JSON.stringify(updated.recentMaintenance), /operator_input|response_text|prompt/)
+})
+
+test('AWIS command-center maintenance records cross-workspace and learning actions as durable memory', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const initial = learnAwisWorkspaceMemory(null, brain(), key).memory
+  const updated = recordAwisWorkspaceMaintenance(initial, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T12:25:00Z',
+    action: 'cross_workspace_transfer',
+    label: 'atlas-server',
+    status: 'succeeded',
+    reason: 'Space Brain compatível validado no command center',
+    evidence: ['confiança:86', 'shared_context'],
+  }).memory
+  const updatedAgain = recordAwisWorkspaceMaintenance(updated, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T12:26:00Z',
+    action: 'record_outcome',
+    label: 'resultado da sessão',
+    status: 'succeeded',
+    reason: 'operador preservou outcome para calibrar próxima conversa',
+    evidence: ['acionado pelo command center'],
+  }).memory
+  const pack = buildAwisWorkspaceContextPack({
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    brain: brain(),
+    memory: updatedAgain,
+  })
+
+  assert.equal(updatedAgain.recentMaintenance[0]?.action, 'record_outcome')
+  assert.equal(updatedAgain.recentMaintenance[1]?.action, 'cross_workspace_transfer')
+  assert.ok(updatedAgain.operationalSignals.some((signal) => signal.label === 'manutenção ok:cross_workspace_transfer'))
+  assert.ok(updatedAgain.operationalSignals.some((signal) => signal.label === 'manutenção ok:record_outcome'))
+  assert.ok(pack?.memory?.operational.recent_maintenance.some((item) => item.includes('cross_workspace_transfer:succeeded:atlas-server')))
+  assert.ok(pack?.memory?.operational.recent_maintenance.some((item) => item.includes('record_outcome:succeeded:resultado da sessão')))
+  assert.doesNotMatch(JSON.stringify(pack), /\/Users\/|thread_id|source_thread_ids|operator_input|response_text|"raw_conversation_included":true/)
+})
+
+test('AWIS maintenance history recalibrates automation, confidence and self-improvement', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const initial = learnAwisWorkspaceMemory(null, brain({
+    commands: [
+      { label: 'Atlas AI tests', command: 'npm run atlas-ai:test', kind: 'test', source: 'package.json' },
+    ],
+  }), key).memory
+  const withTransfer = recordAwisWorkspaceMaintenance(initial, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T12:30:00Z',
+    action: 'cross_workspace_transfer',
+    label: 'atlas-server',
+    status: 'succeeded',
+    reason: 'transferência validada pelo operador',
+    evidence: ['shared_stack'],
+  }).memory
+  const withFailure = recordAwisWorkspaceMaintenance(withTransfer, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T12:31:00Z',
+    action: 'revalidate_command',
+    label: 'npm run atlas-ai:test',
+    status: 'failed',
+    reason: 'comando precisa nova evidência',
+    evidence: ['exit 1'],
+  }).memory
+  const pack = buildAwisWorkspaceContextPack({
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    brain: brain({
+      commands: [
+        { label: 'Atlas AI tests', command: 'npm run atlas-ai:test', kind: 'test', source: 'package.json' },
+      ],
+    }),
+    memory: withFailure,
+  })
+
+  assert.ok(pack?.automation?.maintenance_queue.some((item) => item.action === 'revalidate_command' && item.label === 'npm run atlas-ai:test'))
+  assert.ok(pack?.automation?.feedback_loop.promote_when.some((item) => item.includes('manutenção comprovada:cross_workspace_transfer:atlas-server')))
+  assert.ok(pack?.automation?.feedback_loop.demote_when.some((item) => item.includes('manutenção precisa revalidar:revalidate_command:npm run atlas-ai:test')))
+  assert.ok(pack?.confidence?.ranked.commands.some((item) => item.label === 'npm run atlas-ai:test' && item.caution === 'manutenção recente pediu revalidação'))
+  assert.ok(pack?.self_improvement?.improvement_queue.some((item) => item.action === 'transfer_learning' && item.label === 'atlas-server'))
+  assert.ok(pack?.self_improvement?.improvement_queue.some((item) => item.action === 'demote_context' && item.label === 'npm run atlas-ai:test'))
+  assert.ok(pack?.self_improvement?.promotion_policy.demote_when.some((item) => item.includes('manutenção precisa revalidar:revalidate_command:npm run atlas-ai:test')))
+  assert.doesNotMatch(JSON.stringify(pack), /\/Users\/|thread_id|source_thread_ids|operator_input|response_text|"raw_conversation_included":true/)
 })
 
 test('AWIS task context autopilot selects provider-safe context for the next send', () => {
@@ -688,6 +879,8 @@ test('AWIS workspace space projection carries strongest Spaces without raw threa
   const projection = buildAwisWorkspaceSpaceProjection([
     {
       title: 'Fluxo Atlas AI',
+      source: 'local_space',
+      generated_at: '2026-05-24T12:10:00Z',
       thread_count: 2,
       message_count: 12,
       mode_count: 2,
@@ -695,8 +888,19 @@ test('AWIS workspace space projection carries strongest Spaces without raw threa
       pending_count: 0,
       risk_count: 1,
       artifact_count: 1,
+      scope_label: '2 sessões · 2 modos',
       reusable_by: ['Atlas AI', 'Code', 'packs'],
       recommended_use: ['gerar pack seguro', 'trabalhar lado a lado'],
+      brain_contract: {
+        state: 'vivo',
+        load_first: ['Space:Fluxo Atlas AI', 'sessão:Corrigir AWIS'],
+        carry_forward: ['artifact:pack-awis'],
+        validate_before_use: ['revalidar riscos do Space'],
+        automation_hooks: ['promover resumo do Space para próxima conversa'],
+        human_boundary: ['humano confirma mudança em área de risco'],
+        artifact_refs: ['pack-awis'],
+        evidence: ['1 decisão', '1 risco'],
+      },
       sessions: [
         {
           title: 'Corrigir AWIS',
@@ -720,9 +924,177 @@ test('AWIS workspace space projection carries strongest Spaces without raw threa
   assert.equal(projection?.space_count, 1)
   assert.equal(projection?.total_session_count, 2)
   assert.equal(projection?.strongest_spaces[0]?.title, 'Fluxo Atlas AI')
+  assert.equal(projection?.continuity.never_start_cold, true)
+  assert.equal(projection?.continuity.provider_safe, true)
+  assert.ok(projection?.continuity.load_first.includes('Space:Fluxo Atlas AI'))
+  assert.equal(projection?.strongest_spaces[0]?.source, 'local_space')
+  assert.equal(projection?.strongest_spaces[0]?.scope_label, '2 sessões · 2 modos')
+  assert.ok((projection?.strongest_spaces[0]?.strength_score ?? 0) > 0)
+  assert.equal(projection?.strongest_spaces[0]?.brain_contract.state, 'vivo')
+  assert.ok(projection?.strongest_spaces[0]?.brain_contract.load_first.includes('Space:Fluxo Atlas AI'))
+  assert.ok(projection?.strongest_spaces[0]?.brain_contract.artifact_refs.includes('pack-awis'))
+  assert.ok(projection?.strongest_spaces[0]?.continuity_contract.carry_forward.some((item) => item.includes('2 sessões')))
   assert.equal(projection?.safety.raw_conversation_included, false)
   assert.equal(projection?.safety.internal_ids_included, false)
   assert.doesNotMatch(JSON.stringify(projection), /thread-a|thread_id|source_thread_ids|mensagem completa/)
+})
+
+test('AWIS task context loads Space brain for new conversations without raw sessions', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const memory = learnAwisWorkspaceMemory(null, brain({
+    commands: [
+      { label: 'Atlas AI test', command: 'npm run atlas-ai:test', kind: 'test', source: 'atlas-desktop/package.json' },
+    ],
+  }), key).memory
+  const spaces = buildAwisWorkspaceSpaceProjection([
+    {
+      title: 'Fluxo AWIS Spaces',
+      source: 'local_space',
+      generated_at: '2026-05-24T12:20:00Z',
+      thread_count: 4,
+      message_count: 31,
+      mode_count: 2,
+      decision_count: 2,
+      pending_count: 0,
+      risk_count: 1,
+      artifact_count: 2,
+      scope_label: '4 sessões · Atlas AI',
+      reusable_by: ['Atlas AI', 'Code', 'Forge'],
+      recommended_use: ['carregar cérebro do Space antes de corrigir AWIS', 'reusar pack seguro'],
+      brain_contract: {
+        state: 'vivo',
+        load_first: ['mapa seguro de Spaces', 'contrato drag conversa para Space'],
+        carry_forward: ['não abrir todas ao clicar sessão', 'comparar é ação explícita'],
+        validate_before_use: ['rodar npm run atlas-ai:test'],
+        automation_hooks: ['promover resultado validado para pack do Space'],
+        human_boundary: ['humano confirma mudança visual premium'],
+        artifact_refs: ['pack-awis-spaces', 'handoff-space-brain'],
+        evidence: ['2 decisões', '1 risco mapeado'],
+      },
+      sessions: [
+        {
+          title: 'Corrigir Space',
+          mode: 'programming',
+          message_count: 18,
+          last_active_at: '2026-05-24T12:00:00Z',
+          provider: 'atlas_decide',
+        },
+        {
+          title: 'Polir Workbench',
+          mode: 'programming',
+          message_count: 13,
+          last_active_at: '2026-05-24T12:10:00Z',
+          provider: null,
+        },
+      ],
+    },
+  ])
+  const pack = buildAwisWorkspaceContextPack({
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    brain: brain(),
+    memory,
+    spaces,
+  })
+  const task = buildAwisWorkspaceTaskContextProjection(pack, 'corrigir bug de drag no AWIS Space sem nascer zerado')
+  const capsule = buildAwisWorkspaceProviderCapsule(pack, task)
+
+  assert.equal(task?.recommended_context.space_brain[0]?.title, 'Fluxo AWIS Spaces')
+  assert.equal(task?.recommended_context.space_brain[0]?.state, 'vivo')
+  assert.ok(task?.recommended_context.space_brain[0]?.load_first.includes('mapa seguro de Spaces'))
+  assert.ok(task?.recommended_context.space_brain[0]?.carry_forward.includes('comparar é ação explícita'))
+  assert.ok(task?.recommended_context.space_brain[0]?.validate_before_use.includes('rodar npm run atlas-ai:test'))
+  assert.ok(task?.recommended_context.artifacts.includes('pack-awis-spaces'))
+  assert.ok(task?.recommended_context.load_order.some((item) => item.includes('space-brain:Fluxo AWIS Spaces:mapa seguro de Spaces')))
+  assert.ok(task?.risk.cautions.some((item) => item.includes('Space:Fluxo AWIS Spaces:rodar npm run atlas-ai:test')))
+  assert.ok(capsule?.load_first.some((item) => item.includes('space-brain:Fluxo AWIS Spaces:mapa seguro de Spaces')))
+  assert.ok(capsule?.use_as_summary.some((item) => item.includes('space-carry:Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.ok(capsule?.use_as_summary.some((item) => item.includes('space-evidence:Fluxo AWIS Spaces:2 decisões')))
+  assert.ok(capsule?.validate_with.some((item) => item.includes('space-validate:Fluxo AWIS Spaces:rodar npm run atlas-ai:test')))
+  assert.doesNotMatch(JSON.stringify(task), /thread_id|source_thread_ids|operator_input|response_text|raw_conversation_included":true/)
+  assert.doesNotMatch(JSON.stringify(capsule), /thread_id|source_thread_ids|operator_input|response_text|raw_conversation_included":true/)
+})
+
+test('AWIS Space brain outcomes promote good context and revalidate failed context', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  let memory = learnAwisWorkspaceMemory(null, brain(), key).memory
+  memory = recordAwisWorkspaceInteraction(memory, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T13:00:00Z',
+    channel: 'workbench',
+    status: 'succeeded',
+    contextPackApplied: true,
+    taskKind: 'bug_fix',
+    spaceBrainLabels: ['Fluxo AWIS Spaces:comparar é ação explícita'],
+  }).memory
+  memory = recordAwisWorkspaceInteraction(memory, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T13:10:00Z',
+    channel: 'workbench',
+    status: 'succeeded',
+    contextPackApplied: true,
+    taskKind: 'bug_fix',
+    spaceBrainLabels: ['Fluxo AWIS Spaces:comparar é ação explícita'],
+  }).memory
+  memory = recordAwisWorkspaceInteraction(memory, {
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    rootPath: '/Users/vitorepf/develop/Atlas',
+    occurredAt: '2026-05-24T13:20:00Z',
+    channel: 'conversation',
+    status: 'failed',
+    contextPackApplied: true,
+    taskKind: 'bug_fix',
+    spaceBrainLabels: ['Fluxo AWIS Spaces:contrato antigo'],
+  }).memory
+  const spaces = buildAwisWorkspaceSpaceProjection([
+    {
+      title: 'Fluxo AWIS Spaces',
+      thread_count: 3,
+      message_count: 22,
+      mode_count: 1,
+      decision_count: 2,
+      pending_count: 0,
+      risk_count: 0,
+      artifact_count: 1,
+      reusable_by: ['Code'],
+      recommended_use: ['corrigir AWIS Spaces'],
+      sessions: [],
+    },
+  ])
+  const pack = buildAwisWorkspaceContextPack({
+    workspaceKey: key,
+    workspaceName: 'Atlas',
+    brain: brain(),
+    memory,
+    spaces,
+  })
+  assert.ok(pack)
+  const task = buildAwisWorkspaceTaskContextProjection(pack, 'corrigir AWIS Spaces')
+  const artifact = buildAwisWorkspaceArtifact(pack, '2026-05-24T13:30:00Z')
+  const replay = artifact ? buildAwisWorkspaceArtifactReplayProjection([artifact]) : null
+
+  assert.ok(pack?.memory?.operational.context_gold.space_brain.promoted.includes('Fluxo AWIS Spaces:comparar é ação explícita'))
+  assert.ok(pack?.memory?.operational.context_gold.space_brain.revalidate.includes('Fluxo AWIS Spaces:contrato antigo'))
+  assert.ok(pack?.self_improvement?.improvement_queue.some((item) => item.action === 'update_space_pack' && item.label.includes('comparar é ação explícita')))
+  assert.ok(pack?.self_improvement?.improvement_queue.some((item) => item.action === 'demote_context' && item.label.includes('contrato antigo')))
+  assert.ok(pack?.memory_consolidation?.consolidate.promote_to_gold.some((item) => item.includes('space-brain:Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.ok(pack?.memory_consolidation?.consolidate.revalidate.some((item) => item.includes('space-brain:Fluxo AWIS Spaces:contrato antigo')))
+  assert.ok(task?.recommended_context.space_brain[0]?.carry_forward.some((item) => item.includes('promovido por outcome')))
+  assert.ok(task?.recommended_context.space_brain[0]?.validate_before_use.some((item) => item.includes('revalidar outcome')))
+  assert.ok(artifact?.manifest.load_first.some((item) => item.includes('space-brain-gold:Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.ok(artifact?.manifest.promote_signals.some((item) => item.includes('space-brain:Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.ok(artifact?.manifest.caution_signals.some((item) => item.includes('space-brain-revalidate:Fluxo AWIS Spaces:contrato antigo')))
+  assert.ok(replay?.cold_start_seed.load_order.some((item) => item.includes('space-brain-gold:Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.ok(replay?.cold_start_seed.warnings.some((item) => item.includes('space-brain-revalidate:Fluxo AWIS Spaces:contrato antigo')))
+  assert.ok(replay?.reusable_startup_gold.reusable_patterns.some((item) => item.includes('space-brain-gold:Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.ok(replay?.reusable_startup_gold.next_best_actions.some((item) => item.includes('Space brain: preservar Fluxo AWIS Spaces:comparar é ação explícita')))
+  assert.doesNotMatch(JSON.stringify(pack), /thread_id|source_thread_ids|operator_input|response_text|raw_conversation_included":true/)
+  assert.doesNotMatch(JSON.stringify(replay), /thread_id|source_thread_ids|operator_input|response_text|raw_conversation_included":true/)
 })
 
 test('AWIS workspace context pack includes Space projection as startup gold context', () => {
@@ -756,6 +1128,9 @@ test('AWIS workspace context pack includes Space projection as startup gold cont
   assert.equal(pack?.startup_snapshot?.readiness.spaces_ready, true)
   assert.ok(pack?.startup_snapshot?.startup_gold.strongest_spaces.some((space) => space.includes('Workbench final')))
   assert.ok(pack?.startup_snapshot?.startup_gold.next_best_actions.includes('usar Space forte antes de abrir conversa nova'))
+  assert.ok(pack?.startup_snapshot?.startup_gold.next_best_actions.some((action) => action.includes('Space:Workbench final')))
+  assert.ok(pack?.startup_snapshot?.startup_gold.reusable_patterns.some((pattern) => pattern.includes('space-load:Space:Workbench final')))
+  assert.ok(pack?.startup_snapshot?.startup_gold.reusable_patterns.some((pattern) => pattern.includes('space-brain-load:Space:Workbench final')))
   assert.equal(pack?.safety.provider_safe, true)
 })
 
@@ -1157,6 +1532,49 @@ test('AWIS workspace context pack can start from server Artifact Intelligence re
 
 test('AWIS workspace context pack can start from next-session brain and handoff pack', () => {
   const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const liveExecutionMemory = buildAwisWorkspaceLiveExecutionMemoryProjectionFromServer({
+    schema_version: 'atlas.awis.workspace_live_execution_memory.v1',
+    status: 'ready',
+    workspace_id: 'atlas',
+    live_memory_hash: 'sha256:live',
+    startup_packet: {
+      load_first: ['workspace_live_execution_memory', 'repository_inventory', 'workspace_focus_map'],
+      use_as_summary: ['focused_repositories_and_areas'],
+      validate_before_trust: ['workspace_hash', 'workspace_live_execution_memory_hash'],
+      avoid: ['raw_conversation_replay', 'absolute_workspace_path_in_provider_prompt'],
+      human_boundary: ['mutative_execution_requires_operator_or_certified_contract'],
+    },
+    automation_loop: {
+      before_send: ['refresh_workspace_hashes'],
+      after_success: ['record_outcome', 'refresh_artifact_lake'],
+      after_failure: ['create_failure_capsule'],
+      on_drift: ['regenerate_focus_map'],
+    },
+    promotion_rules: {
+      promote_to_gold: ['repeated_success'],
+      preserve_as_artifact: ['workspace_runbook', 'context_pack'],
+      revalidate: ['workspace_hash_changed'],
+      demote: ['failed_validation'],
+    },
+    workspace_learning: {
+      repositories: [
+        { repo_key: 'atlas-desktop', stack: ['typescript'], manifest_count: 1, script_count: 2 },
+      ],
+      focused_repositories: [
+        { repo_key: 'atlas-server', score: 88, reasons: ['runtime emits AWIS'] },
+      ],
+      focused_areas: ['atlas-ai'],
+      focused_commands: ['npm run atlas-ai:test'],
+      changed_files_preview: ['atlas-desktop/apps/desktop/src/surfaces/atlas-ai/AtlasAiSurface.tsx'],
+      canonical_source_count: 2,
+    },
+    source_policy: {
+      raw_file_content_returned: false,
+      raw_diff_returned: false,
+      raw_conversation_returned: false,
+      absolute_workspace_path_returned: false,
+    },
+  })
   const nextSessionBrain = buildAwisWorkspaceNextSessionBrainProjection({
     schema_version: 'atlas.awis.workspace_next_session_brain.v1',
     status: 'ready',
@@ -1180,6 +1598,11 @@ test('AWIS workspace context pack can start from next-session brain and handoff 
       mode: 'folder_first_provider_safe_resume',
       repository_count: 2,
       repository_inventory_hash: 'sha256:inventory',
+      live_execution_memory_hash: 'sha256:live',
+      live_execution_startup_packet: {
+        load_first: ['workspace_live_execution_memory'],
+        validate_before_trust: ['workspace_live_execution_memory_hash'],
+      },
       working_set_hash: 'sha256:working',
       context_delta_plan_hash: 'sha256:delta',
       learning_snapshot_hash: 'sha256:learning',
@@ -1236,9 +1659,16 @@ test('AWIS workspace context pack can start from next-session brain and handoff 
     brain: null,
     memory: null,
     nextSessionBrain,
+    liveExecutionMemory,
     handoffPack,
   })
 
+  assert.equal(liveExecutionMemory?.source, 'server_awis_live_execution_memory')
+  assert.equal(pack?.live_execution_memory?.memory_hash, 'sha256:live')
+  assert.equal(pack?.live_execution_memory?.source, 'server_awis_live_execution_memory')
+  assert.ok(pack?.live_execution_memory?.startup_packet.load_first.includes('workspace_live_execution_memory'))
+  assert.ok(pack?.startup_snapshot?.startup_gold.reusable_patterns.some((pattern) => pattern.includes('live-memory:sha256:live')))
+  assert.equal(pack?.next_session_brain?.context_loading.hashes.live_execution_memory_hash, 'sha256:live')
   assert.equal(pack?.startup_snapshot?.readiness.next_session_brain_ready, true)
   assert.equal(pack?.startup_snapshot?.readiness.handoff_pack_ready, true)
   assert.ok(pack?.startup_snapshot?.startup_gold.commands.includes('npm run atlas-ai:test'))
@@ -1250,6 +1680,59 @@ test('AWIS workspace context pack can start from next-session brain and handoff 
     JSON.stringify(pack),
     new RegExp('raw_file_content|raw_conversation_returned":true|full_message_content_returned":true|/Users/'),
   )
+})
+
+test('AWIS live execution memory persists locally without losing canonical source', () => {
+  const key = workspaceMemoryKey('/Users/vitorepf/develop/Atlas', 'atlas')
+  const store = storage()
+  const liveExecutionMemory = buildAwisWorkspaceLiveExecutionMemoryProjectionFromServer({
+    schema_version: 'atlas.awis.workspace_live_execution_memory.v1',
+    status: 'ready',
+    workspace_id: 'atlas',
+    live_memory_hash: 'sha256:live-cache',
+    startup_packet: {
+      load_first: ['workspace_live_execution_memory'],
+      use_as_summary: ['golden startup packet'],
+      validate_before_trust: ['workspace_live_execution_memory_hash'],
+      avoid: ['raw conversation replay'],
+      human_boundary: ['operator confirms destructive changes'],
+    },
+    automation_loop: {
+      before_send: ['refresh_workspace_hashes'],
+      after_success: ['record_outcome'],
+      after_failure: ['create_failure_capsule'],
+      on_drift: ['regenerate_focus_map'],
+    },
+    promotion_rules: {
+      promote_to_gold: ['repeated_success'],
+      preserve_as_artifact: ['workspace_runbook'],
+      revalidate: ['workspace_hash_changed'],
+      demote: ['failed_validation'],
+    },
+    workspace_learning: {
+      repositories: [{ repo_key: 'atlas-desktop', stack: ['typescript'], manifest_count: 1, script_count: 2 }],
+      focused_repositories: [],
+      focused_areas: ['atlas-ai'],
+      focused_commands: ['npm run atlas-ai:test'],
+      changed_files_preview: [],
+      canonical_source_count: 1,
+    },
+    source_policy: {
+      raw_file_content_returned: false,
+      raw_diff_returned: false,
+      raw_conversation_returned: false,
+      absolute_workspace_path_returned: false,
+    },
+  })
+
+  saveAwisWorkspaceLiveExecutionMemoryProjection(key, liveExecutionMemory, store)
+  const loaded = loadAwisWorkspaceLiveExecutionMemoryProjection(key, store)
+
+  assert.equal(loaded?.source, 'server_awis_live_execution_memory')
+  assert.equal(loaded?.memory_hash, 'sha256:live-cache')
+  assert.ok(loaded?.startup_packet.load_first.includes('workspace_live_execution_memory'))
+  assert.equal(loaded?.safety.provider_safe, true)
+  assert.match(store.getItem(AWIS_WORKSPACE_LIVE_EXECUTION_MEMORY_STORAGE) ?? '', /sha256:live-cache/)
 })
 
 test('AWIS workspace topology turns the folder map into component intelligence', () => {
@@ -1323,6 +1806,10 @@ test('AWIS workspace relations connect compatible local memories without raw pat
     taskKind: 'bug_fix',
     contextGoldLabels: ['component:atlas-server'],
     validationCommands: ['php artisan test'],
+    spaceLabels: ['AWIS runtime'],
+    spaceBrainLabels: ['AWIS runtime:contexto protegido antes de abrir sessão'],
+    liveMemoryLabels: ['workspace_live_execution_memory'],
+    priorityLoadLabels: ['atlas-server'],
   }).memory
   atlasMemory = recordAwisWorkspaceInteraction(atlasMemory, {
     workspaceKey: atlasKey,
@@ -1334,6 +1821,10 @@ test('AWIS workspace relations connect compatible local memories without raw pat
     taskKind: 'bug_fix',
     contextGoldLabels: ['component:atlas-server'],
     validationCommands: ['php artisan test'],
+    spaceLabels: ['AWIS runtime'],
+    spaceBrainLabels: ['AWIS runtime:contexto protegido antes de abrir sessão'],
+    liveMemoryLabels: ['workspace_live_execution_memory'],
+    priorityLoadLabels: ['atlas-server'],
   }).memory
   let serverMemory = learnAwisWorkspaceMemory(null, brain({
     rootName: 'Atlas Server',
@@ -1352,6 +1843,10 @@ test('AWIS workspace relations connect compatible local memories without raw pat
     taskKind: 'bug_fix',
     contextGoldLabels: ['component:atlas-server'],
     validationCommands: ['php artisan test'],
+    spaceLabels: ['AWIS runtime'],
+    spaceBrainLabels: ['AWIS runtime:contexto protegido antes de abrir sessão'],
+    liveMemoryLabels: ['workspace_live_execution_memory'],
+    priorityLoadLabels: ['atlas-server'],
   }).memory
   serverMemory = recordAwisWorkspaceInteraction(serverMemory, {
     workspaceKey: serverKey,
@@ -1391,20 +1886,33 @@ test('AWIS workspace relations connect compatible local memories without raw pat
   assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_context_gold.includes('component:atlas-server')))
   assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_validation_plans.includes('bug_fix:php artisan test')))
   assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_recovery_patterns.includes('bug_fix:failed:php artisan test')))
+  assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_spaces.includes('AWIS runtime')))
+  assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_space_brain.includes('AWIS runtime:contexto protegido antes de abrir sessão')))
+  assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_live_memory.includes('workspace_live_execution_memory')))
+  assert.ok(relations?.related_workspaces.some((workspace) => workspace.shared_priority_load.includes('atlas-server')))
   assert.ok(relations?.related_workspaces[0]?.recommended_transfer.some((hint) => hint.includes('php artisan test')))
+  assert.ok(relations?.related_workspaces[0]?.recommended_transfer.some((hint) => hint.includes('Space compatível')))
+  assert.ok(relations?.related_workspaces[0]?.recommended_transfer.some((hint) => hint.includes('Space Brain transferível')))
+  assert.ok(relations?.related_workspaces[0]?.recommended_transfer.some((hint) => hint.includes('memória viva compatível')))
   assert.ok(relations?.transfer_matrix.some((transfer) => transfer.workspace_hint === 'atlas-server'))
   assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('ouro:component:atlas-server')))
   assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('validação:bug_fix:php artisan test')))
   assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('recovery:bug_fix:failed:php artisan test')))
+  assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('space:AWIS runtime')))
+  assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('space-brain:AWIS runtime:contexto protegido antes de abrir sessão')))
+  assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('memória viva:workspace_live_execution_memory')))
+  assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('prioridade:atlas-server')))
   assert.ok(relations?.transfer_matrix[0]?.reuse.some((item) => item.includes('php artisan test')))
   assert.ok(relations?.transfer_matrix[0]?.revalidate.some((item) => item.includes('validar comando antes de aplicar')))
   assert.ok(relations?.transfer_matrix[0]?.revalidate.some((item) => item.includes('confirmar validação transferida')))
   assert.ok(relations?.transfer_matrix[0]?.revalidate.some((item) => item.includes('aplicar recovery só com evidência local')))
+  assert.ok(relations?.transfer_matrix[0]?.revalidate.some((item) => item.includes('revalidar Space Brain no workspace atual')))
   assert.ok(relations?.transfer_matrix[0]?.do_not_transfer.includes('paths absolutos'))
   assert.ok(relations?.connection_contracts.some((contract) => contract.workspace_hint === 'atlas-server'))
   assert.equal(relations?.connection_contracts.find((contract) => contract.workspace_hint === 'atlas-server')?.relationship, 'shared_context')
   assert.ok(relations?.connection_contracts[0]?.load_when.some((item) => item.includes('contexto já validado')))
   assert.ok(relations?.connection_contracts[0]?.reuse.some((item) => item.includes('contexto validado:component:atlas-server')))
+  assert.ok(relations?.connection_contracts[0]?.reuse.some((item) => item.includes('Space Brain transferível:AWIS runtime:contexto protegido antes de abrir sessão')))
   assert.ok(relations?.connection_contracts[0]?.validate.some((item) => item.includes('provar novamente:bug_fix:php artisan test')))
   assert.ok(relations?.connection_contracts[0]?.never_transfer.includes('segredos ou decisões sensíveis'))
   assert.equal(pack?.startup_snapshot?.readiness.relations_ready, true)
@@ -1420,6 +1928,9 @@ test('AWIS workspace relations connect compatible local memories without raw pat
   assert.ok(pack?.workspace_mesh?.routes.some((route) => route.workspace_hint === 'atlas-server' && route.relationship === 'shared_context'))
   assert.ok(pack?.workspace_mesh?.routes.some((route) => route.relationship === 'local_component'))
   assert.equal(pack?.workspace_mesh?.safety.provider_safe, true)
+  assert.ok(pack?.repository_constellation?.next_conversation.compare_when.some((item) => item.includes('comparar Space Brain de atlas-server')))
+  assert.ok(pack?.repository_constellation?.next_conversation.preserve_as_artifact.some((item) => item.includes('space-brain-transfer:atlas-server:AWIS runtime')))
+  assert.ok(pack?.repository_constellation?.learning_loop.promote_when.some((item) => item.includes('Space Brain reaproveitado com sucesso:atlas-server')))
   const task = buildAwisWorkspaceTaskContextProjection(pack, 'corrigir integração entre desktop e server')
   const capsule = buildAwisWorkspaceProviderCapsule(pack, task)
   assert.ok(task?.recommended_context.related_workspace_hints.some((hint) => hint.startsWith('mesh:atlas-server')))
@@ -2129,6 +2640,10 @@ test('AWIS session gold distills real outcomes into reusable operational memory'
     taskKind: 'bug_fix',
     validationCommands: ['npm run atlas-ai:test', 'npx tsc -b'],
     componentKeys: ['atlas-desktop'],
+    contextGoldLabels: ['component:atlas-desktop'],
+    spaceLabels: ['Cérebro vivo AWIS'],
+    liveMemoryLabels: ['workspace_live_execution_memory'],
+    priorityLoadLabels: ['atlas-desktop'],
   }).memory
   memory = recordAwisWorkspaceInteraction(memory, {
     workspaceKey: key,
@@ -2160,6 +2675,10 @@ test('AWIS session gold distills real outcomes into reusable operational memory'
   assert.ok(pack.session_gold.proven_commands.some((command) => command.command === 'npm run atlas-ai:test'))
   assert.ok(pack.session_gold.recovery_patterns.some((pattern) => pattern.includes('send_failed')))
   assert.ok(pack.session_gold.next_session_hooks.validate_with.includes('npm run atlas-ai:test'))
+  assert.ok(pack.memory?.operational.context_gold.promoted.includes('component:atlas-desktop'))
+  assert.ok(pack.memory?.operational.context_gold.promoted.includes('space:Cérebro vivo AWIS'))
+  assert.ok(pack.memory?.operational.context_gold.promoted.includes('live-memory:workspace_live_execution_memory'))
+  assert.ok(pack.memory?.operational.context_gold.promoted.includes('priority:atlas-desktop'))
   assert.equal(artifact?.payload.session_gold_projection?.schema_version, 'atlas.awis.workspace_session_gold_projection.v1')
   assert.ok(replay?.reusable_startup_gold.reusable_patterns.some((pattern) => pattern.startsWith('session-gold:') || pattern.startsWith('proven-command:')))
   assert.ok(task?.execution_plan.validation_commands.includes('npm run atlas-ai:test'))
@@ -2580,8 +3099,13 @@ test('AWIS memory freshness guard prevents stale context from becoming fake gold
   assert.equal(pack.memory_freshness.promotion_gate.can_promote_commands, false)
   assert.ok(pack.retention?.lifecycle.revalidate.some((item) => item.includes('scan antigo')))
   assert.ok(pack.startup_orchestration?.startup_sequence.some((item) => item.step === 'validate' && item.label.includes('frescor:')))
+  assert.ok(pack.launch_contract?.startup_contract.first_load.some((item) => item.startsWith('artifact-seed:')))
+  assert.ok(pack.launch_contract?.startup_contract.validate_before_trust.some((item) => item.startsWith('artifact-seed:')))
+  assert.ok(pack.launch_contract?.next_conversation.load_order.some((item) => item.startsWith('artifact-seed:')))
+  assert.ok(pack.launch_contract?.recovery_contract.safe_resume.some((item) => item.includes('artifact-seed:')))
   assert.ok(task?.execution_plan.commands_to_avoid.includes('memória stale:usar resumo até revalidar'))
   assert.ok(capsule?.validate_with.some((item) => item.includes('frescor:scan antigo') || item.includes('scan antigo')))
+  assert.ok(capsule?.load_first.some((item) => item.includes('launch:artifact-seed:') || item.includes('launch-order:artifact-seed:')))
   assert.ok(capsule?.avoid_loading.includes('memória stale:usar resumo até revalidar'))
   assert.equal(finalArtifact?.payload.memory_freshness_projection?.schema_version, 'atlas.awis.workspace_memory_freshness_projection.v1')
   assert.ok(finalReplay?.reusable_startup_gold.reusable_patterns.some((pattern) => pattern.startsWith('freshness:')))

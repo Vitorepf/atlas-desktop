@@ -45,9 +45,7 @@ pub fn vox_dictionary_get() -> Result<PersonalDictionary, String> {
 }
 
 #[tauri::command]
-pub fn vox_dictionary_update(
-    next: PersonalDictionary,
-) -> Result<PersonalDictionary, String> {
+pub fn vox_dictionary_update(next: PersonalDictionary) -> Result<PersonalDictionary, String> {
     let home = default_atlas_vox_home();
     let store = DictionaryStore::with_home_dir(&home);
     store.update(next).map_err(into_str_err)
@@ -262,7 +260,9 @@ pub fn vox_stt_transcribe_audio(
 #[cfg(test)]
 mod transcribe_audio_tests {
     use super::*;
-    use atlas_platform::vox::{VoxConsent, VoxEdgeConfig, VoxMode, VoxSource, VoxStartSessionRequest};
+    use atlas_platform::vox::{
+        VoxConsent, VoxEdgeConfig, VoxMode, VoxSource, VoxStartSessionRequest,
+    };
 
     fn ok_request() -> VoxStartSessionRequest {
         VoxStartSessionRequest {
@@ -313,7 +313,10 @@ mod transcribe_audio_tests {
         let first = edge.consume_audio_snapshot(audio_handle);
         assert!(first.is_some());
         let second = edge.consume_audio_snapshot(audio_handle);
-        assert!(second.is_none(), "snapshot must be single-use — re-consume would imply leftover audio");
+        assert!(
+            second.is_none(),
+            "snapshot must be single-use — re-consume would imply leftover audio"
+        );
     }
 
     #[test]

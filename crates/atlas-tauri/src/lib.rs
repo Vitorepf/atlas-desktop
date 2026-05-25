@@ -15,7 +15,8 @@ use std::sync::Arc;
 use atlas_bridge::{AtlasBridge, AtlasServerConfig};
 use atlas_platform::vox::{VoxEdge, VoxEdgeConfig};
 use atlas_platform::PtyManager;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager, RunEvent};
 use tokio::sync::Mutex;
 
@@ -86,6 +87,50 @@ struct WorkspaceBrainCommand {
     source: String,
 }
 
+#[derive(Deserialize)]
+struct AwisNativeMemorySaveInput {
+    workspace_key: String,
+    memory: Value,
+}
+
+#[derive(Deserialize)]
+struct AwisNativeArtifactSaveInput {
+    workspace_key: String,
+    artifacts: Value,
+}
+
+#[derive(Deserialize)]
+struct AwisNativeProjectSpacesSaveInput {
+    spaces: Value,
+    receipts: Value,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AwisNativeMemoryWriteAck {
+    ok: bool,
+    persisted_at: String,
+    memory_count: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AwisNativeArtifactWriteAck {
+    ok: bool,
+    persisted_at: String,
+    workspace_count: usize,
+    artifact_count: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AwisNativeProjectSpacesWriteAck {
+    ok: bool,
+    persisted_at: String,
+    space_count: usize,
+    receipt_count: usize,
+}
+
 #[tauri::command]
 fn atlas_core_status() -> CoreStatus {
     CoreStatus {
@@ -138,10 +183,269 @@ async fn atlas_pick_workspace_folder() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-async fn atlas_scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot, String> {
+async fn atlas_scan_workspace_brain(
+    workspace_path: String,
+) -> Result<WorkspaceBrainSnapshot, String> {
     tauri::async_runtime::spawn_blocking(move || scan_workspace_brain(workspace_path))
         .await
         .map_err(|e| format!("workspace_brain_join_failed: {e}"))?
+}
+
+#[tauri::command]
+async fn atlas_awis_memory_load_all() -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(read_awis_native_memory_store)
+        .await
+        .map_err(|e| format!("awis_memory_load_join_failed: {e}"))?
+}
+
+#[tauri::command]
+async fn atlas_awis_memory_save(
+    input: AwisNativeMemorySaveInput,
+) -> Result<AwisNativeMemoryWriteAck, String> {
+    tauri::async_runtime::spawn_blocking(move || write_awis_native_memory(input))
+        .await
+        .map_err(|e| format!("awis_memory_save_join_failed: {e}"))?
+}
+
+#[tauri::command]
+async fn atlas_awis_artifacts_load_all() -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(read_awis_native_artifact_store)
+        .await
+        .map_err(|e| format!("awis_artifacts_load_join_failed: {e}"))?
+}
+
+#[tauri::command]
+async fn atlas_awis_artifacts_save(
+    input: AwisNativeArtifactSaveInput,
+) -> Result<AwisNativeArtifactWriteAck, String> {
+    tauri::async_runtime::spawn_blocking(move || write_awis_native_artifacts(input))
+        .await
+        .map_err(|e| format!("awis_artifacts_save_join_failed: {e}"))?
+}
+
+#[tauri::command]
+async fn atlas_awis_project_spaces_load_all() -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(read_awis_native_project_spaces_store)
+        .await
+        .map_err(|e| format!("awis_project_spaces_load_join_failed: {e}"))?
+}
+
+#[tauri::command]
+async fn atlas_awis_project_spaces_save(
+    input: AwisNativeProjectSpacesSaveInput,
+) -> Result<AwisNativeProjectSpacesWriteAck, String> {
+    tauri::async_runtime::spawn_blocking(move || write_awis_native_project_spaces(input))
+        .await
+        .map_err(|e| format!("awis_project_spaces_save_join_failed: {e}"))?
+}
+
+fn read_awis_native_memory_store() -> Result<Value, String> {
+    let path = awis_native_memory_store_path()?;
+    if !path.exists() {
+        return Ok(Value::Object(Map::new()));
+    }
+    let text =
+        std::fs::read_to_string(&path).map_err(|e| format!("awis_memory_read_failed: {e}"))?;
+    let parsed: Value =
+        serde_json::from_str(&text).map_err(|e| format!("awis_memory_parse_failed: {e}"))?;
+    Ok(match parsed {
+        Value::Object(_) => parsed,
+        _ => Value::Object(Map::new()),
+    })
+}
+
+fn read_awis_native_artifact_store() -> Result<Value, String> {
+    let path = awis_native_artifact_store_path()?;
+    if !path.exists() {
+        return Ok(Value::Object(Map::new()));
+    }
+    let text =
+        std::fs::read_to_string(&path).map_err(|e| format!("awis_artifacts_read_failed: {e}"))?;
+    let parsed: Value =
+        serde_json::from_str(&text).map_err(|e| format!("awis_artifacts_parse_failed: {e}"))?;
+    Ok(match parsed {
+        Value::Object(_) => parsed,
+        _ => Value::Object(Map::new()),
+    })
+}
+
+fn read_awis_native_project_spaces_store() -> Result<Value, String> {
+    let path = awis_native_project_spaces_store_path()?;
+    if !path.exists() {
+        return Ok(Value::Object(Map::new()));
+    }
+    let text = std::fs::read_to_string(&path)
+        .map_err(|e| format!("awis_project_spaces_read_failed: {e}"))?;
+    let parsed: Value = serde_json::from_str(&text)
+        .map_err(|e| format!("awis_project_spaces_parse_failed: {e}"))?;
+    Ok(match parsed {
+        Value::Object(_) => parsed,
+        _ => Value::Object(Map::new()),
+    })
+}
+
+fn write_awis_native_memory(
+    input: AwisNativeMemorySaveInput,
+) -> Result<AwisNativeMemoryWriteAck, String> {
+    let workspace_key = sanitize_awis_native_memory_key(&input.workspace_key)?;
+    let path = awis_native_memory_store_path()?;
+    let mut store = match read_awis_native_memory_store()? {
+        Value::Object(map) => map,
+        _ => Map::new(),
+    };
+    let memory_size = serde_json::to_string(&input.memory)
+        .map_err(|e| format!("awis_memory_encode_failed: {e}"))?
+        .len();
+    if memory_size > 1_500_000 {
+        return Err("awis_memory_payload_too_large".into());
+    }
+    store.insert(workspace_key, input.memory);
+    let payload = serde_json::to_string_pretty(&Value::Object(store.clone()))
+        .map_err(|e| format!("awis_memory_store_encode_failed: {e}"))?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("awis_memory_dir_create_failed: {e}"))?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, payload).map_err(|e| format!("awis_memory_write_failed: {e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("awis_memory_commit_failed: {e}"))?;
+    Ok(AwisNativeMemoryWriteAck {
+        ok: true,
+        persisted_at: chrono::Utc::now().to_rfc3339(),
+        memory_count: store.len(),
+    })
+}
+
+fn write_awis_native_artifacts(
+    input: AwisNativeArtifactSaveInput,
+) -> Result<AwisNativeArtifactWriteAck, String> {
+    let workspace_key = sanitize_awis_native_memory_key(&input.workspace_key)?;
+    let artifacts = match input.artifacts {
+        Value::Array(items) => Value::Array(items),
+        _ => return Err("awis_artifacts_payload_must_be_array".into()),
+    };
+    let path = awis_native_artifact_store_path()?;
+    let mut store = match read_awis_native_artifact_store()? {
+        Value::Object(map) => map,
+        _ => Map::new(),
+    };
+    let artifact_size = serde_json::to_string(&artifacts)
+        .map_err(|e| format!("awis_artifacts_encode_failed: {e}"))?
+        .len();
+    if artifact_size > 8_000_000 {
+        return Err("awis_artifacts_payload_too_large".into());
+    }
+    let artifact_count = artifacts.as_array().map(|items| items.len()).unwrap_or(0);
+    store.insert(workspace_key, artifacts);
+    let payload = serde_json::to_string_pretty(&Value::Object(store.clone()))
+        .map_err(|e| format!("awis_artifacts_store_encode_failed: {e}"))?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("awis_artifacts_dir_create_failed: {e}"))?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, payload).map_err(|e| format!("awis_artifacts_write_failed: {e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("awis_artifacts_commit_failed: {e}"))?;
+    Ok(AwisNativeArtifactWriteAck {
+        ok: true,
+        persisted_at: chrono::Utc::now().to_rfc3339(),
+        workspace_count: store.len(),
+        artifact_count,
+    })
+}
+
+fn write_awis_native_project_spaces(
+    input: AwisNativeProjectSpacesSaveInput,
+) -> Result<AwisNativeProjectSpacesWriteAck, String> {
+    let spaces = match input.spaces {
+        Value::Array(items) => Value::Array(items),
+        _ => return Err("awis_project_spaces_payload_must_be_array".into()),
+    };
+    let receipts = match input.receipts {
+        Value::Array(items) => Value::Array(items),
+        _ => return Err("awis_project_space_receipts_payload_must_be_array".into()),
+    };
+    let payload_size = serde_json::to_string(&spaces)
+        .map_err(|e| format!("awis_project_spaces_encode_failed: {e}"))?
+        .len()
+        + serde_json::to_string(&receipts)
+            .map_err(|e| format!("awis_project_space_receipts_encode_failed: {e}"))?
+            .len();
+    if payload_size > 4_000_000 {
+        return Err("awis_project_spaces_payload_too_large".into());
+    }
+    let space_count = spaces.as_array().map(|items| items.len()).unwrap_or(0);
+    let receipt_count = receipts.as_array().map(|items| items.len()).unwrap_or(0);
+    let mut store = Map::new();
+    store.insert("spaces".into(), spaces);
+    store.insert("receipts".into(), receipts);
+    let path = awis_native_project_spaces_store_path()?;
+    let payload = serde_json::to_string_pretty(&Value::Object(store))
+        .map_err(|e| format!("awis_project_spaces_store_encode_failed: {e}"))?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("awis_project_spaces_dir_create_failed: {e}"))?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, payload).map_err(|e| format!("awis_project_spaces_write_failed: {e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("awis_project_spaces_commit_failed: {e}"))?;
+    Ok(AwisNativeProjectSpacesWriteAck {
+        ok: true,
+        persisted_at: chrono::Utc::now().to_rfc3339(),
+        space_count,
+        receipt_count,
+    })
+}
+
+fn awis_native_memory_store_path() -> Result<PathBuf, String> {
+    let home =
+        std::env::var("HOME").map_err(|_| "home_not_available_for_awis_memory".to_string())?;
+    Ok(PathBuf::from(home)
+        .join(".atlas")
+        .join("desktop-awis")
+        .join("workspace-memory.json"))
+}
+
+fn awis_native_artifact_store_path() -> Result<PathBuf, String> {
+    let home =
+        std::env::var("HOME").map_err(|_| "home_not_available_for_awis_artifacts".to_string())?;
+    Ok(PathBuf::from(home)
+        .join(".atlas")
+        .join("desktop-awis")
+        .join("workspace-artifacts.json"))
+}
+
+fn awis_native_project_spaces_store_path() -> Result<PathBuf, String> {
+    let home = std::env::var("HOME")
+        .map_err(|_| "home_not_available_for_awis_project_spaces".to_string())?;
+    Ok(PathBuf::from(home)
+        .join(".atlas")
+        .join("desktop-awis")
+        .join("project-spaces.json"))
+}
+
+fn sanitize_awis_native_memory_key(value: &str) -> Result<String, String> {
+    let key: String = value
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.') {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .chars()
+        .take(120)
+        .collect();
+    if key.is_empty() {
+        Err("awis_memory_workspace_key_required".into())
+    } else {
+        Ok(key)
+    }
 }
 
 fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot, String> {
@@ -248,6 +552,7 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
     signals.sort();
     signals.truncate(16);
     dedupe_commands(&mut commands);
+    sort_workspace_commands(&mut commands);
     commands.truncate(12);
 
     Ok(WorkspaceBrainSnapshot {
@@ -395,11 +700,17 @@ fn is_important_file(name: &str, relative: &str) -> bool {
 fn important_file_kind(name: &str, relative: &str) -> &'static str {
     let lower_name = name.to_ascii_lowercase();
     let lower_relative = relative.to_ascii_lowercase();
-    if lower_name == "readme.md" || lower_relative.starts_with("docs/") || lower_name == "agents.md" {
+    if lower_name == "readme.md" || lower_relative.starts_with("docs/") || lower_name == "agents.md"
+    {
         "documento"
     } else if lower_name.contains("lock") {
         "lockfile"
-    } else if lower_relative.contains("config") || lower_name.ends_with(".toml") || lower_name.ends_with(".json") || lower_name.ends_with(".yaml") || lower_name.ends_with(".yml") {
+    } else if lower_relative.contains("config")
+        || lower_name.ends_with(".toml")
+        || lower_name.ends_with(".json")
+        || lower_name.ends_with(".yaml")
+        || lower_name.ends_with(".yml")
+    {
         "config"
     } else {
         "manifesto"
@@ -419,13 +730,13 @@ fn collect_commands_from_manifest(
         "cargo.toml" => {
             commands.push(WorkspaceBrainCommand {
                 label: "Testes Rust".into(),
-                command: "cargo test".into(),
+                command: manifest_command(relative, "cargo test"),
                 kind: "test".into(),
                 source: relative.into(),
             });
             commands.push(WorkspaceBrainCommand {
                 label: "Build Rust".into(),
-                command: "cargo build".into(),
+                command: manifest_command(relative, "cargo build"),
                 kind: "build".into(),
                 source: relative.into(),
             });
@@ -433,7 +744,7 @@ fn collect_commands_from_manifest(
         "artisan" => {
             commands.push(WorkspaceBrainCommand {
                 label: "Testes Laravel".into(),
-                command: "php artisan test".into(),
+                command: manifest_command(relative, "php artisan test"),
                 kind: "test".into(),
                 source: relative.into(),
             });
@@ -441,7 +752,7 @@ fn collect_commands_from_manifest(
         "makefile" => {
             commands.push(WorkspaceBrainCommand {
                 label: "Make test".into(),
-                command: "make test".into(),
+                command: manifest_command(relative, "make test"),
                 kind: "test".into(),
                 source: relative.into(),
             });
@@ -450,29 +761,53 @@ fn collect_commands_from_manifest(
     }
 }
 
-fn collect_package_json_commands(path: &Path, relative: &str, commands: &mut Vec<WorkspaceBrainCommand>) {
-    let Some(json) = read_small_json(path) else { return };
-    let Some(scripts) = json.get("scripts").and_then(|scripts| scripts.as_object()) else { return };
-    for key in ["test", "build", "dev", "start", "lint", "typecheck"] {
-        if scripts.get(key).and_then(|value| value.as_str()).is_some() {
-            commands.push(WorkspaceBrainCommand {
-                label: format!("npm {key}"),
-                command: format!("npm run {key}"),
-                kind: command_kind(key).into(),
-                source: relative.into(),
-            });
-        }
+fn collect_package_json_commands(
+    path: &Path,
+    relative: &str,
+    commands: &mut Vec<WorkspaceBrainCommand>,
+) {
+    let Some(json) = read_small_json(path) else {
+        return;
+    };
+    let Some(scripts) = json.get("scripts").and_then(|scripts| scripts.as_object()) else {
+        return;
+    };
+    let mut script_names: Vec<String> = scripts
+        .iter()
+        .filter_map(|(key, value)| value.as_str().map(|_| key.to_string()))
+        .filter(|key| is_relevant_package_script(key))
+        .collect();
+    script_names.sort_by(|a, b| {
+        package_script_priority(a)
+            .cmp(&package_script_priority(b))
+            .then_with(|| a.cmp(b))
+    });
+    for key in script_names {
+        commands.push(WorkspaceBrainCommand {
+            label: package_script_label(&key),
+            command: manifest_command(relative, &format!("npm run {key}")),
+            kind: command_kind(&key).into(),
+            source: relative.into(),
+        });
     }
 }
 
-fn collect_composer_commands(path: &Path, relative: &str, commands: &mut Vec<WorkspaceBrainCommand>) {
-    let Some(json) = read_small_json(path) else { return };
-    let Some(scripts) = json.get("scripts").and_then(|scripts| scripts.as_object()) else { return };
+fn collect_composer_commands(
+    path: &Path,
+    relative: &str,
+    commands: &mut Vec<WorkspaceBrainCommand>,
+) {
+    let Some(json) = read_small_json(path) else {
+        return;
+    };
+    let Some(scripts) = json.get("scripts").and_then(|scripts| scripts.as_object()) else {
+        return;
+    };
     for key in ["test", "pest", "phpunit"] {
         if scripts.get(key).is_some() {
             commands.push(WorkspaceBrainCommand {
                 label: format!("composer {key}"),
-                command: format!("composer {key}"),
+                command: manifest_command(relative, &format!("composer {key}")),
                 kind: "test".into(),
                 source: relative.into(),
             });
@@ -490,18 +825,121 @@ fn read_small_json(path: &Path) -> Option<serde_json::Value> {
 }
 
 fn command_kind(key: &str) -> &'static str {
-    match key {
-        "test" => "test",
-        "build" => "build",
-        "dev" | "start" => "dev",
-        "lint" | "typecheck" => "check",
-        _ => "run",
+    let lower = key.to_ascii_lowercase();
+    if lower.contains("test")
+        || lower.contains("smoke")
+        || lower.contains("certify")
+        || lower.contains("regression")
+    {
+        "test"
+    } else if lower.contains("build") {
+        "build"
+    } else if matches!(lower.as_str(), "dev" | "start") || lower.ends_with(":dev") {
+        "dev"
+    } else if lower.contains("lint")
+        || lower.contains("typecheck")
+        || lower.contains("doctor")
+        || lower.contains("release-check")
+    {
+        "check"
+    } else {
+        "run"
     }
 }
 
 fn dedupe_commands(commands: &mut Vec<WorkspaceBrainCommand>) {
     let mut seen = HashSet::new();
     commands.retain(|command| seen.insert(format!("{}:{}", command.source, command.command)));
+}
+
+fn sort_workspace_commands(commands: &mut [WorkspaceBrainCommand]) {
+    commands.sort_by(|a, b| {
+        command_priority(a)
+            .cmp(&command_priority(b))
+            .then_with(|| a.source.cmp(&b.source))
+            .then_with(|| a.command.cmp(&b.command))
+    });
+}
+
+fn command_priority(command: &WorkspaceBrainCommand) -> usize {
+    let lower = command.command.to_ascii_lowercase();
+    if lower.contains("atlas-ai:test") {
+        0
+    } else if lower.contains("atlas-dev:test") {
+        1
+    } else if lower.contains("atlas-frontend:test") {
+        2
+    } else if lower.contains("php artisan test") {
+        3
+    } else if lower.contains("composer test") {
+        4
+    } else if lower.contains("cargo test") {
+        5
+    } else if command.kind == "test" {
+        6
+    } else if lower.contains("typecheck") || lower.contains("lint") {
+        7
+    } else if lower.contains("tauri:build") {
+        8
+    } else if command.kind == "build" {
+        9
+    } else if command.kind == "dev" {
+        10
+    } else {
+        20
+    }
+}
+
+fn is_relevant_package_script(key: &str) -> bool {
+    let lower = key.to_ascii_lowercase();
+    matches!(
+        lower.as_str(),
+        "test" | "build" | "dev" | "start" | "lint" | "typecheck" | "check" | "preview"
+    ) || lower.contains("test")
+        || lower.contains("smoke")
+        || lower.contains("certify")
+        || lower.contains("build")
+        || lower.contains("lint")
+        || lower.contains("typecheck")
+        || lower.contains("doctor")
+        || lower.contains("release-check")
+}
+
+fn package_script_priority(key: &str) -> usize {
+    let lower = key.to_ascii_lowercase();
+    match lower.as_str() {
+        "atlas-ai:test" => 0,
+        "atlas-dev:test" => 1,
+        "atlas-frontend:test" => 2,
+        "test" => 3,
+        "lint" => 4,
+        "typecheck" => 5,
+        "tauri:build" => 6,
+        "build" => 7,
+        "dev" => 8,
+        "start" => 9,
+        _ if lower.starts_with("vox:") => 12,
+        _ => 20,
+    }
+}
+
+fn package_script_label(key: &str) -> String {
+    if key.contains(':') {
+        key.replace(':', " ")
+    } else {
+        format!("npm {key}")
+    }
+}
+
+fn manifest_command(relative: &str, command: &str) -> String {
+    let Some((dir, _)) = relative.rsplit_once('/') else {
+        return command.into();
+    };
+    if dir.trim().is_empty() {
+        command.into()
+    } else {
+        format!("cd {dir} && {command}")
+    }
 }
 
 fn relative_path(root: &Path, path: &Path) -> String {
@@ -633,10 +1071,7 @@ pub fn run() {
                     let snap: vox_ambient_launch::VoxAmbientLaunchSnapshot =
                         vox_ambient.peek().into();
                     if snap.start_listening {
-                        let _ = app.handle().emit(
-                            "vox://ambient-launch-requested",
-                            &snap,
-                        );
+                        let _ = app.handle().emit("vox://ambient-launch-requested", &snap);
                     }
                 }
 
@@ -676,11 +1111,18 @@ pub fn run() {
             atlas_core_status,
             atlas_pick_workspace_folder,
             atlas_scan_workspace_brain,
+            atlas_awis_memory_load_all,
+            atlas_awis_memory_save,
+            atlas_awis_artifacts_load_all,
+            atlas_awis_artifacts_save,
+            atlas_awis_project_spaces_load_all,
+            atlas_awis_project_spaces_save,
             atlas_kernel_status,
             atlas_kernel_retry,
             atlas_bridge_reconfigure,
             commands_bridge::bridge_boot,
             commands_bridge::bridge_mcp_status,
+            commands_bridge::bridge_atlas_ai_http_json,
             commands_bridge::bridge_get_atlas_code_enterprise_certification,
             commands_bridge::bridge_run_atlas_code_enterprise_certification,
             commands_bridge::bridge_list_works,

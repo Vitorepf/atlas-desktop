@@ -175,11 +175,12 @@ const TRACE_POLL_INTERVAL_MS = 500
 const TRACE_POLL_INITIAL_DELAY_MS = 250
 const TRACE_POLL_TIMEOUT_MS = 120_000
 const INITIAL_THREAD_MESSAGE_LIMIT = 6
-const OLDER_THREAD_MESSAGE_PAGE_LIMIT = 12
+const OLDER_THREAD_MESSAGE_PAGE_LIMIT = 6
 const THREADS_CACHE_STORAGE_KEY = 'atlas-desktop:atlas-ai:threads-cache:v1'
 const THREAD_DETAIL_CACHE_STORAGE_KEY = 'atlas-desktop:atlas-ai:thread-detail-cache:v1'
 const THREAD_DETAIL_CACHE_MAX_ENTRIES = 50
-const THREAD_DETAIL_CACHE_MAX_MESSAGES = 24
+const THREAD_DETAIL_CACHE_MAX_MESSAGES = 18
+const CACHE_PERSIST_DEBOUNCE_MS = 450
 
 function readStorageItem(key: string): string | null {
   try {
@@ -289,6 +290,7 @@ function rememberThreadDetail(
   cache: Map<string, AiThreadDetail>,
   id: string,
   detail: AiThreadDetail,
+  persist?: () => void,
 ): void {
   cache.delete(id)
   cache.set(id, detail)
@@ -297,7 +299,11 @@ function rememberThreadDetail(
     if (typeof firstKey !== 'string') break
     cache.delete(firstKey)
   }
-  writeThreadDetailCache(cache)
+  persist?.()
+}
+
+function isAbortError(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { name?: unknown }).name === 'AbortError'
 }
 
 function mergeThreadMessages(current: AiThreadMessage[] = [], incoming: AiThreadMessage[] = []): AiThreadMessage[] {
@@ -350,6 +356,25 @@ function providerSafeStringList(value: unknown, limit = 4): string[] {
     .slice(0, limit)
 }
 
+function providerSafeString(value: unknown, limit = 140): string | null {
+  if (typeof value !== 'string') return null
+  const text = value.trim().replace(/\s+/g, ' ').slice(0, limit)
+  if (!text || /\/Users\/|thread_id|source_thread_ids|raw_conversation|response_text|operator_input/i.test(text)) return null
+  return text
+}
+
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function arrayRecords(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.map(objectRecord).filter((item): item is Record<string, unknown> => Boolean(item))
+    : []
+}
+
 function awisThreadMetadataFromContext(conversationContext?: unknown[]): Record<string, unknown> {
   if (!conversationContext?.length) return {}
 
@@ -371,12 +396,19 @@ function awisThreadMetadataFromContext(conversationContext?: unknown[]): Record<
 
   if (schemaVersions.size === 0) return {}
 
-  const preflight = contextPack?.preflight && typeof contextPack.preflight === 'object'
-    ? contextPack.preflight as Record<string, unknown>
-    : null
-  const twin = contextPack?.workspace_twin && typeof contextPack.workspace_twin === 'object'
-    ? contextPack.workspace_twin as Record<string, unknown>
-    : null
+  const preflight = objectRecord(contextPack?.preflight)
+  const twin = objectRecord(contextPack?.workspace_twin)
+  const spaces = objectRecord(contextPack?.spaces)
+  const liveMemory = objectRecord(contextPack?.live_execution_memory)
+  const contextKernel = objectRecord(contextPack?.context_kernel)
+  const startupSnapshot = objectRecord(contextPack?.startup_snapshot)
+  const strongestSpaces = arrayRecords(spaces?.strongest_spaces)
+  const priorityLoad = arrayRecords(contextKernel?.priority_load)
+  const kernelBudget = objectRecord(contextKernel?.budget)
+  const startupGold = objectRecord(startupSnapshot?.startup_gold)
+  const liveStartupPacket = objectRecord(liveMemory?.startup_packet)
+  const recommendedContext = objectRecord(taskContext?.recommended_context)
+  const spaceBrain = arrayRecords(recommendedContext?.space_brain)
 
   return {
     awis_context_applied: true,
@@ -395,6 +427,45 @@ function awisThreadMetadataFromContext(conversationContext?: unknown[]): Record<
     awis_load_first: providerSafeStringList(providerCapsule?.load_first),
     awis_validate_with: providerSafeStringList(providerCapsule?.validate_with),
     awis_summary_gold: providerSafeStringList(providerCapsule?.use_as_summary, 6),
+    awis_space_focus: strongestSpaces
+      .map((space) => providerSafeString(space.title, 96))
+      .filter((item): item is string => Boolean(item))
+      .slice(0, 3),
+    awis_space_continuity: providerSafeStringList(objectRecord(spaces?.continuity)?.carry_forward, 4),
+    awis_space_brain: spaceBrain
+      .map((space) => {
+        const title = providerSafeString(space.title, 80)
+        const state = providerSafeString(space.state, 24)
+        const load = providerSafeStringList(space.load_first, 2)
+        const carry = providerSafeStringList(space.carry_forward, 2)
+        const evidence = providerSafeStringList(space.evidence, 2)
+        if (!title) return null
+        return {
+          title,
+          state: state ?? 'vivo',
+          load,
+          carry,
+          evidence,
+          confidence: typeof space.confidence === 'number' ? Math.min(100, Math.max(0, Math.round(space.confidence))) : null,
+        }
+      })
+      .filter((item): item is {
+        title: string
+        state: string
+        load: string[]
+        carry: string[]
+        evidence: string[]
+        confidence: number | null
+      } => Boolean(item))
+      .slice(0, 2),
+    awis_live_memory_hash: providerSafeString(liveMemory?.memory_hash, 120),
+    awis_live_load_first: providerSafeStringList(liveStartupPacket?.load_first, 4),
+    awis_context_budget: providerSafeString(kernelBudget?.mode, 32),
+    awis_priority_load: priorityLoad
+      .map((item) => providerSafeString(item.label, 96))
+      .filter((item): item is string => Boolean(item))
+      .slice(0, 6),
+    awis_startup_gold: providerSafeStringList(startupGold?.strongest_spaces, 4),
   }
 }
 
@@ -425,6 +496,8 @@ export function useAtlasAi(
   const threadDetailRequestSeqRef = useRef<number>(0)
   const threadDetailCacheRef = useRef<Map<string, AiThreadDetail>>(readThreadDetailCache())
   const threadDetailInflightRef = useRef<Map<string, Promise<AiThreadDetail>>>(new Map())
+  const threadDetailAbortRef = useRef<AbortController | null>(null)
+  const detailCachePersistTimerRef = useRef<number | null>(null)
   const [threadDetail, setThreadDetail] = useState<AiThreadDetail | null>(null)
   const [threadDetailLoading, setThreadDetailLoading] = useState<boolean>(false)
   const [threadDetailError, setThreadDetailError] = useState<string | null>(null)
@@ -473,7 +546,24 @@ export function useAtlasAi(
     setComposerTaskRaw(next)
   }, [])
 
-  const getLeanThreadDetail = useCallback((id: string): Promise<AiThreadDetail> => {
+  const persistThreadDetailCacheSoon = useCallback(() => {
+    if (typeof window === 'undefined') {
+      writeThreadDetailCache(threadDetailCacheRef.current)
+      return
+    }
+    if (detailCachePersistTimerRef.current !== null) {
+      window.clearTimeout(detailCachePersistTimerRef.current)
+    }
+    detailCachePersistTimerRef.current = window.setTimeout(() => {
+      detailCachePersistTimerRef.current = null
+      writeThreadDetailCache(threadDetailCacheRef.current)
+    }, CACHE_PERSIST_DEBOUNCE_MS)
+  }, [])
+
+  const getLeanThreadDetail = useCallback((id: string, signal?: AbortSignal): Promise<AiThreadDetail> => {
+    if (signal) {
+      return getAiThread(id, { lean: true, messageLimit: INITIAL_THREAD_MESSAGE_LIMIT, signal })
+    }
     const inflight = threadDetailInflightRef.current.get(id)
     if (inflight) return inflight
     const request = getAiThread(id, { lean: true, messageLimit: INITIAL_THREAD_MESSAGE_LIMIT })
@@ -591,13 +681,16 @@ export function useAtlasAi(
     async (id: string, options: { background?: boolean } = {}) => {
       if (mode === 'offline') return
       const requestSeq = ++threadDetailRequestSeqRef.current
+      threadDetailAbortRef.current?.abort()
+      const abortController = new AbortController()
+      threadDetailAbortRef.current = abortController
       if (!options.background) {
         setThreadDetailLoading(true)
       }
       try {
-        const detail = await getLeanThreadDetail(id)
+        const detail = await getLeanThreadDetail(id, abortController.signal)
         if (!mountedRef.current) return
-        rememberThreadDetail(threadDetailCacheRef.current, id, detail)
+        rememberThreadDetail(threadDetailCacheRef.current, id, detail, persistThreadDetailCacheSoon)
         if (selectedThreadIdRef.current !== id || threadDetailRequestSeqRef.current !== requestSeq) return
         setThreadDetail(detail)
         setThreadDetailError(null)
@@ -605,6 +698,7 @@ export function useAtlasAi(
         setThreadHasOlderMessages((detail.message_count ?? 0) > (detail.messages?.length ?? 0))
       } catch (e) {
         if (!mountedRef.current) return
+        if (isAbortError(e)) return
         if (selectedThreadIdRef.current !== id || threadDetailRequestSeqRef.current !== requestSeq) return
         setThreadDetail(null)
         setThreadDetailError(e instanceof Error ? e.message : String(e))
@@ -617,9 +711,12 @@ export function useAtlasAi(
         ) {
           setThreadDetailLoading(false)
         }
+        if (threadDetailAbortRef.current === abortController) {
+          threadDetailAbortRef.current = null
+        }
       }
     },
-    [getLeanThreadDetail, mode],
+    [getLeanThreadDetail, mode, persistThreadDetailCacheSoon],
   )
 
   const prefetchThread = useCallback((id: string) => {
@@ -627,12 +724,12 @@ export function useAtlasAi(
     void getLeanThreadDetail(id)
       .then((detail) => {
         if (!mountedRef.current) return
-        rememberThreadDetail(threadDetailCacheRef.current, id, detail)
+        rememberThreadDetail(threadDetailCacheRef.current, id, detail, persistThreadDetailCacheSoon)
       })
       .catch(() => {
         /* Prefetch is speculative: never disturb visible UI. */
       })
-  }, [getLeanThreadDetail, mode])
+  }, [getLeanThreadDetail, mode, persistThreadDetailCacheSoon])
 
   const selectThread = useCallback(
     (id: string | null) => {
@@ -640,6 +737,7 @@ export function useAtlasAi(
       setSelectedThreadId(id)
       const cached = id ? threadDetailCacheRef.current.get(id) ?? null : null
       setThreadDetail(cached)
+      if (cached) setThreadDetailLoading(false)
       setThreadDetailError(null)
       setThreadOlderMessagesError(null)
       setThreadOlderMessagesLoading(false)
@@ -650,6 +748,8 @@ export function useAtlasAi(
         void loadThreadDetail(id, { background: cached !== null })
       } else {
         threadDetailRequestSeqRef.current += 1
+        threadDetailAbortRef.current?.abort()
+        threadDetailAbortRef.current = null
         setThreadDetailLoading(false)
         setThreadHasOlderMessages(false)
       }
@@ -680,7 +780,7 @@ export function useAtlasAi(
         ...latest,
         messages: mergeThreadMessages(latest.messages ?? [], page.messages),
       }
-      rememberThreadDetail(threadDetailCacheRef.current, id, merged)
+      rememberThreadDetail(threadDetailCacheRef.current, id, merged, persistThreadDetailCacheSoon)
       setThreadDetail(merged)
       setThreadHasOlderMessages(page.pagination.has_more_before)
     } catch (e) {
@@ -691,7 +791,7 @@ export function useAtlasAi(
         setThreadOlderMessagesLoading(false)
       }
     }
-  }, [mode, threadDetail, threadHasOlderMessages, threadOlderMessagesLoading])
+  }, [mode, persistThreadDetailCacheSoon, threadDetail, threadHasOlderMessages, threadOlderMessagesLoading])
 
   useEffect(() => {
     if (previousWorkspaceSlugRef.current === workspaceSlug) return
@@ -1318,6 +1418,13 @@ export function useAtlasAi(
       if (pollTimerRef.current !== null) {
         window.clearTimeout(pollTimerRef.current)
         pollTimerRef.current = null
+      }
+      threadDetailAbortRef.current?.abort()
+      threadDetailAbortRef.current = null
+      if (detailCachePersistTimerRef.current !== null) {
+        window.clearTimeout(detailCachePersistTimerRef.current)
+        detailCachePersistTimerRef.current = null
+        writeThreadDetailCache(threadDetailCacheRef.current)
       }
       if (streamUnsubRef.current) {
         streamUnsubRef.current()

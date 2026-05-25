@@ -351,7 +351,7 @@
 .atlas-ai-awis-command-center {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) auto minmax(150px, 0.58fr) minmax(150px, 0.58fr) minmax(150px, 0.58fr) max-content;
-  grid-template-rows: auto auto auto auto auto;
+  grid-template-rows: auto auto auto auto auto auto;
   align-items: center;
   gap: 8px 12px;
   width: min(1240px, 100%);
@@ -499,6 +499,7 @@
 .atlas-ai-awis-chips,
 .atlas-ai-awis-brain-signals,
 .atlas-ai-awis-living-queue,
+.atlas-ai-awis-transfer-map,
 .atlas-ai-awis-next,
 .atlas-ai-awis-actions {
   display: flex;
@@ -541,7 +542,7 @@
 
 .atlas-ai-awis-next {
   grid-column: 1 / -1;
-  grid-row: 5;
+  grid-row: 6;
   justify-content: flex-start;
   overflow: visible;
 }
@@ -557,6 +558,13 @@
   grid-column: 1 / -1;
   grid-row: 4;
   flex-wrap: wrap;
+}
+
+.atlas-ai-awis-transfer-map {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  flex-wrap: wrap;
+  padding-top: 1px;
 }
 
 .atlas-ai-awis-brain-signal {
@@ -696,6 +704,70 @@
 
 .atlas-ai-awis-queue-item.tone-quiet {
   opacity: 0.84;
+}
+
+.atlas-ai-awis-transfer-card {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(80px, auto);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 430px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--cc-border) 52%, transparent);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.004)),
+    color-mix(in srgb, var(--cc-bg) 31%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.atlas-ai-awis-transfer-card small,
+.atlas-ai-awis-transfer-card strong,
+.atlas-ai-awis-transfer-card em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-ai-awis-transfer-card small {
+  color: color-mix(in srgb, var(--cc-accent) 82%, var(--cc-text-muted));
+  font-family: var(--cc-font-mono);
+  font-size: 9px;
+  font-variation-settings: 'wght' 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.atlas-ai-awis-transfer-card strong {
+  color: var(--cc-text);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 640;
+  line-height: 1;
+}
+
+.atlas-ai-awis-transfer-card em {
+  color: var(--cc-text-faint);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.atlas-ai-awis-transfer-card.tone-strong {
+  border-color: color-mix(in srgb, var(--cc-success, #7fd1a8) 24%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-success, #7fd1a8) 7%, var(--cc-bg));
+}
+
+.atlas-ai-awis-transfer-card.tone-warm {
+  border-color: color-mix(in srgb, var(--cc-accent) 28%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-accent) 7%, var(--cc-bg));
+}
+
+.atlas-ai-awis-transfer-card.tone-quiet {
+  opacity: 0.82;
 }
 
 .atlas-ai-awis-next::before {
@@ -1935,6 +2007,66 @@
 .atlas-ai-project-space-intelligence.is-leve {
   border-color: rgba(239, 175, 96, 0.14);
   background: rgba(239, 175, 96, 0.035);
+}
+
+.atlas-ai-project-space-brain {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.atlas-ai-project-space-brain-chip {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 6px;
+  border: 1px solid rgba(233, 238, 242, 0.055);
+  border-radius: 6px;
+  background: rgba(233, 238, 242, 0.025);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.atlas-ai-project-space-brain-chip span,
+.atlas-ai-project-space-brain-chip em {
+  display: block;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-ai-project-space-brain-chip span {
+  color: rgba(226, 234, 237, 0.88);
+  font-size: 9.5px;
+  font-variation-settings: 'wght' 650;
+}
+
+.atlas-ai-project-space-brain-chip em {
+  color: rgba(151, 166, 176, 0.78);
+  font-size: 8.5px;
+  font-style: normal;
+}
+
+.atlas-ai-project-space-brain-chip.is-live {
+  border-color: rgba(108, 205, 160, 0.18);
+  background: linear-gradient(180deg, rgba(45, 93, 77, 0.16), rgba(16, 45, 40, 0.12));
+}
+
+.atlas-ai-project-space-brain-chip.is-ready,
+.atlas-ai-project-space-brain-chip.is-safe {
+  border-color: rgba(108, 205, 160, 0.13);
+}
+
+.atlas-ai-project-space-brain-chip.is-saved {
+  border-color: rgba(212, 168, 90, 0.18);
+  background: rgba(212, 168, 90, 0.045);
+}
+
+.atlas-ai-project-space-brain-chip.is-warn {
+  border-color: rgba(239, 175, 96, 0.22);
+  background: rgba(239, 175, 96, 0.05);
 }
 
 .atlas-ai-project-space-next {
@@ -8539,6 +8671,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
   .atlas-ai-awis-actions,
+  .atlas-ai-awis-transfer-map,
   .atlas-ai-awis-next {
     justify-content: flex-start;
   }
@@ -8546,6 +8679,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   .atlas-ai-awis-chips,
   .atlas-ai-awis-brain-signals,
   .atlas-ai-awis-living-queue,
+  .atlas-ai-awis-transfer-map,
   .atlas-ai-awis-map,
   .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
@@ -8583,6 +8717,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
   .atlas-ai-awis-actions,
+  .atlas-ai-awis-transfer-map,
   .atlas-ai-awis-next {
     justify-content: flex-start;
   }
@@ -8590,6 +8725,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   .atlas-ai-awis-chips,
   .atlas-ai-awis-brain-signals,
   .atlas-ai-awis-living-queue,
+  .atlas-ai-awis-transfer-map,
   .atlas-ai-awis-map,
   .atlas-ai-awis-memory,
   .atlas-ai-awis-live,

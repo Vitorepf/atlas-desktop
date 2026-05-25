@@ -10,14 +10,18 @@ import {
   compileAtlasFrontendProofBundle,
   inspectAtlasFrontendControlPlane,
   inspectAtlasFrontendRivalReplay,
+  planAtlasFrontendCompetitiveBenchmark,
   prepareAtlasFrontendEvidence,
   prepareAtlasFrontendReplayExternalReceiptTemplate,
   prepareAtlasFrontendReplayScoreTemplate,
   prepareAtlasFrontendPublicationReceipt,
   prepareAtlasFrontendRivalReplay,
   projectAtlasFrontendRuntime,
+  runAtlasFrontendLiveSourcePatch,
   scanAtlasFrontendPortfolio,
   selectAtlasFrontendWorkspace,
+  suggestAtlasFrontendLiveTargets,
+  syncAtlasFrontendLiveVisualSelection,
   verifyAtlasFrontendPublication,
   writeAtlasFrontendSelectionReceipt,
 } from '../api.ts'
@@ -293,7 +297,8 @@ test('control plane client posts selected repo proof scope and preserves warning
           public_distribution_ready: false,
         },
         claim_policy: {
-          may_claim_more_complete_than_impeccable: true,
+          may_claim_more_complete_than_impeccable: false,
+          private_benchmark_for_internal_improvement_only: true,
           world_best_claim_allowed: false,
         },
       },
@@ -321,7 +326,8 @@ test('control plane client posts selected repo proof scope and preserves warning
         public_distribution_ready: false,
       },
       claim_policy: {
-        may_claim_more_complete_than_impeccable: true,
+        may_claim_more_complete_than_impeccable: false,
+        private_benchmark_for_internal_improvement_only: true,
         world_best_claim_allowed: false,
       },
     })
@@ -621,6 +627,271 @@ test('proof bundle client compiles selected repo competitive proof index without
     })
     assert.equal(stub.calls[0]!.url, '/api/atlas-code/frontend/proof-bundle')
     assert.equal(JSON.parse(String(stub.calls[0]!.init.body)).evidence, '/Users/example/company/shop/.atlas/frontend-evidence/apps-web/rival-replay')
+  } finally {
+    stub.restore()
+  }
+})
+
+test('competitive benchmark plan client reads improvement action queue without authorizing claims', async () => {
+  const stub = installFetch(() => ({
+    jsonBody: {
+      schema_version: 'atlas.frontend.workspace_api.competitive_benchmark_plan.v1',
+      surface: 'atlas_code_frontend_competitive_benchmark_plan',
+      competitive_benchmark_plan: {
+        schema_version: 'atlas.frontend.competitive_benchmark_plan.v1',
+        status: 'blocked',
+        plan_type: 'private_competitive_benchmark_and_improvement_loop',
+        next_private_improvement_action: {
+          id: 'improve_live_visual_iteration',
+          suggested_action: 'improve_atlas_frontend_until_private_benchmark_leads_scenario',
+        },
+        next_private_work_packet: {
+          schema_version: 'atlas.frontend.private_improvement_work_packet.v1',
+          target_scenario_id: 'live_visual_iteration',
+          safe_execution_commands: [
+            'php artisan atlas:frontend:live prepare --workspace=<repo> --file=<relative-file> --target=<exact-snippet> --variant=<id:path> --json',
+          ],
+        },
+        private_policy: {
+          public_claims_disabled: true,
+          world_best_claim_allowed: false,
+        },
+      },
+      meta: meta({ world_best_claim_allowed: false }),
+    },
+  }))
+  try {
+    const result = await planAtlasFrontendCompetitiveBenchmark({
+      workspace: '/Users/example/company/shop',
+      frontend_app: 'apps/web',
+      task: 'planejar benchmark competitivo',
+      rival_evidence: '/Users/example/company/shop/.atlas/frontend-evidence/apps-web/rival-replay',
+      bundle: '/Users/example/company/shop/.atlas/frontend-evidence/apps-web/product-proof',
+      publication_receipt: '/Users/example/company/shop/.atlas/frontend-evidence/apps-web/publication-receipt.json',
+    })
+
+    assert.equal(result.schema_version, 'atlas.frontend.workspace_api.competitive_benchmark_plan.v1')
+    assert.equal(result.surface, 'atlas_code_frontend_competitive_benchmark_plan')
+    assert.equal((result.payload as { status: string }).status, 'blocked')
+    assert.equal(stub.calls[0]!.url, '/api/atlas-code/frontend/competitive-benchmark-plan')
+    const body = JSON.parse(String(stub.calls[0]!.init.body))
+    assert.equal(body.rival_evidence, '/Users/example/company/shop/.atlas/frontend-evidence/apps-web/rival-replay')
+    assert.equal(result.meta.world_best_claim_allowed, false)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('live source patch client prepares workspace-scoped variant file without authorizing claims', async () => {
+  const stub = installFetch(() => ({
+    jsonBody: {
+      schema_version: 'atlas.frontend.workspace_api.live_source_patch.v1',
+      surface: 'atlas_code_frontend_live_source_patch',
+      live_source_patch: {
+        schema_version: 'atlas.frontend.live_source_patch_result.v1',
+        operation: 'prepare',
+        status: 'prepared',
+        session: {
+          visual_selection: {
+            schema_version: 'atlas.frontend.live_visual_selection.v1',
+            status: 'provided',
+            selection_hash: 'a'.repeat(64),
+            policy: {
+              raw_text_returned: false,
+            },
+          },
+        },
+        decision_receipt: {
+          schema_version: 'atlas.frontend.live_source_patch_decision_receipt.v1',
+          visual_selection_status: 'provided',
+          visual_selection_hash: 'a'.repeat(64),
+          claim_policy: {
+            receipt_is_decision_evidence_not_delivery_completion: true,
+            visual_selection_is_not_visual_quality_proof: true,
+          },
+        },
+        claim_policy: {
+          live_patch_decision_is_not_delivery_evidence: true,
+        },
+      },
+      meta: meta({ execution_allowed: false, provider_dispatch_allowed: false }),
+    },
+  }))
+  try {
+    const result = await runAtlasFrontendLiveSourcePatch({
+      workspace: '/Users/example/company/shop',
+      action: 'prepare',
+      file: 'src/Card.tsx',
+      target: '<button>Save</button>',
+      variants: [{ id: 'v1', path: 'variants/primary.html' }],
+      visual_selection: {
+        route: '/checkout',
+        selector: '[data-testid=save]',
+        text_excerpt: 'Save private draft',
+        component_hint: 'SaveButton',
+        screenshot_hash: 'b'.repeat(64),
+        confidence: 0.91,
+        bounding_box: { x: 12, y: 24, width: 144, height: 38 },
+        viewport: { width: 1440, height: 900 },
+      },
+      session: 'session-1',
+    })
+
+    assert.equal(result.schema_version, 'atlas.frontend.workspace_api.live_source_patch.v1')
+    assert.equal(result.surface, 'atlas_code_frontend_live_source_patch')
+    assert.equal((result.payload as { status: string }).status, 'prepared')
+    assert.equal(result.meta.provider_dispatch_allowed, false)
+    assert.equal(stub.calls[0]!.url, '/api/atlas-code/frontend/live-source-patch')
+    assert.deepEqual(JSON.parse(String(stub.calls[0]!.init.body)), {
+      workspace: '/Users/example/company/shop',
+      action: 'prepare',
+      file: 'src/Card.tsx',
+      target: '<button>Save</button>',
+      variants: [{ id: 'v1', path: 'variants/primary.html' }],
+      visual_selection: {
+        route: '/checkout',
+        selector: '[data-testid=save]',
+        text_excerpt: 'Save private draft',
+        component_hint: 'SaveButton',
+        screenshot_hash: 'b'.repeat(64),
+        confidence: 0.91,
+        bounding_box: { x: 12, y: 24, width: 144, height: 38 },
+        viewport: { width: 1440, height: 900 },
+      },
+      session: 'session-1',
+    })
+  } finally {
+    stub.restore()
+  }
+})
+
+test('live visual selection client records provider-safe session inbox state', async () => {
+  const stub = installFetch(() => ({
+    jsonBody: {
+      schema_version: 'atlas.frontend.workspace_api.live_visual_selection.v1',
+      surface: 'atlas_code_frontend_live_visual_selection',
+      live_visual_selection: {
+        schema_version: 'atlas.frontend.live_visual_selection_inbox.v1',
+        status: 'recorded',
+        session: 'session-1',
+        workspace_hash: 'c'.repeat(64),
+        selection: {
+          schema_version: 'atlas.frontend.live_visual_selection.v1',
+          status: 'provided',
+          selector_hash: 'a'.repeat(64),
+          selection_hash: 'b'.repeat(64),
+          policy: {
+            raw_text_returned: false,
+          },
+        },
+        source_policy: {
+          provider_safe_only: true,
+          absolute_path_returned: false,
+        },
+        inbox_hash: 'd'.repeat(64),
+      },
+      meta: meta({ execution_allowed: false, provider_dispatch_allowed: false }),
+    },
+  }))
+  try {
+    const result = await syncAtlasFrontendLiveVisualSelection({
+      workspace: '/Users/example/company/shop',
+      action: 'record',
+      session: 'session-1',
+      selection: {
+        route_hash: 'e'.repeat(64),
+        selector_hash: 'a'.repeat(64),
+        text_excerpt_hash: 'f'.repeat(64),
+        confidence: 0.9,
+        bounding_box: { x: 12, y: 24, width: 120, height: 32 },
+        viewport: { width: 1440, height: 900 },
+      },
+    })
+
+    assert.equal(result.schema_version, 'atlas.frontend.workspace_api.live_visual_selection.v1')
+    assert.equal(result.surface, 'atlas_code_frontend_live_visual_selection')
+    assert.equal((result.payload as { status: string }).status, 'recorded')
+    assert.equal(stub.calls[0]!.url, '/api/atlas-code/frontend/live-visual-selection')
+    assert.deepEqual(JSON.parse(String(stub.calls[0]!.init.body)), {
+      workspace: '/Users/example/company/shop',
+      action: 'record',
+      session: 'session-1',
+      selection: {
+        route_hash: 'e'.repeat(64),
+        selector_hash: 'a'.repeat(64),
+        text_excerpt_hash: 'f'.repeat(64),
+        confidence: 0.9,
+        bounding_box: { x: 12, y: 24, width: 120, height: 32 },
+        viewport: { width: 1440, height: 900 },
+      },
+    })
+    assert.equal(result.meta.provider_dispatch_allowed, false)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('live target suggestions client returns operator-local target snippet candidates', async () => {
+  const stub = installFetch(() => ({
+    jsonBody: {
+      schema_version: 'atlas.frontend.workspace_api.live_target_suggestions.v1',
+      surface: 'atlas_code_frontend_live_target_suggestions',
+      live_target_suggestions: {
+        schema_version: 'atlas.frontend.live_target_suggestions.v1',
+        status: 'suggested',
+        candidate_count: 1,
+        candidates: [{
+          file: 'src/components/CheckoutHeroCta.tsx',
+          file_hash: 'a'.repeat(64),
+          line: 7,
+          target_snippet: '<button data-testid="checkout-cta">Checkout private cart draft</button>',
+          target_hash: 'b'.repeat(64),
+          target_occurrence_count: 1,
+          can_prepare_directly: true,
+          operator_local: true,
+          target_snippet_is_not_provider_safe: true,
+        }],
+        policy: {
+          operator_local_target_snippet_returned: true,
+          target_snippet_is_not_provider_safe: true,
+          provider_dispatch_allowed: false,
+          absolute_path_returned: false,
+          suggestion_is_not_delivery_evidence: true,
+        },
+        suggestions_hash: 'c'.repeat(64),
+      },
+      meta: meta({ execution_allowed: false, provider_dispatch_allowed: false }),
+    },
+  }))
+  try {
+    const result = await suggestAtlasFrontendLiveTargets({
+      workspace: '/Users/example/company/shop',
+      session: 'session-1',
+      file_hint: 'CheckoutHeroCta',
+      max_candidates: 3,
+      visual_selection: {
+        selector: '[data-testid=checkout-cta]',
+        text_excerpt: 'Checkout private cart draft',
+        component_hint: 'CheckoutHeroCta',
+      },
+    })
+
+    assert.equal(result.schema_version, 'atlas.frontend.workspace_api.live_target_suggestions.v1')
+    assert.equal(result.surface, 'atlas_code_frontend_live_target_suggestions')
+    assert.equal((result.payload as { status: string }).status, 'suggested')
+    assert.equal(result.meta.provider_dispatch_allowed, false)
+    assert.equal(stub.calls[0]!.url, '/api/atlas-code/frontend/live-target-suggestions')
+    assert.deepEqual(JSON.parse(String(stub.calls[0]!.init.body)), {
+      workspace: '/Users/example/company/shop',
+      session: 'session-1',
+      file_hint: 'CheckoutHeroCta',
+      max_candidates: 3,
+      visual_selection: {
+        selector: '[data-testid=checkout-cta]',
+        text_excerpt: 'Checkout private cart draft',
+        component_hint: 'CheckoutHeroCta',
+      },
+    })
   } finally {
     stub.restore()
   }
