@@ -53,6 +53,46 @@ assert.match(
 )
 assert.match(
   client,
+  /persistAtlasAwisRuntimeSnapshot/,
+  'Desktop client must materialize a durable AWIS runtime snapshot, not only read local heuristics.',
+)
+assert.match(
+  client,
+  /getAtlasAwisArtifactIntelligence/,
+  'Desktop client must read canonical server Artifact Intelligence so Space context survives beyond local UI state.',
+)
+assert.match(
+  client,
+  /getAtlasAwisNextSessionBrain/,
+  'Desktop client must read the canonical next-session brain so new conversations do not start cold.',
+)
+assert.match(
+  client,
+  /getAtlasAwisHandoffPack/,
+  'Desktop client must read the canonical handoff pack for provider-safe workspace resume context.',
+)
+assert.match(
+  client,
+  /\/atlas-code\/workspace-intelligence\?\$\{params\.toString\(\)\}/,
+  'Durable AWIS snapshots must use the canonical workspace-intelligence endpoint.',
+)
+assert.match(
+  client,
+  /\/atlas-code\/workspace-intelligence\/artifact-intelligence\?\$\{params\.toString\(\)\}/,
+  'Canonical AWIS artifact replay must use the server artifact-intelligence endpoint.',
+)
+assert.match(
+  client,
+  /\/atlas-code\/workspace-intelligence\/next-session-brain\?\$\{params\.toString\(\)\}/,
+  'Canonical AWIS startup brain must use the server next-session-brain endpoint.',
+)
+assert.match(
+  client,
+  /\/atlas-code\/workspace-intelligence\/handoff-pack\?\$\{params\.toString\(\)\}/,
+  'Canonical AWIS handoff context must use the server handoff-pack endpoint.',
+)
+assert.match(
+  client,
   /\/atlas-code\/workspace-intelligence\/artifact-lake\/\$\{encodeURIComponent\(artifact\)\}/,
   'Persisted fusion artifact inspection must use the workspace Artifact Lake endpoint',
 )
@@ -105,6 +145,46 @@ assert.match(
   surface,
   /getAtlasAwisLearningLoop\(workspace, task\)/,
   'Atlas AI surface must enrich the project command center with the certified AWIS loop',
+)
+assert.match(
+  surface,
+  /persistAtlasAwisRuntimeSnapshot\(workspace, task\)/,
+  'Atlas AI surface must persist a workspace runtime snapshot when the local project is ready.',
+)
+assert.match(
+  surface,
+  /getAtlasAwisArtifactIntelligence\(workspace, task, \{ latest: true \}\)/,
+  'Atlas AI surface must hydrate Space replay from persisted server Artifact Intelligence on startup.',
+)
+assert.match(
+  surface,
+  /buildAwisWorkspaceArtifactProjectionsFromServer\(awair, workspaceKeyValue\)/,
+  'Atlas AI surface must convert canonical AWAIR into bounded provider-safe context pack input.',
+)
+assert.match(
+  surface,
+  /getAtlasAwisNextSessionBrain\(workspace, task, \{ latest: true \}\)/,
+  'Atlas AI surface must hydrate startup context from the persisted next-session brain.',
+)
+assert.match(
+  surface,
+  /getAtlasAwisHandoffPack\(workspace, task,/,
+  'Atlas AI surface must hydrate provider-safe handoff context from the canonical AWIS endpoint.',
+)
+assert.match(
+  surface,
+  /nextSessionBrain: workspaceNextSessionBrain/,
+  'Atlas AI context pack must carry the bounded next-session brain projection.',
+)
+assert.match(
+  surface,
+  /handoffPack: workspaceHandoffPack/,
+  'Atlas AI context pack must carry the bounded handoff projection.',
+)
+assert.match(
+  surface,
+  /AWIS_RUNTIME_SNAPSHOT_TTL_MS/,
+  'AWIS runtime snapshot persistence must be throttled so opening the app does not hammer the local service.',
 )
 assert.match(
   surface,
@@ -303,6 +383,11 @@ assert.match(
 )
 assert.match(
   threadList,
+  /const showProjectSpaces = spacesForProject\.length > 0 \|\| suggestedSpaceThreadIds\.length >= 2 \|\| \(isActiveProject && workspaceToolsOpen\)/,
+  'If the project row says a Space exists, the Space panel must render without requiring a hidden tools toggle.',
+)
+assert.match(
+  threadList,
   /const showCreationGuide = buildingSpace && spaces\.length === 0 && !showSuggestedSpace && !showBackgroundSpaceStatus[\s\S]*Solte sobre outra conversa[\s\S]*Cria um Space com estas sessões\./,
   'Empty Project Spaces panels must stay quiet until drag feedback is actually needed.',
 )
@@ -438,8 +523,13 @@ assert.match(
 )
 assert.match(
   threadList,
-  /localStorage\.setItem\(PROJECT_SPACES_STORAGE/,
-  'Project Spaces must persist locally across Atlas AI reloads when there is no backend Space API yet.',
+  /setLocalStorageItem\(PROJECT_SPACES_STORAGE, payload\)[\s\S]*setSessionStorageItem\(PROJECT_SPACES_STORAGE, payload\)/,
+  'Project Spaces must persist redundantly across Atlas AI reloads when there is no backend Space API yet.',
+)
+assert.match(
+  threadList,
+  /mergeLocalProjectSpaces\([\s\S]*parseLocalProjectSpaces\(getLocalStorageItem\(PROJECT_SPACES_STORAGE\)\)[\s\S]*parseLocalProjectSpaces\(getSessionStorageItem\(PROJECT_SPACES_STORAGE\)\)/,
+  'Project Spaces must merge redundant local/session storage instead of trusting a stale single copy.',
 )
 assert.match(
   threadList,

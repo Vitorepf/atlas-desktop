@@ -18,6 +18,7 @@ import { flowIdForMode, modelLabel, providerLabel } from '../contract'
 import { humanizeRuntimeSignal, type RuntimeReadinessView } from '../runtimeReadinessView'
 import { useHyperflowRuntime } from '../useHyperflowRuntime'
 import { useRuntimeReadiness } from '../useRuntimeReadiness'
+import { AtlasAiRuntimeStatusPill } from './AtlasAiRuntimeStatusPill'
 import type {
   AiThreadDetail,
   AiTrace,
@@ -294,8 +295,8 @@ export function AtlasAiContextPanel({
         >
           <h3 className="atlas-ai-context-heading-with-pill">
             <span>Saúde do AWIS</span>
-            <span className="atlas-ai-context-runtime-pill" aria-label={`status ${runtimeReadiness.statusLabel}`}>
-              {runtimeReadiness.statusLabel}
+            <span className="atlas-ai-context-runtime-pill">
+              <AtlasAiRuntimeStatusPill readiness={runtimeReadiness} />
             </span>
           </h3>
           <ul className="atlas-ai-context-list">

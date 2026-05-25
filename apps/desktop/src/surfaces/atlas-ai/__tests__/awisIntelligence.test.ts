@@ -84,6 +84,13 @@ test('AWIS intelligence reaches command level when workspace is executable and o
       learningScore: 0.98,
       hash: 'abc',
     },
+    runtimeSnapshot: {
+      status: 'ready',
+      persisted: true,
+      snapshotHash: 'hash',
+      brainHash: 'brain',
+      projectionCount: 5,
+    },
   })
 
   assert.equal(intelligence.level, 'command')
@@ -95,9 +102,53 @@ test('AWIS intelligence reaches command level when workspace is executable and o
   assert.ok(intelligence.capabilities.includes('AWIS pronto'))
   assert.ok(!intelligence.capabilities.some((capability) => capability.includes('runtime')))
   assert.ok(intelligence.capabilities.includes('loop vivo'))
+  assert.ok(intelligence.capabilities.includes('snapshot AWIS salvo'))
   assert.equal(intelligence.liveSignal.label, 'loop vivo')
   assert.equal(intelligence.liveSignal.tone, 'ok')
   assert.deepEqual(intelligence.gaps, [])
+})
+
+test('AWIS intelligence treats a blocked runtime snapshot as real brain debt', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 3,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    serverHealth: {
+      status: 'ready',
+      dbConnected: true,
+      overallOk: true,
+    },
+    learningLoop: {
+      status: 'ready',
+      loopClosed: true,
+      action: 'prepare_provider_safe_handoff',
+      learningScore: 0.98,
+    },
+    runtimeSnapshot: {
+      status: 'blocked',
+      persisted: false,
+    },
+  })
+
+  assert.ok(intelligence.gaps.includes('recriar snapshot AWIS'))
+  assert.ok(!intelligence.capabilities.includes('snapshot AWIS salvo'))
+  assert.ok(intelligence.score < 100)
 })
 
 test('AWIS intelligence keeps backend/history failure visible without blocking local power', () => {
@@ -400,4 +451,712 @@ test('AWIS intelligence rewards a healthy local service without hiding loop stat
   assert.ok(intelligence.capabilities.includes('serviço local pronto'))
   assert.equal(intelligence.liveSignal.label, 'loop vivo')
   assert.equal(intelligence.liveSignal.tone, 'ok')
+})
+
+test('AWIS intelligence treats the local folder map as first-class workspace power', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 6,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceBrain: {
+      status: 'ready',
+      rootName: 'Atlas',
+      rootPath: '/Users/vitorepf/develop/Atlas',
+      scannedAt: '2026-05-24T12:00:00Z',
+      isGit: true,
+      filesSeen: 2400,
+      dirsSeen: 210,
+      ignoredDirs: 14,
+      maxDepth: 6,
+      truncated: true,
+      languages: [{ label: 'TypeScript', count: 1200 }],
+      signals: ['Tauri', 'pnpm', 'Rust/Cargo'],
+      importantFiles: [{ path: 'atlas-desktop/package.json', kind: 'manifesto' }],
+      commands: [{ label: 'npm test', command: 'npm run test', kind: 'test', source: 'package.json' }],
+      notes: ['scan limitado para manter desempenho'],
+    },
+  })
+
+  assert.ok(intelligence.capabilities.includes('mapa local'))
+  assert.ok(intelligence.capabilities.includes('stack detectada'))
+  assert.ok(intelligence.capabilities.includes('comandos inferidos'))
+  assert.ok(!intelligence.gaps.includes('mapear pasta local'))
+})
+
+test('AWIS intelligence exposes workspace topology as a compact command-center capability', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop + Laravel',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 6,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceBrain: {
+      status: 'ready',
+      rootName: 'Atlas',
+      rootPath: '/Users/vitorepf/develop/Atlas',
+      scannedAt: '2026-05-24T12:00:00Z',
+      isGit: true,
+      filesSeen: 2400,
+      dirsSeen: 210,
+      ignoredDirs: 14,
+      maxDepth: 6,
+      truncated: false,
+      languages: [{ label: 'TypeScript', count: 1200 }],
+      signals: ['Tauri', 'Laravel'],
+      importantFiles: [{ path: 'atlas-desktop/package.json', kind: 'manifesto' }],
+      commands: [{ label: 'npm test', command: 'npm run test', kind: 'test', source: 'atlas-desktop/package.json' }],
+      notes: [],
+    },
+    workspaceTopology: {
+      schema_version: 'atlas.awis.workspace_topology_projection.v1',
+      source: 'local_workspace_folder_map',
+      root: {
+        name: 'Atlas',
+        is_git: true,
+        scan_truncated: false,
+        files_seen: 2400,
+      },
+      components: [
+        {
+          key: 'atlas-desktop',
+          role: 'aplicativo desktop',
+          stack: ['Tauri', 'TypeScript'],
+          manifests: ['atlas-desktop/package.json'],
+          docs: [],
+          commands: [{ command: 'npm run test', kind: 'test', source: 'atlas-desktop/package.json' }],
+          confidence: 92,
+        },
+      ],
+      connections: [],
+      execution_map: {
+        test_commands: ['npm run test'],
+        build_commands: ['npm run build'],
+        dev_commands: [],
+        check_commands: [],
+      },
+      safety: {
+        raw_source_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+  })
+
+  assert.ok(intelligence.capabilities.includes('topologia local'))
+  assert.ok(intelligence.capabilities.includes('partida inteligente'))
+  assert.ok(!intelligence.gaps.includes('entender componentes'))
+})
+
+test('AWIS intelligence does not claim full command state while the folder map is missing', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 6,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceBrain: null,
+  })
+
+  assert.ok(intelligence.gaps.includes('mapear pasta local'))
+  assert.ok(intelligence.nextActions.includes('mapear pasta local'))
+  assert.ok(intelligence.score < 100)
+})
+
+test('AWIS intelligence rewards persistent local memory after the folder map learns the workspace', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 6,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceBrain: {
+      status: 'ready',
+      rootName: 'Atlas',
+      rootPath: '/Users/vitorepf/develop/Atlas',
+      scannedAt: '2026-05-24T12:00:00Z',
+      isGit: true,
+      filesSeen: 2400,
+      dirsSeen: 210,
+      ignoredDirs: 14,
+      maxDepth: 6,
+      truncated: true,
+      languages: [{ label: 'TypeScript', count: 1200 }],
+      signals: ['Tauri', 'pnpm', 'Rust/Cargo'],
+      importantFiles: [{ path: 'atlas-desktop/package.json', kind: 'manifesto' }],
+      commands: [{ label: 'npm test', command: 'npm run test', kind: 'test', source: 'package.json' }],
+      notes: ['scan limitado para manter desempenho'],
+    },
+    workspaceMemory: {
+      schemaVersion: 'atlas.awis.workspace_memory.v1',
+      workspaceKey: '/users/vitorepf/develop/atlas',
+      workspaceName: 'Atlas',
+      rootPath: '/Users/vitorepf/develop/Atlas',
+      firstSeenAt: '2026-05-24T12:00:00Z',
+      lastSeenAt: '2026-05-24T12:05:00Z',
+      scanCount: 2,
+      lastFingerprint: 'fingerprint',
+      stableSignals: [{ label: 'Tauri', firstSeenAt: '2026-05-24T12:00:00Z', lastSeenAt: '2026-05-24T12:05:00Z', seenCount: 2 }],
+      stableLanguages: [{ label: 'TypeScript', firstSeenAt: '2026-05-24T12:00:00Z', lastSeenAt: '2026-05-24T12:05:00Z', seenCount: 2 }],
+      stableCommands: [{ label: 'npm run test', firstSeenAt: '2026-05-24T12:00:00Z', lastSeenAt: '2026-05-24T12:05:00Z', seenCount: 2 }],
+      operationalSignals: [],
+      interactionCount: 0,
+      successCount: 0,
+      failureCount: 0,
+      contextPackAppliedCount: 0,
+      lastInteractionAt: null,
+      recentOutcomes: [],
+      observations: ['primeiro mapa local persistido'],
+      driftEvents: [],
+    },
+  })
+
+  assert.ok(intelligence.capabilities.includes('memória local'))
+  assert.ok(intelligence.capabilities.includes('aprendizado incremental'))
+  assert.ok(intelligence.capabilities.includes('partida inteligente'))
+  assert.ok(!intelligence.gaps.includes('ativar memória local'))
+})
+
+test('AWIS intelligence rewards abstract cross-workspace learning without treating it as raw memory sharing', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 6,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceEvolution: {
+      schema_version: 'atlas.awis.workspace_evolution_projection.v1',
+      source: 'local_abstract_workspace_memories',
+      workspace_count: 3,
+      current_workspace_seen: true,
+      patterns: [{
+        label: 'TypeScript',
+        kind: 'language',
+        seen_in_workspaces: 2,
+        total_seen: 5,
+        recommended_use: 'usar como pista de stack, nunca como prova única',
+      }],
+      failure_signatures: [],
+      transfer_policy: {
+        privacy_level: 'abstracted',
+        raw_workspace_names_returned: false,
+        raw_paths_returned: false,
+        raw_source_returned: false,
+        apply_only_when_stack_matches: true,
+      },
+    },
+  })
+
+  assert.ok(intelligence.capabilities.includes('aprendizado entre projetos'))
+})
+
+test('AWIS intelligence rewards operational memory after the workspace is used', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 6,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceMemory: {
+      schemaVersion: 'atlas.awis.workspace_memory.v1',
+      workspaceKey: '/users/vitorepf/develop/atlas',
+      workspaceName: 'Atlas',
+      rootPath: '/Users/vitorepf/develop/Atlas',
+      firstSeenAt: '2026-05-24T12:00:00Z',
+      lastSeenAt: '2026-05-24T12:10:00Z',
+      scanCount: 1,
+      lastFingerprint: 'fingerprint',
+      stableSignals: [{ label: 'Tauri', firstSeenAt: '2026-05-24T12:00:00Z', lastSeenAt: '2026-05-24T12:05:00Z', seenCount: 1 }],
+      stableLanguages: [],
+      stableCommands: [],
+      operationalSignals: [{ label: 'canal:workbench', firstSeenAt: '2026-05-24T12:10:00Z', lastSeenAt: '2026-05-24T12:10:00Z', seenCount: 1 }],
+      interactionCount: 3,
+      successCount: 2,
+      failureCount: 1,
+      contextPackAppliedCount: 2,
+      lastInteractionAt: '2026-05-24T12:10:00Z',
+      recentOutcomes: [{
+        occurredAt: '2026-05-24T12:10:00Z',
+        channel: 'workbench',
+        status: 'succeeded',
+        provider: 'atlas_decide',
+        model: null,
+        latencyMs: 420,
+        contextPackApplied: true,
+        taskKind: null,
+        routeKey: null,
+        routeLabel: null,
+        contextGoldLabels: [],
+        validationCommands: [],
+        componentKeys: [],
+      }],
+      observations: ['workspace usado em conversa real'],
+      driftEvents: [],
+    },
+  })
+
+  assert.ok(intelligence.capabilities.includes('memória local'))
+  assert.ok(intelligence.capabilities.includes('uso aprendido'))
+})
+
+test('AWIS intelligence treats Artifact Lake replay as real startup power', () => {
+  const intelligence = evaluateAwisWorkspaceIntelligence({
+    profile: profile({
+      workspacePath: '/Users/vitorepf/develop/Atlas',
+      workspacePathExists: true,
+      repoRoot: '/Users/vitorepf/develop/Atlas',
+      stackSummary: 'Desktop',
+      testCommands: ['npm test'],
+      buildCommands: ['npm run build'],
+      safety: {
+        executionAllowed: true,
+        executionBlockedReason: null,
+        riskFloor: 'medium',
+        requiresExplicitInterventionReview: false,
+      },
+    }),
+    threadCount: 4,
+    spaceCount: 1,
+    workbenchPaneCount: 2,
+    hasStoredWorkbench: true,
+    historyHealthy: true,
+    runtimeStatus: 'ready',
+    workspaceArtifactLake: {
+      schema_version: 'atlas.awis.workspace_artifact_lake_summary.v1',
+      workspace_key: '/users/vitorepf/develop/atlas',
+      artifact_count: 3,
+      latest_artifact_hash: 'awis-abc12345',
+      latest_artifact_type: 'startup_snapshot',
+      latest_created_at: '2026-05-24T12:00:00Z',
+      retained_limit: 24,
+    },
+    workspaceArtifactReplay: {
+      schema_version: 'atlas.awis.workspace_artifact_replay_projection.v1',
+      source: 'local_workspace_artifacts',
+      artifact_count: 3,
+      latest_artifact_hash: 'awis-abc12345',
+      reusable_startup_gold: {
+        strongest_spaces: ['Fluxo AWIS · 3 sessões · 21 mensagens'],
+        reusable_patterns: ['command:npm run atlas-ai:test'],
+        warnings: [],
+        next_best_actions: ['reabrir Space forte'],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceContinuity: {
+      schema_version: 'atlas.awis.workspace_continuity_projection.v1',
+      source: 'local_awis_continuity_compiler',
+      readiness_score: 75,
+      restore_priority: [
+        { kind: 'space', label: 'Fluxo AWIS', why: '3 sessões úteis', confidence: 86 },
+      ],
+      hot_context: {
+        spaces: ['Fluxo AWIS'],
+        components: ['atlas-desktop · aplicativo desktop'],
+        commands: ['npm run atlas-ai:test'],
+        artifacts: ['awis-abc12345'],
+        task_kinds: ['bug_fix'],
+        related_workspace_hints: [],
+      },
+      stale_or_risky_context: [],
+      next_session_plan: {
+        open_surface: 'space_first',
+        first_load: ['space:Fluxo AWIS'],
+        validate_with: ['npm run atlas-ai:test'],
+        preserve_as_artifact: true,
+      },
+      learning_hooks: {
+        capture_outcome: true,
+        refresh_folder_map: false,
+        update_space_pack: true,
+        replay_artifacts_before_send: true,
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceAutomation: {
+      schema_version: 'atlas.awis.workspace_automation_projection.v1',
+      source: 'local_awis_maintenance_compiler',
+      automation_score: 80,
+      mode: 'optimize',
+      maintenance_queue: [
+        {
+          action: 'record_outcome',
+          label: 'Registrar resultado da sessão',
+          reason: 'memória operacional melhora a próxima partida',
+          priority: 'high',
+          requires_human_confirmation: false,
+        },
+      ],
+      autopilot_context: {
+        before_send: ['Reusar replay AWIS'],
+        after_send: ['Registrar resultado da sessão'],
+        on_startup: ['workspace_memory'],
+      },
+      feedback_loop: {
+        metrics_to_watch: ['taxa de sucesso'],
+        promote_when: ['comando validado com sucesso'],
+        demote_when: ['envio falha ou é cancelado'],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceConfidence: {
+      schema_version: 'atlas.awis.workspace_confidence_projection.v1',
+      source: 'local_awis_confidence_compiler',
+      confidence_score: 78,
+      ranked: {
+        commands: [{ label: 'npm run atlas-ai:test', score: 90, evidence: ['validou tarefa real'], caution: null }],
+        spaces: [{ label: 'Fluxo AWIS', score: 82, evidence: ['3 sessões'], caution: null }],
+        artifacts: [{ label: 'awis-abc12345', score: 75, evidence: ['replay disponível'], caution: null }],
+        transfers: [],
+      },
+      decision_policy: {
+        prefer: ['comando:npm run atlas-ai:test'],
+        require_confirmation_for: [],
+        avoid_until_revalidated: [],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceSessionGold: {
+      schema_version: 'atlas.awis.workspace_session_gold_projection.v1',
+      source: 'local_workspace_session_outcomes',
+      readiness_score: 84,
+      outcome_count: 4,
+      success_rate: 75,
+      strongest_outcomes: [
+        { label: 'tarefa:bug_fix', confidence: 86, evidence: ['3 outcomes úteis'] },
+      ],
+      proven_commands: [
+        { command: 'npm run atlas-ai:test', success_count: 3, task_kinds: ['bug_fix'], channels: ['conversation'] },
+      ],
+      recovery_patterns: ['workbench:send_failed'],
+      next_session_hooks: {
+        before_send: ['preferir validação comprovada: npm run atlas-ai:test'],
+        after_send: ['registrar outcome real da sessão'],
+        validate_with: ['npm run atlas-ai:test'],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceLivingGraph: {
+      schema_version: 'atlas.awis.workspace_living_graph_projection.v1',
+      source: 'local_awis_living_graph_compiler',
+      readiness_score: 76,
+      nodes: [
+        {
+          key: 'component:atlas-desktop',
+          kind: 'component',
+          label: 'atlas-desktop',
+          role: 'app desktop',
+          confidence: 88,
+          evidence: ['stack:Tauri'],
+        },
+        {
+          key: 'command:npm-run-atlas-ai-test',
+          kind: 'command',
+          label: 'npm run atlas-ai:test',
+          role: 'validação',
+          confidence: 90,
+          evidence: ['validou tarefa real'],
+        },
+      ],
+      edges: [
+        {
+          from: 'component:atlas-desktop',
+          to: 'command:npm-run-atlas-ai-test',
+          reason: 'componente declara comando',
+          strength: 78,
+        },
+      ],
+      golden_path: ['component:atlas-desktop', 'command:npm run atlas-ai:test'],
+      autopilot_hints: {
+        before_send: ['reusar artifact replay antes de enviar'],
+        after_send: ['registrar resultado da sessão'],
+        on_startup: ['component:atlas-desktop'],
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceContextKernel: {
+      schema_version: 'atlas.awis.workspace_context_kernel_projection.v1',
+      source: 'local_awis_context_kernel_compiler',
+      readiness_score: 82,
+      budget: {
+        mode: 'deep',
+        max_context_items: 10,
+        reason: 'múltiplas fontes vivas concordam sobre o próximo contexto',
+      },
+      priority_load: [
+        { kind: 'session_gold', label: 'tarefa:bug_fix', reason: 'resultado real reutilizável', confidence: 86 },
+        { kind: 'command', label: 'npm run atlas-ai:test', reason: 'comando comprovado', confidence: 92 },
+      ],
+      compression_plan: {
+        send_full: ['tarefa:bug_fix'],
+        summarize: ['component:atlas-desktop'],
+        omit: ['conversa bruta completa sem pedido explícito'],
+      },
+      validation_plan: {
+        commands: ['npm run atlas-ai:test'],
+        confidence_floor: 78,
+        requires_human_confirmation: false,
+      },
+      learning_contract: {
+        capture_outcome: true,
+        update_space_pack: true,
+        promote_artifact_after_success: true,
+        refresh_folder_map_on_drift: false,
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceSelfImprovement: {
+      schema_version: 'atlas.awis.workspace_self_improvement_projection.v1',
+      source: 'local_awis_self_improvement_compiler',
+      readiness_score: 84,
+      improvement_queue: [
+        { action: 'promote_command', label: 'npm run atlas-ai:test', reason: 'comando validou sessão real', priority: 'high', evidence: ['3 sucessos'] },
+      ],
+      promotion_policy: {
+        promote_when: ['comando validado com sucesso'],
+        demote_when: ['envio falha ou é cancelado'],
+        transfer_when: ['somente pistas abstratas provider-safe'],
+      },
+      next_review: {
+        metrics: ['taxa de promoção de comandos'],
+        validate_with: ['npm run atlas-ai:test'],
+        human_confirmation_required: false,
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceRetention: {
+      schema_version: 'atlas.awis.workspace_retention_projection.v1',
+      source: 'local_awis_retention_governor',
+      readiness_score: 74,
+      policy: {
+        mode: 'balanced',
+        reason: 'manter contexto quente com revalidação seletiva',
+        max_hot_items: 7,
+      },
+      lifecycle: {
+        keep_hot: ['ouro:tarefa:bug_fix'],
+        promote: ['comando:npm run atlas-ai:test'],
+        revalidate: ['workspace mudou desde leituras anteriores'],
+        drop_or_summarize: ['conversa bruta completa'],
+      },
+      stale_signals: ['workspace mudou desde leituras anteriores'],
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+    workspaceStartupOrchestration: {
+      schema_version: 'atlas.awis.workspace_startup_orchestration_projection.v1',
+      source: 'local_awis_startup_orchestrator',
+      readiness_score: 82,
+      launch_mode: 'deep',
+      startup_sequence: [
+        { step: 'restore', label: 'ouro:tarefa:bug_fix', source: 'retention', required: true },
+        { step: 'load', label: 'session_gold:tarefa:bug_fix', source: 'kernel', required: true },
+      ],
+      context_budget: {
+        max_items: 10,
+        prefer_summary: false,
+        reason: 'partida governada por memória local e artefatos AWIS',
+      },
+      revalidation_gate: {
+        required_before_send: ['workspace mudou desde leituras anteriores'],
+        can_autoload: ['ouro:tarefa:bug_fix'],
+        needs_human_confirmation: false,
+      },
+      learning_loop: {
+        capture_outcome: true,
+        update_memory: true,
+        update_space_pack: true,
+        preserve_artifact_after_success: true,
+      },
+      safety: {
+        raw_source_included: false,
+        raw_conversation_included: false,
+        raw_message_content_included: false,
+        absolute_paths_included: false,
+        internal_ids_included: false,
+        external_side_effects_allowed: false,
+        bounded: true,
+        provider_safe: true,
+      },
+    },
+  })
+
+  assert.ok(intelligence.capabilities.includes('Artifact Lake local'))
+  assert.ok(intelligence.capabilities.includes('replay de partida'))
+  assert.ok(intelligence.capabilities.includes('continuidade viva'))
+  assert.ok(intelligence.capabilities.includes('otimizando'))
+  assert.ok(intelligence.capabilities.includes('ranking de confiança'))
+  assert.ok(intelligence.capabilities.includes('ouro de sessão'))
+  assert.ok(intelligence.capabilities.includes('grafo vivo'))
+  assert.ok(intelligence.capabilities.includes('kernel de contexto'))
+  assert.ok(intelligence.capabilities.includes('autoevolução'))
+  assert.ok(intelligence.capabilities.includes('retenção viva'))
+  assert.ok(intelligence.capabilities.includes('partida orquestrada'))
+  assert.ok(!intelligence.capabilities.some((capability) => /learning|optimize|maintain|observe/.test(capability)))
+  assert.ok(intelligence.score >= 65)
 })

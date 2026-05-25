@@ -213,6 +213,225 @@ export interface AtlasAwisLearningLoop {
   loop_hash?: string | null
 }
 
+export interface AtlasAwisRuntimeSnapshot {
+  schema_version?: string
+  status?: 'ready' | 'blocked' | string
+  workspace_id?: string | null
+  runtime_hash?: string | null
+  persisted_snapshot_id?: number | string | null
+  persisted_artifact_graph_id?: number | string | null
+  persisted_projection_ids?: ReadonlyArray<number | string> | null
+  workspace_learning_snapshot?: {
+    schema_version?: string
+    status?: 'ready' | 'blocked' | string
+    snapshot_hash?: string | null
+    learning_score?: number | null
+    workspace_state?: {
+      learning_loop_closed?: boolean | null
+    } | null
+    source_policy?: {
+      raw_file_content_returned?: boolean | null
+      raw_diff_returned?: boolean | null
+      raw_log_returned?: boolean | null
+      raw_provider_text_returned?: boolean | null
+    } | null
+  } | null
+  workspace_next_session_brain?: AtlasAwisNextSessionBrain | null
+}
+
+export interface AtlasAwisArtifactIntelligence {
+  schema_version?: 'atlas.workspace_artifact_intelligence.v1' | string
+  status?: 'ready' | 'blocked' | string
+  workspace_id?: string | null
+  workspace_hash?: string | null
+  artifact_intelligence_hash?: string | null
+  artifact_lake?: {
+    schema_version?: string
+    artifact_count?: number | null
+    certifiable_artifacts?: number | null
+    lake_hash?: string | null
+  } | null
+  artifact_graph?: {
+    schema_version?: string
+    graph_hash?: string | null
+    nodes?: ReadonlyArray<{
+      id?: string | null
+      type?: string | null
+      status?: string | null
+      consumer?: string | null
+    }> | null
+    edges?: ReadonlyArray<{
+      from?: string | null
+      to?: string | null
+      relation?: string | null
+    }> | null
+  } | null
+  artifact_replay?: {
+    schema_version?: string
+    replay_ready?: boolean | null
+    required_inputs?: ReadonlyArray<string> | null
+    raw_conversation_required?: boolean | null
+  } | null
+  artifact_simulation?: {
+    schema_version?: string
+    decision?: string | null
+    blockers?: ReadonlyArray<string> | null
+    likely_areas?: ReadonlyArray<string> | null
+    escalate_to_forge_when?: ReadonlyArray<string> | null
+  } | null
+  artifact_context_compiler?: {
+    schema_version?: string
+    task?: string | null
+    context_units?: ReadonlyArray<string> | null
+    raw_conversation_included?: boolean | null
+    current_truth_pack_hash?: string | null
+  } | null
+  artifact_quality_governor?: {
+    schema_version?: string
+    all_executable_artifacts_ready?: boolean | null
+    minimum_executable_score?: number | null
+    quality?: ReadonlyArray<{
+      artifact_type?: string | null
+      artifact_hash?: string | null
+      quality_score?: number | null
+      freshness?: string | null
+      source_integrity?: string | null
+      consumer_fit?: string | null
+    }> | null
+  } | null
+  artifact_marketplace?: {
+    privacy_policy?: string | null
+    reusable_templates?: ReadonlyArray<string> | null
+  } | null
+  artifact_outcome_learning?: {
+    feeds?: ReadonlyArray<string> | null
+    requires_real_outcome?: boolean | null
+  } | null
+  blockers?: ReadonlyArray<string> | null
+}
+
+export interface AtlasAwisNextSessionBrain {
+  schema_version?: 'atlas.awis.workspace_next_session_brain.v1' | string
+  status?: 'ready' | 'blocked' | string
+  workspace_id?: string | null
+  task_hash?: string | null
+  readiness_score?: number | null
+  brain_hash?: string | null
+  readiness_signals?: Record<string, boolean | null | undefined> | null
+  resume_packet?: {
+    load_order?: ReadonlyArray<string> | null
+    focused_repositories?: ReadonlyArray<{
+      repo_key?: string | null
+      score?: number | null
+      reasons?: ReadonlyArray<string> | null
+      stack?: ReadonlyArray<string> | null
+    }> | null
+    focused_areas?: ReadonlyArray<string> | null
+    owner_docs?: ReadonlyArray<string> | null
+    artifact_refs?: ReadonlyArray<string> | null
+    current_truth_pack_hash?: string | null
+  } | null
+  execution_priority?: ReadonlyArray<{
+    command?: string | null
+    why?: string | null
+    requires_operator_approval?: boolean | null
+  }> | null
+  context_loading_plan?: {
+    schema_version?: 'atlas.awis.context_loading_plan.v1' | string
+    mode?: string | null
+    repository_inventory_hash?: string | null
+    repository_count?: number | null
+    working_set_hash?: string | null
+    context_delta_plan_hash?: string | null
+    learning_snapshot_hash?: string | null
+    learning_score?: number | null
+    stack_tags?: ReadonlyArray<string> | null
+    command_hints?: ReadonlyArray<string> | null
+    outcome_ranked_commands?: ReadonlyArray<string> | null
+    area_ranked_commands?: ReadonlyArray<string> | null
+    flaky_commands?: ReadonlyArray<string> | null
+    slow_commands?: ReadonlyArray<string> | null
+    avoid_commands?: ReadonlyArray<string> | null
+    focused_manifest_refs?: ReadonlyArray<{
+      repo_key?: string | null
+      manifest_files?: ReadonlyArray<string> | null
+      stack?: ReadonlyArray<string> | null
+      script_names?: ReadonlyArray<string> | null
+    }> | null
+    provider_policy?: {
+      raw_manifest_returned?: boolean | null
+      script_bodies_returned?: boolean | null
+      absolute_workspace_path_returned?: boolean | null
+    } | null
+    cache_keys?: Record<string, string | null | undefined> | null
+    refresh_triggers?: ReadonlyArray<string> | null
+  } | null
+  source_policy?: {
+    raw_file_content_returned?: boolean | null
+    raw_conversation_returned?: boolean | null
+    absolute_workspace_path_returned?: boolean | null
+  } | null
+}
+
+export interface AtlasAwisHandoffPack {
+  schema_version?: 'atlas.workspace_handoff_pack.v1' | string
+  generated_at?: string | null
+  status?: 'ready' | 'blocked' | string
+  consumer?: 'atlas_dev' | 'atlas_forge' | 'subagent_projection' | 'reviewer' | string
+  handoff_hash?: string | null
+  workspace?: {
+    workspace_id?: string | null
+    workspace_name?: string | null
+    workspace_hash?: string | null
+    readiness_status?: string | null
+    memory_scope?: string | null
+  } | null
+  required_artifacts?: ReadonlyArray<string> | null
+  missing_artifacts?: ReadonlyArray<string> | null
+  context_units?: ReadonlyArray<{
+    artifact_type?: string | null
+    artifact_hash?: string | null
+    status?: string | null
+  }> | null
+  execution_contract?: {
+    provider_safe?: boolean | null
+    raw_conversation_included?: boolean | null
+    workspace_isolation_required?: boolean | null
+    cross_workspace_memory_allowed?: boolean | null
+    mutative_execution_requires_awis_gate?: boolean | null
+  } | null
+  scope_guard?: {
+    allowed_scope?: string | null
+    risk_floor?: string | null
+    sensitive_areas?: ReadonlyArray<string> | null
+    owner_docs?: ReadonlyArray<string> | null
+  } | null
+  test_contract?: {
+    focused_tests?: ReadonlyArray<string> | null
+    fallback_tests?: ReadonlyArray<string> | null
+    skip_reason?: string | null
+  } | null
+  next_session_brain?: Pick<AtlasAwisNextSessionBrain, 'schema_version' | 'status' | 'brain_hash' | 'readiness_score' | 'context_loading_plan'> & {
+    load_order?: ReadonlyArray<string> | null
+    focused_repositories?: AtlasAwisNextSessionBrain['resume_packet'] extends infer T
+      ? T extends { focused_repositories?: infer R } ? R : unknown
+      : unknown
+    execution_priority?: AtlasAwisNextSessionBrain['execution_priority']
+    raw_content_returned?: boolean | null
+  } | null
+  conversation_fusion?: unknown
+  claim_policy?: {
+    read_only?: boolean | null
+    invokes_provider?: boolean | null
+    spends_tokens?: boolean | null
+    safe_for_provider_prompt?: boolean | null
+    raw_conversation_returned?: boolean | null
+    full_message_content_returned?: boolean | null
+    next_session_brain_provider_safe?: boolean | null
+  } | null
+  blockers?: ReadonlyArray<string> | null
+}
+
 /** Mantido em sync com `provider` enum em StoreAiInteractionRequest. */
 export type AtlasAiProvider =
   | 'claude_cli'

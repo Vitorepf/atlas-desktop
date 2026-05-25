@@ -4,10 +4,14 @@ import {
   addThreadToLocalProjectSpace,
   buildLocalProjectSpaceContextPack,
   createOrUpdateLocalProjectSpace,
+  evaluateLocalProjectSpaceBrain,
   evaluateLocalProjectSpaceIntelligence,
   localProjectSpaceContextPackMarkdown,
+  mergeLocalProjectSpaces,
+  mergeLocalSavedProjectSpaceReceipts,
   parseLocalProjectSpaces,
   parseLocalSavedProjectSpaceReceipts,
+  pruneLocalProjectSpacesForAvailableThreads,
   removeLocalProjectSpace,
   removeThreadFromLocalProjectSpace,
   resolvePointerFusionDropSnapshot,
@@ -210,6 +214,39 @@ test('AWIS Space lifecycle · manual Space title survives session removal while 
   assert.equal(next[0].updatedAt, updatedAt)
 })
 
+test('AWIS Space persistence · startup with unloaded threads must not dismantle saved Spaces', () => {
+  const next = pruneLocalProjectSpacesForAvailableThreads(
+    baseSpaces,
+    new Set(),
+    (threadIds) => `Space ${threadIds.join('+')}`,
+    updatedAt,
+  )
+
+  assert.deepEqual(next, baseSpaces)
+})
+
+test('AWIS Space persistence · after threads load, missing sessions are preserved because the list can be partial', () => {
+  const next = pruneLocalProjectSpacesForAvailableThreads(
+    baseSpaces,
+    new Set(['thread-a', 'thread-b', 'thread-d', 'thread-e']),
+    (threadIds) => `Space ${threadIds.join('+')}`,
+    updatedAt,
+  )
+
+  assert.deepEqual(next, baseSpaces)
+})
+
+test('AWIS Space persistence · after threads load, a saved Space is not deleted just because one session is not in the current page', () => {
+  const next = pruneLocalProjectSpacesForAvailableThreads(
+    baseSpaces,
+    new Set(['thread-a', 'thread-d', 'thread-e']),
+    (threadIds) => `Space ${threadIds.join('+')}`,
+    updatedAt,
+  )
+
+  assert.deepEqual(next, baseSpaces)
+})
+
 test('AWIS Space lifecycle · desfazer Space removes the entire group only', () => {
   const next = removeLocalProjectSpace(baseSpaces, 'thread-a|thread-b|thread-c')
 
@@ -410,6 +447,34 @@ test('AWIS Space intelligence · thin spaces explain that context is still light
   assert.equal(intelligence.nextAction, 'adicione mais uma sessão')
 })
 
+test('AWIS Space brain · turns a Space into safe reusable context, not just grouping', () => {
+  const brain = evaluateLocalProjectSpaceBrain([
+    thread({
+      id: 'a',
+      title: 'Decisão aprovada para Forge',
+      message_count: 3,
+      metadata: { atlas_mode: 'programming', decision_count: 2, artifact_refs: ['pack-a'] },
+    }),
+    thread({
+      id: 'b',
+      title: 'Pendência de risco no rollback',
+      message_count: 2,
+      metadata: { atlas_mode: 'research', blocker_count: 1, risk_count: 1 },
+    }),
+  ])
+
+  assert.equal(brain.schema_version, 'atlas.desktop_ai.space_brain.v1')
+  assert.equal(brain.state, 'vivo')
+  assert.equal(brain.contextPackReady, true)
+  assert.equal(brain.providerSafe, true)
+  assert.equal(brain.decisionCount, 3)
+  assert.equal(brain.pendingCount, 2)
+  assert.equal(brain.riskCount, 2)
+  assert.equal(brain.artifactCount, 1)
+  assert.deepEqual(brain.reusableBy, ['Atlas AI', 'Code', 'Forge', 'packs'])
+  assert.deepEqual(brain.recommendedActions, ['gerar pack seguro', 'trabalhar lado a lado', 'revisar pendências'])
+})
+
 test('AWIS Space storage · v2 envelope round-trips source and lifecycle metadata', () => {
   const serialized = serializeLocalProjectSpaces(baseSpaces)
   const parsed = parseLocalProjectSpaces(serialized, '2026-01-01T00:00:00.000Z')
@@ -460,6 +525,31 @@ test('AWIS Space storage · legacy project key and title are normalized on read'
   assert.deepEqual(parsed[0].threadIds, ['thread-b', 'thread-a'])
 })
 
+test('AWIS Space storage · redundant storage merge keeps newest durable Space copy', () => {
+  const staleSpaces: LocalProjectSpace[] = [
+    {
+      ...baseSpaces[0],
+      title: 'Nome antigo',
+      updatedAt: createdAt,
+    },
+  ]
+  const durableSpaces: LocalProjectSpace[] = [
+    {
+      ...baseSpaces[0],
+      title: 'Nome durável',
+      manualTitle: true,
+      updatedAt,
+    },
+    baseSpaces[1],
+  ]
+  const merged = mergeLocalProjectSpaces(staleSpaces, durableSpaces)
+
+  assert.equal(merged.length, 2)
+  assert.equal(merged[0].title, 'Nome durável')
+  assert.equal(merged[0].manualTitle, true)
+  assert.equal(merged.some((space) => space.id === baseSpaces[1].id), true)
+})
+
 test('AWIS Space saved receipts · persist provider-safe saved Space state across app restarts', () => {
   const receipts: LocalSavedProjectSpaceReceipt[] = [
     {
@@ -475,6 +565,25 @@ test('AWIS Space saved receipts · persist provider-safe saved Space state acros
 
   assert.deepEqual(parsed, receipts)
   assert.match(serialized, /atlas\.desktop_ai\.saved_space_receipts\.v1/)
+})
+
+test('AWIS Space saved receipts · redundant merge keeps the newest saved artifact receipt', () => {
+  const stale: LocalSavedProjectSpaceReceipt = {
+    projectKey: 'atlas',
+    spaceKey: 'hash:fusion-pack-123',
+    artifactId: 'artifact-old',
+    artifactHash: 'hash-old',
+    savedAt: createdAt,
+  }
+  const fresh: LocalSavedProjectSpaceReceipt = {
+    ...stale,
+    artifactId: 'artifact-new',
+    artifactHash: 'hash-new',
+    savedAt: updatedAt,
+  }
+  const merged = mergeLocalSavedProjectSpaceReceipts([stale], [fresh])
+
+  assert.deepEqual(merged, [fresh])
 })
 
 test('AWIS Space saved receipts · derive stable key without raw conversation content', () => {
@@ -542,6 +651,11 @@ test('AWIS Space context pack · exports safe reusable context without raw conve
   assert.equal(pack.schema_version, 'atlas.desktop_ai.space_context_pack.v1')
   assert.equal(pack.raw_conversation_returned, false)
   assert.equal(pack.full_message_content_returned, false)
+  assert.equal(pack.decision_count, 0)
+  assert.equal(pack.pending_count, 0)
+  assert.equal(pack.risk_count, 0)
+  assert.equal(pack.scope_label, '2 sessões · 2 modos')
+  assert.deepEqual(pack.reusable_by, ['Atlas AI', 'Code', 'packs'])
   assert.deepEqual(pack.source_thread_ids, ['a', 'b'])
   assert.equal(pack.sessions[0].mode, 'programming')
   assert.equal(pack.sessions[1].mode, 'research')
@@ -562,6 +676,8 @@ test('AWIS Space context pack · markdown is operator-readable and provider-safe
   assert.match(markdown, /# Space · Fluxo Atlas AI/)
   assert.match(markdown, /Origem: Space sugerido/)
   assert.match(markdown, /Resumo: 2 sessões · 5 mensagens · 1 modo/)
+  assert.match(markdown, /Cérebro: 0 decisões · 0 pendências · 0 riscos/)
+  assert.match(markdown, /Reutilizável por: Atlas AI, packs/)
   assert.match(markdown, /Conteúdo completo: não incluído por segurança\./)
   assert.match(markdown, /Diagnosticar AWIS · Geral · 3 mensagens/)
   assert.match(markdown, /não contém mensagens completas/)

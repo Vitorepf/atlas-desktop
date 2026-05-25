@@ -16,7 +16,11 @@ import type {
   AtlasAiRouterBootstrap,
   AtlasAiRouterReadiness,
   AtlasAiRuntimeReadiness,
+  AtlasAwisArtifactIntelligence,
+  AtlasAwisHandoffPack,
   AtlasAwisLearningLoop,
+  AtlasAwisNextSessionBrain,
+  AtlasAwisRuntimeSnapshot,
   AtlasServerHealth,
   AtlasWorkspaceArtifactLakeEntry,
   AtlasWorkspaceConversationFusion,
@@ -119,11 +123,17 @@ async function fetchJson<T>(
   const token = import.meta.env.VITE_ATLAS_TOKEN as string | undefined
   if (token) headers['X-Atlas-Token'] = token
 
-  const response = await fetch(apiUrl(path), {
-    method: init?.method ?? 'GET',
-    headers,
-    body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
-  })
+  let response: Response
+  try {
+    response = await fetch(apiUrl(path), {
+      method: init?.method ?? 'GET',
+      headers,
+      body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+    })
+  } catch (error) {
+    const detail = error instanceof Error && error.message.trim() !== '' ? error.message.trim() : 'falha de rede'
+    throw new Error(`Atlas AI não conseguiu falar com o serviço local (${detail}). Verifique se o Atlas local está rodando e tente de novo.`)
+  }
   if (!response.ok) {
     const body = await response.text()
     throw new Error(compactHttpError(response.status, body))
@@ -318,6 +328,83 @@ export async function getAtlasAwisLearningLoop(
   try {
     return await fetchJson<AtlasAwisLearningLoop>(
       `/atlas-code/workspace-intelligence/learning-loop?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function persistAtlasAwisRuntimeSnapshot(
+  workspace: string,
+  task = '',
+): Promise<AtlasAwisRuntimeSnapshot | null> {
+  if (MODE === 'offline') return null
+  const params = new URLSearchParams({ workspace, persist: '1' })
+  if (task.trim() !== '') params.set('task', task.trim())
+  try {
+    return await fetchJson<AtlasAwisRuntimeSnapshot>(
+      `/atlas-code/workspace-intelligence?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function getAtlasAwisArtifactIntelligence(
+  workspace: string,
+  task = '',
+  opts: { latest?: boolean; persist?: boolean } = {},
+): Promise<AtlasAwisArtifactIntelligence | null> {
+  if (MODE === 'offline') return null
+  const params = new URLSearchParams({ workspace })
+  if (task.trim() !== '') params.set('task', task.trim())
+  if (opts.latest) params.set('latest', '1')
+  if (opts.persist) params.set('persist', '1')
+  try {
+    return await fetchJson<AtlasAwisArtifactIntelligence>(
+      `/atlas-code/workspace-intelligence/artifact-intelligence?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function getAtlasAwisNextSessionBrain(
+  workspace: string,
+  task = '',
+  opts: { latest?: boolean } = {},
+): Promise<AtlasAwisNextSessionBrain | null> {
+  if (MODE === 'offline') return null
+  const params = new URLSearchParams({ workspace })
+  if (task.trim() !== '') params.set('task', task.trim())
+  if (opts.latest) params.set('latest', '1')
+  try {
+    return await fetchJson<AtlasAwisNextSessionBrain>(
+      `/atlas-code/workspace-intelligence/next-session-brain?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function getAtlasAwisHandoffPack(
+  workspace: string,
+  task = '',
+  opts: {
+    consumer?: 'atlas_dev' | 'atlas_forge' | 'subagent_projection' | 'reviewer'
+    threadIds?: string[]
+  } = {},
+): Promise<AtlasAwisHandoffPack | null> {
+  if (MODE === 'offline') return null
+  const params = new URLSearchParams({ workspace })
+  if (task.trim() !== '') params.set('task', task.trim())
+  params.set('consumer', opts.consumer ?? 'atlas_dev')
+  for (const threadId of opts.threadIds ?? []) {
+    if (threadId.trim() !== '') params.append('thread[]', threadId.trim())
+  }
+  try {
+    return await fetchJson<AtlasAwisHandoffPack>(
+      `/atlas-code/workspace-intelligence/handoff-pack?${params.toString()}`,
     )
   } catch {
     return null

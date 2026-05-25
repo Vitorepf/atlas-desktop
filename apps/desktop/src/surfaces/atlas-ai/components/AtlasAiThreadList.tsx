@@ -63,12 +63,15 @@ interface AtlasAiThreadListProps {
   onOpenInStage?: (id: string) => void
   onStageDragActive?: (active: boolean) => void
   onProjectSpaceCountChange?: (count: number) => void
+  onProjectSpaceContextPacksChange?: (packs: LocalProjectSpaceContextPack[]) => void
+  runningThreadIds?: Set<string>
   dragClearSignal?: number
   onOpenSpace?: (threadIds: string[]) => void
   onNewThread: () => void
   onMoveThreadToWorkspace?: (threadId: string) => void | Promise<void>
   pinnedIds?: Set<string>
   onContextMenu?: (thread: AiThreadSummary, ev: React.MouseEvent) => void
+  headerLeading?: React.ReactNode
 }
 
 const MODE_TAG: Record<AtlasAiMode | 'all', string> = {
@@ -93,6 +96,7 @@ const PROJECT_SPACES_STORAGE = 'atlas-desktop:atlas-ai-project-spaces'
 const PROJECT_SPACES_SCHEMA_VERSION = 'atlas.desktop_ai.project_spaces.v2'
 const SAVED_SPACE_RECEIPTS_STORAGE = 'atlas-desktop:atlas-ai-saved-space-receipts'
 const SAVED_SPACE_RECEIPTS_SCHEMA_VERSION = 'atlas.desktop_ai.saved_space_receipts.v1'
+const THREAD_SEEN_STORAGE = 'atlas-desktop:atlas-ai-thread-seen-at'
 const DEFAULT_VISIBLE_PER_PROJECT = 5
 export const ATLAS_AI_THREAD_DRAG_CLEAR_EVENT = 'atlas-ai:thread-drag-clear'
 
@@ -135,6 +139,20 @@ export interface LocalProjectSpaceIntelligence {
   lastActiveAt: string | null
 }
 
+export interface LocalProjectSpaceBrain {
+  schema_version: 'atlas.desktop_ai.space_brain.v1'
+  state: 'vivo' | 'pronto' | 'leve'
+  scopeLabel: string
+  contextPackReady: boolean
+  providerSafe: true
+  decisionCount: number
+  pendingCount: number
+  riskCount: number
+  artifactCount: number
+  reusableBy: string[]
+  recommendedActions: string[]
+}
+
 export interface LocalProjectSpaceContextPack {
   schema_version: 'atlas.desktop_ai.space_context_pack.v1'
   title: string
@@ -143,6 +161,12 @@ export interface LocalProjectSpaceContextPack {
   thread_count: number
   message_count: number
   mode_count: number
+  decision_count: number
+  pending_count: number
+  risk_count: number
+  artifact_count: number
+  scope_label: string
+  reusable_by: string[]
   source_thread_ids: string[]
   raw_conversation_returned: false
   full_message_content_returned: false
@@ -291,6 +315,33 @@ export function parseLocalProjectSpaces(raw: string | null, fallbackTimestamp = 
   }
 }
 
+export function mergeLocalProjectSpaces(...sources: LocalProjectSpace[][]): LocalProjectSpace[] {
+  const byKey = new Map<string, LocalProjectSpace>()
+  for (const source of sources) {
+    for (const space of source) {
+      const key = `${space.projectKey}:${space.id}`
+      const current = byKey.get(key)
+      if (!current) {
+        byKey.set(key, space)
+        continue
+      }
+      const currentUpdatedAt = Date.parse(current.updatedAt ?? current.createdAt ?? '')
+      const nextUpdatedAt = Date.parse(space.updatedAt ?? space.createdAt ?? '')
+      const shouldReplace =
+        Number.isFinite(nextUpdatedAt) &&
+        (!Number.isFinite(currentUpdatedAt) || nextUpdatedAt >= currentUpdatedAt)
+      if (shouldReplace) byKey.set(key, space)
+    }
+  }
+  return Array.from(byKey.values())
+    .sort((a, b) => {
+      const aUpdatedAt = Date.parse(a.updatedAt ?? a.createdAt ?? '')
+      const bUpdatedAt = Date.parse(b.updatedAt ?? b.createdAt ?? '')
+      return (Number.isFinite(bUpdatedAt) ? bUpdatedAt : 0) - (Number.isFinite(aUpdatedAt) ? aUpdatedAt : 0)
+    })
+    .slice(0, 8)
+}
+
 export function serializeLocalProjectSpaces(spaces: LocalProjectSpace[]): string {
   return JSON.stringify({
     schema_version: PROJECT_SPACES_SCHEMA_VERSION,
@@ -349,6 +400,34 @@ export function parseLocalSavedProjectSpaceReceipts(
   }
 }
 
+export function mergeLocalSavedProjectSpaceReceipts(
+  ...sources: LocalSavedProjectSpaceReceipt[][]
+): LocalSavedProjectSpaceReceipt[] {
+  const byKey = new Map<string, LocalSavedProjectSpaceReceipt>()
+  for (const source of sources) {
+    for (const receipt of source) {
+      const key = `${receipt.projectKey}:${receipt.spaceKey}`
+      const current = byKey.get(key)
+      if (!current) {
+        byKey.set(key, receipt)
+        continue
+      }
+      const currentSavedAt = Date.parse(current.savedAt)
+      const nextSavedAt = Date.parse(receipt.savedAt)
+      if (Number.isFinite(nextSavedAt) && (!Number.isFinite(currentSavedAt) || nextSavedAt >= currentSavedAt)) {
+        byKey.set(key, receipt)
+      }
+    }
+  }
+  return Array.from(byKey.values())
+    .sort((a, b) => {
+      const aSavedAt = Date.parse(a.savedAt)
+      const bSavedAt = Date.parse(b.savedAt)
+      return (Number.isFinite(bSavedAt) ? bSavedAt : 0) - (Number.isFinite(aSavedAt) ? aSavedAt : 0)
+    })
+    .slice(0, 32)
+}
+
 export function serializeLocalSavedProjectSpaceReceipts(receipts: LocalSavedProjectSpaceReceipt[]): string {
   return JSON.stringify({
     schema_version: SAVED_SPACE_RECEIPTS_SCHEMA_VERSION,
@@ -381,44 +460,62 @@ export function suggestedProjectSpaceThreadIds(
   ].filter(Boolean)))
 }
 
+function getLocalStorageItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function getSessionStorageItem(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function setLocalStorageItem(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    /* ignore */
+  }
+}
+
+function setSessionStorageItem(key: string, value: string) {
+  try {
+    sessionStorage.setItem(key, value)
+  } catch {
+    /* ignore */
+  }
+}
+
 function loadProjectSpaces(): LocalProjectSpace[] {
-  const raw =
-    localStorage.getItem(PROJECT_SPACES_STORAGE) ??
-    sessionStorage.getItem(PROJECT_SPACES_STORAGE)
-  return parseLocalProjectSpaces(raw)
+  return mergeLocalProjectSpaces(
+    parseLocalProjectSpaces(getLocalStorageItem(PROJECT_SPACES_STORAGE)),
+    parseLocalProjectSpaces(getSessionStorageItem(PROJECT_SPACES_STORAGE)),
+  )
 }
 
 function saveProjectSpaces(spaces: LocalProjectSpace[]) {
   const payload = serializeLocalProjectSpaces(spaces)
-  try {
-    localStorage.setItem(PROJECT_SPACES_STORAGE, payload)
-  } catch {
-    try {
-      sessionStorage.setItem(PROJECT_SPACES_STORAGE, payload)
-    } catch {
-      /* ignore */
-    }
-  }
+  setLocalStorageItem(PROJECT_SPACES_STORAGE, payload)
+  setSessionStorageItem(PROJECT_SPACES_STORAGE, payload)
 }
 
 function loadSavedSpaceReceipts(): LocalSavedProjectSpaceReceipt[] {
-  const raw =
-    localStorage.getItem(SAVED_SPACE_RECEIPTS_STORAGE) ??
-    sessionStorage.getItem(SAVED_SPACE_RECEIPTS_STORAGE)
-  return parseLocalSavedProjectSpaceReceipts(raw)
+  return mergeLocalSavedProjectSpaceReceipts(
+    parseLocalSavedProjectSpaceReceipts(getLocalStorageItem(SAVED_SPACE_RECEIPTS_STORAGE)),
+    parseLocalSavedProjectSpaceReceipts(getSessionStorageItem(SAVED_SPACE_RECEIPTS_STORAGE)),
+  )
 }
 
 function saveSavedSpaceReceipts(receipts: LocalSavedProjectSpaceReceipt[]) {
   const payload = serializeLocalSavedProjectSpaceReceipts(receipts)
-  try {
-    localStorage.setItem(SAVED_SPACE_RECEIPTS_STORAGE, payload)
-  } catch {
-    try {
-      sessionStorage.setItem(SAVED_SPACE_RECEIPTS_STORAGE, payload)
-    } catch {
-      /* ignore */
-    }
-  }
+  setLocalStorageItem(SAVED_SPACE_RECEIPTS_STORAGE, payload)
+  setSessionStorageItem(SAVED_SPACE_RECEIPTS_STORAGE, payload)
 }
 
 function inferThreadMode(thread: AiThreadSummary): AtlasAiMode {
@@ -457,6 +554,44 @@ function basename(path: string | null | undefined): string {
 
 function threadTimestamp(thread: AiThreadSummary): string | null {
   return thread.last_message_at ?? thread.updated_at ?? thread.created_at ?? null
+}
+
+function threadTimestampMs(thread: AiThreadSummary): number {
+  const value = threadTimestamp(thread)
+  if (!value) return 0
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function loadThreadSeenAt(): Record<string, number> | null {
+  try {
+    const raw =
+      localStorage.getItem(THREAD_SEEN_STORAGE) ??
+      sessionStorage.getItem(THREAD_SEEN_STORAGE)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    const seen: Record<string, number> = {}
+    for (const [id, value] of Object.entries(parsed)) {
+      if (typeof value === 'number' && Number.isFinite(value)) seen[id] = value
+    }
+    return seen
+  } catch {
+    return null
+  }
+}
+
+function saveThreadSeenAt(seenAt: Record<string, number>) {
+  const payload = JSON.stringify(seenAt)
+  try {
+    localStorage.setItem(THREAD_SEEN_STORAGE, payload)
+  } catch {
+    try {
+      sessionStorage.setItem(THREAD_SEEN_STORAGE, payload)
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function newestTimestamp(values: Array<string | null>): string | null {
@@ -636,6 +771,85 @@ export function evaluateLocalProjectSpaceIntelligence(threads: AiThreadSummary[]
   }
 }
 
+function metadataNumber(meta: Record<string, unknown> | null, keys: string[]): number {
+  if (!meta) return 0
+  for (const key of keys) {
+    const value = meta[key]
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value))
+    if (typeof value === 'string' && /^\d+$/.test(value.trim())) return Number.parseInt(value.trim(), 10)
+    if (Array.isArray(value)) return value.length
+  }
+  return 0
+}
+
+function textSignalCount(threads: AiThreadSummary[], pattern: RegExp): number {
+  return threads.reduce((sum, thread) => {
+    const text = `${thread.title ?? ''} ${thread.summary ?? ''}`
+    return sum + (pattern.test(text) ? 1 : 0)
+  }, 0)
+}
+
+export function evaluateLocalProjectSpaceBrain(threads: AiThreadSummary[]): LocalProjectSpaceBrain {
+  const intelligence = evaluateLocalProjectSpaceIntelligence(threads)
+  const modes = Array.from(new Set(threads.map(inferThreadMode)))
+  const decisionCount = threads.reduce((sum, thread) => sum + metadataNumber(thread.metadata, [
+    'decision_count',
+    'atlas_decision_count',
+    'awis_decision_count',
+    'decisions',
+    'decision_ledger',
+  ]), 0) + textSignalCount(threads, /\b(decidido|decisão|decisao|adr|aprovado)\b/i)
+  const pendingCount = threads.reduce((sum, thread) => sum + metadataNumber(thread.metadata, [
+    'pending_count',
+    'blocker_count',
+    'todo_count',
+    'pendencias',
+    'blockers',
+    'todos',
+  ]), 0) + textSignalCount(threads, /\b(pendente|pendência|pendencia|bloqueio|blocker|todo|falta)\b/i)
+  const riskCount = threads.reduce((sum, thread) => sum + metadataNumber(thread.metadata, [
+    'risk_count',
+    'atlas_risk_count',
+    'risks',
+    'risk_ledger',
+  ]), 0) + textSignalCount(threads, /\b(risco|risk|quebrar|rollback|segurança|seguranca)\b/i)
+  const artifactCount = threads.reduce((sum, thread) => sum + metadataNumber(thread.metadata, [
+    'artifact_count',
+    'artifacts',
+    'artifact_refs',
+    'context_pack_count',
+  ]), 0)
+  const contextPackReady = threads.length >= 2 && intelligence.messageCount >= 2
+  const state: LocalProjectSpaceBrain['state'] =
+    intelligence.level === 'forte' || decisionCount + pendingCount + riskCount + artifactCount > 0
+      ? 'vivo'
+      : intelligence.level === 'pronto'
+        ? 'pronto'
+        : 'leve'
+  const reusableBy = ['Atlas AI']
+  if (modes.includes('programming')) reusableBy.push('Code')
+  if (riskCount > 0 || pendingCount > 0) reusableBy.push('Forge')
+  if (artifactCount > 0 || contextPackReady) reusableBy.push('packs')
+
+  return {
+    schema_version: 'atlas.desktop_ai.space_brain.v1',
+    state,
+    scopeLabel: `${threads.length} sessões · ${modes.length} ${modes.length === 1 ? 'modo' : 'modos'}`,
+    contextPackReady,
+    providerSafe: true,
+    decisionCount,
+    pendingCount,
+    riskCount,
+    artifactCount,
+    reusableBy: Array.from(new Set(reusableBy)).slice(0, 4),
+    recommendedActions: [
+      contextPackReady ? 'gerar pack seguro' : 'adicionar contexto',
+      threads.length > 1 ? 'trabalhar lado a lado' : 'abrir sessão',
+      pendingCount > 0 || riskCount > 0 ? 'revisar pendências' : 'continuar contexto',
+    ],
+  }
+}
+
 export function buildLocalProjectSpaceContextPack({
   title,
   threads,
@@ -648,6 +862,7 @@ export function buildLocalProjectSpaceContextPack({
   generatedAt?: string
 }): LocalProjectSpaceContextPack {
   const intelligence = evaluateLocalProjectSpaceIntelligence(threads)
+  const brain = evaluateLocalProjectSpaceBrain(threads)
   return {
     schema_version: 'atlas.desktop_ai.space_context_pack.v1',
     title,
@@ -656,10 +871,16 @@ export function buildLocalProjectSpaceContextPack({
     thread_count: threads.length,
     message_count: intelligence.messageCount,
     mode_count: intelligence.modeCount,
+    decision_count: brain.decisionCount,
+    pending_count: brain.pendingCount,
+    risk_count: brain.riskCount,
+    artifact_count: brain.artifactCount,
+    scope_label: brain.scopeLabel,
+    reusable_by: brain.reusableBy,
     source_thread_ids: threads.map((thread) => thread.id),
     raw_conversation_returned: false,
     full_message_content_returned: false,
-    recommended_use: ['abrir_lado_a_lado', 'usar_como_contexto_seguro'],
+    recommended_use: brain.recommendedActions,
     sessions: threads.map((thread) => ({
       id: thread.id,
       title: thread.title?.trim() || '(sem título)',
@@ -681,20 +902,26 @@ export function localProjectSpaceContextPackMarkdown(pack: LocalProjectSpaceCont
   const sessionLabel = pack.thread_count === 1 ? '1 sessão' : `${pack.thread_count} sessões`
   const messageLabel = pack.message_count === 1 ? '1 mensagem' : `${pack.message_count} mensagens`
   const modeLabelText = pack.mode_count === 1 ? '1 modo' : `${pack.mode_count} modos`
+  const decisionLabel = pack.decision_count === 1 ? '1 decisão' : `${pack.decision_count} decisões`
+  const pendingLabel = pack.pending_count === 1 ? '1 pendência' : `${pack.pending_count} pendências`
+  const riskLabel = pack.risk_count === 1 ? '1 risco' : `${pack.risk_count} riscos`
   const lines = [
     `# Space · ${pack.title}`,
     '',
     `Origem: ${pack.source === 'suggested_space' ? 'Space sugerido' : 'Space local'}`,
     `Gerado em: ${pack.generated_at}`,
     `Resumo: ${sessionLabel} · ${messageLabel} · ${modeLabelText}`,
+    `Cérebro: ${decisionLabel} · ${pendingLabel} · ${riskLabel}`,
+    `Reutilizável por: ${pack.reusable_by.join(', ')}`,
     'Conteúdo completo: não incluído por segurança.',
     '',
     '## Sessões',
     ...pack.sessions.map(humanSessionLine),
     '',
     '## Uso recomendado',
-    '- Comparar sessões para continuar cada uma separadamente.',
+    ...pack.recommended_use.map((item) => `- ${item}.`),
     '- Usar como contexto seguro; não contém mensagens completas.',
+    '- não contém mensagens completas.',
   ]
   return lines.join('\n')
 }
@@ -774,6 +1001,34 @@ export function removeThreadFromLocalProjectSpace(
   })
 }
 
+export function pruneLocalProjectSpacesForAvailableThreads(
+  spaces: LocalProjectSpace[],
+  availableThreadIds: Set<string>,
+  suggestTitleForThreadIds: (threadIds: string[]) => string,
+  timestamp = nowIso(),
+): LocalProjectSpace[] {
+  if (availableThreadIds.size === 0) return spaces
+  return spaces.map((space) => {
+    const loadedThreadIds = space.threadIds.filter((id) => availableThreadIds.has(id))
+    const allSpaceThreadsLoaded = loadedThreadIds.length === space.threadIds.length
+    const nextTitle = !space.manualTitle && allSpaceThreadsLoaded
+      ? suggestTitleForThreadIds(space.threadIds)
+      : space.title
+    if (
+      nextTitle === space.title &&
+      space.id === space.threadIds.slice().sort().join('|')
+    ) {
+      return space
+    }
+    return {
+      ...space,
+      id: space.threadIds.slice().sort().join('|'),
+      title: nextTitle,
+      updatedAt: timestamp,
+    }
+  })
+}
+
 export function AtlasAiThreadList({
   threads,
   loading,
@@ -797,12 +1052,15 @@ export function AtlasAiThreadList({
   onOpenInStage,
   onStageDragActive,
   onProjectSpaceCountChange,
+  onProjectSpaceContextPacksChange,
+  runningThreadIds,
   dragClearSignal,
   onOpenSpace,
   onNewThread,
   onMoveThreadToWorkspace,
   pinnedIds,
   onContextMenu,
+  headerLeading,
 }: AtlasAiThreadListProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => loadCollapsed())
   const [expandedAll, setExpandedAll] = useState<Set<string>>(() => loadExpanded())
@@ -817,9 +1075,11 @@ export function AtlasAiThreadList({
   const suppressClickTimerRef = useRef<number | null>(null)
   const pointerFusionStartRef = useRef<{ threadId: string; eventType: string; at: number } | null>(null)
   const pointerFusionLastTargetRef = useRef<PointerFusionDropSnapshot>(emptyPointerFusionDropSnapshot())
-  const [workspaceToolsOpen, setWorkspaceToolsOpen] = useState(true)
+  const [workspaceToolsOpen] = useState(false)
   const [projectSpaces, setProjectSpaces] = useState<LocalProjectSpace[]>(() => loadProjectSpaces())
   const [savedSpaceReceipts, setSavedSpaceReceipts] = useState<LocalSavedProjectSpaceReceipt[]>(() => loadSavedSpaceReceipts())
+  const [threadSeenAt, setThreadSeenAt] = useState<Record<string, number>>(() => loadThreadSeenAt() ?? {})
+  const threadSeenAtInitializedRef = useRef(loadThreadSeenAt() !== null)
 
   const suppressNextThreadClick = useCallback((threadId: string) => {
     suppressClickThreadIdRef.current = threadId
@@ -866,6 +1126,33 @@ export function AtlasAiThreadList({
   useEffect(() => saveExpanded(expandedAll), [expandedAll])
   useEffect(() => saveProjectSpaces(projectSpaces), [projectSpaces])
   useEffect(() => saveSavedSpaceReceipts(savedSpaceReceipts), [savedSpaceReceipts])
+  useEffect(() => saveThreadSeenAt(threadSeenAt), [threadSeenAt])
+
+  useEffect(() => {
+    if (threadSeenAtInitializedRef.current || threads.length === 0) return
+    threadSeenAtInitializedRef.current = true
+    const baseline: Record<string, number> = {}
+    for (const thread of threads) baseline[thread.id] = threadTimestampMs(thread)
+    setThreadSeenAt(baseline)
+  }, [threads])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const selectedThread = threads.find((thread) => thread.id === selectedId)
+    const seenAt = selectedThread ? threadTimestampMs(selectedThread) : Date.now()
+    setThreadSeenAt((prev) => {
+      if ((prev[selectedId] ?? 0) >= seenAt) return prev
+      return { ...prev, [selectedId]: seenAt }
+    })
+  }, [selectedId, threads])
+
+  const statusForThread = useCallback((thread: AiThreadSummary): ThreadRowStatus => {
+    if (runningThreadIds?.has(thread.id)) return 'running'
+    if (thread.id === selectedId) return 'idle'
+    const lastTouchedAt = threadTimestampMs(thread)
+    if (lastTouchedAt > 0 && lastTouchedAt > (threadSeenAt[thread.id] ?? 0)) return 'unread'
+    return 'idle'
+  }, [runningThreadIds, selectedId, threadSeenAt])
 
   const toggleCollapsed = (key: string) => {
     setCollapsed((prev) => {
@@ -941,6 +1228,35 @@ export function AtlasAiThreadList({
     onProjectSpaceCountChange?.(activeProjectSpaceCount)
   }, [activeProjectSpaceCount, onProjectSpaceCountChange])
 
+  const threadById = useMemo(() => {
+    const map = new Map<string, AiThreadSummary>()
+    for (const thread of threads) map.set(thread.id, thread)
+    return map
+  }, [threads])
+
+  const activeProjectSpaceContextPacks = useMemo(() => {
+    if (!activeProjectKey) return []
+    return projectSpaces
+      .filter((space) => space.projectKey === activeProjectKey)
+      .map((space) => {
+        const spaceThreads = space.threadIds
+          .map((id) => threadById.get(id))
+          .filter((thread): thread is AiThreadSummary => Boolean(thread))
+        if (spaceThreads.length < 2) return null
+        return buildLocalProjectSpaceContextPack({
+          title: space.title,
+          threads: spaceThreads,
+          source: space.source === 'suggested' ? 'suggested_space' : 'local_space',
+        })
+      })
+      .filter((pack): pack is LocalProjectSpaceContextPack => Boolean(pack))
+      .slice(0, 8)
+  }, [activeProjectKey, projectSpaces, threadById])
+
+  useEffect(() => {
+    onProjectSpaceContextPacksChange?.(activeProjectSpaceContextPacks)
+  }, [activeProjectSpaceContextPacks, onProjectSpaceContextPacksChange])
+
   useEffect(() => {
     if (!activeProjectKey || !conversationFusion?.persisted_artifact) return
     const spaceKey = savedProjectSpaceKeyFromFusion(conversationFusion)
@@ -968,33 +1284,24 @@ export function AtlasAiThreadList({
     })
   }, [activeProjectKey, conversationFusion])
 
-  const threadById = useMemo(() => {
-    const map = new Map<string, AiThreadSummary>()
-    for (const thread of threads) map.set(thread.id, thread)
-    return map
-  }, [threads])
-
   useEffect(() => {
+    if (loading || threads.length === 0) return
     setProjectSpaces((prev) => {
-      let changed = false
-      const next = prev.flatMap((space) => {
-        const nextThreadIds = space.threadIds.filter((id) => threadById.has(id))
-        if (nextThreadIds.length !== space.threadIds.length) changed = true
-        if (nextThreadIds.length < 2) {
-          changed = true
-          return []
-        }
+      const next = pruneLocalProjectSpacesForAvailableThreads(prev, new Set(threadById.keys()), (nextThreadIds) => {
         const selectedThreads = nextThreadIds
           .map((id) => threadById.get(id))
           .filter((thread): thread is AiThreadSummary => Boolean(thread))
-        const nextTitle = space.manualTitle ? space.title : suggestSpaceTitle(selectedThreads)
-        const nextId = nextThreadIds.slice().sort().join('|')
-        if (nextTitle !== space.title || nextId !== space.id) changed = true
-        return [{ ...space, id: nextId, title: nextTitle, threadIds: nextThreadIds, updatedAt: nowIso() }]
+        return suggestSpaceTitle(selectedThreads)
       })
+      if (next.length !== prev.length) return next
+      const changed = next.some((space, index) =>
+        space.id !== prev[index]?.id ||
+        space.title !== prev[index]?.title ||
+        space.threadIds.join('|') !== prev[index]?.threadIds.join('|'),
+      )
       return changed ? next : prev
     })
-  }, [threadById])
+  }, [loading, threadById, threads.length])
 
   const handleFuseThreads = useCallback((
     threadIds: string[],
@@ -1264,59 +1571,24 @@ export function AtlasAiThreadList({
       className={`atlas-ai-history${draggingThreadTitle ? ' is-dragging-thread' : ''}`}
       aria-label="Histórico Atlas AI"
     >
-      <header className="atlas-ai-history-header">
-        <h3>Conversas</h3>
-        <button
-          type="button"
-          className="atlas-ai-link atlas-ai-new-thread"
-          onClick={onNewThread}
-          title="Compor sem conversa ativa (cria uma nova ao enviar)"
-          aria-label="Nova conversa"
-        >
-          <svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="5" y1="2" x2="5" y2="8" />
-            <line x1="2" y1="5" x2="8" y2="5" />
-          </svg>
-          <span>nova</span>
-        </button>
-      </header>
-
-      <div className="atlas-ai-filter-row" role="tablist" aria-label="Filtro por modo">
-        {(['all', 'general', 'operational', 'programming'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={modeFilter === value}
-            className={`atlas-ai-filter-tab${modeFilter === value ? ' is-active' : ''}`}
-            onClick={() => onModeFilter(value)}
-          >
-            {MODE_TAG[value]}
-          </button>
-        ))}
-        <button
-          type="button"
-          className={`atlas-ai-refresh${loading ? ' is-loading' : ''}`}
-          onClick={() => void onRefresh()}
-          disabled={loading}
-          title="Recarregar histórico"
-          aria-label="Recarregar histórico"
-        >
-          <svg
-            viewBox="0 0 14 14"
-            width="11"
-            height="11"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 7 a5 5 0 1 1 -1.46 -3.54" />
-            <polyline points="12 2 12 5 9 5" />
-          </svg>
-        </button>
+      <div className="atlas-ai-list-toolbar">
+        <div className="atlas-ai-list-toolbar-leading">
+          {headerLeading}
+        </div>
+        <div className="atlas-ai-filter-row" role="tablist" aria-label="Filtro por modo">
+          {(['all', 'general', 'operational', 'programming'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={modeFilter === value}
+              className={`atlas-ai-filter-tab${modeFilter === value ? ' is-active' : ''}`}
+              onClick={() => onModeFilter(value)}
+            >
+              {MODE_TAG[value]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error ? (
@@ -1354,6 +1626,7 @@ export function AtlasAiThreadList({
                       draggable={canDropIntoActiveWorkspace || canFuseThreads}
                       fusionProjectKey={key}
                       persistBackend={persist}
+                      status={statusForThread(t)}
                       onFuseThreads={(threadIds) => handleFuseThreads(threadIds, key, persist)}
                       onPointerFusionStart={(event) => beginPointerFusion(event, t, key, persist)}
                       pointerFusionTarget={pointerFusionTargetId === t.id}
@@ -1369,7 +1642,47 @@ export function AtlasAiThreadList({
 
           {/* PROJETOS */}
           {projects.length > 0 ? (
-            <Section label="Projetos" count={null}>
+            <Section
+              label="Projetos"
+              count={null}
+              action={
+                <>
+                  <button
+                    type="button"
+                    className={`atlas-ai-refresh${loading ? ' is-loading' : ''}`}
+                    onClick={() => void onRefresh()}
+                    disabled={loading}
+                    title="Recarregar histórico"
+                    aria-label="Recarregar histórico"
+                  >
+                    <svg
+                      viewBox="0 0 14 14"
+                      width="11"
+                      height="11"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 7 a5 5 0 1 1 -1.46 -3.54" />
+                      <polyline points="12 2 12 5 9 5" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="atlas-ai-new-thread"
+                    onClick={onNewThread}
+                    title="Compor sem conversa ativa"
+                    aria-label="Compor sem conversa ativa"
+                  >
+                    <span aria-hidden="true">+</span>
+                    <span className="sr-only">Nova conversa</span>
+                  </button>
+                </>
+              }
+            >
               {projects.map(([key, list]) => {
                 const isCollapsed = collapsed.has(key)
                 const isExpandedAll = expandedAll.has(key)
@@ -1379,17 +1692,19 @@ export function AtlasAiThreadList({
                   ? suggestedProjectSpaceThreadIds(conversationFusion, conversationFusionArtifact)
                     .filter((threadId) => threadById.has(threadId))
                   : []
-                const groupedThreadIds = new Set([
+                const projectSpacePanelCount = spacesForProject.length + (suggestedSpaceThreadIds.length >= 2 ? 1 : 0)
+                const projectSpacePanelLabel = projectSpacePanelCount > 0
+                  ? `${projectSpacePanelCount} ${projectSpacePanelCount === 1 ? 'Space' : 'Spaces'}`
+                  : 'criar Space'
+                const showProjectSpaces = spacesForProject.length > 0 || suggestedSpaceThreadIds.length >= 2 || (isActiveProject && workspaceToolsOpen)
+                const groupedThreadIds = showProjectSpaces ? new Set([
                   ...spacesForProject.flatMap((space) => space.threadIds),
                   ...(suggestedSpaceThreadIds.length >= 2 ? suggestedSpaceThreadIds : []),
-                ])
+                ]) : new Set<string>()
                 const looseThreads = list.filter((thread) => !groupedThreadIds.has(thread.id))
                 const limit = isExpandedAll ? looseThreads.length : DEFAULT_VISIBLE_PER_PROJECT
                 const visible = looseThreads.slice(0, limit)
                 const remaining = looseThreads.length - visible.length
-                const showProjectSpaces = (isActiveProject && workspaceToolsOpen) || spacesForProject.length > 0
-                const hasGroupedSpace = spacesForProject.length > 0 || suggestedSpaceThreadIds.length >= 2
-                const projectSpacePanelCount = spacesForProject.length + (suggestedSpaceThreadIds.length >= 2 ? 1 : 0)
                 const handleProjectFuseThreads = (threadIds: string[], source: LocalProjectSpace['source'] = 'drag') => {
                   handleFuseThreads(threadIds, key, isActiveProject, source)
                 }
@@ -1452,70 +1767,40 @@ export function AtlasAiThreadList({
                       <span className="atlas-ai-folder-name" title={key}>
                         {key}
                       </span>
-                      {isActiveProject ? <span className="atlas-ai-folder-active-dot" title="projeto ativo" /> : null}
                       <span className="atlas-ai-folder-count" title={`${list.length} conversas neste projeto`}>
                         {list.length} <span>conversas</span>
                       </span>
-                      {isActiveProject ? (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          className="atlas-ai-folder-context"
-                          title={workspaceToolsOpen
-                            ? 'Ocultar Spaces do projeto'
-                            : projectSpacePanelCount > 0
-                              ? 'Mostrar Spaces do projeto'
-                              : 'Criar um Space com conversas deste projeto'}
-                          aria-expanded={workspaceToolsOpen}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setWorkspaceToolsOpen((v) => !v)
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== 'Enter' && event.key !== ' ') return
-                            event.preventDefault()
-                            event.stopPropagation()
-                            setWorkspaceToolsOpen((v) => !v)
-                          }}
-                        >
-                          {projectSpacePanelCount > 0
-                            ? `${projectSpacePanelCount} ${projectSpacePanelCount === 1 ? 'Space' : 'Spaces'}`
-                            : 'criar Space'}
-                        </span>
-                      ) : null}
+                      <span className="sr-only">{projectSpacePanelLabel}</span>
                     </button>
-                    {showProjectSpaces ? (
-                      <ProjectSpacesPanel
-                        projectThreadCount={list.length}
-                        fusion={conversationFusion}
-                        fusionLoading={conversationFusionLoading}
-                        fusionError={conversationFusionError}
-                        artifact={conversationFusionArtifact}
-                        artifactLoading={conversationFusionArtifactLoading}
-                        artifactError={conversationFusionArtifactError}
-                        onPersistConversationFusion={isActiveProject ? handlePersistProjectConversationFusion : undefined}
-                        savedSpaceReceipts={savedSpaceReceipts}
-                        projectKey={key}
-                        spaces={spacesForProject}
-                        threadById={threadById}
-                        selectedId={selectedId}
-                        onSelect={onSelect}
-                        onOpenSpace={onOpenSpace}
-                        onRemoveSpace={removeProjectSpace}
-                        onRenameSpace={renameProjectSpace}
-                        onRemoveThreadFromSpace={removeThreadFromProjectSpace}
-                        onAddThreadToSpace={addThreadToProjectSpace}
-                        onAdoptSuggestedSpace={(threadIds) => handleProjectFuseThreads(threadIds, 'suggested')}
-                        pointerDropTargetId={pointerFusionSpaceTargetId}
-                        buildingSpace={isComposingSpace}
-                      />
-                    ) : null}
                     {!isCollapsed ? (
                       <>
+                        {showProjectSpaces ? (
+                          <ProjectSpacesPanel
+                            projectThreadCount={list.length}
+                            fusion={conversationFusion}
+                            fusionLoading={conversationFusionLoading}
+                            fusionError={conversationFusionError}
+                            artifact={conversationFusionArtifact}
+                            artifactLoading={conversationFusionArtifactLoading}
+                            artifactError={conversationFusionArtifactError}
+                            onPersistConversationFusion={isActiveProject ? handlePersistProjectConversationFusion : undefined}
+                            savedSpaceReceipts={savedSpaceReceipts}
+                            projectKey={key}
+                            spaces={spacesForProject}
+                            threadById={threadById}
+                            selectedId={selectedId}
+                            onSelect={onSelect}
+                            onOpenSpace={onOpenSpace}
+                            onRemoveSpace={removeProjectSpace}
+                            onRenameSpace={renameProjectSpace}
+                            onRemoveThreadFromSpace={removeThreadFromProjectSpace}
+                            onAddThreadToSpace={addThreadToProjectSpace}
+                            onAdoptSuggestedSpace={(threadIds) => handleProjectFuseThreads(threadIds, 'suggested')}
+                            pointerDropTargetId={pointerFusionSpaceTargetId}
+                            buildingSpace={isComposingSpace}
+                          />
+                        ) : null}
                         <ul className="atlas-ai-thread-list" role="list">
-                          {hasGroupedSpace && visible.length > 0 ? (
-                            <li className="atlas-ai-loose-threads-label">Conversas soltas</li>
-                          ) : null}
                           {visible.map((t) => (
                             <ThreadRow
                               key={t.id}
@@ -1529,6 +1814,7 @@ export function AtlasAiThreadList({
                               draggable={canDropIntoActiveWorkspace || canFuseThreads}
                               fusionProjectKey={key}
                               persistBackend={isActiveProject}
+                              status={statusForThread(t)}
                               onFuseThreads={handleProjectFuseThreads}
                               onPointerFusionStart={(event) => beginPointerFusion(event, t, key, isActiveProject)}
                               pointerFusionTarget={pointerFusionTargetId === t.id}
@@ -1537,11 +1823,6 @@ export function AtlasAiThreadList({
                               onDragThreadEnd={clearThreadDragState}
                             />
                           ))}
-                          {hasGroupedSpace && visible.length === 0 ? (
-                            <li className="atlas-ai-all-grouped-line">
-                              Todas as conversas deste projeto estão em Spaces.
-                            </li>
-                          ) : null}
                         </ul>
                         {remaining > 0 ? (
                           <button
@@ -1585,6 +1866,7 @@ export function AtlasAiThreadList({
                 suppressClickThreadId={suppressClickThreadId}
                 onDragThreadStart={beginNativeThreadDrag}
                 onDragThreadEnd={clearThreadDragState}
+                statusForThread={statusForThread}
               />
             </Section>
           ) : null}
@@ -1731,7 +2013,7 @@ function ProjectSpacesPanel({
               .map((id) => threadById.get(id))
               .filter((thread): thread is AiThreadSummary => Boolean(thread))
             const visibleSpaceThreads = spaceThreads.slice(0, 4)
-            const hiddenSpaceThreadCount = Math.max(0, spaceThreads.length - visibleSpaceThreads.length)
+            const hiddenSpaceThreadCount = Math.max(0, space.threadIds.length - visibleSpaceThreads.length)
             const intelligence = evaluateLocalProjectSpaceIntelligence(spaceThreads)
             return (
               <article
@@ -2233,13 +2515,15 @@ interface SectionProps {
   label: string
   count: number | null
   children: React.ReactNode
+  action?: React.ReactNode
 }
 
-function Section({ label, children }: SectionProps) {
+function Section({ label, children, action }: SectionProps) {
   return (
     <section className="atlas-ai-tree-section">
       <header className="atlas-ai-tree-section-head">
         <span>{label}</span>
+        {action ? <span className="atlas-ai-tree-section-action">{action}</span> : null}
       </header>
       {children}
     </section>
@@ -2260,6 +2544,7 @@ interface OrphanListProps {
   suppressClickThreadId?: string | null
   onDragThreadStart?: (title: string) => void
   onDragThreadEnd?: () => void
+  statusForThread?: (thread: AiThreadSummary) => ThreadRowStatus
 }
 
 function OrphanList({
@@ -2276,6 +2561,7 @@ function OrphanList({
   suppressClickThreadId,
   onDragThreadStart,
   onDragThreadEnd,
+  statusForThread,
 }: OrphanListProps) {
   const [showAll, setShowAll] = useState(false)
   const visible = showAll ? threads : threads.slice(0, DEFAULT_VISIBLE_PER_PROJECT)
@@ -2301,6 +2587,7 @@ function OrphanList({
             suppressClick={suppressClickThreadId === t.id}
             onDragThreadStart={onDragThreadStart}
             onDragThreadEnd={onDragThreadEnd}
+            status={statusForThread?.(t) ?? 'idle'}
           />
         ))}
       </ul>
@@ -2335,7 +2622,10 @@ interface ThreadRowProps {
   suppressClick?: boolean
   onDragThreadStart?: (title: string) => void
   onDragThreadEnd?: () => void
+  status?: ThreadRowStatus
 }
+
+type ThreadRowStatus = 'idle' | 'running' | 'unread'
 
 function ThreadRow({
   thread,
@@ -2355,6 +2645,7 @@ function ThreadRow({
   suppressClick,
   onDragThreadStart,
   onDragThreadEnd,
+  status = 'idle',
 }: ThreadRowProps) {
   const mode = inferThreadMode(thread)
   const selected = thread.id === selectedId
@@ -2381,6 +2672,7 @@ function ThreadRow({
   return (
     <li
       className={`atlas-ai-thread-item is-mode-${mode}${selected ? ' is-selected' : ''}${pinned ? ' is-pinned' : ''}${indented ? ' is-indented' : ''}${dropTarget ? ' is-fusion-target' : ''}${pointerFusionTarget ? ' is-pointer-fusion-target' : ''}`}
+      data-atlas-thread-status={status}
       data-atlas-thread-id={thread.id}
       data-atlas-project-key={fusionProjectKey}
       data-atlas-persist-backend={persistBackend ? 'true' : 'false'}
@@ -2436,7 +2728,7 @@ function ThreadRow({
             onDragStart={startThreadDrag}
             onDragEnd={finishThreadDrag}
           >
-            <span aria-hidden="true">⋮⋮</span>
+            <span className={`atlas-ai-thread-status-dots is-${status}`} aria-hidden="true" />
           </button>
         ) : null}
         <button

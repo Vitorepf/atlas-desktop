@@ -6,7 +6,7 @@
  * setters para o caller. Double-click no handle restaura defaults.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useAtlasAiLayoutStore } from '../../../state/atlasAiLayoutStore'
+import { clampAtlasAiLeft, clampAtlasAiRight, useAtlasAiLayoutStore } from '../../../state/atlasAiLayoutStore'
 
 type ResizeSide = 'left' | 'right'
 
@@ -24,13 +24,15 @@ export function useAtlasAiColumnSizing() {
 
   useEffect(() => {
     const root = document.documentElement
+    const safeLeftWidth = clampAtlasAiLeft(leftWidth, rightWidth)
+    const safeRightWidth = clampAtlasAiRight(rightWidth, safeLeftWidth)
     root.style.setProperty(
       '--atlas-ai-left-width',
-      leftCollapsed ? '0px' : `${leftWidth}px`,
+      leftCollapsed ? '0px' : `${safeLeftWidth}px`,
     )
     root.style.setProperty(
       '--atlas-ai-right-width',
-      rightCollapsed ? '0px' : `${rightWidth}px`,
+      rightCollapsed ? '0px' : `${safeRightWidth}px`,
     )
     root.classList.toggle('atlas-ai-left-collapsed', leftCollapsed)
     root.classList.toggle('atlas-ai-right-collapsed', rightCollapsed)

@@ -3639,35 +3639,33 @@
      row 3: left-rail │ stage │ right-rail
      ───────────────────────────────────────────────────────────────── */
   :root {
-    --atlas-ai-left-width: 280px;
+    --atlas-ai-left-width: 316px;
     --atlas-ai-right-width: 340px;
-    --atlas-ai-header-bar-height: 56px;
+    --atlas-ai-header-bar-height: 40px;
   }
   .atlas-shell.surface-atlas_ai,
   .atlas-shell.surface-atlas-ai {
-    grid-template-rows: 50px var(--atlas-ai-header-bar-height) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
     grid-template-columns:
       var(--atlas-ai-left-width)
       minmax(0, 1fr)
       var(--atlas-ai-right-width) !important;
     grid-template-areas:
-      'topbar     topbar  topbar'
-      'headerbar  headerbar  headerbar'
       'left       stage   right' !important;
     grid-auto-rows: 0 !important;
     grid-auto-flow: row !important;
   }
   .atlas-shell.surface-atlas_ai > .topbar,
   .atlas-shell.surface-atlas-ai > .topbar {
-    grid-area: topbar !important;
-    align-self: stretch !important;
-    justify-self: stretch !important;
+    display: none !important;
   }
   .atlas-shell.surface-atlas_ai > .atlas-ai-header-bar,
   .atlas-shell.surface-atlas-ai > .atlas-ai-header-bar {
-    grid-area: headerbar !important;
+    grid-area: 1 / 1 / 2 / 4 !important;
     align-self: stretch !important;
     justify-self: stretch !important;
+    height: var(--atlas-ai-header-bar-height);
+    z-index: 8;
   }
   .atlas-shell.surface-atlas_ai > .atlas-ai-rail-left,
   .atlas-shell.surface-atlas-ai > .atlas-ai-rail-left {
@@ -3690,7 +3688,7 @@
   /* Fallback offline (renderiza só <main class="atlas-ai-stage-fallback">) */
   .atlas-shell.surface-atlas_ai > .atlas-ai-stage-fallback,
   .atlas-shell.surface-atlas-ai > .atlas-ai-stage-fallback {
-    grid-area: headerbar / left / stage / right !important;
+    grid-area: left / left / stage / right !important;
   }
   /* Collapsed states · rail vira 0px e o stage absorve o espaço. */
   html.atlas-ai-left-collapsed .atlas-shell.surface-atlas_ai > .atlas-ai-rail-left,

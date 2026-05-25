@@ -15,7 +15,7 @@
  *   - Trocar de Projeto fica disponível via lista lateral curta.
  *   - Reaproveita tokens --cc-* — mesmo design system de Cartografia/Code/Atenção.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { AtlasWorkspaceProfile, AtlasWorkspaceProfileList } from '@atlas/domain'
 import type { AtlasWorkspaceProfileWritePayload } from '../../lib/bridge'
@@ -452,7 +452,7 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
       </div>
       <div className="atlas-project-profile-form-grid">
         <label>
-          <span>nome do projeto <InfoTip text="Nome humano que aparece na lista lateral e no seletor de projeto." /></span>
+          <span>nome do projeto <InfoTip text="Nome visível do projeto no Atlas. Use algo que você reconheça rápido na lateral, no seletor de projeto e nos contextos de conversa." /></span>
           <input value={name} onChange={(e) => {
             const next = e.target.value
             setName(next)
@@ -460,11 +460,11 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
           }} placeholder="Blackink" />
         </label>
         <label>
-          <span>identificador <InfoTip text="Chave curta e estável usada internamente para agrupar conversas e obras deste projeto." /></span>
+          <span>identificador <InfoTip text="Chave técnica estável do projeto. Ela agrupa conversas, Spaces, obras e contexto interno. Depois de criado, não é ideal trocar." /></span>
           <input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} placeholder="blackink" disabled={Boolean(profile)} />
         </label>
         <label>
-          <span>tipo de projeto <InfoTip text="Ajuda o Atlas a decidir risco, linguagem e escopo padrão." /></span>
+          <span>tipo de projeto <InfoTip text="Define a natureza do workspace. Produto, cliente, biblioteca ou experimento mudam o nível de cuidado, o tom das respostas e o tipo de fluxo sugerido." /></span>
           <select value={kind} onChange={(e) => setKind(e.target.value)}>
             <option value="product">Produto</option>
             <option value="client">Cliente</option>
@@ -473,7 +473,7 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
           </select>
         </label>
         <label>
-          <span>estado <InfoTip text="Produção aumenta o cuidado: rollback, testes e escopo ficam mais importantes." /></span>
+          <span>estado <InfoTip text="Indica o momento operacional do projeto. Produção exige mais cautela: rollback claro, testes antes de concluir e mudanças menores por padrão." /></span>
           <select value={productionStatus} onChange={(e) => setProductionStatus(e.target.value)}>
             <option value="development">Desenvolvimento</option>
             <option value="staging">Homologação</option>
@@ -484,7 +484,7 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
       </div>
 
       <label>
-        <span>pasta do Mac <InfoTip text="Escolha a pasta real do repositório no Finder. Sem isso o Atlas não deve executar código neste projeto." /></span>
+        <span>pasta do Mac <InfoTip text="Pasta real do projeto no seu Mac. É isso que libera contexto de código, terminal, testes e Finder. Sem uma pasta válida, o Atlas deve tratar o projeto apenas como consulta e não executar comandos nele." /></span>
         <div className="atlas-project-profile-path-row">
           <input value={workspacePath} onChange={(e) => setWorkspacePath(e.target.value)} placeholder="Escolha uma pasta real do projeto" />
           <button type="button" className="atlas-project-profile-action-secondary" onClick={() => void pickFolder()} disabled={saving || !onPickWorkspaceFolder}>
@@ -504,18 +504,18 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
         </summary>
         <div className="atlas-project-profile-advanced-body">
           <label>
-            <span>raiz do repositório <InfoTip text="Use quando a pasta do projeto contém vários repositórios e o código principal fica em uma subpasta." /></span>
+            <span>raiz do repositório <InfoTip text="Caminho usado como raiz técnica para comandos e leitura de código. Normalmente é igual à pasta do Mac; só mude quando o projeto tiver vários repos ou uma subpasta principal." /></span>
             <input value={repoRoot} onChange={(e) => setRepoRoot(e.target.value)} placeholder="normalmente igual à pasta do Mac" />
             <small>Deixe igual à pasta do Mac quando o repositório começa nela.</small>
           </label>
           <label>
-            <span>resumo técnico curto <InfoTip text="Explique a stack e os pontos críticos em uma frase curta. Isso melhora contexto e reduz suposição." /></span>
+            <span>resumo técnico curto <InfoTip text="Resumo para orientar o Atlas antes de qualquer análise: stack, apps principais, runtime e pontos críticos. Quanto melhor esse texto, menos suposição na conversa." /></span>
             <textarea value={stackSummary} onChange={(e) => setStackSummary(e.target.value)} rows={3} placeholder="Stack, apps principais, runtime e pontos críticos." />
           </label>
 
           <div className="atlas-project-profile-form-grid">
             <label>
-              <span>documentação</span>
+              <span>documentação <InfoTip text="Qualidade da documentação usada como fonte de verdade. Canônica dá mais confiança; parcial ou incompleta faz o Atlas depender mais do código e agir com mais cautela." /></span>
               <select value={docsStatus} onChange={(e) => setDocsStatus(e.target.value)}>
                 <option value="canonical">Canônica</option>
                 <option value="partial">Parcial</option>
@@ -524,7 +524,7 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
               </select>
             </label>
             <label>
-              <span>risco padrão</span>
+              <span>risco padrão <InfoTip text="Nível de cuidado inicial para mudanças neste projeto. Use alto ou crítico quando há produção, dados reais, billing, auth, deploy ou qualquer área sensível." /></span>
               <select value={defaultRisk} onChange={(e) => setDefaultRisk(e.target.value)}>
                 <option value="low">Baixo</option>
                 <option value="medium">Médio</option>
@@ -536,30 +536,30 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
 
           <div className="atlas-project-profile-form-grid">
             <label>
-              <span>comandos de teste</span>
+              <span>comandos de teste <InfoTip text="Comandos que provam comportamento. Coloque um por linha. O Atlas usa essa lista para saber como validar mudanças antes de dizer que algo ficou pronto." /></span>
               <textarea value={testCommands} onChange={(e) => setTestCommands(e.target.value)} rows={4} placeholder="npm test" />
             </label>
             <label>
-              <span>comandos de build</span>
+              <span>comandos de build <InfoTip text="Comandos que provam compilação ou empacotamento. Coloque um por linha. Isso evita entregar uma alteração que parece certa mas quebra o app." /></span>
               <textarea value={buildCommands} onChange={(e) => setBuildCommands(e.target.value)} rows={4} placeholder="npm run build" />
             </label>
           </div>
           <label>
-            <span>servidor local</span>
+            <span>servidor local <InfoTip text="Comando para abrir o projeto em modo local, quando existir. Útil para testes visuais, navegação manual, screenshots e validação de interface." /></span>
             <input value={devServerCommand} onChange={(e) => setDevServerCommand(e.target.value)} placeholder="npm run dev" />
           </label>
           <div className="atlas-project-profile-form-grid">
             <label>
-              <span>áreas sensíveis</span>
+              <span>áreas sensíveis <InfoTip text="Partes do projeto onde erro custa caro: autenticação, pagamentos, dados, deploy, permissões, runtime, integrações externas ou código crítico." /></span>
               <textarea value={criticalAreas} onChange={(e) => setCriticalAreas(e.target.value)} rows={4} placeholder="auth&#10;billing&#10;runtime" />
             </label>
             <label>
-              <span>superfícies liberadas</span>
+              <span>superfícies liberadas <InfoTip text="Áreas do Atlas autorizadas a usar este projeto, como Atlas AI, Code, Cartografia ou Atenção. Remova o que não deve operar nesse workspace." /></span>
               <textarea value={surfacesEnabled} onChange={(e) => setSurfacesEnabled(e.target.value)} rows={4} />
             </label>
           </div>
           <label>
-            <span>notas de produção <InfoTip text="Registre regras de deploy, rollback e cuidados que a IA precisa respeitar antes de mexer." /></span>
+            <span>notas de produção <InfoTip text="Regras operacionais que o Atlas precisa respeitar: deploy, rollback, horários críticos, donos, integrações frágeis e cuidados antes de mexer." /></span>
             <textarea value={deploymentNotes} onChange={(e) => setDeploymentNotes(e.target.value)} rows={3} />
           </label>
         </div>
@@ -734,10 +734,20 @@ function StatusCard({
 }
 
 function InfoTip({ text }: { text: string }) {
+  const id = useId()
   return (
-    <span className="atlas-project-profile-info" title={text} aria-label={text}>
+    <button
+      type="button"
+      className="atlas-project-profile-info"
+      aria-label={text}
+      aria-describedby={id}
+      data-tip={text}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => event.preventDefault()}
+    >
       i
-    </span>
+      <span id={id} role="tooltip">{text}</span>
+    </button>
   )
 }
 

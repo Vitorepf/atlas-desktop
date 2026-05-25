@@ -206,7 +206,7 @@ export interface AtlasAiPayloadInput {
   computeEffort?: AtlasComputeEffortChoice | null
   workspaceSlug: string | null
   routingDomain?: string | null
-  conversationContext?: Array<Record<string, unknown>>
+  conversationContext?: unknown[]
 }
 
 export interface AtlasAiPayloadBuildResult {

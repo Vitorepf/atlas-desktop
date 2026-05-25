@@ -102,6 +102,45 @@ test('auto/auto + anexos texto/URL mantém invariante de limpeza', () => {
   assert.equal(enriched.routing_domain, 'auto')
 })
 
+test('AWIS workspace context pack entra como conversation_context sem virar runtime técnico', () => {
+  const awisPack = {
+    schema_version: 'atlas.awis.workspace_context_pack.v1',
+    source: 'atlas_desktop_awis',
+    workspace: { key: 'atlas', name: 'Atlas', root_path_known: true },
+    folder_map: {
+      status: 'ready',
+      files_seen: 6000,
+      dirs_seen: 900,
+      truncated: true,
+      signals: ['Laravel', 'Tauri'],
+      languages: ['TypeScript'],
+      important_files: [{ path: 'package.json', kind: 'manifesto' }],
+      commands: [{ command: 'npm run test', kind: 'test', source: 'package.json' }],
+    },
+    memory: {
+      scan_count: 2,
+      stable_signals: ['Laravel'],
+      stable_languages: ['TypeScript'],
+      stable_commands: ['npm run test'],
+      latest_drift: null,
+      observations: ['workspace grande: scan limitado para desempenho'],
+    },
+    safety: { raw_source_included: false, bounded: true, provider_safe: true },
+  }
+  const { payload } = buildInteractionPayload({
+    mode: 'auto',
+    task: 'auto',
+    provider: 'auto',
+    workspaceSlug: 'atlas',
+    conversationContext: [awisPack],
+  })
+
+  assert.equal(isAutoAutoCleanPayload(payload), true)
+  assert.deepEqual(payload.conversation_context, [awisPack])
+  assert.equal('programming_harness' in payload, false)
+  assert.doesNotMatch(JSON.stringify(payload.conversation_context), /"content"|function|class|import .* from/)
+})
+
 test('surface_id sempre atlas_desktop_ai (nunca vaza atlas_mobile_ai)', () => {
   const { payload } = buildInteractionPayload({
     mode: 'research',

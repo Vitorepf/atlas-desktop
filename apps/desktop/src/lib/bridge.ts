@@ -152,6 +152,41 @@ import {
 
 export type BridgeMode = 'tauri' | 'http' | 'offline'
 
+export interface AtlasWorkspaceBrainLanguage {
+  label: string
+  count: number
+}
+
+export interface AtlasWorkspaceBrainFile {
+  path: string
+  kind: string
+}
+
+export interface AtlasWorkspaceBrainCommand {
+  label: string
+  command: string
+  kind: 'test' | 'build' | 'dev' | 'check' | 'run' | string
+  source: string
+}
+
+export interface AtlasWorkspaceBrainSnapshot {
+  status: 'ready' | 'unavailable' | 'error' | string
+  rootName: string
+  rootPath: string
+  scannedAt: string
+  isGit: boolean
+  filesSeen: number
+  dirsSeen: number
+  ignoredDirs: number
+  maxDepth: number
+  truncated: boolean
+  languages: AtlasWorkspaceBrainLanguage[]
+  signals: string[]
+  importantFiles: AtlasWorkspaceBrainFile[]
+  commands: AtlasWorkspaceBrainCommand[]
+  notes: string[]
+}
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown
@@ -670,6 +705,38 @@ export const bridge = {
       })
       const path = Array.isArray(selected) ? selected[0] : selected
       return typeof path === 'string' && path.trim() !== '' ? path : null
+    }
+  },
+
+  async scanWorkspaceBrain(workspacePath: string): Promise<AtlasWorkspaceBrainSnapshot | null> {
+    if (MODE !== 'tauri') return null
+    const path = workspacePath.trim()
+    if (!path) return null
+    try {
+      const raw = await invokeTauri<unknown>('atlas_scan_workspace_brain', {
+        workspacePath: path,
+        workspace_path: path,
+      })
+      return adaptWorkspaceBrainSnapshot(raw)
+    } catch (e) {
+      console.warn('[bridge] workspace brain scan failed', e)
+      return {
+        status: 'error',
+        rootName: folderNameFromPath(path),
+        rootPath: path,
+        scannedAt: new Date().toISOString(),
+        isGit: false,
+        filesSeen: 0,
+        dirsSeen: 0,
+        ignoredDirs: 0,
+        maxDepth: 0,
+        truncated: false,
+        languages: [],
+        signals: [],
+        importantFiles: [],
+        commands: [],
+        notes: ['mapa local indisponível'],
+      }
     }
   },
 
@@ -2344,6 +2411,71 @@ export type Bridge = typeof bridge
 
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers
+
+function adaptWorkspaceBrainSnapshot(raw: unknown): AtlasWorkspaceBrainSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const rootPath = stringValue(r.rootPath ?? r.root_path)
+  const rootName = stringValue(r.rootName ?? r.root_name) || folderNameFromPath(rootPath) || 'Workspace'
+  return {
+    status: stringValue(r.status) || 'ready',
+    rootName,
+    rootPath,
+    scannedAt: stringValue(r.scannedAt ?? r.scanned_at) || new Date().toISOString(),
+    isGit: Boolean(r.isGit ?? r.is_git ?? false),
+    filesSeen: numberValue(r.filesSeen ?? r.files_seen),
+    dirsSeen: numberValue(r.dirsSeen ?? r.dirs_seen),
+    ignoredDirs: numberValue(r.ignoredDirs ?? r.ignored_dirs),
+    maxDepth: numberValue(r.maxDepth ?? r.max_depth),
+    truncated: Boolean(r.truncated ?? false),
+    languages: arrayValue(r.languages).map((item) => {
+      const o = objectValue(item)
+      return {
+        label: stringValue(o.label),
+        count: numberValue(o.count),
+      }
+    }).filter((item) => item.label !== ''),
+    signals: arrayValue(r.signals).map(String).filter((item) => item.trim() !== ''),
+    importantFiles: arrayValue(r.importantFiles ?? r.important_files).map((item) => {
+      const o = objectValue(item)
+      return {
+        path: stringValue(o.path),
+        kind: stringValue(o.kind) || 'arquivo',
+      }
+    }).filter((item) => item.path !== ''),
+    commands: arrayValue(r.commands).map((item) => {
+      const o = objectValue(item)
+      return {
+        label: stringValue(o.label),
+        command: stringValue(o.command),
+        kind: stringValue(o.kind) || 'run',
+        source: stringValue(o.source),
+      }
+    }).filter((item) => item.command !== ''),
+    notes: arrayValue(r.notes).map(String).filter((item) => item.trim() !== ''),
+  }
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {}
+}
+
+function arrayValue(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : value == null ? '' : String(value).trim()
+}
+
+function numberValue(value: unknown): number {
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0
+}
+
+function folderNameFromPath(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Workspace'
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 // Normalisers from atlas-server snake_case shapes to @atlas/domain camelCase

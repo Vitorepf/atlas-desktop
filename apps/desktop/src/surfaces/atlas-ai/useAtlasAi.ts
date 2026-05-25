@@ -92,6 +92,7 @@ export interface AtlasAiState {
   /** Mensagem otimista do usuário — set ANTES dos awaits do send. Garante
    * feedback imediato (bolha + indicador) entre Enter e o trace aparecer. */
   pendingUserMessage: {
+    threadId: string | null
     text: string
     attachmentCount: number
     startedAt: number
@@ -100,6 +101,7 @@ export interface AtlasAiState {
   streamingText: string
   sending: boolean
   sendError: string | null
+  sendErrorThreadId: string | null
 
   /**
    * Atlas Dev plan-only state · populated when the composer fires
@@ -140,6 +142,7 @@ export interface AtlasAiState {
       richInputPayload?: AtlasRichInputPayload
       computeEffort?: AtlasComputeEffortChoice
       voiceConversation?: boolean
+      conversationContext?: unknown[]
       /** Thread alvo explícita. Necessário para Workbench multi-conversa. */
       threadId?: string | null
     },
@@ -161,6 +164,40 @@ export interface AtlasAiState {
 const TRACE_POLL_INTERVAL_MS = 500
 const TRACE_POLL_INITIAL_DELAY_MS = 250
 const TRACE_POLL_TIMEOUT_MS = 120_000
+
+function traceFailureMessage(trace: AiTrace): string {
+  const failedJob = trace.job?.status === 'failed'
+    ? trace.job
+    : trace.jobs?.find((job) => job.status === 'failed') ?? trace.job ?? trace.jobs?.[0] ?? null
+  const failedAttempt =
+    failedJob?.attempt_history?.find((attempt) => attempt.status === 'failed') ??
+    failedJob?.attempt_history?.[0] ??
+    null
+  const metadata = trace.metadata ?? {}
+  const metadataMessage =
+    typeof metadata.error_message === 'string'
+      ? metadata.error_message
+      : typeof metadata.error === 'string'
+        ? metadata.error
+        : typeof metadata.message === 'string'
+          ? metadata.message
+          : null
+  const detail =
+    failedJob?.error_message?.trim() ||
+    failedAttempt?.error_message?.trim() ||
+    metadataMessage?.trim() ||
+    trace.response_text?.trim() ||
+    null
+  const action =
+    trace.status === 'rejected'
+      ? 'rejeitou'
+      : trace.status === 'cancelled'
+        ? 'cancelou'
+        : 'não concluiu'
+  return detail
+    ? `Atlas ${action}: ${detail}`
+    : `Atlas ${action} esta resposta. Tente de novo ou verifique o serviço local.`
+}
 
 export function useAtlasAi(
   initialWorkspaceSlug: string | null = null,
@@ -202,6 +239,7 @@ export function useAtlasAi(
 
   const [pendingTrace, setPendingTrace] = useState<AiTrace | null>(null)
   const [pendingUserMessage, setPendingUserMessage] = useState<{
+    threadId: string | null
     text: string
     attachmentCount: number
     startedAt: number
@@ -209,6 +247,7 @@ export function useAtlasAi(
   const [streamingText, setStreamingText] = useState<string>('')
   const [sending, setSending] = useState<boolean>(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [sendErrorThreadId, setSendErrorThreadId] = useState<string | null>(null)
 
   /* Atlas Dev plan-only state */
   const [atlasDevPlanLoading, setAtlasDevPlanLoading] = useState<boolean>(false)
@@ -356,8 +395,6 @@ export function useAtlasAi(
       setSelectedThreadId(id)
       setThreadDetail(null)
       setThreadDetailError(null)
-      setPendingTrace(null)
-      setSendError(null)
       setCurrentAtlasDevPlan(null)
       setAtlasDevPlanError(null)
       if (id) {
@@ -470,6 +507,13 @@ export function useAtlasAi(
             stop()
             setPendingTrace(null)
             setPendingUserMessage(null)
+            if (trace.status === 'failed' || trace.status === 'rejected' || trace.status === 'cancelled') {
+              setSendError(traceFailureMessage(trace))
+              setSendErrorThreadId(threadId)
+            } else {
+              setSendError(null)
+              setSendErrorThreadId(null)
+            }
             // Cleanup SSE stream subscription quando trace finaliza.
             if (streamUnsubRef.current) {
               streamUnsubRef.current()
@@ -478,7 +522,7 @@ export function useAtlasAi(
             // Streaming text fica até loadThreadDetail trazer a msg final
             // — depois é limpo pelo selectThread/loadThreadDetail success.
             setStreamingText('')
-            if (threadId) {
+            if (threadId && selectedThreadIdRef.current === threadId) {
               void loadThreadDetail(threadId)
             }
             void refreshThreads()
@@ -488,12 +532,20 @@ export function useAtlasAi(
           if (!mountedRef.current) return
           consecutiveErrors += 1
           setSendError(e instanceof Error ? e.message : String(e))
+          setSendErrorThreadId(threadId)
           // 5 erros consecutivos = backend morto / network. Para o loop
           // e libera o optimistic pra usuário poder tentar de novo.
           if (consecutiveErrors >= 5) {
             stop()
+            setPendingTrace(null)
             setPendingUserMessage(null)
+            setStreamingText('')
+            if (streamUnsubRef.current) {
+              streamUnsubRef.current()
+              streamUnsubRef.current = null
+            }
             setSendError('Serviço local não confirmou a resposta. Tente de novo ou reinicie o Atlas local.')
+            setSendErrorThreadId(threadId)
             return
           }
         }
@@ -501,8 +553,15 @@ export function useAtlasAi(
           stop()
           // CRÍTICO: limpar optimistic + reportar timeout claro pro usuário.
           // Sem isso a bolha "enviando agora…" fica eterna.
+          setPendingTrace(null)
           setPendingUserMessage(null)
+          setStreamingText('')
+          if (streamUnsubRef.current) {
+            streamUnsubRef.current()
+            streamUnsubRef.current = null
+          }
           setSendError(`Atlas não respondeu em ${Math.round(TRACE_POLL_TIMEOUT_MS / 1000)}s. Tente de novo em instantes.`)
+          setSendErrorThreadId(threadId)
           return
         }
         pollTimerRef.current = window.setTimeout(tick, TRACE_POLL_INTERVAL_MS)
@@ -550,11 +609,13 @@ export function useAtlasAi(
         richInputPayload?: AtlasRichInputPayload
         computeEffort?: AtlasComputeEffortChoice
         voiceConversation?: boolean
+        conversationContext?: unknown[]
         threadId?: string | null
       },
     ): Promise<AiTrace | null> => {
       if (mode === 'offline') {
         setSendError('Atlas AI offline · serviço local indisponível. A conversa volta quando o serviço responder.')
+        setSendErrorThreadId(options?.threadId ?? selectedThreadIdRef.current)
         return null
       }
       const trimmed = text.trim()
@@ -572,6 +633,7 @@ export function useAtlasAi(
       // negocia workspace via Atlas Decide (ou retorna blocker explícito).
       if (composerMode === 'programming' && !atlasDevWorkspace) {
         setSendError('Atlas Dev exige Workspace · selecione um Projeto no topbar antes de enviar.')
+        setSendErrorThreadId(options?.threadId ?? selectedThreadIdRef.current)
         return null
       }
 
@@ -580,16 +642,9 @@ export function useAtlasAi(
         (options?.uploadedDocumentIds?.length ?? 0) +
         (options?.textBlocks?.length ?? 0) +
         (options?.urlAttachments?.length ?? 0)
-      // Feedback imediato: a bolha do usuário aparece SÍNCRONO antes de
-      // qualquer await (createAiThread / createAiInteraction podem levar
-      // 500ms-2s). Sem isso o operador vê silêncio total e acha que travou.
-      setPendingUserMessage({
-        text: trimmed,
-        attachmentCount,
-        startedAt: Date.now(),
-      })
       setSending(true)
       setSendError(null)
+      setSendErrorThreadId(null)
 
       /*
        * Atlas Dev plan-only step.
@@ -610,6 +665,13 @@ export function useAtlasAi(
         Object.prototype.hasOwnProperty.call(options ?? {}, 'threadId')
           ? options?.threadId ?? null
           : undefined
+      const initialPendingThreadId = shouldForceNewThread ? null : explicitThreadId ?? selectedThreadIdRef.current
+      setPendingUserMessage({
+        threadId: initialPendingThreadId,
+        text: trimmed,
+        attachmentCount,
+        startedAt: Date.now(),
+      })
       let planOnlyDecision: 'continue' | 'halt' = 'continue'
       if (shouldRunPlanOnly) {
         setAtlasDevPlanLoading(true)
@@ -664,6 +726,7 @@ export function useAtlasAi(
         }
       }
 
+      let interactionThreadId = initialPendingThreadId
       try {
         const scope: AtlasAiWorkspaceScope = {
           slug: workspaceSlug,
@@ -672,6 +735,7 @@ export function useAtlasAi(
           pathExists: null,
         }
         let threadId = shouldForceNewThread ? null : explicitThreadId ?? selectedThreadIdRef.current
+        interactionThreadId = threadId
         // Cria thread explicitamente quando não há uma — assim o trace já fica
         // ligado e o histórico atualiza sem corrida.
         if (!threadId) {
@@ -699,12 +763,14 @@ export function useAtlasAi(
             },
           })
           threadId = newThread.id
-          selectedThreadIdRef.current = threadId
+          interactionThreadId = threadId
           if (mountedRef.current) {
             setThreads((prev) => [newThread, ...prev.filter((thread) => thread.id !== newThread.id)])
+            selectedThreadIdRef.current = threadId
             setSelectedThreadId(threadId)
             setThreadDetail(null)
             setThreadDetailLoading(true)
+            setPendingUserMessage((current) => current ? { ...current, threadId } : current)
             void loadThreadDetail(threadId)
           }
         }
@@ -715,6 +781,7 @@ export function useAtlasAi(
           provider: composerProvider,
           computeEffort: options?.computeEffort ?? composerComputeEffort,
           workspaceSlug,
+          conversationContext: options?.conversationContext,
         })
 
         // Enriquecemos o payload com text_blocks e url_attachments — backend
@@ -775,6 +842,7 @@ export function useAtlasAi(
       } catch (e) {
         if (mountedRef.current) {
           setSendError(e instanceof Error ? e.message : String(e))
+          setSendErrorThreadId(interactionThreadId)
           // Limpa optimistic — usuário precisa saber que falhou pra editar/retentar.
           setPendingUserMessage(null)
         }
@@ -1021,6 +1089,7 @@ export function useAtlasAi(
     streamingText,
     sending,
     sendError,
+    sendErrorThreadId,
     send,
 
     atlasDevPlanLoading,
@@ -1041,6 +1110,7 @@ export function useAtlasAi(
       setPendingUserMessage(null)
       setStreamingText('')
       setSendError(null)
+      setSendErrorThreadId(null)
       setSending(false)
     },
 

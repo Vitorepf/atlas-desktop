@@ -83,14 +83,19 @@
 .atlas-ai-header-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 18px;
-  padding: 0 22px;
-  background: rgba(29, 43, 52, 0.72);
-  border-bottom: 1px solid rgba(233, 238, 242, 0.06);
+  padding: 12px 14px 0;
+  pointer-events: none;
+  background: transparent;
+  border-bottom: 0;
   box-shadow: none;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.atlas-ai-header-bar > * {
+  pointer-events: auto;
 }
 
 .atlas-ai-header-bar-start {
@@ -98,6 +103,10 @@
   align-items: center;
   gap: 14px;
   min-width: 0;
+}
+
+.atlas-ai-header-bar-start:has(.atlas-ai-rail-toggle:only-child) {
+  gap: 0;
 }
 
 .atlas-ai-header-bar-title {
@@ -146,8 +155,8 @@
 
 .atlas-ai-header-bar-meta {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: start;
+  gap: 6px;
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
@@ -184,6 +193,13 @@
 
 .atlas-ai-rail-toggle-right svg { transform: scaleX(-1); }
 
+.atlas-ai-calmaria-toggle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+}
+
 /* ===== RAILS (left/right, full-height igual Code) ===== */
 
 .atlas-ai-rail {
@@ -213,7 +229,7 @@
   box-shadow: none;
   flex: 1;
   min-height: 0;
-  padding: 14px 12px;
+  padding: 14px 16px 16px;
 }
 
 /* Side tabs no rail · Linear cmd-K school. Hairline-only, sublinhado gold
@@ -255,8 +271,7 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(212, 168, 90, 0.045) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 50% 100%, rgba(127, 167, 196, 0.025) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 50% 100%, rgba(127, 167, 196, 0.018) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -330,23 +345,24 @@
   align-items: stretch;
   overflow-y: auto;
   min-height: 0;
-  padding: 28px 32px 12px;
+  padding: 12px 24px 6px;
 }
 
 .atlas-ai-awis-command-center {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(150px, 0.7fr);
+  grid-template-columns: minmax(260px, 1fr) auto minmax(150px, 0.58fr) minmax(150px, 0.58fr) minmax(150px, 0.58fr) max-content;
+  grid-template-rows: auto auto auto auto;
   align-items: center;
-  gap: 12px;
-  width: min(1120px, 100%);
-  margin: 0 auto 18px;
+  gap: 8px 12px;
+  width: min(1240px, 100%);
+  margin: 0 auto 10px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--cc-border) 82%, transparent);
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 72%),
     color-mix(in srgb, var(--cc-panel) 88%, #000 12%);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
 }
 
 .atlas-ai-awis-command-center.is-command {
@@ -364,8 +380,8 @@
 .atlas-ai-awis-kicker {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 7px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 6px;
   border: 1px solid color-mix(in srgb, var(--cc-accent) 44%, transparent);
   color: var(--cc-accent);
@@ -377,6 +393,8 @@
 
 .atlas-ai-awis-command-main strong,
 .atlas-ai-awis-context span,
+.atlas-ai-awis-map span,
+.atlas-ai-awis-memory span,
 .atlas-ai-awis-live span {
   display: block;
   overflow: hidden;
@@ -390,6 +408,8 @@
 
 .atlas-ai-awis-command-main p,
 .atlas-ai-awis-context small,
+.atlas-ai-awis-map small,
+.atlas-ai-awis-memory small,
 .atlas-ai-awis-live small {
   margin: 2px 0 0;
   overflow: hidden;
@@ -409,8 +429,31 @@
   color: color-mix(in srgb, var(--cc-accent) 82%, var(--cc-text-muted));
 }
 
+.atlas-ai-awis-map,
+.atlas-ai-awis-memory {
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--cc-border) 58%, transparent);
+}
+
+.atlas-ai-awis-map.is-ready small,
+.atlas-ai-awis-memory.is-ready small {
+  color: color-mix(in srgb, var(--cc-success, #7fd1a8) 74%, var(--cc-text-muted));
+}
+
+.atlas-ai-awis-map.is-loading small,
+.atlas-ai-awis-map.is-missing small {
+  color: color-mix(in srgb, var(--cc-accent) 82%, var(--cc-text-muted));
+}
+
+.atlas-ai-awis-map.is-muted,
+.atlas-ai-awis-memory.is-muted {
+  opacity: 0.7;
+}
+
 .atlas-ai-awis-live {
-  grid-column: 1 / -1;
+  grid-column: 5;
+  grid-row: 2;
   min-width: 0;
   padding-left: 0;
   border-left: 0;
@@ -433,8 +476,8 @@
   align-items: baseline;
   justify-content: center;
   gap: 2px;
-  min-width: 54px;
-  padding: 5px 8px;
+  min-width: 50px;
+  padding: 4px 7px;
   border-radius: 7px;
   background: color-mix(in srgb, var(--cc-bg) 56%, transparent);
   border: 1px solid color-mix(in srgb, var(--cc-border) 68%, transparent);
@@ -443,7 +486,7 @@
 .atlas-ai-awis-score span {
   color: var(--cc-text-strong);
   font-family: var(--cc-font-mono);
-  font-size: 17px;
+  font-size: 16px;
   font-variation-settings: 'wght' 760;
 }
 
@@ -454,6 +497,7 @@
 }
 
 .atlas-ai-awis-chips,
+.atlas-ai-awis-brain-signals,
 .atlas-ai-awis-next,
 .atlas-ai-awis-actions {
   display: flex;
@@ -463,7 +507,8 @@
 }
 
 .atlas-ai-awis-chips {
-  grid-column: 1 / -1;
+  grid-column: 1 / 5;
+  grid-row: 2;
   flex-wrap: wrap;
 }
 
@@ -472,8 +517,8 @@
   display: inline-flex;
   align-items: center;
   max-width: 150px;
-  height: 22px;
-  padding: 0 7px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -495,8 +540,83 @@
 
 .atlas-ai-awis-next {
   grid-column: 1 / -1;
+  grid-row: 4;
   justify-content: flex-start;
   overflow: visible;
+}
+
+.atlas-ai-awis-brain-signals {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.atlas-ai-awis-brain-signal {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 290px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--cc-border) 58%, transparent);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.006)),
+    color-mix(in srgb, var(--cc-bg) 34%, transparent);
+  color: var(--cc-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.026);
+}
+
+.atlas-ai-awis-brain-signal small {
+  color: var(--cc-text-faint);
+  font-family: var(--cc-font-mono);
+  font-size: 9px;
+  font-variation-settings: 'wght' 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.atlas-ai-awis-brain-signal strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cc-text);
+  font-size: 11.5px;
+  font-variation-settings: 'wght' 640;
+  letter-spacing: 0;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-ai-awis-brain-signal.tone-strong {
+  border-color: color-mix(in srgb, var(--cc-success, #7fd1a8) 26%, var(--cc-border));
+  background:
+    linear-gradient(180deg, rgba(127, 209, 168, 0.07), rgba(255, 255, 255, 0.006)),
+    color-mix(in srgb, var(--cc-bg) 38%, transparent);
+}
+
+.atlas-ai-awis-brain-signal.tone-strong small {
+  color: color-mix(in srgb, var(--cc-success, #7fd1a8) 80%, var(--cc-text-muted));
+}
+
+.atlas-ai-awis-brain-signal.tone-warm {
+  border-color: color-mix(in srgb, var(--cc-accent) 34%, var(--cc-border));
+  background:
+    linear-gradient(180deg, rgba(212, 168, 90, 0.075), rgba(255, 255, 255, 0.006)),
+    color-mix(in srgb, var(--cc-bg) 38%, transparent);
+}
+
+.atlas-ai-awis-brain-signal.tone-warm small {
+  color: color-mix(in srgb, var(--cc-accent) 86%, var(--cc-text-muted));
+}
+
+.atlas-ai-awis-brain-signal.tone-quiet {
+  opacity: 0.82;
 }
 
 .atlas-ai-awis-next::before {
@@ -515,14 +635,17 @@
 }
 
 .atlas-ai-awis-actions {
-  grid-column: 1 / -1;
-  grid-row: auto;
-  justify-content: flex-start;
+  grid-column: 6;
+  grid-row: 1 / span 2;
+  justify-content: flex-end;
+  align-self: stretch;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .atlas-ai-awis-action {
-  height: 28px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 9px;
   border: 1px solid color-mix(in srgb, var(--cc-border) 72%, transparent);
   border-radius: 7px;
   background: color-mix(in srgb, var(--cc-bg) 42%, transparent);
@@ -554,16 +677,17 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding: 18px;
+  padding: 10px 12px;
 }
 
 .atlas-ai-stage.is-hero .atlas-ai-stage-scroll {
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
+  padding-top: 14px;
 }
 
 .atlas-ai-stage-composer {
-  padding: 12px 32px 22px;
+  padding: 8px 28px 14px;
   border-top: 1px solid var(--cc-border-soft);
   background:
     linear-gradient(180deg, transparent 0%, rgba(15, 26, 34, 0.42) 100%),
@@ -579,7 +703,7 @@
   max-width: var(--composer-width, 1080px);
   margin-inline: auto;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .atlas-ai-workspace-picker {
@@ -1009,7 +1133,7 @@
 /* ===== HISTORY (left column) ===== */
 
 .atlas-ai-history {
-  padding: 14px 12px 10px;
+  padding: calc(var(--atlas-ai-header-bar-height) + 12px) 12px 10px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1018,9 +1142,9 @@
 
 .atlas-ai-history-header {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 12px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 8px;
   padding: 0 4px;
 }
 
@@ -1080,22 +1204,37 @@
   font-variation-settings: 'wght' 580;
 }
 
-/* "+ nova" thread button · icon SVG + label (Linear new-issue pattern). */
+/* Nova conversa · ação primária quieta da lateral. */
 .atlas-ai-new-thread {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11.5px;
-  font-variation-settings: 'wght' 500;
-  letter-spacing: 0;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(151, 177, 189, 0.11);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.018);
   color: var(--cc-text-muted);
+  cursor: pointer;
+  font-size: 17px;
+  font-variation-settings: 'wght' 560;
+  line-height: 1;
+  transition:
+    color 180ms var(--cc-ease-out),
+    border-color 180ms var(--cc-ease-out),
+    background 180ms var(--cc-ease-out),
+    box-shadow 180ms var(--cc-ease-out);
 }
 .atlas-ai-new-thread:hover {
-  color: var(--cc-accent);
+  border-color: rgba(151, 177, 189, 0.22);
+  background: rgba(233, 238, 242, 0.045);
+  color: var(--cc-text-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
 }
-.atlas-ai-new-thread svg {
-  opacity: 0.85;
-}
+.atlas-ai-new-thread span[aria-hidden='true'] { transform: translateY(-1px); }
 
 /* Refresh button · ghost icon-only (sem border), Linear/Raycast style.
    Gira no loading via animation. */
@@ -2415,18 +2554,13 @@
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
-  color: rgba(235, 196, 124, 0.52);
+  color: rgba(151, 177, 189, 0.5);
   cursor: grab;
   user-select: none;
   -webkit-user-drag: none;
   touch-action: none;
   flex-shrink: 0;
-  font-family: var(--cc-font-mono);
-  font-size: 15px;
-  font-variation-settings: 'wght' 740;
-  letter-spacing: -0.18em;
-  line-height: 1;
-  opacity: 0.58;
+  opacity: 0.86;
   transition:
     opacity 140ms var(--cc-ease-out),
     background 140ms var(--cc-ease-out),
@@ -2444,8 +2578,39 @@
   user-select: none;
 }
 
-.atlas-ai-thread-drag-handle span {
-  transform: translateX(-1px);
+.atlas-ai-thread-status-dots {
+  display: grid;
+  grid-template-columns: repeat(2, 3px);
+  grid-auto-rows: 3px;
+  gap: 4px 5px;
+  width: 11px;
+  height: 17px;
+}
+
+.atlas-ai-thread-status-dots::before,
+.atlas-ai-thread-status-dots::after {
+  content: '';
+  width: 3px;
+  height: 17px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 1.5px, currentColor 0 1.45px, transparent 1.55px),
+    radial-gradient(circle at 50% 8.5px, currentColor 0 1.45px, transparent 1.55px),
+    radial-gradient(circle at 50% 15.5px, currentColor 0 1.45px, transparent 1.55px);
+}
+
+.atlas-ai-thread-status-dots.is-idle {
+  color: rgba(151, 177, 189, 0.35);
+}
+
+.atlas-ai-thread-status-dots.is-unread {
+  color: var(--cc-accent);
+  filter: drop-shadow(0 0 7px rgba(212, 168, 90, 0.34));
+}
+
+.atlas-ai-thread-status-dots.is-running {
+  color: var(--cc-accent);
+  animation: atlas-ai-thread-running-pulse 940ms ease-in-out infinite;
 }
 
 .atlas-ai-thread-button:hover .atlas-ai-thread-drag-handle,
@@ -2454,8 +2619,34 @@
 .atlas-ai-thread-item.is-pointer-fusion-target .atlas-ai-thread-drag-handle {
   border-color: rgba(212, 168, 90, 0.46);
   background: rgba(212, 168, 90, 0.075);
-  color: rgba(244, 211, 150, 1);
   opacity: 1;
+}
+
+.atlas-ai-thread-item[data-atlas-thread-status='unread'] .atlas-ai-thread-title {
+  color: var(--cc-text-strong);
+  font-variation-settings: 'wght' 590;
+}
+
+.atlas-ai-thread-item[data-atlas-thread-status='unread'] .atlas-ai-thread-time {
+  color: var(--cc-accent);
+  opacity: 0.95;
+}
+
+.atlas-ai-thread-item[data-atlas-thread-status='running'] .atlas-ai-thread-button {
+  border-color: rgba(212, 168, 90, 0.18);
+}
+
+@keyframes atlas-ai-thread-running-pulse {
+  0%, 100% {
+    opacity: 0.48;
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 rgba(212, 168, 90, 0));
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+    filter: drop-shadow(0 0 9px rgba(212, 168, 90, 0.38));
+  }
 }
 
 .atlas-ai-thread-drag-handle:hover {
@@ -2652,7 +2843,7 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  max-width: 1080px;
+  max-width: 1240px;
   width: 100%;
   margin-inline: auto;
   flex: 1;
@@ -3213,11 +3404,11 @@
 /* ===== HERO (empty state premium) ===== */
 
 .atlas-ai-hero {
-  padding: 40px 44px 36px;
+  padding: 24px 32px 26px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  max-width: 880px;
+  gap: 12px;
+  max-width: 1040px;
   margin-inline: auto;
   width: 100%;
 }
@@ -3240,7 +3431,7 @@
   font-variation-settings: 'wght' 540;
   font-size: 11px;
   color: var(--cc-accent);
-  margin: 0 0 6px;
+  margin: 0 0 2px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.92;
@@ -3281,7 +3472,7 @@
   font-family: var(--cc-font-sans);
   font-style: normal;
   font-variation-settings: 'wght' 560;
-  font-size: 26px;
+  font-size: 24px;
   margin: 0;
   color: var(--cc-text-strong);
   letter-spacing: -0.018em;
@@ -3293,7 +3484,7 @@
   margin: 0;
   color: var(--cc-text-muted);
   max-width: 56ch;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.6;
   font-variation-settings: 'wght' 440;
 }
@@ -3301,8 +3492,8 @@
 .atlas-ai-hero-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
+  gap: 7px;
+  margin-top: 2px;
 }
 
 /* Hero chip · Cursor v2 ghost button (drop pill 999, use radius 6).
@@ -3311,7 +3502,7 @@
   background: transparent;
   border: 1px solid rgba(233, 238, 242, 0.08);
   border-radius: 6px;
-  padding: 7px 13px;
+  padding: 6px 11px;
   font-family: var(--cc-font-sans);
   font-size: 12.5px;
   font-variation-settings: 'wght' 480;
@@ -3379,11 +3570,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 
 .atlas-ai-context-heading-with-pill > span:first-child {
   min-width: 0;
+}
+
+.atlas-ai-context-heading-with-pill .atlas-ai-runtime-pill {
+  flex: 0 1 auto;
+  max-width: 190px;
+  height: 22px;
+  margin-left: 0;
+  padding: 0 8px;
+  font-size: 10.5px;
+}
+
+.atlas-ai-context-heading-with-pill .atlas-ai-runtime-pill-next,
+.atlas-ai-context-heading-with-pill .atlas-ai-runtime-pill-handoff {
+  display: none;
 }
 
 /* Context sections · Apple Books gradient hairline entre seções
@@ -4103,12 +4308,24 @@
 
 .atlas-ai-tree-section-head {
   padding: 4px 4px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-family: var(--cc-font-sans);
   font-size: 10.5px;
   font-variation-settings: 'wght' 580;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--cc-text-faint);
+}
+
+.atlas-ai-tree-section-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-left: auto;
 }
 
 /* Folder (projeto colapsável) */
@@ -7443,7 +7660,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 
 /* Multi-conversation workbench: separate from Project Spaces. */
 .atlas-ai-workbench-grid {
-  --workbench-gap: 14px;
+  --workbench-gap: 10px;
   display: grid;
   gap: var(--workbench-gap);
   width: 100%;
@@ -7477,7 +7694,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   min-height: 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--cc-border) 86%, transparent);
-  border-radius: 10px;
+  border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.035), transparent 34%),
     color-mix(in srgb, var(--cc-panel) 92%, #000 8%);
@@ -7496,7 +7713,7 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   border-color: color-mix(in srgb, var(--cc-accent) 58%, var(--cc-border));
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--cc-accent) 18%, transparent),
-    0 20px 48px rgba(0, 0, 0, 0.24);
+    0 14px 36px rgba(0, 0, 0, 0.2);
 }
 
 .atlas-ai-workbench-pane-scroll {
@@ -7595,27 +7812,22 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 
 .atlas-shell.surface-atlas_ai .atlas-ai-header-bar,
 .atlas-shell.surface-atlas-ai .atlas-ai-header-bar {
-  background:
-    linear-gradient(180deg, rgba(31, 50, 60, 0.82), rgba(19, 34, 43, 0.76));
-  border-bottom-color: rgba(151, 177, 189, 0.13);
-  box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, 0.025),
-    0 12px 32px rgba(0, 0, 0, 0.16);
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
 }
 
 .atlas-shell.surface-atlas_ai .atlas-ai-stage::before,
 .atlas-shell.surface-atlas-ai .atlas-ai-stage::before {
   background:
-    radial-gradient(ellipse 70% 36% at 50% 0%, rgba(212, 168, 90, 0.07) 0%, transparent 68%),
-    radial-gradient(ellipse 74% 44% at 78% 10%, rgba(127, 167, 196, 0.045) 0%, transparent 66%),
-    linear-gradient(180deg, rgba(22, 39, 49, 0.36), transparent 30%);
+    radial-gradient(ellipse 74% 44% at 78% 10%, rgba(127, 167, 196, 0.035) 0%, transparent 66%);
 }
 
 .atlas-shell.surface-atlas_ai .atlas-ai-stage-composer,
 .atlas-shell.surface-atlas-ai .atlas-ai-stage-composer {
-  padding-top: 16px;
+  padding: 8px 28px 14px;
   background:
-    linear-gradient(180deg, rgba(15, 26, 34, 0), rgba(12, 23, 31, 0.72) 34%, rgba(11, 21, 28, 0.94)),
+    linear-gradient(180deg, rgba(15, 26, 34, 0), rgba(12, 23, 31, 0.58) 38%, rgba(11, 21, 28, 0.88)),
     var(--cc-bg);
   border-top-color: rgba(151, 177, 189, 0.12);
 }
@@ -7623,13 +7835,13 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 .atlas-shell.surface-atlas_ai .atlas-ai-composer.atlas-ai-composer-v2,
 .atlas-shell.surface-atlas-ai .atlas-ai-composer.atlas-ai-composer-v2 {
   border-color: var(--atlas-ai-premium-border);
-  border-radius: 13px;
+  border-radius: 10px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012) 38%, transparent),
     radial-gradient(ellipse 58% 95% at 10% 0%, rgba(127, 167, 196, 0.055), transparent 64%),
     var(--atlas-ai-premium-panel);
   box-shadow:
-    0 24px 70px rgba(0, 0, 0, 0.22),
+    0 14px 42px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(255, 255, 255, 0.018),
     inset 0 1px 0 rgba(255, 255, 255, 0.055);
 }
@@ -7638,9 +7850,9 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 .atlas-shell.surface-atlas-ai .atlas-ai-composer.atlas-ai-composer-v2:focus-within {
   border-color: rgba(235, 196, 124, 0.5);
   box-shadow:
-    0 28px 78px rgba(0, 0, 0, 0.28),
+    0 18px 52px rgba(0, 0, 0, 0.24),
     0 0 0 1px rgba(212, 168, 90, 0.18),
-    0 0 42px rgba(212, 168, 90, 0.1),
+    0 0 28px rgba(212, 168, 90, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
@@ -7845,6 +8057,295 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   flex-shrink: 0;
 }
 
+/* Left rail editorial polish: keep every action, but organize like the
+   context rail: sections, quiet dividers, compact cards, readable rows. */
+.atlas-shell.surface-atlas_ai .atlas-ai-rail-left,
+.atlas-shell.surface-atlas-ai .atlas-ai-rail-left {
+  background:
+    linear-gradient(180deg, rgba(22, 39, 49, 0.86), rgba(8, 17, 23, 0.96)),
+    var(--cc-surface-sunken);
+  box-shadow:
+    inset -1px 0 0 rgba(151, 177, 189, 0.13),
+    18px 0 42px rgba(0, 0, 0, 0.11);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-history,
+.atlas-shell.surface-atlas-ai .atlas-ai-history {
+  gap: 0;
+  overflow-y: auto;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-history-header,
+.atlas-shell.surface-atlas-ai .atlas-ai-history-header {
+  margin: 0 0 8px;
+  padding: 0 2px 0 40px;
+  justify-content: flex-end;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-tree-section-head,
+.atlas-shell.surface-atlas-ai .atlas-ai-tree-section-head,
+.atlas-shell.surface-atlas_ai .atlas-ai-loose-threads-label,
+.atlas-shell.surface-atlas-ai .atlas-ai-loose-threads-label {
+  color: rgba(151, 164, 176, 0.92);
+  font-family: var(--cc-font-sans);
+  font-size: 10px;
+  font-variation-settings: 'wght' 640;
+  letter-spacing: 0.14em;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-list-toolbar,
+.atlas-shell.surface-atlas-ai .atlas-ai-list-toolbar {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid rgba(151, 177, 189, 0.11);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-list-toolbar-leading,
+.atlas-shell.surface-atlas-ai .atlas-ai-list-toolbar-leading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-filter-row,
+.atlas-shell.surface-atlas-ai .atlas-ai-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  gap: 6px;
+  justify-content: space-between;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-filter-tab,
+.atlas-shell.surface-atlas-ai .atlas-ai-filter-tab {
+  min-width: 0;
+  height: 28px;
+  border-radius: 7px;
+  padding: 0 9px;
+  font-size: 11.5px;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-filter-tab.is-active,
+.atlas-shell.surface-atlas-ai .atlas-ai-filter-tab.is-active {
+  background: rgba(233, 238, 242, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-refresh,
+.atlas-shell.surface-atlas-ai .atlas-ai-refresh {
+  width: 26px;
+  height: 28px;
+  margin: 0;
+  border: 1px solid rgba(151, 177, 189, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-tree,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-tree {
+  display: grid;
+  gap: 18px;
+  min-height: 0;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-tree-section,
+.atlas-shell.surface-atlas-ai .atlas-ai-tree-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-tree-section-head,
+.atlas-shell.surface-atlas-ai .atlas-ai-tree-section-head {
+  padding: 0 2px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(151, 177, 189, 0.09);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-folder,
+.atlas-shell.surface-atlas-ai .atlas-ai-folder {
+  overflow: hidden;
+  border: 1px solid rgba(151, 177, 189, 0.08);
+  border-radius: 10px;
+  background: rgba(9, 18, 24, 0.24);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-folder-head,
+.atlas-shell.surface-atlas-ai .atlas-ai-folder-head {
+  grid-template-columns: 12px 16px minmax(0, 1fr) auto;
+  min-height: 38px;
+  padding: 7px 9px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-folder.is-active-project .atlas-ai-folder-head,
+.atlas-shell.surface-atlas-ai .atlas-ai-folder.is-active-project .atlas-ai-folder-head {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-folder-count,
+.atlas-shell.surface-atlas-ai .atlas-ai-folder-count,
+.atlas-shell.surface-atlas_ai .atlas-ai-folder-context,
+.atlas-shell.surface-atlas-ai .atlas-ai-folder-context {
+  height: 22px;
+  border-radius: 7px;
+  padding: 0 8px;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-folder-count,
+.atlas-shell.surface-atlas-ai .atlas-ai-folder-count {
+  display: none;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-workspace-tools,
+.atlas-shell.surface-atlas-ai .atlas-ai-workspace-tools {
+  margin: 0;
+  padding: 8px 8px 10px;
+  border-left: 0;
+  border-top: 1px solid rgba(151, 177, 189, 0.08);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-spaces-list,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-spaces-list {
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-spaces-label,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-spaces-label {
+  padding: 0 2px 4px;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-item,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-item {
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border-color: rgba(151, 177, 189, 0.11);
+  border-radius: 9px;
+  background: rgba(10, 20, 26, 0.54);
+  box-shadow:
+    inset 3px 0 0 rgba(235, 196, 124, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-actions,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  width: auto;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-action,
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-remove,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-action,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-remove,
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-action.is-primary,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-action.is-primary {
+  grid-column: auto;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 9.5px;
+  box-shadow: none;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-action.is-primary,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-action.is-primary {
+  min-width: 84px;
+  background: rgba(212, 168, 90, 0.12);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-title-button,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-title-button {
+  padding-top: 4px;
+  font-size: 13.25px;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-intelligence,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-intelligence {
+  margin-top: 6px;
+  padding: 7px 8px;
+  border-color: rgba(108, 205, 160, 0.16);
+  border-radius: 8px;
+  background: rgba(108, 205, 160, 0.045);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-project-space-thread-list,
+.atlas-shell.surface-atlas-ai .atlas-ai-project-space-thread-list {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(151, 177, 189, 0.08);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-loose-threads-label,
+.atlas-shell.surface-atlas-ai .atlas-ai-loose-threads-label {
+  margin: 12px 0 7px;
+  padding: 10px 2px 0;
+  border-top: 1px solid rgba(151, 177, 189, 0.08);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-list,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-list {
+  gap: 6px;
+  overflow: visible;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-shell,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-shell {
+  gap: 6px;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-drag-handle,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-drag-handle {
+  width: 18px;
+  min-height: 36px;
+  margin: 0;
+  color: rgba(151, 177, 189, 0.56);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-button,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border-color: rgba(151, 177, 189, 0.07);
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-item.is-indented .atlas-ai-thread-button,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-item.is-indented .atlas-ai-thread-button {
+  padding-left: 10px;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-title,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-title {
+  font-size: 12.75px;
+  line-height: 1.2;
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-thread-time,
+.atlas-shell.surface-atlas-ai .atlas-ai-thread-time {
+  font-size: 10.75px;
+}
+
 .atlas-shell.surface-atlas_ai .atlas-ai-conversation-header,
 .atlas-shell.surface-atlas-ai .atlas-ai-conversation-header {
   padding: 14px 16px 16px;
@@ -7867,14 +8368,13 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 .atlas-shell.surface-atlas_ai .atlas-ai-hero,
 .atlas-shell.surface-atlas-ai .atlas-ai-hero {
   border: 1px solid rgba(151, 177, 189, 0.08);
-  border-radius: 16px;
-  padding: 34px 38px;
+  border-radius: 12px;
+  padding: 24px 32px 26px;
   background:
-    radial-gradient(ellipse 48% 70% at 14% 0%, rgba(212, 168, 90, 0.075), transparent 68%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
     rgba(16, 31, 40, 0.22);
   box-shadow:
-    0 24px 72px rgba(0, 0, 0, 0.12),
+    0 14px 44px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
@@ -7897,13 +8397,13 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 .atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane,
 .atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane {
   border-color: rgba(151, 177, 189, 0.14);
-  border-radius: 14px;
+  border-radius: 10px;
   background:
     radial-gradient(ellipse 62% 44% at 12% 0%, rgba(127, 167, 196, 0.05), transparent 70%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.008)),
     var(--atlas-ai-premium-panel);
   box-shadow:
-    0 20px 54px rgba(0, 0, 0, 0.2),
+    0 12px 34px rgba(0, 0, 0, 0.17),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -7911,9 +8411,9 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 .atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane.is-focused {
   border-color: rgba(235, 196, 124, 0.5);
   box-shadow:
-    0 28px 76px rgba(0, 0, 0, 0.28),
+    0 18px 52px rgba(0, 0, 0, 0.24),
     0 0 0 1px rgba(212, 168, 90, 0.16),
-    0 0 46px rgba(212, 168, 90, 0.08),
+    0 0 30px rgba(212, 168, 90, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.055);
 }
 
@@ -7931,6 +8431,8 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   }
 
   .atlas-ai-awis-score,
+  .atlas-ai-awis-map,
+  .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
   .atlas-ai-awis-actions,
   .atlas-ai-awis-next {
@@ -7938,6 +8440,9 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   }
 
   .atlas-ai-awis-chips,
+  .atlas-ai-awis-brain-signals,
+  .atlas-ai-awis-map,
+  .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
   .atlas-ai-awis-next,
   .atlas-ai-awis-actions {
@@ -7946,6 +8451,12 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   }
 
   .atlas-ai-awis-live {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .atlas-ai-awis-map,
+  .atlas-ai-awis-memory {
     padding-left: 0;
     border-left: 0;
   }
@@ -7963,6 +8474,8 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   }
 
   .atlas-ai-awis-score,
+  .atlas-ai-awis-map,
+  .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
   .atlas-ai-awis-actions,
   .atlas-ai-awis-next {
@@ -7970,6 +8483,9 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   }
 
   .atlas-ai-awis-chips,
+  .atlas-ai-awis-brain-signals,
+  .atlas-ai-awis-map,
+  .atlas-ai-awis-memory,
   .atlas-ai-awis-live,
   .atlas-ai-awis-next,
   .atlas-ai-awis-actions {
@@ -7978,6 +8494,12 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   }
 
   .atlas-ai-awis-live {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .atlas-ai-awis-map,
+  .atlas-ai-awis-memory {
     padding-left: 0;
     border-left: 0;
   }

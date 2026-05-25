@@ -101,16 +101,9 @@ export function AtlasAiWorkspacePicker({
           </svg>
         </span>
         <span className="atlas-ai-workspace-picker-label">{label}</span>
-        <span className={`atlas-ai-workspace-picker-path is-${pathState}`}>
-          {pathLabel}
-        </span>
-        {locked ? (
-          <span className="atlas-ai-workspace-picker-lock" title="Projeto vinculado nesta conversa">
-            vinculado
-          </span>
-        ) : (
+        {!locked ? (
           <span className="atlas-ai-workspace-picker-caret" aria-hidden="true">⌄</span>
-        )}
+        ) : null}
       </button>
 
       {open && !locked ? (

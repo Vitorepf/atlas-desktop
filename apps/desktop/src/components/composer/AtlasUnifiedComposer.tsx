@@ -110,18 +110,18 @@ const MODE_DESC: Record<AtlasAiMode, string> = {
 }
 
 const MODE_PLACEHOLDER: Record<AtlasAiMode, string> = {
-  auto: 'Escreva o que precisa — Atlas decide o caminho (pesquisa, código, finanças, campanha, estratégia, automação, conversa).',
-  programming: 'Bug, debug, feature ou review — arrasta arquivo ou cola screenshot.',
-  operational: 'Diagnóstico, próxima ação ou risco — cole contexto se útil.',
-  research: 'Pesquisa técnica ou de mercado — descreva tema e profundidade.',
-  finance: 'Análise financeira — cole números e a pergunta de decisão.',
-  marketing: 'Campanha, copy ou métrica — público e objetivo.',
-  strategy: 'Objetivo, prioridade, escolha — contexto e restrições.',
-  personal_development: 'Meta, hábito ou plano semanal — objetivo e prazo.',
-  cyber: 'Postura defensiva, auditoria ou resposta a incidente — escopo.',
-  automation: 'Workflow, integração ou pipeline — entrada, gatilho, saída.',
-  general: 'Pesquisa, ideia ou dúvida — solte arquivo ou cole conteúdo.',
-  conversation: 'Conversa solta — pergunta ou ideia livre.',
+  auto: 'Diga ao Atlas o que precisa.',
+  programming: 'Descreva o bug, feature ou revisão.',
+  operational: 'Traga o contexto e a próxima decisão.',
+  research: 'Tema, profundidade e saída desejada.',
+  finance: 'Números, cenário e decisão.',
+  marketing: 'Objetivo, público e tom.',
+  strategy: 'Objetivo, restrições e escolha.',
+  personal_development: 'Meta, prazo e contexto.',
+  cyber: 'Escopo, risco e evidências.',
+  automation: 'Entrada, gatilho e saída.',
+  general: 'Escreva para o Atlas.',
+  conversation: 'Continue a conversa.',
 }
 
 function readComposerTextareaMax(el: HTMLElement | null): number {
@@ -426,6 +426,9 @@ export function AtlasUnifiedComposer({
   const currentProvider = PROVIDER_OPTIONS.find((p) => p.value === provider)
   const providerPillLabel = (currentProvider?.label ?? 'auto').toLowerCase().split(' ')[0]
   const computeEffortPillLabel = labelAtlasComputeEffortShort(computeEffort)
+  const modeTriggerLabel = mode === 'auto' ? 'modo' : `modo · ${modePillLabel}`
+  const providerTriggerLabel = provider === 'auto' ? 'modelo' : `modelo · ${providerPillLabel}`
+  const computeEffortTriggerLabel = computeEffort === 'auto' ? 'esforço' : `esforço · ${computeEffortPillLabel}`
 
   type ModeKey = `mode:${AtlasAiMode}` | `task:${AtlasAiTask}`
   const modeMenuValue: ModeKey = mode === 'programming' ? `task:${task}` : `mode:${mode}`
@@ -609,7 +612,7 @@ export function AtlasUnifiedComposer({
           ) : null}
 
           <AtlasAiComposerMenu<`mode:${AtlasAiMode}` | `task:${AtlasAiTask}`>
-            triggerLabel={modePillLabel}
+            triggerLabel={modeTriggerLabel}
             options={modeMenuOptions}
             value={modeMenuValue}
             onChange={handleModeMenuChange}
@@ -618,7 +621,7 @@ export function AtlasUnifiedComposer({
           />
 
           <AtlasAiComposerMenu<AtlasAiProviderChoice>
-            triggerLabel={providerPillLabel}
+            triggerLabel={providerTriggerLabel}
             options={PROVIDER_OPTIONS.map((p) => ({
               value: p.value,
               label: p.label,
@@ -632,7 +635,7 @@ export function AtlasUnifiedComposer({
           />
 
           <AtlasAiComposerMenu<AtlasComputeEffortChoice>
-            triggerLabel={computeEffortPillLabel}
+            triggerLabel={computeEffortTriggerLabel}
             options={ATLAS_COMPUTE_EFFORT_OPTIONS.map((option) => ({
               value: option.value,
               label: option.label,

@@ -15,10 +15,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const DEFAULT_LEFT_WIDTH = 280
+const DEFAULT_LEFT_WIDTH = 300
 const DEFAULT_RIGHT_WIDTH = 340
 
-const MIN_LEFT_WIDTH = 220
+const MIN_LEFT_WIDTH = 280
 const MAX_LEFT_WIDTH = 520
 const MIN_RIGHT_WIDTH = 280
 const MAX_RIGHT_WIDTH = 560
