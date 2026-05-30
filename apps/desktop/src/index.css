@@ -236,7 +236,10 @@
   .atlas-shell.surface-atencao,
   .atlas-shell.surface-atlas_ai,
   .atlas-shell.surface-atlas-ai,
-  .atlas-shell.surface-control_plane {
+  .atlas-shell.surface-control_plane,
+  .atlas-shell.surface-mission_control,
+  .atlas-shell.surface-plan_visible,
+  .atlas-shell.surface-stewardship {
     /* Legacy token bridge · Atlas Code roda em slate teal (Codex-inspired).
        Redefinir cream/ink/bronze/hair propaga o tema para painels legacy
        que ainda nao migraram para cc-*. Cartografia intocada. */
@@ -373,7 +376,10 @@
   .atlas-shell.surface-atencao *::-webkit-scrollbar,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar,
   .atlas-shell.surface-atlas-ai *::-webkit-scrollbar,
-  .atlas-shell.surface-control_plane *::-webkit-scrollbar {
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar,
+  .atlas-shell.surface-mission_control *::-webkit-scrollbar,
+  .atlas-shell.surface-plan_visible *::-webkit-scrollbar,
+  .atlas-shell.surface-stewardship *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
@@ -381,14 +387,20 @@
   .atlas-shell.surface-atencao *::-webkit-scrollbar-track,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-track,
   .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-track,
-  .atlas-shell.surface-control_plane *::-webkit-scrollbar-track {
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-track,
+  .atlas-shell.surface-mission_control *::-webkit-scrollbar-track,
+  .atlas-shell.surface-plan_visible *::-webkit-scrollbar-track,
+  .atlas-shell.surface-stewardship *::-webkit-scrollbar-track {
     background: transparent;
   }
   .atlas-shell.surface-code *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb,
-  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb {
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-mission_control *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-plan_visible *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-stewardship *::-webkit-scrollbar-thumb {
     background: rgba(149, 163, 172, 0.18);
     border: 2px solid transparent;
     background-clip: padding-box;
@@ -399,7 +411,10 @@
   .atlas-shell.surface-atencao *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-atlas_ai *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-atlas-ai *::-webkit-scrollbar-thumb:hover,
-  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb:hover {
+  .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-mission_control *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-plan_visible *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-stewardship *::-webkit-scrollbar-thumb:hover {
     background: rgba(149, 163, 172, 0.32);
     background-clip: padding-box;
   }
@@ -408,7 +423,10 @@
   .atlas-shell.surface-atlas-ai *,
   .atlas-shell.surface-atencao *,
   .atlas-shell.surface-code *,
-  .atlas-shell.surface-control_plane * {
+  .atlas-shell.surface-control_plane *,
+  .atlas-shell.surface-mission_control *,
+  .atlas-shell.surface-plan_visible *,
+  .atlas-shell.surface-stewardship * {
     scrollbar-color: rgba(149, 163, 172, 0.22) transparent;
     scrollbar-width: thin;
   }

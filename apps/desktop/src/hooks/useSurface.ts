@@ -16,7 +16,15 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 
-export type Surface = 'code' | 'cartografia' | 'atencao' | 'atlas_ai' | 'control_plane'
+export type Surface =
+  | 'code'
+  | 'cartografia'
+  | 'atencao'
+  | 'atlas_ai'
+  | 'control_plane'
+  | 'stewardship'
+  | 'mission_control'
+  | 'plan_visible'
 
 const STORAGE_KEY = 'atlas-desktop:surface'
 
@@ -28,7 +36,10 @@ function readInitial(): Surface {
       v === 'cartografia' ||
       v === 'atencao' ||
       v === 'atlas_ai' ||
-      v === 'control_plane'
+      v === 'control_plane' ||
+      v === 'stewardship' ||
+      v === 'mission_control' ||
+      v === 'plan_visible'
     )
       return v
   } catch {
@@ -75,6 +86,15 @@ export function useSurface(): {
       } else if (e.key === '5') {
         e.preventDefault()
         setSurface('control_plane')
+      } else if (e.key === '6') {
+        e.preventDefault()
+        setSurface('stewardship')
+      } else if (e.key === '7') {
+        e.preventDefault()
+        setSurface('mission_control')
+      } else if (e.key === '8') {
+        e.preventDefault()
+        setSurface('plan_visible')
       }
     }
     document.addEventListener('keydown', onKey)

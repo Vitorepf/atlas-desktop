@@ -1,17 +1,20 @@
-import { useCallback, useEffect } from 'react'
+import { lazy, Suspense, useCallback, useEffect } from 'react'
 import { TopBar } from './components/TopBar'
 import { useBoot } from './hooks/useBoot'
 import { useBridge } from './hooks/useBridge'
 import { useKernelStatus } from './hooks/useKernelStatus'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useSurface } from './hooks/useSurface'
-import { ProjectProfileSheet } from './shared/projectProfile/ProjectProfileSheet'
 import { useProjectProfile } from './shared/projectProfile/useProjectProfile'
 import { AtlasShell } from './shell/AtlasShell'
 import { SurfaceHost } from './shell/SurfaceHost'
 import { TopBarLocationTrailProvider } from './shell/topbar/TopBarLocationTrailProvider'
 import { useNativeMenuEvents } from './shell/useNativeMenuEvents'
 import { useTerminalStore } from './state/terminalStore'
+
+const ProjectProfileSheet = lazy(() =>
+  import('./shared/projectProfile/ProjectProfileSheet').then((mod) => ({ default: mod.ProjectProfileSheet })),
+)
 
 /**
  * Atlas Desktop · single .app, multiple sovereign surfaces.
@@ -93,6 +96,7 @@ function App() {
           workspaces={b.workspaces}
           activeWorkspace={b.activeWorkspace}
           activeWorkspaceSlug={b.activeWorkspaceSlug}
+          onSurfaceChange={setSurface}
           onSelectWorkspace={b.setActiveWorkspaceSlug}
           onOpenWorkspaceProfile={projectProfile.show}
         />
@@ -105,19 +109,23 @@ function App() {
           onOpenWorkspaceProfile={(mode) => projectProfile.show(mode ?? 'view')}
         />
 
-        <ProjectProfileSheet
-          open={projectProfile.open}
-          initialMode={projectProfile.mode}
-          onClose={projectProfile.hide}
-          workspaces={b.workspaces}
-          active={b.activeWorkspace}
-          activeSlug={b.activeWorkspaceSlug ?? null}
-          onSelect={b.setActiveWorkspaceSlug}
-          onCreate={b.createWorkspaceProfile}
-          onUpdate={b.updateWorkspaceProfile}
-          onArchive={b.archiveWorkspaceProfile}
-          onPickWorkspaceFolder={b.pickWorkspaceFolder}
-        />
+        {projectProfile.open ? (
+          <Suspense fallback={null}>
+            <ProjectProfileSheet
+              open={projectProfile.open}
+              initialMode={projectProfile.mode}
+              onClose={projectProfile.hide}
+              workspaces={b.workspaces}
+              active={b.activeWorkspace}
+              activeSlug={b.activeWorkspaceSlug ?? null}
+              onSelect={b.setActiveWorkspaceSlug}
+              onCreate={b.createWorkspaceProfile}
+              onUpdate={b.updateWorkspaceProfile}
+              onArchive={b.archiveWorkspaceProfile}
+              onPickWorkspaceFolder={b.pickWorkspaceFolder}
+            />
+          </Suspense>
+        ) : null}
       </AtlasShell>
     </TopBarLocationTrailProvider>
   )

@@ -351,6 +351,7 @@ export interface AtlasAwisNextSessionBrain {
     learning_score?: number | null
     stack_tags?: ReadonlyArray<string> | null
     command_hints?: ReadonlyArray<string> | null
+    automation_hooks?: ReadonlyArray<string> | null
     outcome_ranked_commands?: ReadonlyArray<string> | null
     area_ranked_commands?: ReadonlyArray<string> | null
     flaky_commands?: ReadonlyArray<string> | null

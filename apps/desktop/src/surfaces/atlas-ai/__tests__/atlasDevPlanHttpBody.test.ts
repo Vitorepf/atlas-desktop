@@ -183,6 +183,43 @@ test('user_constraints from payload survive untouched', () => {
   assert.deepEqual(body.user_constraints, ['no_db_writes', 'max_1_file'])
 })
 
+test('AWIS startup constraints survive plan-only body mapping', () => {
+  const body = toAtlasDevPlanHttpBody({
+    input_text: 'corrigir bug sem nascer frio',
+    workspace: '/repo',
+    task: 'debug',
+    payload: {
+      user_constraints: [
+        'AWIS: iniciar quente; carregar contexto do workspace antes de planejar.',
+        'AWIS carregar: live:sha256:abc | folder-manifest:package.json',
+        'AWIS validar: npm run atlas-ai:test',
+        'AWIS tarefa automação segura: validar:npm run atlas-ai:test',
+        'AWIS tarefa confirmar primeiro: confirmar:npm run dev',
+        'AWIS tarefa apenas observar: não-promover:contexto falho',
+      ],
+      surface_context: {
+        awis_context_applied: true,
+        awis_context_source: 'workspace_provider_capsule',
+      },
+    },
+  })
+
+  assert.deepEqual(body.user_constraints, [
+    'AWIS: iniciar quente; carregar contexto do workspace antes de planejar.',
+    'AWIS carregar: live:sha256:abc | folder-manifest:package.json',
+    'AWIS validar: npm run atlas-ai:test',
+    'AWIS tarefa automação segura: validar:npm run atlas-ai:test',
+    'AWIS tarefa confirmar primeiro: confirmar:npm run dev',
+    'AWIS tarefa apenas observar: não-promover:contexto falho',
+  ])
+  assert.deepEqual(body.surface_context, {
+    awis_context_applied: true,
+    awis_context_source: 'workspace_provider_capsule',
+    composer_mode: 'programming',
+    composer_task: 'debug',
+  })
+})
+
 test('provider and task fields land inside surface_context, not at top level', () => {
   const body = toAtlasDevPlanHttpBody({
     input_text: 'foo',

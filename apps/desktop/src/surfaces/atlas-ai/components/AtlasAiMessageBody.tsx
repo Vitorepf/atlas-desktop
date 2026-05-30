@@ -16,7 +16,8 @@ interface AtlasAiMessageBodyProps {
 
 export function AtlasAiMessageBody({ content }: AtlasAiMessageBodyProps) {
   const blocks = useMemo(() => parseMarkdown(content), [content])
-  const { highlight } = useShikiHighlighter()
+  const hasCodeBlocks = useMemo(() => blocks.some((block) => block.kind === 'code'), [blocks])
+  const { highlight } = useShikiHighlighter(hasCodeBlocks)
   // Drop cap NYT-style apenas quando resposta é longa o suficiente para
   // justificar o gesto editorial (>= 600 chars). Em resposta técnica curta
   // o drop cap parece typo/glitch (vide rounds anteriores).

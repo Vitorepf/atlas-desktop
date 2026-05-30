@@ -1,13 +1,34 @@
 import type { AtlasWorkspaceProfile, BootSnapshot } from '@atlas/domain'
+import { lazy, Suspense } from 'react'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Surface } from '../hooks/useSurface'
 import type { BridgeActions, BridgeSnapshot } from '../hooks/useBridge'
 import type { AtlasWorkspaceProfileWritePayload } from '../lib/bridge'
-import { AtencaoSurface } from '../surfaces/atencao/AtencaoSurface'
-import { AtlasAiSurface } from '../surfaces/atlas-ai/AtlasAiSurface'
-import { CartografiaSurface } from '../surfaces/cartografia/CartografiaSurface'
-import { CodeSurface } from '../surfaces/code/CodeSurface'
-import { ControlPlaneSurface } from '../surfaces/control-plane/ControlPlaneSurface'
+
+const AtencaoSurface = lazy(() =>
+  import('../surfaces/atencao/AtencaoSurface').then((mod) => ({ default: mod.AtencaoSurface })),
+)
+const AtlasAiSurface = lazy(() =>
+  import('../surfaces/atlas-ai/AtlasAiSurface').then((mod) => ({ default: mod.AtlasAiSurface })),
+)
+const CartografiaSurface = lazy(() =>
+  import('../surfaces/cartografia/CartografiaSurface').then((mod) => ({ default: mod.CartografiaSurface })),
+)
+const CodeSurface = lazy(() =>
+  import('../surfaces/code/CodeSurface').then((mod) => ({ default: mod.CodeSurface })),
+)
+const ControlPlaneSurface = lazy(() =>
+  import('../surfaces/control-plane/ControlPlaneSurface').then((mod) => ({ default: mod.ControlPlaneSurface })),
+)
+const MissionControlSurface = lazy(() =>
+  import('../surfaces/mission-control').then((mod) => ({ default: mod.MissionControlSurface })),
+)
+const PlanVisibleSurface = lazy(() =>
+  import('../surfaces/plan-visible').then((mod) => ({ default: mod.PlanVisibleSurface })),
+)
+const StewardshipSurface = lazy(() =>
+  import('../surfaces/stewardship').then((mod) => ({ default: mod.StewardshipSurface })),
+)
 
 interface SurfaceHostProps {
   surface: Surface
@@ -99,28 +120,34 @@ function workspacePayloadFromFolder(workspacePath: string, preferredSlug?: strin
  */
 export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWorkspaceProfile }: SurfaceHostProps) {
   if (surface === 'code') {
-    return <CodeSurface bridge={bridge} boot={boot} />
+    return (
+      <Suspense fallback={<SurfaceLoading label="Code" />}>
+        <CodeSurface bridge={bridge} boot={boot} />
+      </Suspense>
+    )
   }
 
   if (surface === 'atencao') {
     return (
       <ErrorBoundary label="Atenção">
-        <AtencaoSurface
-          activeWorkspaceSlug={bridge.activeWorkspaceSlug ?? null}
-          onOpenObra={(obraId, workspaceSlug) => {
-            // Route into Atlas Code with the right workspace selected.
-            // Atencao itself never reads Code state; it only signals intent.
-            if (workspaceSlug && bridge.setActiveWorkspaceSlug) {
-              void bridge.setActiveWorkspaceSlug(workspaceSlug)
-            }
-            try {
-              window.localStorage.setItem('atlas-code:pending-obra-id', obraId)
-            } catch {
-              /* storage unavailable */
-            }
-          }}
-          onRequestSurfaceChange={onSurfaceChange}
-        />
+        <Suspense fallback={<SurfaceLoading label="Atenção" />}>
+          <AtencaoSurface
+            activeWorkspaceSlug={bridge.activeWorkspaceSlug ?? null}
+            onOpenObra={(obraId, workspaceSlug) => {
+              // Route into Atlas Code with the right workspace selected.
+              // Atencao itself never reads Code state; it only signals intent.
+              if (workspaceSlug && bridge.setActiveWorkspaceSlug) {
+                void bridge.setActiveWorkspaceSlug(workspaceSlug)
+              }
+              try {
+                window.localStorage.setItem('atlas-code:pending-obra-id', obraId)
+              } catch {
+                /* storage unavailable */
+              }
+            }}
+            onRequestSurfaceChange={onSurfaceChange}
+          />
+        </Suspense>
       </ErrorBoundary>
     )
   }
@@ -145,17 +172,19 @@ export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWork
 
     return (
       <ErrorBoundary label="Atlas AI">
-        <AtlasAiSurface
-          activeWorkspaceSlug={bridge.activeWorkspaceSlug ?? null}
-          activeWorkspaceName={bridge.activeWorkspace?.name ?? null}
-          activeWorkspace={bridge.activeWorkspace ?? null}
-          workspaces={bridge.workspaces ?? null}
-          defaultWorkspaceSlug={bridge.workspaces?.defaultSlug ?? null}
-          onRequestSurfaceChange={onSurfaceChange}
-          onSelectWorkspace={bridge.setActiveWorkspaceSlug}
-          onOpenWorkspaceProfile={onOpenWorkspaceProfile}
-          onChooseWorkspaceFolder={chooseActiveWorkspaceFolder}
-        />
+        <Suspense fallback={<SurfaceLoading label="Atlas AI" />}>
+          <AtlasAiSurface
+            activeWorkspaceSlug={bridge.activeWorkspaceSlug ?? null}
+            activeWorkspaceName={bridge.activeWorkspace?.name ?? null}
+            activeWorkspace={bridge.activeWorkspace ?? null}
+            workspaces={bridge.workspaces ?? null}
+            defaultWorkspaceSlug={bridge.workspaces?.defaultSlug ?? null}
+            onRequestSurfaceChange={onSurfaceChange}
+            onSelectWorkspace={bridge.setActiveWorkspaceSlug}
+            onOpenWorkspaceProfile={onOpenWorkspaceProfile}
+            onChooseWorkspaceFolder={chooseActiveWorkspaceFolder}
+          />
+        </Suspense>
       </ErrorBoundary>
     )
   }
@@ -163,17 +192,59 @@ export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWork
   if (surface === 'control_plane') {
     return (
       <ErrorBoundary label="Control Plane">
-        <ControlPlaneSurface />
+        <Suspense fallback={<SurfaceLoading label="Control Plane" />}>
+          <ControlPlaneSurface />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
+
+  if (surface === 'mission_control') {
+    return (
+      <ErrorBoundary label="Mission Control">
+        <Suspense fallback={<SurfaceLoading label="Mission Control" />}>
+          <MissionControlSurface />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
+
+  if (surface === 'stewardship') {
+    return (
+      <ErrorBoundary label="Stewardship">
+        <Suspense fallback={<SurfaceLoading label="Stewardship" />}>
+          <StewardshipSurface />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
+
+  if (surface === 'plan_visible') {
+    return (
+      <ErrorBoundary label="Plan Visible">
+        <Suspense fallback={<SurfaceLoading label="Plan Visible" />}>
+          <PlanVisibleSurface />
+        </Suspense>
       </ErrorBoundary>
     )
   }
 
   return (
     <ErrorBoundary label="Cartografia">
-      <CartografiaSurface
-        activeWorkspace={bridge.activeWorkspace}
-        defaultWorkspaceSlug={bridge.workspaces?.defaultSlug ?? null}
-      />
+      <Suspense fallback={<SurfaceLoading label="Cartografia" />}>
+        <CartografiaSurface
+          activeWorkspace={bridge.activeWorkspace}
+          defaultWorkspaceSlug={bridge.workspaces?.defaultSlug ?? null}
+        />
+      </Suspense>
     </ErrorBoundary>
+  )
+}
+
+function SurfaceLoading({ label }: { label: string }) {
+  return (
+    <main className="atlas-ai-surface atlas-ai-stage atlas-ai-stage-fallback" role="status">
+      <p className="atlas-ai-empty-line">abrindo {label}...</p>
+    </main>
   )
 }

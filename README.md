@@ -68,6 +68,18 @@ npm run tauri:dev           # full Tauri shell (requires Rust toolchain)
 npm run tauri:build         # production .app + .dmg
 ```
 
+## macOS Build / Install Guardrail
+
+`/Applications/Atlas Code.app` is the only installed Atlas Desktop app bundle
+allowed.
+
+Do not create timestamped app backups in `/Applications`. Agents and scripts
+must not leave folders or bundles named `Atlas Code.app.backup-*`,
+`Atlas Code.app-YYYY*`, or `Atlas Code.app...` there. Tauri build output belongs
+in `target/release/bundle/macos/Atlas Code.app`; test that bundle directly or
+replace the single canonical `/Applications/Atlas Code.app` when explicitly
+asked.
+
 ## Current State
 
 - React/Vite shell builds and renders the Atlas Code MVP layout against

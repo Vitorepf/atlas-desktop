@@ -59,6 +59,30 @@ export const ATLAS_SURFACES: AtlasSurfaceDefinition[] = [
     authority: 'kernel',
     requiresKernel: true,
   },
+  {
+    id: 'stewardship',
+    label: 'Stewardship',
+    shortcut: '⌘6',
+    sub: 'governar · Product Mode',
+    authority: 'kernel',
+    requiresKernel: true,
+  },
+  {
+    id: 'mission_control',
+    label: 'Mission',
+    shortcut: '⌘7',
+    sub: 'AAEOS · cockpit',
+    authority: 'kernel',
+    requiresKernel: true,
+  },
+  {
+    id: 'plan_visible',
+    label: 'Plan',
+    shortcut: '⌘8',
+    sub: 'Atlas Dev · plano',
+    authority: 'kernel',
+    requiresKernel: true,
+  },
 ]
 
 export function getSurfaceDefinition(surface: Surface): AtlasSurfaceDefinition {

@@ -60,6 +60,8 @@ struct WorkspaceBrainSnapshot {
     languages: Vec<WorkspaceBrainLanguage>,
     signals: Vec<String>,
     important_files: Vec<WorkspaceBrainFile>,
+    doc_digests: Vec<WorkspaceBrainDocDigest>,
+    dependency_edges: Vec<WorkspaceBrainDependencyEdge>,
     commands: Vec<WorkspaceBrainCommand>,
     notes: Vec<String>,
 }
@@ -76,6 +78,25 @@ struct WorkspaceBrainLanguage {
 struct WorkspaceBrainFile {
     path: String,
     kind: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceBrainDocDigest {
+    path: String,
+    kind: String,
+    signals: Vec<String>,
+    obligations: Vec<String>,
+    summary: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceBrainDependencyEdge {
+    from: String,
+    to: String,
+    kind: String,
+    source: String,
 }
 
 #[derive(Serialize)]
@@ -452,7 +473,8 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
     const MAX_FILES: usize = 6_000;
     const MAX_DIRS: usize = 1_200;
     const MAX_DEPTH: usize = 6;
-    const MAX_IMPORTANT_FILES: usize = 80;
+    const MAX_IMPORTANT_FILES: usize = 110;
+    const MAX_DOC_DIGESTS: usize = 16;
 
     let root = std::fs::canonicalize(PathBuf::from(workspace_path.trim()))
         .map_err(|e| format!("workspace_path_unavailable: {e}"))?;
@@ -470,6 +492,8 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
     let mut languages: HashMap<String, usize> = HashMap::new();
     let mut signals: HashSet<String> = HashSet::new();
     let mut important_files: Vec<WorkspaceBrainFile> = Vec::new();
+    let mut doc_digests: Vec<WorkspaceBrainDocDigest> = Vec::new();
+    let mut dependency_edges: Vec<WorkspaceBrainDependencyEdge> = Vec::new();
     let mut commands: Vec<WorkspaceBrainCommand> = Vec::new();
     let mut notes: Vec<String> = Vec::new();
     let mut queue: VecDeque<(PathBuf, usize)> = VecDeque::from([(root.clone(), 0)]);
@@ -505,6 +529,14 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
                     ignored_dirs += 1;
                     continue;
                 }
+                let relative = relative_path(&root, &path);
+                detect_dir_signals(&relative, &mut signals);
+                if is_important_dir(&relative) && important_files.len() < MAX_IMPORTANT_FILES {
+                    important_files.push(WorkspaceBrainFile {
+                        path: relative,
+                        kind: "área".into(),
+                    });
+                }
                 if depth < MAX_DEPTH {
                     queue.push_back((path, depth + 1));
                 } else {
@@ -525,12 +557,28 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
             let relative = relative_path(&root, &path);
             detect_file_signals(&name, &relative, &mut signals);
             if is_important_file(&name, &relative) && important_files.len() < MAX_IMPORTANT_FILES {
+                let kind = important_file_kind(&name, &relative).to_string();
                 important_files.push(WorkspaceBrainFile {
                     path: relative.clone(),
-                    kind: important_file_kind(&name, &relative).to_string(),
+                    kind: kind.clone(),
                 });
+                if kind == "documento" && doc_digests.len() < MAX_DOC_DIGESTS {
+                    if let Some(digest) = digest_workspace_document(&path, &relative) {
+                        for signal in &digest.signals {
+                            signals.insert(signal.clone());
+                        }
+                        doc_digests.push(digest);
+                    }
+                }
             }
-            collect_commands_from_manifest(&path, &relative, &name, &mut commands);
+            collect_manifest_intelligence(
+                &path,
+                &relative,
+                &name,
+                &mut commands,
+                &mut signals,
+                &mut dependency_edges,
+            );
         }
     }
 
@@ -554,6 +602,9 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
     dedupe_commands(&mut commands);
     sort_workspace_commands(&mut commands);
     commands.truncate(12);
+    dedupe_dependency_edges(&mut dependency_edges);
+    sort_workspace_dependency_edges(&mut dependency_edges);
+    dependency_edges.truncate(32);
 
     Ok(WorkspaceBrainSnapshot {
         status: "ready",
@@ -572,6 +623,8 @@ fn scan_workspace_brain(workspace_path: String) -> Result<WorkspaceBrainSnapshot
         languages,
         signals,
         important_files,
+        doc_digests,
+        dependency_edges,
         commands,
         notes,
     })
@@ -670,12 +723,77 @@ fn detect_file_signals(name: &str, relative: &str, signals: &mut HashSet<String>
     }
 }
 
+fn detect_dir_signals(relative: &str, signals: &mut HashSet<String>) {
+    let lower = relative.to_ascii_lowercase();
+    if lower.contains("apps/desktop") || lower.contains("atlas-desktop") {
+        signals.insert("Desktop app".into());
+    }
+    if lower.contains("atlas-mobile") || lower.contains("expo") || lower.contains("react-native") {
+        signals.insert("Mobile app".into());
+    }
+    if lower.contains("src/surfaces/atlas-ai") {
+        signals.insert("Atlas AI surface".into());
+    }
+    if lower.contains("crates/atlas-tauri") || lower.contains("src-tauri") {
+        signals.insert("Tauri native runtime".into());
+    }
+    if lower.contains("atlas-server")
+        || lower.contains("app/services")
+        || lower.contains("app/http/controllers")
+    {
+        signals.insert("Backend service".into());
+    }
+    if lower.contains("docs/engineering-knowledge-base") {
+        signals.insert("Canonical engineering docs".into());
+    }
+    if lower.contains("__tests__") || lower.ends_with("/tests") || lower.contains("/tests/") {
+        signals.insert("Test suite".into());
+    }
+    if lower.contains("database/migrations")
+        || lower.contains("/auth")
+        || lower.contains("/security")
+    {
+        signals.insert("Sensitive execution zone".into());
+    }
+}
+
+fn is_important_dir(relative: &str) -> bool {
+    let lower = relative.to_ascii_lowercase();
+    let last_segment = lower.rsplit('/').next().unwrap_or("");
+    matches!(
+        lower.as_str(),
+        "apps"
+            | "apps/desktop"
+            | "crates"
+            | "crates/atlas-tauri"
+            | "docs"
+            | "docs/engineering-knowledge-base"
+            | "app"
+            | "app/services"
+            | "app/http"
+            | "app/http/controllers"
+            | "database"
+            | "database/migrations"
+            | "tests"
+            | "__tests__"
+    ) || last_segment.starts_with("atlas-")
+        || lower.contains("src/surfaces/atlas-ai")
+        || lower.contains("surfaces/atlas-ai/components")
+        || lower.contains("atlas-server/app/services")
+        || lower.contains("atlas-server/app/http/controllers")
+        || lower.contains("atlas-desktop/apps/desktop/src/surfaces")
+        || lower.contains("atlas-desktop/crates/atlas-tauri")
+        || lower.ends_with("/__tests__")
+        || lower.ends_with("/tests")
+}
+
 fn is_important_file(name: &str, relative: &str) -> bool {
     let lower_name = name.to_ascii_lowercase();
     let lower_relative = relative.to_ascii_lowercase();
     matches!(
         lower_name.as_str(),
         "package.json"
+            | "pnpm-workspace.yaml"
             | "pnpm-lock.yaml"
             | "package-lock.json"
             | "cargo.toml"
@@ -717,16 +835,169 @@ fn important_file_kind(name: &str, relative: &str) -> &'static str {
     }
 }
 
-fn collect_commands_from_manifest(
+fn digest_workspace_document(path: &Path, relative: &str) -> Option<WorkspaceBrainDocDigest> {
+    let metadata = std::fs::metadata(path).ok()?;
+    if metadata.len() > 96 * 1024 {
+        return None;
+    }
+    let text = std::fs::read_to_string(path).ok()?;
+    let lower = text.to_ascii_lowercase();
+    let lower_path = relative.to_ascii_lowercase();
+    let mut signals: Vec<String> = Vec::new();
+    let mut obligations: Vec<String> = Vec::new();
+
+    push_doc_signal(
+        &mut signals,
+        lower_path.contains("agents.md"),
+        "doc:provider-operating-contract",
+    );
+    push_doc_signal(&mut signals, lower.contains("awis"), "doc:awis");
+    push_doc_signal(&mut signals, lower.contains("space"), "doc:spaces");
+    push_doc_signal(&mut signals, lower.contains("workbench"), "doc:workbench");
+    push_doc_signal(
+        &mut signals,
+        lower.contains("context pack") || lower.contains("contexto"),
+        "doc:context-pack",
+    );
+    push_doc_signal(
+        &mut signals,
+        lower.contains("artifact") || lower.contains("artefato"),
+        "doc:artifacts",
+    );
+    push_doc_signal(&mut signals, lower.contains("tauri"), "doc:tauri");
+    push_doc_signal(
+        &mut signals,
+        lower.contains("react") || lower.contains("typescript"),
+        "doc:desktop-react",
+    );
+    push_doc_signal(
+        &mut signals,
+        lower.contains("laravel") || lower.contains("artisan"),
+        "doc:laravel",
+    );
+    push_doc_signal(
+        &mut signals,
+        lower.contains("postgres") || lower.contains("database"),
+        "doc:data-layer",
+    );
+    push_doc_signal(
+        &mut signals,
+        lower.contains("test") || lower.contains("teste"),
+        "doc:validation",
+    );
+    push_doc_signal(
+        &mut signals,
+        lower.contains("risk") || lower.contains("risco") || lower.contains("security"),
+        "doc:risk",
+    );
+
+    push_doc_signal(
+        &mut obligations,
+        lower.contains("session-bootstrap") || lower.contains("bootstrap"),
+        "sessão:bootstrap antes de implementar",
+    );
+    push_doc_signal(
+        &mut obligations,
+        lower.contains("place-feature") || lower.contains("placement"),
+        "feature:confirmar placement antes de criar fluxo novo",
+    );
+    push_doc_signal(
+        &mut obligations,
+        lower.contains("do not expose")
+            || lower.contains("não expor")
+            || lower.contains("internal ids"),
+        "segurança:não expor ids internos nem contexto bruto",
+    );
+    push_doc_signal(
+        &mut obligations,
+        lower.contains("canonical")
+            || lower.contains("canônico")
+            || lower.contains("source of truth"),
+        "governança:preferir docs canônicos",
+    );
+    push_doc_signal(
+        &mut obligations,
+        lower.contains("test") || lower.contains("teste") || lower.contains("build"),
+        "validação:rodar comandos relevantes antes de confiar",
+    );
+
+    signals.sort();
+    signals.dedup();
+    signals.truncate(8);
+    obligations.sort();
+    obligations.dedup();
+    obligations.truncate(6);
+    if signals.is_empty() && obligations.is_empty() {
+        return None;
+    }
+
+    Some(WorkspaceBrainDocDigest {
+        path: relative.into(),
+        kind: if lower_path.contains("agents.md") {
+            "contrato".into()
+        } else if lower_path.starts_with("docs/") {
+            "documentação".into()
+        } else {
+            "guia".into()
+        },
+        summary: summarize_workspace_document_digest(relative, &signals, &obligations),
+        signals,
+        obligations,
+    })
+}
+
+fn push_doc_signal(items: &mut Vec<String>, condition: bool, label: &str) {
+    if condition {
+        items.push(label.into());
+    }
+}
+
+fn summarize_workspace_document_digest(
+    relative: &str,
+    signals: &[String],
+    obligations: &[String],
+) -> String {
+    let role = if relative.eq_ignore_ascii_case("AGENTS.md")
+        || relative.to_ascii_lowercase().ends_with("/agents.md")
+    {
+        "contrato operacional do provider"
+    } else if relative
+        .to_ascii_lowercase()
+        .contains("engineering-knowledge-base")
+    {
+        "documentação canônica de engenharia"
+    } else if relative.to_ascii_lowercase().contains("readme") {
+        "guia inicial do workspace"
+    } else {
+        "documento operacional do workspace"
+    };
+    let signal = signals.first().map(String::as_str).unwrap_or("contexto");
+    let obligation = obligations
+        .first()
+        .map(String::as_str)
+        .unwrap_or("usar como resumo, não como fonte bruta");
+    format!("{role}; sinal principal {signal}; regra {obligation}")
+}
+
+fn collect_manifest_intelligence(
     path: &Path,
     relative: &str,
     name: &str,
     commands: &mut Vec<WorkspaceBrainCommand>,
+    signals: &mut HashSet<String>,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
 ) {
     let lower_name = name.to_ascii_lowercase();
     match lower_name.as_str() {
-        "package.json" => collect_package_json_commands(path, relative, commands),
-        "composer.json" => collect_composer_commands(path, relative, commands),
+        "package.json" => {
+            collect_package_json_intelligence(path, relative, commands, signals, dependency_edges)
+        }
+        "pnpm-workspace.yaml" => {
+            collect_pnpm_workspace_intelligence(path, relative, signals, dependency_edges)
+        }
+        "composer.json" => {
+            collect_composer_intelligence(path, relative, commands, signals, dependency_edges)
+        }
         "cargo.toml" => {
             commands.push(WorkspaceBrainCommand {
                 label: "Testes Rust".into(),
@@ -761,17 +1032,23 @@ fn collect_commands_from_manifest(
     }
 }
 
-fn collect_package_json_commands(
+fn collect_package_json_intelligence(
     path: &Path,
     relative: &str,
     commands: &mut Vec<WorkspaceBrainCommand>,
+    signals: &mut HashSet<String>,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
 ) {
     let Some(json) = read_small_json(path) else {
         return;
     };
+    detect_package_json_signals(&json, signals);
+    collect_package_dependency_edges(&json, relative, dependency_edges);
+    collect_package_workspace_edges(&json, relative, signals, dependency_edges);
     let Some(scripts) = json.get("scripts").and_then(|scripts| scripts.as_object()) else {
         return;
     };
+    let package_manager = package_manager_for_manifest(path, &json);
     let mut script_names: Vec<String> = scripts
         .iter()
         .filter_map(|(key, value)| value.as_str().map(|_| key.to_string()))
@@ -784,22 +1061,271 @@ fn collect_package_json_commands(
     });
     for key in script_names {
         commands.push(WorkspaceBrainCommand {
-            label: package_script_label(&key),
-            command: manifest_command(relative, &format!("npm run {key}")),
+            label: package_script_label(package_manager, &key),
+            command: manifest_command(relative, &format!("{package_manager} run {key}")),
             kind: command_kind(&key).into(),
             source: relative.into(),
         });
     }
 }
 
-fn collect_composer_commands(
+fn detect_package_json_signals(json: &serde_json::Value, signals: &mut HashSet<String>) {
+    let deps = package_dependency_names(json);
+    let has = |name: &str| deps.contains(name);
+
+    if has("react") {
+        signals.insert("React".into());
+    }
+    if has("@vitejs/plugin-react") || has("vite") {
+        signals.insert("Vite".into());
+    }
+    if has("typescript") {
+        signals.insert("TypeScript".into());
+    }
+    if has("@tauri-apps/api") || has("@tauri-apps/cli") {
+        signals.insert("Tauri".into());
+    }
+    if has("expo") || has("react-native") {
+        signals.insert("Expo/React Native".into());
+    }
+    if has("next") {
+        signals.insert("Next.js".into());
+    }
+    if has("tailwindcss") {
+        signals.insert("Tailwind".into());
+    }
+    if has("vitest") || has("jest") || has("@testing-library/react") {
+        signals.insert("JavaScript test suite".into());
+    }
+    if has("@playwright/test") || has("playwright") {
+        signals.insert("Browser automation tests".into());
+    }
+}
+
+fn package_dependency_names(json: &serde_json::Value) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for field in [
+        "dependencies",
+        "devDependencies",
+        "peerDependencies",
+        "optionalDependencies",
+    ] {
+        if let Some(deps) = json.get(field).and_then(|value| value.as_object()) {
+            names.extend(deps.keys().map(|key| key.to_ascii_lowercase()));
+        }
+    }
+    names
+}
+
+fn collect_package_dependency_edges(
+    json: &serde_json::Value,
+    relative: &str,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
+) {
+    let from = json
+        .get("name")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("package");
+    let mut edges: Vec<WorkspaceBrainDependencyEdge> = Vec::new();
+    for field in [
+        "dependencies",
+        "devDependencies",
+        "peerDependencies",
+        "optionalDependencies",
+    ] {
+        if let Some(deps) = json.get(field).and_then(|value| value.as_object()) {
+            for name in deps.keys() {
+                if is_relevant_dependency_name(name) {
+                    edges.push(WorkspaceBrainDependencyEdge {
+                        from: from.into(),
+                        to: name.into(),
+                        kind: field.into(),
+                        source: relative.into(),
+                    });
+                }
+            }
+        }
+    }
+    edges.sort_by(|a, b| {
+        dependency_priority(&a.to)
+            .cmp(&dependency_priority(&b.to))
+            .then_with(|| a.to.cmp(&b.to))
+    });
+    dependency_edges.extend(edges.into_iter().take(12));
+}
+
+fn collect_package_workspace_edges(
+    json: &serde_json::Value,
+    relative: &str,
+    signals: &mut HashSet<String>,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
+) {
+    let members = package_workspace_members(json);
+    if members.is_empty() {
+        return;
+    }
+
+    signals.insert("Monorepo workspace".into());
+    let from = json
+        .get("name")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("package");
+
+    dependency_edges.extend(members.into_iter().take(16).map(|member| {
+        WorkspaceBrainDependencyEdge {
+            from: from.into(),
+            to: member,
+            kind: "workspace".into(),
+            source: relative.into(),
+        }
+    }));
+}
+
+fn collect_pnpm_workspace_intelligence(
+    path: &Path,
+    relative: &str,
+    signals: &mut HashSet<String>,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
+) {
+    let members = pnpm_workspace_members(path);
+    if members.is_empty() {
+        return;
+    }
+
+    signals.insert("Monorepo workspace".into());
+    signals.insert("pnpm workspace".into());
+    dependency_edges.extend(members.into_iter().take(24).map(|member| {
+        WorkspaceBrainDependencyEdge {
+            from: "pnpm-workspace".into(),
+            to: member,
+            kind: "workspace".into(),
+            source: relative.into(),
+        }
+    }));
+}
+
+fn pnpm_workspace_members(path: &Path) -> Vec<String> {
+    let Some(text) = read_small_text(path, 64 * 1024) else {
+        return Vec::new();
+    };
+
+    let mut members = Vec::new();
+    let mut in_packages = false;
+    for raw_line in text.lines() {
+        let without_comment = raw_line.split('#').next().unwrap_or("").trim_end();
+        let trimmed = without_comment.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        if !raw_line.starts_with(' ') && !raw_line.starts_with('\t') {
+            in_packages = trimmed == "packages:";
+            continue;
+        }
+        if !in_packages {
+            continue;
+        }
+
+        let Some(item) = trimmed.strip_prefix('-') else {
+            continue;
+        };
+        if let Some(member) = workspace_member_text_value(item) {
+            members.push(member);
+        }
+    }
+
+    members.sort();
+    members.dedup();
+    members
+}
+
+fn package_workspace_members(json: &serde_json::Value) -> Vec<String> {
+    let mut members = Vec::new();
+    if let Some(items) = json.get("workspaces").and_then(|value| value.as_array()) {
+        members.extend(items.iter().filter_map(workspace_member_value));
+    } else if let Some(items) = json
+        .get("workspaces")
+        .and_then(|value| value.get("packages"))
+        .and_then(|value| value.as_array())
+    {
+        members.extend(items.iter().filter_map(workspace_member_value));
+    }
+
+    members.sort();
+    members.dedup();
+    members
+}
+
+fn workspace_member_value(value: &serde_json::Value) -> Option<String> {
+    workspace_member_text_value(value.as_str()?)
+}
+
+fn workspace_member_text_value(value: &str) -> Option<String> {
+    let member = value.trim().trim_matches('"').trim_matches('\'').trim();
+    if member.is_empty()
+        || member.starts_with('/')
+        || member.contains("..")
+        || member.contains('\\')
+        || member.len() > 160
+    {
+        return None;
+    }
+    Some(member.to_string())
+}
+
+fn package_manager_for_manifest<'a>(path: &Path, json: &'a serde_json::Value) -> &'a str {
+    if let Some(manager) = json.get("packageManager").and_then(|value| value.as_str()) {
+        let lower = manager.to_ascii_lowercase();
+        if lower.starts_with("pnpm@") {
+            return "pnpm";
+        }
+        if lower.starts_with("yarn@") {
+            return "yarn";
+        }
+        if lower.starts_with("bun@") {
+            return "bun";
+        }
+        if lower.starts_with("npm@") {
+            return "npm";
+        }
+    }
+
+    let mut current = path.parent();
+    while let Some(dir) = current {
+        if dir.join("pnpm-lock.yaml").is_file() || dir.join("pnpm-workspace.yaml").is_file() {
+            return "pnpm";
+        }
+        if dir.join("yarn.lock").is_file() {
+            return "yarn";
+        }
+        if dir.join("bun.lockb").is_file() || dir.join("bun.lock").is_file() {
+            return "bun";
+        }
+        if dir.join("package-lock.json").is_file() {
+            return "npm";
+        }
+        current = dir.parent();
+    }
+
+    "npm"
+}
+
+fn collect_composer_intelligence(
     path: &Path,
     relative: &str,
     commands: &mut Vec<WorkspaceBrainCommand>,
+    signals: &mut HashSet<String>,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
 ) {
     let Some(json) = read_small_json(path) else {
         return;
     };
+    detect_composer_signals(&json, signals);
+    collect_composer_dependency_edges(&json, relative, dependency_edges);
     let Some(scripts) = json.get("scripts").and_then(|scripts| scripts.as_object()) else {
         return;
     };
@@ -815,13 +1341,118 @@ fn collect_composer_commands(
     }
 }
 
+fn detect_composer_signals(json: &serde_json::Value, signals: &mut HashSet<String>) {
+    let deps = composer_dependency_names(json);
+    let has = |name: &str| deps.contains(name);
+    if has("laravel/framework") {
+        signals.insert("Laravel".into());
+    }
+    if has("livewire/livewire") {
+        signals.insert("Livewire".into());
+    }
+    if has("inertiajs/inertia-laravel") {
+        signals.insert("Inertia".into());
+    }
+    if has("pestphp/pest") || has("phpunit/phpunit") {
+        signals.insert("PHP test suite".into());
+    }
+    if has("laravel/sanctum") || has("laravel/passport") {
+        signals.insert("Auth/Security".into());
+    }
+}
+
+fn composer_dependency_names(json: &serde_json::Value) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for field in ["require", "require-dev"] {
+        if let Some(deps) = json.get(field).and_then(|value| value.as_object()) {
+            names.extend(deps.keys().map(|key| key.to_ascii_lowercase()));
+        }
+    }
+    names
+}
+
+fn collect_composer_dependency_edges(
+    json: &serde_json::Value,
+    relative: &str,
+    dependency_edges: &mut Vec<WorkspaceBrainDependencyEdge>,
+) {
+    let from = json
+        .get("name")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("composer-project");
+    let mut edges: Vec<WorkspaceBrainDependencyEdge> = Vec::new();
+    for field in ["require", "require-dev"] {
+        if let Some(deps) = json.get(field).and_then(|value| value.as_object()) {
+            for name in deps.keys() {
+                if is_relevant_dependency_name(name) {
+                    edges.push(WorkspaceBrainDependencyEdge {
+                        from: from.into(),
+                        to: name.into(),
+                        kind: field.into(),
+                        source: relative.into(),
+                    });
+                }
+            }
+        }
+    }
+    edges.sort_by(|a, b| {
+        dependency_priority(&a.to)
+            .cmp(&dependency_priority(&b.to))
+            .then_with(|| a.to.cmp(&b.to))
+    });
+    dependency_edges.extend(edges.into_iter().take(12));
+}
+
+fn is_relevant_dependency_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with("@atlas/")
+        || lower.starts_with("atlas/")
+        || lower.contains("laravel")
+        || lower.contains("react")
+        || lower.contains("tauri")
+        || lower.contains("vite")
+        || lower.contains("typescript")
+        || lower.contains("playwright")
+        || lower.contains("vitest")
+        || lower.contains("jest")
+        || lower.contains("phpunit")
+        || lower.contains("pest")
+        || lower.contains("inertia")
+        || lower.contains("livewire")
+        || lower.contains("tailwind")
+        || lower.contains("expo")
+}
+
+fn dependency_priority(name: &str) -> usize {
+    let lower = name.to_ascii_lowercase();
+    if lower.starts_with("@atlas/") || lower.starts_with("atlas/") {
+        0
+    } else if lower.contains("laravel") || lower.contains("tauri") || lower.contains("react") {
+        1
+    } else if lower.contains("test")
+        || lower.contains("vitest")
+        || lower.contains("phpunit")
+        || lower.contains("playwright")
+    {
+        2
+    } else {
+        3
+    }
+}
+
 fn read_small_json(path: &Path) -> Option<serde_json::Value> {
+    let text = read_small_text(path, 128 * 1024)?;
+    serde_json::from_str(&text).ok()
+}
+
+fn read_small_text(path: &Path, max_bytes: u64) -> Option<String> {
     let metadata = std::fs::metadata(path).ok()?;
-    if metadata.len() > 128 * 1024 {
+    if metadata.len() > max_bytes {
         return None;
     }
-    let text = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str(&text).ok()
+    std::fs::read_to_string(path).ok()
 }
 
 fn command_kind(key: &str) -> &'static str {
@@ -850,6 +1481,26 @@ fn command_kind(key: &str) -> &'static str {
 fn dedupe_commands(commands: &mut Vec<WorkspaceBrainCommand>) {
     let mut seen = HashSet::new();
     commands.retain(|command| seen.insert(format!("{}:{}", command.source, command.command)));
+}
+
+fn dedupe_dependency_edges(edges: &mut Vec<WorkspaceBrainDependencyEdge>) {
+    let mut seen = HashSet::new();
+    edges.retain(|edge| {
+        seen.insert(format!(
+            "{}:{}:{}:{}",
+            edge.source, edge.from, edge.to, edge.kind
+        ))
+    });
+}
+
+fn sort_workspace_dependency_edges(edges: &mut [WorkspaceBrainDependencyEdge]) {
+    edges.sort_by(|a, b| {
+        dependency_priority(&a.to)
+            .cmp(&dependency_priority(&b.to))
+            .then_with(|| a.source.cmp(&b.source))
+            .then_with(|| a.from.cmp(&b.from))
+            .then_with(|| a.to.cmp(&b.to))
+    });
 }
 
 fn sort_workspace_commands(commands: &mut [WorkspaceBrainCommand]) {
@@ -923,11 +1574,11 @@ fn package_script_priority(key: &str) -> usize {
     }
 }
 
-fn package_script_label(key: &str) -> String {
+fn package_script_label(package_manager: &str, key: &str) -> String {
     if key.contains(':') {
         key.replace(':', " ")
     } else {
-        format!("npm {key}")
+        format!("{package_manager} {key}")
     }
 }
 

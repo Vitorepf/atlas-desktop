@@ -1,0 +1,266 @@
+/* Mission Control Cockpit · slate dark canon (AP-702).
+   Inscribed in apps/desktop/src/index.css SURFACE OPT-IN SLATE DARK.
+   Uses ONLY var(--cc-*) tokens — no hardcoded colors. */
+
+.atlas-shell.surface-mission_control .mission-control-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 48px;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-family: var(--cc-font-sans);
+  font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--cc-border);
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__title {
+  font-size: var(--cc-text-display);
+  font-variation-settings: 'wght' 560;
+  letter-spacing: -0.012em;
+  color: var(--cc-text-strong);
+  margin: 0;
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__subtitle {
+  display: block;
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text-faint);
+  margin-top: 4px;
+  letter-spacing: 0.03em;
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__subtitle code,
+.atlas-shell.surface-mission_control .mission-control-blocker__id,
+.atlas-shell.surface-mission_control .mission-control-panel__meta code,
+.atlas-shell.surface-mission_control .mission-control-audit-json {
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-data);
+  color: var(--cc-text-strong);
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__mode {
+  font-size: var(--cc-text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  color: var(--cc-text-faint);
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__refresh {
+  background: transparent;
+  border: 1px solid var(--cc-border);
+  color: var(--cc-accent);
+  padding: 4px 10px;
+  font-size: var(--cc-text-caption);
+  border-radius: var(--cc-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 200ms var(--cc-ease-out);
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__refresh:hover {
+  border-color: var(--cc-accent-border);
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__refresh:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring);
+  border-radius: var(--cc-radius-sm);
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__empty {
+  font-size: var(--cc-text-body);
+  color: var(--cc-text-muted);
+  margin: 0;
+}
+
+.atlas-shell.surface-mission_control .mission-control-surface__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel--phases {
+  grid-column: span 2;
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel--alert {
+  border-color: var(--cc-accent-border);
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel__title {
+  font-size: var(--cc-text-label);
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-text-strong);
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel__meta {
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text-muted);
+  margin: 0;
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel__big-number {
+  font-size: 32px;
+  font-variation-settings: 'wght' 360;
+  color: var(--cc-accent);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-shell.surface-mission_control .mission-control-panel__empty {
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text-faint);
+  margin: 0;
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px;
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  font-size: var(--cc-text-caption);
+  border-radius: var(--cc-radius-xs, 4px);
+  color: var(--cc-text-faint);
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase--executed {
+  color: var(--cc-success);
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase--skipped {
+  color: var(--cc-warning);
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase__index {
+  font-family: var(--cc-font-mono);
+  color: var(--cc-text-disabled);
+  font-size: 10px;
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase__name {
+  letter-spacing: 0.02em;
+}
+
+.atlas-shell.surface-mission_control .mission-control-phase__status {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.atlas-shell.surface-mission_control .mission-control-gate-list,
+.atlas-shell.surface-mission_control .mission-control-blocker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.atlas-shell.surface-mission_control .mission-control-gate-list li {
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text);
+  padding: 4px 8px;
+  background: var(--cc-surface-sunken);
+  border-radius: var(--cc-radius-sm);
+}
+
+.atlas-shell.surface-mission_control .mission-control-blocker {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--cc-surface-sunken);
+  border-radius: var(--cc-radius-sm);
+  font-size: var(--cc-text-caption);
+}
+
+.atlas-shell.surface-mission_control .mission-control-blocker__severity {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: var(--cc-radius-sm);
+  text-align: center;
+  font-variation-settings: 'wght' 600;
+}
+
+.atlas-shell.surface-mission_control .mission-control-blocker__severity--low {
+  background: var(--cc-success-veil);
+  color: var(--cc-success-fg);
+}
+
+.atlas-shell.surface-mission_control .mission-control-blocker__severity--medium {
+  background: var(--cc-warning-veil);
+  color: var(--cc-warning-fg);
+}
+
+.atlas-shell.surface-mission_control .mission-control-blocker__severity--high,
+.atlas-shell.surface-mission_control .mission-control-blocker__severity--critical {
+  background: var(--cc-danger-veil);
+  color: var(--cc-danger-fg);
+}
+
+.atlas-shell.surface-mission_control .mission-control-blocker__owner {
+  color: var(--cc-text-muted);
+  font-size: var(--cc-text-caption);
+}
+
+.atlas-shell.surface-mission_control .mission-control-audit-json {
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  background: var(--cc-surface-sunken);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: var(--cc-radius-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--cc-text);
+}

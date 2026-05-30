@@ -20,6 +20,9 @@ function explainAtlasAiError(message: string): { summary: string; detail: string
   if (
     lower.includes('offline') ||
     lower.includes('serviço local indisponível') ||
+    lower.includes('connection refused') ||
+    lower.includes('sqlstate[08006]') ||
+    lower.includes('port 5433') ||
     lower.includes('failed to fetch') ||
     lower.includes('networkerror') ||
     lower.includes('load failed')
@@ -33,6 +36,7 @@ function explainAtlasAiError(message: string): { summary: string; detail: string
   if (
     lower.includes('http 500') ||
     lower.includes('respondeu 500') ||
+    lower.includes('status 500') ||
     lower.includes('internal server error')
   ) {
     return {

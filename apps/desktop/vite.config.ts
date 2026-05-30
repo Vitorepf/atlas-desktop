@@ -37,5 +37,37 @@ export default defineConfig(() => ({
     target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari14',
     minify: (process.env.TAURI_ENV_DEBUG ? false : 'oxc') as 'oxc' | false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /node_modules[\\/](react|react-dom)[\\/]/,
+              priority: 30,
+              minSize: 1,
+            },
+            {
+              name: 'tauri-vendor',
+              test: /node_modules[\\/]@tauri-apps[\\/]/,
+              priority: 25,
+              minSize: 1,
+            },
+          {
+            name: 'atlas-domain-vendor',
+            test: /packages[\\/](atlas-domain|atlas-ui|atlas-rich-input-canon)[\\/]/,
+            priority: 20,
+            minSize: 1,
+          },
+          {
+            name: 'atlas-ai-awis',
+            test: /apps[\\/]desktop[\\/]src[\\/]surfaces[\\/]atlas-ai[\\/](awisWorkspaceMemory|awisIntelligence|runtimeReadinessView|threadExport)\.ts$/,
+            priority: 18,
+            minSize: 1,
+          },
+        ],
+      },
+    },
+    },
   },
 }))

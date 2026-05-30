@@ -28,7 +28,7 @@
  *   - Pin icon (📌) deixa fixadas inequívocas
  *   - Folder collapse permite focar em 1 projeto sem fechar outros
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
 import { AtlasAiErrorBanner } from './AtlasAiErrorBanner'
 import { formatRelativeShort } from '../timeFormat'
 import { bridge } from '../../../lib/bridge'
@@ -47,6 +47,8 @@ interface AtlasAiThreadListProps {
   error: string | null
   retrying?: boolean
   selectedId: string | null
+  stageCompareAnchorId?: string | null
+  stageDropActive?: boolean
   activeWorkspace?: AtlasAiWorkspaceScope | null
   modeFilter: AtlasAiMode | 'all'
   onModeFilter: (m: AtlasAiMode | 'all') => void
@@ -61,11 +63,22 @@ interface AtlasAiThreadListProps {
   onFuseThreads?: (threadIds: string[]) => void | Promise<void>
   onSelect: (id: string) => void
   onPrefetch?: (id: string) => void
-  onOpenBeside?: (id: string) => void
-  onOpenInStage?: (id: string) => void
+  onOpenBeside?: (id: string, anchorThreadId?: string | null) => void
+  onOpenInStage?: (id: string, anchorThreadId?: string | null) => void
   onStageDragActive?: (active: boolean) => void
+  onThreadDragStart?: (anchorThreadId: string | null, draggedThreadId?: string | null) => void
+  onThreadDragEnd?: () => void
   onProjectSpaceCountChange?: (count: number) => void
   onProjectSpaceContextPacksChange?: (packs: LocalProjectSpaceContextPack[]) => void
+  onProjectSpacesHydratedChange?: (hydrated: boolean) => void
+  projectSpaceOutcomeEvent?: LocalProjectSpaceOutcomeEvent | null
+  onProjectSpaceMaintenance?: (input: {
+    action: 'update_space_pack' | 'open_side_by_side'
+    label: string
+    status: 'succeeded' | 'failed' | 'skipped'
+    reason?: string | null
+    evidence?: string[] | null
+  }) => void
   runningThreadIds?: Set<string>
   dragClearSignal?: number
   onOpenSpace?: (threadIds: string[]) => void
@@ -96,6 +109,8 @@ const COLLAPSED_STORAGE = 'atlas-desktop:atlas-ai-projects-collapsed'
 const SHOW_ALL_STORAGE = 'atlas-desktop:atlas-ai-projects-expanded-all'
 const PROJECT_SPACES_STORAGE = 'atlas-desktop:atlas-ai-project-spaces'
 const PROJECT_SPACES_SCHEMA_VERSION = 'atlas.desktop_ai.project_spaces.v2'
+const MAX_PROJECT_SPACES_STORED = 64
+const MAX_PROJECT_SPACE_CONTEXT_PACKS = 12
 const SAVED_SPACE_RECEIPTS_STORAGE = 'atlas-desktop:atlas-ai-saved-space-receipts'
 const SAVED_SPACE_RECEIPTS_SCHEMA_VERSION = 'atlas.desktop_ai.saved_space_receipts.v1'
 const THREAD_SEEN_STORAGE = 'atlas-desktop:atlas-ai-thread-seen-at'
@@ -112,6 +127,14 @@ export interface LocalProjectSpace {
   source?: 'drag' | 'suggested' | 'local'
   createdAt?: string
   updatedAt?: string
+  lastOutcomeAt?: string
+  lastOutcomeStatus?: 'succeeded' | 'failed' | 'skipped'
+  outcomeCount?: number
+  successCount?: number
+  failureCount?: number
+  comparisonOpenCount?: number
+  artifactRefs?: string[]
+  learnedSignals?: string[]
 }
 
 interface LocalProjectSpacesStorageEnvelope {
@@ -180,6 +203,16 @@ export interface LocalProjectSpaceContextPack {
   raw_conversation_returned: false
   full_message_content_returned: false
   recommended_use: string[]
+  learned_memory?: {
+    outcome_count: number
+    success_count: number
+    failure_count: number
+    comparison_open_count: number
+    last_outcome_at: string | null
+    last_outcome_status: 'succeeded' | 'failed' | 'skipped' | null
+    artifact_refs: string[]
+    signals: string[]
+  }
   brain_contract: {
     state: LocalProjectSpaceBrain['state']
     load_first: string[]
@@ -200,6 +233,17 @@ export interface LocalProjectSpaceContextPack {
   }>
 }
 
+export interface LocalProjectSpaceOutcomeEvent {
+  id: string
+  projectKey: string
+  status: 'succeeded' | 'failed' | 'skipped'
+  threadIds?: string[] | null
+  artifactRefs?: string[] | null
+  learnedSignals?: string[] | null
+  comparisonOpened?: boolean
+  occurredAt?: string | null
+}
+
 interface PointerFusionBaseThread {
   id: string
   title: string
@@ -211,6 +255,7 @@ interface PointerFusionThread extends PointerFusionBaseThread {
   startX: number
   startY: number
   active: boolean
+  stageAnchorId: string | null
 }
 
 interface PointerFusionPreview {
@@ -271,8 +316,36 @@ export function resolvePointerFusionDropSnapshot({
   }
 }
 
+export function shouldClearThreadDragOnGlobalRelease(pointerFusionActive: boolean): boolean {
+  return !pointerFusionActive
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function safeProviderText(value: unknown, limit = 96): string | null {
+  if (typeof value !== 'string') return null
+  const safe = value.trim().replace(/\s+/g, ' ').slice(0, limit)
+  if (!safe || /\/Users\/|thread_id|source_thread_ids|operator_input|response_text|raw[_ ]conversation|full[_ ]message/i.test(safe)) {
+    return null
+  }
+  return safe
+}
+
+function safeProviderStringList(value: unknown, limit = 8): string[] {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(
+    value
+      .map((item) => safeProviderText(item))
+      .filter((item): item is string => Boolean(item)),
+  )).slice(0, limit)
+}
+
+function safeCounter(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : undefined
 }
 
 function nowIso(): string {
@@ -300,7 +373,7 @@ function normalizeProjectSpaceCandidate(candidate: Partial<LocalProjectSpace>, f
   if (threadIds.length < 2) return null
   const createdAt = isIsoLike(candidate.createdAt) ? candidate.createdAt : fallbackTimestamp
   const updatedAt = isIsoLike(candidate.updatedAt) ? candidate.updatedAt : createdAt
-  return {
+  const normalized: LocalProjectSpace = {
     id: threadIds.slice().sort().join('|'),
     projectKey,
     title: title.slice(0, 64),
@@ -312,6 +385,23 @@ function normalizeProjectSpaceCandidate(candidate: Partial<LocalProjectSpace>, f
     createdAt,
     updatedAt,
   }
+  if (isIsoLike(candidate.lastOutcomeAt)) normalized.lastOutcomeAt = candidate.lastOutcomeAt
+  if (candidate.lastOutcomeStatus === 'succeeded' || candidate.lastOutcomeStatus === 'failed' || candidate.lastOutcomeStatus === 'skipped') {
+    normalized.lastOutcomeStatus = candidate.lastOutcomeStatus
+  }
+  const outcomeCount = safeCounter(candidate.outcomeCount)
+  const successCount = safeCounter(candidate.successCount)
+  const failureCount = safeCounter(candidate.failureCount)
+  const comparisonOpenCount = safeCounter(candidate.comparisonOpenCount)
+  const artifactRefs = safeProviderStringList(candidate.artifactRefs, 10)
+  const learnedSignals = safeProviderStringList(candidate.learnedSignals, 10)
+  if (outcomeCount !== undefined) normalized.outcomeCount = outcomeCount
+  if (successCount !== undefined) normalized.successCount = successCount
+  if (failureCount !== undefined) normalized.failureCount = failureCount
+  if (comparisonOpenCount !== undefined) normalized.comparisonOpenCount = comparisonOpenCount
+  if (artifactRefs.length > 0) normalized.artifactRefs = artifactRefs
+  if (learnedSignals.length > 0) normalized.learnedSignals = learnedSignals
+  return normalized
 }
 
 export function parseLocalProjectSpaces(raw: string | null, fallbackTimestamp = nowIso()): LocalProjectSpace[] {
@@ -328,7 +418,7 @@ export function parseLocalProjectSpaces(raw: string | null, fallbackTimestamp = 
         ? normalizeProjectSpaceCandidate(item as Partial<LocalProjectSpace>, fallbackTimestamp)
         : null)
       .filter((item): item is LocalProjectSpace => Boolean(item))
-      .slice(0, 8)
+      .slice(0, MAX_PROJECT_SPACES_STORED)
   } catch {
     return []
   }
@@ -358,7 +448,7 @@ export function mergeLocalProjectSpaces(...sources: LocalProjectSpace[][]): Loca
       const bUpdatedAt = Date.parse(b.updatedAt ?? b.createdAt ?? '')
       return (Number.isFinite(bUpdatedAt) ? bUpdatedAt : 0) - (Number.isFinite(aUpdatedAt) ? aUpdatedAt : 0)
     })
-    .slice(0, 8)
+    .slice(0, MAX_PROJECT_SPACES_STORED)
 }
 
 export function serializeLocalProjectSpaces(spaces: LocalProjectSpace[]): string {
@@ -793,7 +883,7 @@ export function evaluateLocalProjectSpaceIntelligence(threads: AiThreadSummary[]
 function metadataNumber(meta: Record<string, unknown> | null, keys: string[]): number {
   if (!meta) return 0
   for (const key of keys) {
-    const value = meta[key]
+    const value = metadataValue(meta, key)
     if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value))
     if (typeof value === 'string' && /^\d+$/.test(value.trim())) return Number.parseInt(value.trim(), 10)
     if (Array.isArray(value)) return value.length
@@ -801,17 +891,67 @@ function metadataNumber(meta: Record<string, unknown> | null, keys: string[]): n
   return 0
 }
 
+function metadataValue(meta: Record<string, unknown> | null, key: string): unknown {
+  if (!meta) return undefined
+  if (!key.includes('.')) return meta[key]
+  let current: unknown = meta
+  for (const part of key.split('.')) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined
+    current = (current as Record<string, unknown>)[part]
+  }
+  return current
+}
+
 function metadataStringList(meta: Record<string, unknown> | null, keys: string[]): string[] {
   if (!meta) return []
   const values: string[] = []
   for (const key of keys) {
-    const value = meta[key]
+    const value = metadataValue(meta, key)
     if (typeof value === 'string' && value.trim().length > 0) values.push(value.trim())
     if (Array.isArray(value)) {
       values.push(...value.filter((item): item is string => typeof item === 'string' && item.trim() !== '').map((item) => item.trim()))
     }
   }
-  return Array.from(new Set(values.map((item) => item.replace(/\s+/g, ' ').slice(0, 96)))).slice(0, 6)
+  return Array.from(new Set(values
+    .map((item) => item.replace(/\s+/g, ' ').slice(0, 96))
+    .filter((item) => !/\/Users\/|thread_id|source_thread_ids|operator_input|response_text|raw[_ ]conversation|full[_ ]message/i.test(item))))
+    .slice(0, 6)
+}
+
+function metadataObjectStringList(meta: Record<string, unknown> | null, key: string, field: string): string[] {
+  if (!meta) return []
+  const rows = metadataValue(meta, key)
+  if (!Array.isArray(rows)) return []
+  const values = rows.flatMap((row) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return []
+    const value = (row as Record<string, unknown>)[field]
+    if (typeof value === 'string') return [value]
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string')
+    return []
+  })
+  return Array.from(new Set(values
+    .map((item) => item.trim().replace(/\s+/g, ' ').slice(0, 96))
+    .filter((item) => item && !/\/Users\/|thread_id|source_thread_ids|operator_input|response_text|raw[_ ]conversation|full[_ ]message/i.test(item))))
+    .slice(0, 6)
+}
+
+function metadataBoolean(meta: Record<string, unknown> | null, key: string): boolean {
+  if (!meta) return false
+  return metadataValue(meta, key) === true
+}
+
+function metadataReadinessLabels(meta: Record<string, unknown> | null): string[] {
+  const readiness = meta?.awis_startup_readiness
+  if (!readiness || typeof readiness !== 'object' || Array.isArray(readiness)) return []
+  return Object.entries(readiness as Record<string, unknown>)
+    .map(([key, value]) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return null
+      const safeKey = key.replace(/[^a-z_]/gi, '').slice(0, 32)
+      if (!safeKey) return null
+      return `${safeKey}:${Math.min(100, Math.max(0, Math.round(value)))}%`
+    })
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 4)
 }
 
 function textSignalCount(threads: AiThreadSummary[], pattern: RegExp): number {
@@ -825,6 +965,7 @@ function buildLocalProjectSpaceBrainContract(
   title: string,
   threads: AiThreadSummary[],
   brain: LocalProjectSpaceBrain,
+  space?: LocalProjectSpace | null,
 ): LocalProjectSpaceContextPack['brain_contract'] {
   const modes = Array.from(new Set(threads.map(inferThreadMode)))
   const artifactRefs = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
@@ -833,42 +974,304 @@ function buildLocalProjectSpaceBrainContract(
     'artifact_hashes',
     'context_pack_refs',
     'context_pack',
+    'awis_bootstrap_manifest.artifacts',
+  ]).concat(metadataObjectStringList(thread.metadata, 'awis_space_brain', 'artifacts'))).concat(space?.artifactRefs ?? []))).slice(0, 8)
+  const learnedSignals = safeProviderStringList(space?.learnedSignals ?? [], 8)
+  const outcomeCount = Math.max(0, space?.outcomeCount ?? 0)
+  const successCount = Math.max(0, space?.successCount ?? 0)
+  const failureCount = Math.max(0, space?.failureCount ?? 0)
+  const comparisonOpenCount = Math.max(0, space?.comparisonOpenCount ?? 0)
+  const startupLoad = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_startup_load_sequence',
+    'awis_load_first',
+    'awis_bootstrap_manifest.golden_boot_sequence',
+    'awis_bootstrap_manifest.load_first',
+  ]).concat(metadataObjectStringList(thread.metadata, 'awis_space_brain', 'load'))))).slice(0, 6)
+  const taskLoad = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_transfer_contract.workspace_hints',
+    'awis_transfer_contract.reuse',
+    'awis_folder_focus.primary_component',
+    'awis_folder_focus.include',
+    'awis_task_context_budget.load_full',
+    'awis_working_set.files',
+    'awis_working_set.docs',
+    'awis_next_session_contract.first_load',
+  ])))).slice(0, 8)
+  const startupSummaries = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_summary_gold',
+    'awis_priority_load',
+    'awis_bootstrap_manifest.summarize_first',
+  ]).concat(metadataObjectStringList(thread.metadata, 'awis_space_brain', 'carry'))))).slice(0, 6)
+  const taskSummaries = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_folder_focus.summarize',
+    'awis_task_context_budget.summarize',
+    'awis_evidence_gate.trusted',
+    'awis_next_session_contract.promote_when',
+  ])))).slice(0, 8)
+  const startupValidate = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_startup_revalidate_before_send',
+    'awis_validate_with',
+    'awis_bootstrap_manifest.validate_before_use',
+    'awis_bootstrap_manifest.never_load_raw',
+  ]).concat(metadataObjectStringList(thread.metadata, 'awis_space_brain', 'validate'))))).slice(0, 6)
+  const taskValidate = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_transfer_contract.validate_before_use',
+    'awis_evidence_gate.verify_before_trust',
+    'awis_evidence_gate.missing_or_stale',
+    'awis_working_set.commands',
+    'awis_impact_radius.validation_cascade',
+    'awis_next_session_contract.validate_with',
+    'awis_next_session_contract.demote_when',
+  ])))).slice(0, 8)
+  const startupHumanBoundary = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_startup_human_boundary',
+    'awis_bootstrap_manifest.human_boundary',
+  ]).concat(metadataObjectStringList(thread.metadata, 'awis_space_brain', 'human'))))).slice(0, 4)
+  const taskHumanBoundary = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_evidence_gate.human_boundary',
+    'awis_transfer_contract.never_transfer',
+  ])))).slice(0, 4)
+  const launchModes = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_launch_mode',
+    'awis_startup_context_mode',
+    'awis_bootstrap_manifest.launch_mode',
+  ])))).slice(0, 4)
+  const taskBudgetModes = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_task_context_budget.mode',
+    'awis_folder_focus.load_scope',
+    'awis_impact_radius.risk',
+  ])))).slice(0, 5)
+  const taskReasons = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_folder_focus.reason',
+    'awis_task_context_budget.reason',
+    'awis_evidence_gate.reason',
+    'awis_impact_radius.reason',
+    'awis_transfer_contract.reason',
+  ])))).slice(0, 5)
+  const transferWorkspaces = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_transfer_contract.workspace_hints',
+    'awis_impact_radius.cross_workspace',
+  ])))).slice(0, 4)
+  const readinessLabels = Array.from(new Set(threads.flatMap((thread) => metadataReadinessLabels(thread.metadata)))).slice(0, 6)
+  const neverStartCold = threads.some((thread) => metadataBoolean(thread.metadata, 'awis_never_start_cold'))
+  const shouldUpdateSpacePack = threads.some((thread) => metadataBoolean(thread.metadata, 'awis_continue_learning.update_space_pack'))
+  const shouldPreserveArtifact = threads.some((thread) =>
+    metadataBoolean(thread.metadata, 'awis_next_session_contract.preserve_as_artifact')
+    || metadataBoolean(thread.metadata, 'awis_continue_learning.preserve_artifact_after_success')
+    || metadataBoolean(thread.metadata, 'awis_bootstrap_manifest.preserve_artifact'))
+  const shouldUpdateFromManifest = threads.some((thread) => metadataBoolean(thread.metadata, 'awis_bootstrap_manifest.update_spaces'))
+  const spaceAutomationHooks = Array.from(new Set(threads.flatMap((thread) =>
+    metadataObjectStringList(thread.metadata, 'awis_space_brain', 'automation')))).slice(0, 4)
+  const spaceEvidence = Array.from(new Set(threads.flatMap((thread) =>
+    metadataObjectStringList(thread.metadata, 'awis_space_brain', 'evidence')))).slice(0, 6)
+  const bootstrapManifestAutomation = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_bootstrap_manifest.before_send',
+    'awis_bootstrap_manifest.after_success',
+    'awis_bootstrap_manifest.after_failure',
+    'awis_bootstrap_manifest.safe_maintenance',
   ])))).slice(0, 6)
+  const bootstrapManifestEvidence = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_bootstrap_manifest.evidence_hashes',
+    'awis_bootstrap_manifest.proven_by',
+    'awis_bootstrap_manifest.stale_or_guarded',
+  ])))).slice(0, 6)
+  const bootstrapManifestPromote = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_bootstrap_manifest.promote_when',
+    'awis_bootstrap_manifest.revalidate_when',
+  ])))).slice(0, 6)
+  const taskPacketAutomationSafe = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_task_packet.learning.automation_plan.safe_local',
+  ])))).slice(0, 6)
+  const taskPacketAutomationConfirm = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_task_packet.learning.automation_plan.confirm_first',
+  ])))).slice(0, 6)
+  const taskPacketAutomationObserve = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_task_packet.learning.automation_plan.observe_only',
+  ])))).slice(0, 6)
+  const providerPreferred = Array.from(new Set(threads.flatMap((thread) =>
+    metadataObjectStringList(thread.metadata, 'awis_provider_strategy.preferred', 'provider')))).slice(0, 4)
+  const providerFallback = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_provider_strategy.fallback_order',
+  ])))).slice(0, 5)
+  const providerCaution = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_provider_strategy.caution_signals',
+  ])))).slice(0, 5)
+  const doctrineRequired = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_execution_doctrine.required_before_execution',
+  ])))).slice(0, 5)
+  const doctrineHuman = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_execution_doctrine.human_responsibility',
+  ])))).slice(0, 5)
+  const doctrineAutomation = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_execution_doctrine.automation',
+  ])))).slice(0, 5)
+  const doctrineTrustedCommands = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_execution_doctrine.trusted_commands',
+  ])))).slice(0, 5)
+  const doctrineRevalidateCommands = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_execution_doctrine.revalidate_commands',
+  ])))).slice(0, 5)
+  const doctrineAvoidCommands = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_execution_doctrine.avoid_commands',
+  ])))).slice(0, 5)
+  const memoryHot = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_memory_freshness.hot',
+  ])))).slice(0, 5)
+  const memoryRevalidate = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_memory_freshness.revalidate',
+  ])))).slice(0, 5)
+  const memoryMissing = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_memory_freshness.missing',
+  ])))).slice(0, 5)
+  const confidencePrefer = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_confidence.prefer',
+  ])))).slice(0, 5)
+  const confidenceConfirm = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_confidence.require_confirmation_for',
+  ])))).slice(0, 5)
+  const confidenceAvoid = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_confidence.avoid_until_revalidated',
+  ])))).slice(0, 5)
+  const flywheelAutomation = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_learning_flywheel.next_safe_automations',
+    'awis_learning_flywheel.update_after_send',
+  ])))).slice(0, 6)
+  const flywheelRequiresEvidence = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_learning_flywheel.requires_evidence',
+  ])))).slice(0, 5)
+  const flywheelLoad = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_learning_flywheel.load_first',
+  ])))).slice(0, 5)
+  const flywheelValidate = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_learning_flywheel.validate_with',
+  ])))).slice(0, 5)
+  const launchFirstLoad = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_launch_contract.first_load',
+  ])))).slice(0, 5)
+  const launchValidate = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_launch_contract.validate_before_trust',
+  ])))).slice(0, 5)
+  const launchAvoid = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_launch_contract.avoid_loading',
+  ])))).slice(0, 5)
+  const launchAutomation = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_launch_contract.before_send',
+    'awis_launch_contract.after_success',
+    'awis_launch_contract.after_failure',
+  ])))).slice(0, 6)
+  const topologyCommands = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_topology.test_commands',
+    'awis_topology.build_commands',
+    'awis_topology.check_commands',
+  ])))).slice(0, 8)
+  const topologyDocs = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_topology.load_first_docs',
+    'awis_topology.validation_entrypoints',
+  ])))).slice(0, 8)
+  const topologySensitiveZones = Array.from(new Set(threads.flatMap((thread) => metadataStringList(thread.metadata, [
+    'awis_topology.sensitive_zones',
+  ])))).slice(0, 5)
   const evidence = [
     `${threads.length} sessões protegidas`,
     ...modes.map((mode) => `modo:${modeLabel(mode)}`),
+    neverStartCold ? 'partida viva:não começa zerado' : null,
+    ...spaceEvidence.map((item) => `space-brain:${item}`),
+    ...providerPreferred.map((provider) => `provider:${provider}`),
+    ...bootstrapManifestEvidence.map((item) => `manifesto:${item}`),
+    ...memoryHot.map((item) => `memória quente:${item}`),
+    ...confidencePrefer.map((item) => `confiança:${item}`),
+    ...taskBudgetModes.map((mode) => `task:${mode}`),
+    ...taskReasons.map((reason) => `razão:${reason}`),
+    ...transferWorkspaces.map((workspace) => `transfer:${workspace}`),
+    ...readinessLabels.map((label) => `readiness:${label}`),
     brain.decisionCount > 0 ? `${brain.decisionCount} decisão(ões)` : null,
     brain.pendingCount > 0 ? `${brain.pendingCount} pendência(s)` : null,
     brain.riskCount > 0 ? `${brain.riskCount} risco(s)` : null,
     brain.artifactCount > 0 ? `${brain.artifactCount} artifact(s)` : null,
-  ].filter((item): item is string => Boolean(item)).slice(0, 8)
+    outcomeCount > 0 ? `${outcomeCount} outcome(s) aprendidos` : null,
+    successCount > 0 ? `${successCount} sucesso(s) validados` : null,
+    failureCount > 0 ? `${failureCount} falha(s) para revalidar` : null,
+    comparisonOpenCount > 0 ? `${comparisonOpenCount} abertura(s) para comparar` : null,
+    ...learnedSignals.map((signal) => `aprendido:${signal}`),
+  ].filter((item): item is string => Boolean(item)).slice(0, 24)
   return {
     state: brain.state,
     load_first: [
       `Space:${title}`,
+      ...startupLoad.map((item) => `partida:${item}`),
+      ...taskLoad.map((item) => `foco:${item}`),
+      ...flywheelLoad.map((item) => `aprendizado:${item}`),
+      ...launchFirstLoad.map((item) => `partida viva:${item}`),
+      ...topologyDocs.map((item) => `topologia:${item}`),
       ...threads.slice(0, 4).map((thread) => `sessão:${thread.title?.trim() || '(sem título)'}`),
     ].map((item) => item.slice(0, 120)),
     carry_forward: [
       brain.scopeLabel,
+      ...launchModes.map((mode) => `modo partida:${mode}`),
+      ...startupSummaries.map((item) => `ouro:${item}`),
+      ...taskSummaries.map((item) => `task-gold:${item}`),
+      ...transferWorkspaces.map((workspace) => `workspace relacionado:${workspace}`),
+      ...providerPreferred.map((provider) => `provider preferido:${provider}`),
+      ...providerFallback.map((provider) => `fallback provider:${provider}`),
+      ...doctrineTrustedCommands.map((command) => `comando confiável:${command}`),
+      ...confidencePrefer.map((item) => `preferir:${item}`),
+      ...learnedSignals.map((signal) => `aprendizado:${signal}`),
       ...brain.recommendedActions,
       ...artifactRefs.map((ref) => `artifact:${ref}`),
-    ].slice(0, 8),
+    ].slice(0, 12),
     validate_before_use: [
+      ...startupValidate.map((item) => `partida:${item}`),
+      ...taskValidate.map((item) => `evidência:${item}`),
+      ...providerCaution.map((item) => `provider:${item}`),
+      ...doctrineRequired.map((item) => `doutrina:${item}`),
+      ...doctrineRevalidateCommands.map((command) => `revalidar comando:${command}`),
+      ...doctrineAvoidCommands.map((command) => `evitar comando:${command}`),
+      ...memoryRevalidate.map((item) => `memória:${item}`),
+      ...memoryMissing.map((item) => `memória ausente:${item}`),
+      ...confidenceAvoid.map((item) => `confiança:${item}`),
+      ...flywheelRequiresEvidence.map((item) => `aprendizado exige evidência:${item}`),
+      ...flywheelValidate.map((item) => `aprendizado:${item}`),
+      ...launchValidate.map((item) => `partida viva:${item}`),
+      ...launchAvoid.map((item) => `não carregar:${item}`),
+      ...topologyCommands.map((command) => `topologia:${command}`),
       brain.riskCount > 0 ? 'revalidar riscos do Space' : null,
       brain.pendingCount > 0 ? 'checar pendências antes de executar' : null,
       brain.artifactCount > 0 ? 'confirmar artifact/context pack ainda atual' : null,
+      failureCount > 0 ? 'revalidar falhas aprendidas antes de promover contexto' : null,
+      space?.lastOutcomeStatus === 'failed' ? 'último outcome falhou; carregar como hipótese, não como verdade' : null,
     ].filter((item): item is string => Boolean(item)),
     automation_hooks: [
       'atualizar pack quando sessão do Space mudar',
+      ...spaceAutomationHooks.map((item) => `space-brain:${item}`),
+      ...bootstrapManifestAutomation.map((item) => `manifesto:${item}`),
+      ...bootstrapManifestPromote.map((item) => `manifesto aprendizado:${item}`),
+      ...taskPacketAutomationSafe.map((item) => `task packet seguro:${item}`),
+      ...doctrineAutomation.map((item) => `doutrina:${item}`),
+      ...flywheelAutomation.map((item) => `aprendizado:${item}`),
+      ...launchAutomation.map((item) => `partida viva:${item}`),
+      shouldUpdateSpacePack ? 'atualizar Space pack após outcome real' : null,
+      shouldUpdateFromManifest ? 'atualizar Space pack pelo manifesto vivo' : null,
+      shouldPreserveArtifact ? 'preservar artifact após sucesso validado' : null,
+      transferWorkspaces.length > 0 ? 'revalidar transferência entre workspaces antes de promover contexto' : null,
       brain.contextPackReady ? 'promover resumo do Space para próxima conversa' : null,
       artifactRefs.length > 0 ? 'reusar artifact do Space como contexto inicial' : null,
+      outcomeCount > 0 ? 'recalibrar Space com outcomes acumulados' : null,
     ].filter((item): item is string => Boolean(item)),
     human_boundary: [
+      ...startupHumanBoundary.map((item) => `partida:${item}`),
+      ...taskHumanBoundary.map((item) => `evidência:${item}`),
+      ...taskPacketAutomationConfirm.map((item) => `task packet confirmar:${item}`),
+      ...doctrineHuman.map((item) => `doutrina:${item}`),
+      ...confidenceConfirm.map((item) => `confirmar:${item}`),
+      ...topologySensitiveZones.map((item) => `zona sensível:${item}`),
       brain.riskCount > 0 ? 'humano confirma mudança em área de risco' : null,
       brain.pendingCount > 0 ? 'humano decide pendência ambígua' : null,
     ].filter((item): item is string => Boolean(item)),
     artifact_refs: artifactRefs,
-    evidence,
+    evidence: [
+      ...evidence,
+      ...taskPacketAutomationObserve.map((item) => `task packet observar:${item}`),
+    ].slice(0, 24),
   }
 }
 
@@ -979,16 +1382,24 @@ export function buildLocalProjectSpaceContextPack({
   title,
   threads,
   source,
+  space = null,
   generatedAt = nowIso(),
 }: {
   title: string
   threads: AiThreadSummary[]
   source: LocalProjectSpaceContextPack['source']
+  space?: LocalProjectSpace | null
   generatedAt?: string
 }): LocalProjectSpaceContextPack {
   const intelligence = evaluateLocalProjectSpaceIntelligence(threads)
   const brain = evaluateLocalProjectSpaceBrain(threads)
-  const brainContract = buildLocalProjectSpaceBrainContract(title, threads, brain)
+  const spaceArtifactRefs = space?.artifactRefs?.length ?? 0
+  const learnedSignals = safeProviderStringList(space?.learnedSignals ?? [], 8)
+  const learnedArtifactRefs = safeProviderStringList(space?.artifactRefs ?? [], 8)
+  const brainContract = buildLocalProjectSpaceBrainContract(title, threads, {
+    ...brain,
+    artifactCount: brain.artifactCount + spaceArtifactRefs,
+  }, space)
   return {
     schema_version: 'atlas.desktop_ai.space_context_pack.v1',
     title,
@@ -1000,13 +1411,23 @@ export function buildLocalProjectSpaceContextPack({
     decision_count: brain.decisionCount,
     pending_count: brain.pendingCount,
     risk_count: brain.riskCount,
-    artifact_count: brain.artifactCount,
+    artifact_count: brain.artifactCount + spaceArtifactRefs,
     scope_label: brain.scopeLabel,
     reusable_by: brain.reusableBy,
     source_thread_ids: threads.map((thread) => thread.id),
     raw_conversation_returned: false,
     full_message_content_returned: false,
     recommended_use: brain.recommendedActions,
+    learned_memory: space ? {
+      outcome_count: Math.max(0, space.outcomeCount ?? 0),
+      success_count: Math.max(0, space.successCount ?? 0),
+      failure_count: Math.max(0, space.failureCount ?? 0),
+      comparison_open_count: Math.max(0, space.comparisonOpenCount ?? 0),
+      last_outcome_at: space.lastOutcomeAt ?? null,
+      last_outcome_status: space.lastOutcomeStatus ?? null,
+      artifact_refs: learnedArtifactRefs,
+      signals: learnedSignals,
+    } : undefined,
     brain_contract: brainContract,
     sessions: threads.map((thread) => ({
       id: thread.id,
@@ -1032,6 +1453,8 @@ export function buildLocalProjectSpaceFallbackContextPack({
     ? 'suggested_space'
     : 'local_space'
   const sessionLabel = threadIds.length === 1 ? '1 sessão salva' : `${threadIds.length} sessões salvas`
+  const artifactRefs = safeProviderStringList(space.artifactRefs ?? [], 8)
+  const learnedSignals = safeProviderStringList(space.learnedSignals ?? [], 8)
   return {
     schema_version: 'atlas.desktop_ai.space_context_pack.v1',
     title: space.title,
@@ -1043,7 +1466,7 @@ export function buildLocalProjectSpaceFallbackContextPack({
     decision_count: 0,
     pending_count: 0,
     risk_count: 0,
-    artifact_count: 0,
+    artifact_count: artifactRefs.length,
     scope_label: sessionLabel,
     reusable_by: ['Atlas AI', 'packs'],
     source_thread_ids: threadIds,
@@ -1054,15 +1477,42 @@ export function buildLocalProjectSpaceFallbackContextPack({
       'recarregar sessões quando disponíveis',
       'abrir para comparar',
     ],
+    learned_memory: {
+      outcome_count: Math.max(0, space.outcomeCount ?? 0),
+      success_count: Math.max(0, space.successCount ?? 0),
+      failure_count: Math.max(0, space.failureCount ?? 0),
+      comparison_open_count: Math.max(0, space.comparisonOpenCount ?? 0),
+      last_outcome_at: space.lastOutcomeAt ?? null,
+      last_outcome_status: space.lastOutcomeStatus ?? null,
+      artifact_refs: artifactRefs,
+      signals: learnedSignals,
+    },
     brain_contract: {
       state: 'pronto',
       load_first: [`Space:${space.title}`],
-      carry_forward: [sessionLabel, 'preservar tema do Space'],
-      validate_before_use: ['recarregar sessões quando disponíveis'],
-      automation_hooks: ['atualizar pack quando sessões voltarem'],
+      carry_forward: [
+        sessionLabel,
+        'preservar tema do Space',
+        ...learnedSignals.map((signal) => `aprendizado:${signal}`),
+        ...artifactRefs.map((ref) => `artifact:${ref}`),
+      ].slice(0, 12),
+      validate_before_use: [
+        'recarregar sessões quando disponíveis',
+        space.lastOutcomeStatus === 'failed' ? 'último outcome falhou; validar antes de confiar' : null,
+        (space.failureCount ?? 0) > 0 ? 'revalidar falhas aprendidas' : null,
+      ].filter((item): item is string => Boolean(item)),
+      automation_hooks: [
+        'atualizar pack quando sessões voltarem',
+        (space.outcomeCount ?? 0) > 0 ? 'recalibrar Space com outcomes acumulados' : null,
+      ].filter((item): item is string => Boolean(item)),
       human_boundary: [],
-      artifact_refs: [],
-      evidence: [sessionLabel],
+      artifact_refs: artifactRefs,
+      evidence: [
+        sessionLabel,
+        (space.outcomeCount ?? 0) > 0 ? `${space.outcomeCount} outcome(s) aprendidos` : null,
+        (space.successCount ?? 0) > 0 ? `${space.successCount} sucesso(s) validados` : null,
+        (space.failureCount ?? 0) > 0 ? `${space.failureCount} falha(s) para revalidar` : null,
+      ].filter((item): item is string => Boolean(item)),
     },
     sessions: threadIds.map((id, index) => ({
       id,
@@ -1082,6 +1532,13 @@ export function localProjectSpaceContextPackMarkdown(pack: LocalProjectSpaceCont
     const messageLabel = session.message_count === 1 ? '1 mensagem' : `${session.message_count} mensagens`
     return `- ${session.title} · ${modeLabel(session.mode)} · ${messageLabel} · ${date} · ${provider}`
   }
+  const bulletLines = (items: string[], fallback: string) => {
+    const safeItems = items
+      .map((item) => item.trim().replace(/\s+/g, ' ').slice(0, 140))
+      .filter((item) => item && !/\/Users\/|thread_id|source_thread_ids|operator_input|response_text|raw[_ ]conversation|full[_ ]message/i.test(item))
+      .slice(0, 6)
+    return (safeItems.length > 0 ? safeItems : [fallback]).map((item) => `- ${item}`)
+  }
   const sessionLabel = pack.thread_count === 1 ? '1 sessão' : `${pack.thread_count} sessões`
   const messageLabel = pack.message_count === 1 ? '1 mensagem' : `${pack.message_count} mensagens`
   const modeLabelText = pack.mode_count === 1 ? '1 modo' : `${pack.mode_count} modos`
@@ -1098,19 +1555,86 @@ export function localProjectSpaceContextPackMarkdown(pack: LocalProjectSpaceCont
     `Reutilizável por: ${pack.reusable_by.join(', ')}`,
     'Conteúdo completo: não incluído por segurança.',
     '',
+    '## Cérebro do Space',
+    `Estado: ${pack.brain_contract.state}`,
+    '',
+    '### Carregar primeiro',
+    ...bulletLines(pack.brain_contract.load_first, `Space:${pack.title}`),
+    '',
+    '### Manter como contexto',
+    ...bulletLines(pack.brain_contract.carry_forward, pack.scope_label),
+    '',
+    '### Validar antes de confiar',
+    ...bulletLines(pack.brain_contract.validate_before_use, 'revalidar quando o contexto mudar'),
+    '',
+    '### Limites humanos',
+    ...bulletLines(pack.brain_contract.human_boundary, 'sem limite humano adicional registrado'),
+    '',
+    '### Aprendizado automático',
+    ...bulletLines(pack.brain_contract.automation_hooks, 'atualizar pack quando sessão do Space mudar'),
+    '',
+    '### Evidência',
+    ...bulletLines(pack.brain_contract.evidence, pack.scope_label),
+    '',
     '## Sessões',
     ...pack.sessions.map(humanSessionLine),
     '',
     '## Uso recomendado',
     ...pack.recommended_use.map((item) => `- ${item}.`),
     '- Usar como contexto seguro; não contém mensagens completas.',
-    '- não contém mensagens completas.',
   ]
   return lines.join('\n')
 }
 
 export function removeLocalProjectSpace(spaces: LocalProjectSpace[], spaceId: string): LocalProjectSpace[] {
   return spaces.filter((space) => space.id !== spaceId)
+}
+
+export function recordLocalProjectSpaceOutcome(
+  spaces: LocalProjectSpace[],
+  input: {
+    projectKey: string
+    status: 'succeeded' | 'failed' | 'skipped'
+    spaceId?: string | null
+    threadIds?: string[] | null
+    artifactRefs?: string[] | null
+    learnedSignals?: string[] | null
+    comparisonOpened?: boolean
+    timestamp?: string
+  },
+): LocalProjectSpace[] {
+  const projectKey = input.projectKey.trim().toLowerCase()
+  if (!projectKey) return spaces
+  const sourceThreadIds = Array.from(new Set((input.threadIds ?? []).filter(Boolean)))
+  const sourceThreadSet = new Set(sourceThreadIds)
+  const artifactRefs = safeProviderStringList(input.artifactRefs ?? [], 10)
+  const learnedSignals = safeProviderStringList(input.learnedSignals ?? [], 10)
+  const timestamp = input.timestamp ?? nowIso()
+  let changed = false
+  const next = spaces.map((space) => {
+    if (space.projectKey !== projectKey) return space
+    const matchesById = Boolean(input.spaceId && space.id === input.spaceId)
+    const matchesByThreads = sourceThreadSet.size > 0 && space.threadIds.some((threadId) => sourceThreadSet.has(threadId))
+    if (!matchesById && !matchesByThreads) return space
+    changed = true
+    const outcomeCount = (space.outcomeCount ?? 0) + 1
+    const successCount = (space.successCount ?? 0) + (input.status === 'succeeded' ? 1 : 0)
+    const failureCount = (space.failureCount ?? 0) + (input.status === 'failed' ? 1 : 0)
+    const comparisonOpenCount = (space.comparisonOpenCount ?? 0) + (input.comparisonOpened ? 1 : 0)
+    return {
+      ...space,
+      updatedAt: timestamp,
+      lastOutcomeAt: timestamp,
+      lastOutcomeStatus: input.status,
+      outcomeCount,
+      successCount: successCount > 0 ? successCount : undefined,
+      failureCount: failureCount > 0 ? failureCount : undefined,
+      comparisonOpenCount: comparisonOpenCount > 0 ? comparisonOpenCount : undefined,
+      artifactRefs: Array.from(new Set([...(space.artifactRefs ?? []), ...artifactRefs])).slice(0, 10),
+      learnedSignals: Array.from(new Set([...(space.learnedSignals ?? []), ...learnedSignals])).slice(0, 10),
+    }
+  })
+  return changed ? next : spaces
 }
 
 export function createOrUpdateLocalProjectSpace(
@@ -1138,7 +1662,8 @@ export function createOrUpdateLocalProjectSpace(
     createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp,
   }
-  return [nextSpace, ...spaces.filter((space) => space.id !== id && space.id !== existing?.id)].slice(0, 8)
+  return [nextSpace, ...spaces.filter((space) => space.id !== id && space.id !== existing?.id)]
+    .slice(0, MAX_PROJECT_SPACES_STORED)
 }
 
 export function addThreadToLocalProjectSpace(
@@ -1247,6 +1772,8 @@ export function AtlasAiThreadList({
   error,
   retrying,
   selectedId,
+  stageCompareAnchorId,
+  stageDropActive,
   activeWorkspace,
   modeFilter,
   onModeFilter,
@@ -1264,8 +1791,13 @@ export function AtlasAiThreadList({
   onOpenBeside,
   onOpenInStage,
   onStageDragActive,
+  onThreadDragStart,
+  onThreadDragEnd,
   onProjectSpaceCountChange,
   onProjectSpaceContextPacksChange,
+  onProjectSpacesHydratedChange,
+  projectSpaceOutcomeEvent,
+  onProjectSpaceMaintenance,
   runningThreadIds,
   dragClearSignal,
   onOpenSpace,
@@ -1287,6 +1819,7 @@ export function AtlasAiThreadList({
   const suppressClickThreadIdRef = useRef<string | null>(null)
   const suppressClickTimerRef = useRef<number | null>(null)
   const pointerFusionStartRef = useRef<{ threadId: string; eventType: string; at: number } | null>(null)
+  const pointerFusionActiveRef = useRef(false)
   const pointerFusionLastTargetRef = useRef<PointerFusionDropSnapshot>(emptyPointerFusionDropSnapshot())
   const [workspaceToolsOpen] = useState(false)
   const [projectSpaces, setProjectSpaces] = useState<LocalProjectSpace[]>(() => loadProjectSpaces())
@@ -1294,6 +1827,8 @@ export function AtlasAiThreadList({
   const [nativeProjectSpacesHydrated, setNativeProjectSpacesHydrated] = useState(false)
   const [threadSeenAt, setThreadSeenAt] = useState<Record<string, number>>(() => loadThreadSeenAt() ?? {})
   const threadSeenAtInitializedRef = useRef(loadThreadSeenAt() !== null)
+  const nativeProjectSpacesSaveTailRef = useRef<Promise<unknown>>(Promise.resolve())
+  const nativeProjectSpacesSaveVersionRef = useRef(0)
 
   const suppressNextThreadClick = useCallback((threadId: string) => {
     suppressClickThreadIdRef.current = threadId
@@ -1313,10 +1848,10 @@ export function AtlasAiThreadList({
     onSelect(threadId)
   }, [onSelect])
 
-  const clearThreadDragState = useCallback(() => {
+  const clearThreadDragState = useCallback((options?: { notifyEnd?: boolean }) => {
+    pointerFusionActiveRef.current = false
     pointerFusionLastTargetRef.current = emptyPointerFusionDropSnapshot()
     pointerFusionStartRef.current = null
-    suppressClickThreadIdRef.current = null
     setDraggingThreadTitle(null)
     setPointerFusionPreview(null)
     setPointerFusionTargetId(null)
@@ -1324,7 +1859,8 @@ export function AtlasAiThreadList({
     setPointerFusionThread(null)
     setDropActive(false)
     onStageDragActive?.(false)
-  }, [onStageDragActive])
+    if (options?.notifyEnd !== false) onThreadDragEnd?.()
+  }, [onStageDragActive, onThreadDragEnd])
 
   useEffect(() => () => {
     if (suppressClickTimerRef.current !== null) {
@@ -1332,10 +1868,11 @@ export function AtlasAiThreadList({
     }
   }, [])
 
-  const beginNativeThreadDrag = useCallback((title: string) => {
-    clearThreadDragState()
+  const beginNativeThreadDrag = useCallback((title: string, anchorThreadId: string | null, draggedThreadId?: string | null) => {
+    clearThreadDragState({ notifyEnd: false })
+    onThreadDragStart?.(anchorThreadId, draggedThreadId)
     setDraggingThreadTitle(title)
-  }, [clearThreadDragState])
+  }, [clearThreadDragState, onThreadDragStart])
 
   useEffect(() => saveCollapsed(collapsed), [collapsed])
   useEffect(() => saveExpanded(expandedAll), [expandedAll])
@@ -1362,7 +1899,15 @@ export function AtlasAiThreadList({
   useEffect(() => {
     saveProjectSpaces(projectSpaces)
     if (nativeProjectSpacesHydrated) {
-      void bridge.saveAwisProjectSpacesStore(projectSpaces, savedSpaceReceipts)
+      const saveVersion = ++nativeProjectSpacesSaveVersionRef.current
+      const spacesSnapshot = projectSpaces
+      const receiptsSnapshot = savedSpaceReceipts
+      nativeProjectSpacesSaveTailRef.current = nativeProjectSpacesSaveTailRef.current
+        .catch(() => null)
+        .then(() => {
+          if (saveVersion < nativeProjectSpacesSaveVersionRef.current) return null
+          return bridge.saveAwisProjectSpacesStore(spacesSnapshot, receiptsSnapshot)
+        })
     }
   }, [nativeProjectSpacesHydrated, projectSpaces, savedSpaceReceipts])
   useEffect(() => saveSavedSpaceReceipts(savedSpaceReceipts), [savedSpaceReceipts])
@@ -1491,15 +2036,45 @@ export function AtlasAiThreadList({
           title: space.title,
           threads: spaceThreads,
           source: space.source === 'suggested' ? 'suggested_space' : 'local_space',
+          space,
         })
       })
       .filter((pack): pack is LocalProjectSpaceContextPack => Boolean(pack))
-      .slice(0, 8)
+      .slice(0, MAX_PROJECT_SPACE_CONTEXT_PACKS)
   }, [activeProjectKey, projectSpaces, threadById])
 
   useEffect(() => {
     onProjectSpaceContextPacksChange?.(activeProjectSpaceContextPacks)
   }, [activeProjectSpaceContextPacks, onProjectSpaceContextPacksChange])
+
+  const recordProjectSpaceLearning = useCallback((input: {
+    projectKey: string
+    status: 'succeeded' | 'failed' | 'skipped'
+    spaceId?: string | null
+    threadIds?: string[] | null
+    artifactRefs?: string[] | null
+    learnedSignals?: string[] | null
+    comparisonOpened?: boolean
+  }) => {
+    setProjectSpaces((prev) => recordLocalProjectSpaceOutcome(prev, input))
+  }, [])
+
+  useEffect(() => {
+    if (!projectSpaceOutcomeEvent) return
+    setProjectSpaces((prev) => recordLocalProjectSpaceOutcome(prev, {
+      projectKey: projectSpaceOutcomeEvent.projectKey,
+      status: projectSpaceOutcomeEvent.status,
+      threadIds: projectSpaceOutcomeEvent.threadIds ?? null,
+      artifactRefs: projectSpaceOutcomeEvent.artifactRefs ?? null,
+      learnedSignals: projectSpaceOutcomeEvent.learnedSignals ?? null,
+      comparisonOpened: projectSpaceOutcomeEvent.comparisonOpened === true,
+      timestamp: projectSpaceOutcomeEvent.occurredAt ?? nowIso(),
+    }))
+  }, [projectSpaceOutcomeEvent])
+
+  useEffect(() => {
+    onProjectSpacesHydratedChange?.(nativeProjectSpacesHydrated)
+  }, [nativeProjectSpacesHydrated, onProjectSpacesHydratedChange])
 
   useEffect(() => {
     if (!activeProjectKey || !conversationFusion?.persisted_artifact) return
@@ -1564,10 +2139,20 @@ export function AtlasAiThreadList({
         return suggestSpaceTitle(selectedThreads)
       }, source),
     )
+    onProjectSpaceMaintenance?.({
+      action: 'update_space_pack',
+      label: source === 'suggested' ? 'Space sugerido' : 'Space criado',
+      status: 'succeeded',
+      reason: source === 'suggested'
+        ? 'Space sugerido adotado como memória reutilizável'
+        : 'conversas agrupadas em Space',
+      evidence: [`${uniqueThreadIds.length} sessões`, `projeto:${projectKey}`],
+    })
     if (persistBackend && onFuseThreads) void onFuseThreads(uniqueThreadIds)
-  }, [onFuseThreads, threadById])
+  }, [onFuseThreads, onProjectSpaceMaintenance, threadById])
 
   const addThreadToProjectSpace = useCallback((spaceId: string, threadId: string) => {
+    const space = projectSpaces.find((item) => item.id === spaceId)
     setProjectSpaces((prev) =>
       addThreadToLocalProjectSpace(prev, spaceId, threadId, (nextThreadIds) => {
         const selectedThreads = nextThreadIds
@@ -1576,15 +2161,35 @@ export function AtlasAiThreadList({
         return suggestSpaceTitle(selectedThreads)
       }),
     )
-  }, [threadById])
+    if (space && !space.threadIds.includes(threadId)) {
+      onProjectSpaceMaintenance?.({
+        action: 'update_space_pack',
+        label: space.title,
+        status: 'succeeded',
+        reason: 'sessão adicionada ao Space',
+        evidence: [`${space.threadIds.length + 1} sessões`, `projeto:${space.projectKey}`],
+      })
+    }
+  }, [onProjectSpaceMaintenance, projectSpaces, threadById])
 
   const removeProjectSpace = useCallback((spaceId: string) => {
+    const space = projectSpaces.find((item) => item.id === spaceId)
     setProjectSpaces((prev) => removeLocalProjectSpace(prev, spaceId))
-  }, [])
+    if (space) {
+      onProjectSpaceMaintenance?.({
+        action: 'update_space_pack',
+        label: space.title,
+        status: 'succeeded',
+        reason: 'Space desfeito pelo operador',
+        evidence: [`${space.threadIds.length} sessões removidas`, `projeto:${space.projectKey}`],
+      })
+    }
+  }, [onProjectSpaceMaintenance, projectSpaces])
 
   const renameProjectSpace = useCallback((spaceId: string, title: string) => {
     const nextTitle = title.trim().replace(/\s+/g, ' ')
     if (!nextTitle) return
+    const space = projectSpaces.find((item) => item.id === spaceId)
     const timestamp = nowIso()
     setProjectSpaces((prev) =>
       prev.map((space) =>
@@ -1593,9 +2198,19 @@ export function AtlasAiThreadList({
           : space,
       ),
     )
-  }, [])
+    if (space && space.title !== nextTitle.slice(0, 64)) {
+      onProjectSpaceMaintenance?.({
+        action: 'update_space_pack',
+        label: nextTitle.slice(0, 64),
+        status: 'succeeded',
+        reason: 'Space renomeado',
+        evidence: [`antes:${space.title}`, `projeto:${space.projectKey}`],
+      })
+    }
+  }, [onProjectSpaceMaintenance, projectSpaces])
 
   const removeThreadFromProjectSpace = useCallback((spaceId: string, threadId: string) => {
+    const space = projectSpaces.find((item) => item.id === spaceId)
     setProjectSpaces((prev) =>
       removeThreadFromLocalProjectSpace(prev, spaceId, threadId, (nextThreadIds) => {
         const selectedThreads = nextThreadIds
@@ -1604,7 +2219,16 @@ export function AtlasAiThreadList({
         return suggestSpaceTitle(selectedThreads)
       }),
     )
-  }, [threadById])
+    if (space?.threadIds.includes(threadId)) {
+      onProjectSpaceMaintenance?.({
+        action: 'update_space_pack',
+        label: space.title,
+        status: 'succeeded',
+        reason: space.threadIds.length <= 2 ? 'Space removido por ficar com menos de duas sessões' : 'sessão removida do Space',
+        evidence: [`${Math.max(0, space.threadIds.length - 1)} sessões restantes`, `projeto:${space.projectKey}`],
+      })
+    }
+  }, [onProjectSpaceMaintenance, projectSpaces, threadById])
 
   const beginPointerFusion = (
     event: PointerEvent<HTMLElement> | ReactMouseEvent<HTMLElement>,
@@ -1634,6 +2258,14 @@ export function AtlasAiThreadList({
       }
     }
     const projectKey = targetProjectKey ?? 'chats'
+    const stageAnchorId =
+      stageCompareAnchorId && stageCompareAnchorId !== thread.id
+        ? stageCompareAnchorId
+        : selectedId && selectedId !== thread.id
+          ? selectedId
+          : null
+    pointerFusionActiveRef.current = true
+    onThreadDragStart?.(stageAnchorId && stageAnchorId !== thread.id ? stageAnchorId : null, thread.id)
     setPointerFusionThread({
       id: thread.id,
       title: thread.title?.trim() || '(sem título)',
@@ -1642,6 +2274,7 @@ export function AtlasAiThreadList({
       startX: event.clientX,
       startY: event.clientY,
       active: false,
+      stageAnchorId: stageAnchorId && stageAnchorId !== thread.id ? stageAnchorId : null,
     })
   }
 
@@ -1655,7 +2288,12 @@ export function AtlasAiThreadList({
     }
 
     const stageAtPoint = (x: number, y: number) => {
-      return document.elementFromPoint(x, y)?.closest<HTMLElement>('.atlas-ai-stage')
+      const target = document.elementFromPoint(x, y)?.closest<HTMLElement>('.atlas-ai-stage')
+      if (target) return target
+      const stage = document.querySelector<HTMLElement>('.atlas-ai-stage')
+      if (!stage) return null
+      const rect = stage.getBoundingClientRect()
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom ? stage : null
     }
 
     const spaceAtPoint = (x: number, y: number) => {
@@ -1694,6 +2332,8 @@ export function AtlasAiThreadList({
     const handlePointerUp = (event: globalThis.PointerEvent | MouseEvent) => {
       const active = pointerFusionThread.active || Math.hypot(event.clientX - pointerFusionThread.startX, event.clientY - pointerFusionThread.startY) >= 7
       if (active) {
+        event.preventDefault()
+        event.stopPropagation()
         suppressNextThreadClick(pointerFusionThread.id)
         const target = targetAtPoint(event.clientX, event.clientY)
         const dropTarget = resolvePointerFusionDropSnapshot({
@@ -1719,10 +2359,11 @@ export function AtlasAiThreadList({
           if (targetSpaceId) {
             addThreadToProjectSpace(targetSpaceId, pointerFusionThread.id)
           } else if (dropTarget.stage) {
-            onOpenInStage?.(pointerFusionThread.id)
+            onOpenInStage?.(pointerFusionThread.id, pointerFusionThread.stageAnchorId)
           }
         }
       }
+      pointerFusionActiveRef.current = false
       pointerFusionLastTargetRef.current = emptyPointerFusionDropSnapshot()
       setPointerFusionThread(null)
       setDraggingThreadTitle(null)
@@ -1730,6 +2371,7 @@ export function AtlasAiThreadList({
       setPointerFusionTargetId(null)
       setPointerFusionSpaceTargetId(null)
       onStageDragActive?.(false)
+      onThreadDragEnd?.()
     }
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
@@ -1748,7 +2390,7 @@ export function AtlasAiThreadList({
       document.removeEventListener('pointerup', handlePointerUp as EventListener, { capture: true })
       document.removeEventListener('mouseup', handlePointerUp as EventListener, { capture: true })
     }
-  }, [addThreadToProjectSpace, handleFuseThreads, onOpenInStage, onStageDragActive, pointerFusionThread, suppressNextThreadClick])
+  }, [addThreadToProjectSpace, handleFuseThreads, onOpenInStage, onStageDragActive, onThreadDragEnd, pointerFusionThread, selectedId, suppressNextThreadClick])
 
   useEffect(() => {
     if (!pointerFusionThread?.active && !pointerFusionPreview) return
@@ -1767,32 +2409,38 @@ export function AtlasAiThreadList({
   }, [clearThreadDragState, draggingThreadTitle, pointerFusionPreview])
 
   useEffect(() => {
+    const clearThreadDragFromEvent = () => clearThreadDragState()
     const clearOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') clearThreadDragState()
     }
     const clearOnHidden = () => {
       if (document.visibilityState === 'hidden') clearThreadDragState()
     }
-    window.addEventListener('dragend', clearThreadDragState)
-    window.addEventListener('dragcancel', clearThreadDragState)
-    window.addEventListener('drop', clearThreadDragState)
-    window.addEventListener('mouseup', clearThreadDragState)
-    window.addEventListener('pointerup', clearThreadDragState)
-    window.addEventListener('blur', clearThreadDragState)
+    const clearOnGlobalRelease = () => {
+      if (shouldClearThreadDragOnGlobalRelease(pointerFusionActiveRef.current)) {
+        clearThreadDragState()
+      }
+    }
+    window.addEventListener('dragend', clearThreadDragFromEvent)
+    window.addEventListener('dragcancel', clearThreadDragFromEvent)
+    window.addEventListener('drop', clearThreadDragFromEvent)
+    window.addEventListener('mouseup', clearOnGlobalRelease)
+    window.addEventListener('pointerup', clearOnGlobalRelease)
+    window.addEventListener('blur', clearThreadDragFromEvent)
     window.addEventListener('keydown', clearOnEscape)
-    window.addEventListener(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, clearThreadDragState)
-    document.addEventListener('mouseleave', clearThreadDragState)
+    window.addEventListener(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, clearThreadDragFromEvent)
+    document.addEventListener('mouseleave', clearThreadDragFromEvent)
     document.addEventListener('visibilitychange', clearOnHidden)
     return () => {
-      window.removeEventListener('dragend', clearThreadDragState)
-      window.removeEventListener('dragcancel', clearThreadDragState)
-      window.removeEventListener('drop', clearThreadDragState)
-      window.removeEventListener('mouseup', clearThreadDragState)
-      window.removeEventListener('pointerup', clearThreadDragState)
-      window.removeEventListener('blur', clearThreadDragState)
+      window.removeEventListener('dragend', clearThreadDragFromEvent)
+      window.removeEventListener('dragcancel', clearThreadDragFromEvent)
+      window.removeEventListener('drop', clearThreadDragFromEvent)
+      window.removeEventListener('mouseup', clearOnGlobalRelease)
+      window.removeEventListener('pointerup', clearOnGlobalRelease)
+      window.removeEventListener('blur', clearThreadDragFromEvent)
       window.removeEventListener('keydown', clearOnEscape)
-      window.removeEventListener(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, clearThreadDragState)
-      document.removeEventListener('mouseleave', clearThreadDragState)
+      window.removeEventListener(ATLAS_AI_THREAD_DRAG_CLEAR_EVENT, clearThreadDragFromEvent)
+      document.removeEventListener('mouseleave', clearThreadDragFromEvent)
       document.removeEventListener('visibilitychange', clearOnHidden)
     }
   }, [clearThreadDragState])
@@ -1870,11 +2518,13 @@ export function AtlasAiThreadList({
                     <ThreadRow
                       key={t.id}
                       thread={t}
-                      selectedId={selectedId}
+                      selected={t.id === selectedId}
                       onSelect={selectThreadFromList}
                       onPrefetch={onPrefetch}
                       onOpenBeside={onOpenBeside}
                       onOpenInStage={onOpenInStage}
+                      stageCompareAnchorId={stageCompareAnchorId && stageCompareAnchorId !== t.id ? stageCompareAnchorId : selectedId}
+                      stageDropActive={stageDropActive}
                       onContextMenu={onContextMenu}
                       pinned
                       draggable={canDropIntoActiveWorkspace || canFuseThreads}
@@ -2051,6 +2701,8 @@ export function AtlasAiThreadList({
                             onRemoveThreadFromSpace={removeThreadFromProjectSpace}
                             onAddThreadToSpace={addThreadToProjectSpace}
                             onAdoptSuggestedSpace={(threadIds) => handleProjectFuseThreads(threadIds, 'suggested')}
+                            onProjectSpaceMaintenance={onProjectSpaceMaintenance}
+                            onRecordSpaceLearning={recordProjectSpaceLearning}
                             pointerDropTargetId={pointerFusionSpaceTargetId}
                             buildingSpace={isComposingSpace}
                           />
@@ -2060,11 +2712,13 @@ export function AtlasAiThreadList({
                             <ThreadRow
                               key={t.id}
                               thread={t}
-                              selectedId={selectedId}
+                              selected={t.id === selectedId}
                               onSelect={selectThreadFromList}
                               onPrefetch={onPrefetch}
                               onOpenBeside={onOpenBeside}
                               onOpenInStage={onOpenInStage}
+                              stageCompareAnchorId={stageCompareAnchorId && stageCompareAnchorId !== t.id ? stageCompareAnchorId : selectedId}
+                              stageDropActive={stageDropActive}
                               onContextMenu={onContextMenu}
                               indented
                               draggable={canDropIntoActiveWorkspace || canFuseThreads}
@@ -2115,6 +2769,8 @@ export function AtlasAiThreadList({
                 onPrefetch={onPrefetch}
                 onOpenBeside={onOpenBeside}
                 onOpenInStage={onOpenInStage}
+                stageCompareAnchorId={stageCompareAnchorId ?? selectedId}
+                stageDropActive={stageDropActive}
                 onContextMenu={onContextMenu}
                 draggable={canDropIntoActiveWorkspace || canFuseThreads}
                 onFuseThreads={(threadIds) => handleFuseThreads(threadIds, 'chats', false)}
@@ -2170,6 +2826,16 @@ interface WorkspaceToolsProps {
   onRemoveThreadFromSpace?: (spaceId: string, threadId: string) => void
   onAddThreadToSpace?: (spaceId: string, threadId: string) => void
   onAdoptSuggestedSpace?: (threadIds: string[]) => void | Promise<void>
+  onProjectSpaceMaintenance?: AtlasAiThreadListProps['onProjectSpaceMaintenance']
+  onRecordSpaceLearning?: (input: {
+    projectKey: string
+    status: 'succeeded' | 'failed' | 'skipped'
+    spaceId?: string | null
+    threadIds?: string[] | null
+    artifactRefs?: string[] | null
+    learnedSignals?: string[] | null
+    comparisonOpened?: boolean
+  }) => void
   pointerDropTargetId?: string | null
   buildingSpace?: boolean
   fusion?: AtlasWorkspaceConversationFusion | null
@@ -2196,6 +2862,8 @@ function ProjectSpacesPanel({
   onRemoveThreadFromSpace,
   onAddThreadToSpace,
   onAdoptSuggestedSpace,
+  onProjectSpaceMaintenance,
+  onRecordSpaceLearning,
   pointerDropTargetId,
   buildingSpace = false,
   fusion,
@@ -2249,14 +2917,47 @@ function ProjectSpacesPanel({
     onRenameSpace?.(spaceId, editingSpaceTitle)
     closeSpaceEditor()
   }
-  const copySpacePack = async (spaceId: string, title: string, threads: AiThreadSummary[], source: LocalProjectSpaceContextPack['source']) => {
-    const pack = buildLocalProjectSpaceContextPack({ title, threads, source })
+  const copySpacePack = async (space: LocalProjectSpace, threads: AiThreadSummary[], source: LocalProjectSpaceContextPack['source']) => {
+    const pack = buildLocalProjectSpaceContextPack({ title: space.title, threads, source, space })
     try {
       await navigator.clipboard?.writeText(localProjectSpaceContextPackMarkdown(pack))
-      setCopiedSpacePackId(spaceId)
-      window.setTimeout(() => setCopiedSpacePackId((current) => current === spaceId ? null : current), 1600)
+      setCopiedSpacePackId(space.id)
+      onRecordSpaceLearning?.({
+        projectKey: space.projectKey,
+        spaceId: space.id,
+        threadIds: space.threadIds,
+        status: 'succeeded',
+        artifactRefs: pack.brain_contract.artifact_refs,
+        learnedSignals: [
+          `pack:${pack.brain_contract.state}`,
+          `sessões:${pack.thread_count}`,
+          `reuso:${pack.reusable_by.join('+')}`,
+        ],
+      })
+      onProjectSpaceMaintenance?.({
+        action: 'update_space_pack',
+        label: space.title,
+        status: 'succeeded',
+        reason: 'contexto seguro do Space copiado para reutilização',
+        evidence: [`${pack.thread_count} sessões`, `estado:${pack.brain_contract.state}`],
+      })
+      window.setTimeout(() => setCopiedSpacePackId((current) => current === space.id ? null : current), 1600)
     } catch {
       setCopiedSpacePackId(null)
+      onRecordSpaceLearning?.({
+        projectKey: space.projectKey,
+        spaceId: space.id,
+        threadIds: space.threadIds,
+        status: 'failed',
+        learnedSignals: ['pack:clipboard falhou'],
+      })
+      onProjectSpaceMaintenance?.({
+        action: 'update_space_pack',
+        label: space.title,
+        status: 'failed',
+        reason: 'clipboard recusou contexto seguro do Space',
+        evidence: [`${threads.length} sessões`],
+      })
     }
   }
   return (
@@ -2320,6 +3021,21 @@ function ProjectSpacesPanel({
                           event.preventDefault()
                           event.stopPropagation()
                           onOpenSpace?.(space.threadIds)
+                          onRecordSpaceLearning?.({
+                            projectKey: space.projectKey,
+                            spaceId: space.id,
+                            threadIds: space.threadIds,
+                            status: 'succeeded',
+                            comparisonOpened: true,
+                            learnedSignals: ['comparar:abertura explícita'],
+                          })
+                          onProjectSpaceMaintenance?.({
+                            action: 'open_side_by_side',
+                            label: space.title,
+                            status: 'succeeded',
+                            reason: 'Space aberto para comparar sessões',
+                            evidence: [`${space.threadIds.length} sessões`, `projeto:${space.projectKey}`],
+                          })
                         }}
                         title="Abre as sessões deste Space para comparar"
                       >
@@ -2331,7 +3047,7 @@ function ProjectSpacesPanel({
                         onClick={(event) => {
                           event.preventDefault()
                           event.stopPropagation()
-                          void copySpacePack(space.id, space.title, spaceThreads, 'local_space')
+                          void copySpacePack(space, spaceThreads, 'local_space')
                         }}
                         title="Copiar contexto seguro deste Space"
                         aria-label={`Copiar contexto seguro do Space ${space.title}`}
@@ -2842,17 +3558,19 @@ function Section({ label, children, action }: SectionProps) {
 interface OrphanListProps {
   threads: AiThreadSummary[]
   selectedId: string | null
+  stageCompareAnchorId?: string | null
+  stageDropActive?: boolean
   onSelect: (id: string) => void
   onPrefetch?: (id: string) => void
-  onOpenBeside?: (id: string) => void
-  onOpenInStage?: (id: string) => void
+  onOpenBeside?: (id: string, anchorThreadId?: string | null) => void
+  onOpenInStage?: (id: string, anchorThreadId?: string | null) => void
   onContextMenu?: (thread: AiThreadSummary, ev: React.MouseEvent) => void
   draggable?: boolean
   onFuseThreads?: (threadIds: string[]) => void | Promise<void>
   onPointerFusionStart?: (event: PointerEvent<HTMLElement> | ReactMouseEvent<HTMLElement>, thread: AiThreadSummary) => void
   pointerFusionTargetId?: string | null
   suppressClickThreadId?: string | null
-  onDragThreadStart?: (title: string) => void
+  onDragThreadStart?: (title: string, anchorThreadId: string | null, draggedThreadId?: string | null) => void
   onDragThreadEnd?: () => void
   statusForThread?: (thread: AiThreadSummary) => ThreadRowStatus
 }
@@ -2860,6 +3578,8 @@ interface OrphanListProps {
 function OrphanList({
   threads,
   selectedId,
+  stageCompareAnchorId,
+  stageDropActive,
   onSelect,
   onPrefetch,
   onOpenBeside,
@@ -2884,11 +3604,13 @@ function OrphanList({
           <ThreadRow
             key={t.id}
             thread={t}
-            selectedId={selectedId}
+            selected={t.id === selectedId}
             onSelect={onSelect}
             onPrefetch={onPrefetch}
             onOpenBeside={onOpenBeside}
             onOpenInStage={onOpenInStage}
+            stageCompareAnchorId={stageCompareAnchorId && stageCompareAnchorId !== t.id ? stageCompareAnchorId : selectedId}
+            stageDropActive={stageDropActive}
             onContextMenu={onContextMenu}
             draggable={draggable}
             fusionProjectKey="chats"
@@ -2918,12 +3640,14 @@ function OrphanList({
 
 interface ThreadRowProps {
   thread: AiThreadSummary
-  selectedId: string | null
+  selected: boolean
   onSelect: (id: string) => void
   onPrefetch?: (id: string) => void
-  onOpenBeside?: (id: string) => void
-  onOpenInStage?: (id: string) => void
+  onOpenBeside?: (id: string, anchorThreadId?: string | null) => void
+  onOpenInStage?: (id: string, anchorThreadId?: string | null) => void
   onContextMenu?: (thread: AiThreadSummary, ev: React.MouseEvent) => void
+  stageCompareAnchorId?: string | null
+  stageDropActive?: boolean
   pinned?: boolean
   indented?: boolean
   draggable?: boolean
@@ -2933,21 +3657,23 @@ interface ThreadRowProps {
   onPointerFusionStart?: (event: PointerEvent<HTMLElement> | ReactMouseEvent<HTMLElement>) => void
   pointerFusionTarget?: boolean
   suppressClick?: boolean
-  onDragThreadStart?: (title: string) => void
+  onDragThreadStart?: (title: string, anchorThreadId: string | null, draggedThreadId?: string | null) => void
   onDragThreadEnd?: () => void
   status?: ThreadRowStatus
 }
 
 type ThreadRowStatus = 'idle' | 'running' | 'unread'
 
-function ThreadRow({
+const ThreadRow = memo(function ThreadRow({
   thread,
-  selectedId,
+  selected,
   onSelect,
   onPrefetch,
   onOpenBeside,
   onOpenInStage,
   onContextMenu,
+  stageCompareAnchorId,
+  stageDropActive,
   pinned,
   indented,
   draggable,
@@ -2962,12 +3688,24 @@ function ThreadRow({
   status = 'idle',
 }: ThreadRowProps) {
   const mode = inferThreadMode(thread)
-  const selected = thread.id === selectedId
   const title = thread.title?.trim() || '(sem título)'
   const time = formatRelativeShort(threadTimestamp(thread))
   const dragHandleTitle = 'Arrastar conversa'
   const [dropTarget, setDropTarget] = useState(false)
   const prefetchTimerRef = useRef<number | null>(null)
+  const nativeDragAnchorRef = useRef<string | null>(null)
+  const nativeDragClickSuppressRef = useRef(false)
+  const nativeDragClickSuppressTimerRef = useRef<number | null>(null)
+  const suppressNativeDragClick = () => {
+    nativeDragClickSuppressRef.current = true
+    if (nativeDragClickSuppressTimerRef.current !== null) {
+      window.clearTimeout(nativeDragClickSuppressTimerRef.current)
+    }
+    nativeDragClickSuppressTimerRef.current = window.setTimeout(() => {
+      nativeDragClickSuppressRef.current = false
+      nativeDragClickSuppressTimerRef.current = null
+    }, 500)
+  }
   const cancelPrefetchTimer = () => {
     if (prefetchTimerRef.current === null) return
     window.clearTimeout(prefetchTimerRef.current)
@@ -2984,21 +3722,45 @@ function ThreadRow({
       onPrefetch(thread.id)
     }, THREAD_PREFETCH_HOVER_DELAY_MS)
   }
-  useEffect(() => cancelPrefetchTimer, [])
+  useEffect(() => () => {
+    cancelPrefetchTimer()
+    if (nativeDragClickSuppressTimerRef.current !== null) {
+      window.clearTimeout(nativeDragClickSuppressTimerRef.current)
+    }
+  }, [])
   const startThreadDrag = (event: DragEvent<HTMLElement>) => {
     if (!draggable) return
+    const anchorThreadId = stageCompareAnchorId && stageCompareAnchorId !== thread.id ? stageCompareAnchorId : null
+    nativeDragAnchorRef.current = anchorThreadId
     event.dataTransfer.effectAllowed = 'copyMove'
     event.dataTransfer.setData('application/x-atlas-ai-thread-id', thread.id)
     event.dataTransfer.setData('text/x-atlas-ai-thread-id', thread.id)
+    if (anchorThreadId) {
+      event.dataTransfer.setData('application/x-atlas-ai-visible-thread-id', anchorThreadId)
+      event.dataTransfer.setData('text/x-atlas-ai-visible-thread-id', anchorThreadId)
+    }
     event.dataTransfer.setData('text/plain', title)
-    onDragThreadStart?.(title)
+    suppressNativeDragClick()
+    onDragThreadStart?.(title, anchorThreadId, thread.id)
   }
   const finishThreadDrag = (event: DragEvent<HTMLElement>) => {
     setDropTarget(false)
+    suppressNativeDragClick()
     const target = document.elementFromPoint(event.clientX, event.clientY)
-    if (target?.closest('.atlas-ai-stage')) {
-      onOpenInStage?.(thread.id)
+    const stage = target?.closest<HTMLElement>('.atlas-ai-stage') ?? document.querySelector<HTMLElement>('.atlas-ai-stage')
+    const stageRect = stage?.getBoundingClientRect()
+    const droppedInsideStageBounds = Boolean(
+      stageRect &&
+        event.clientX >= stageRect.left &&
+        event.clientX <= stageRect.right &&
+        event.clientY >= stageRect.top &&
+        event.clientY <= stageRect.bottom,
+    )
+    const droppedOnStage = stageDropActive || Boolean(target?.closest('.atlas-ai-stage')) || droppedInsideStageBounds
+    if (droppedOnStage) {
+      onOpenInStage?.(thread.id, nativeDragAnchorRef.current)
     }
+    nativeDragAnchorRef.current = null
     onDragThreadEnd?.()
   }
   return (
@@ -3043,11 +3805,16 @@ function ThreadRow({
         {draggable ? (
           <button
             type="button"
-            draggable={false}
+            draggable={draggable}
             className="atlas-ai-thread-drag-handle"
             title={dragHandleTitle}
             aria-label={`${dragHandleTitle}: ${title}`}
             onClick={(event) => {
+              if (suppressClick || nativeDragClickSuppressRef.current) {
+                event.preventDefault()
+                event.stopPropagation()
+                return
+              }
               event.preventDefault()
               event.stopPropagation()
               onSelect(thread.id)
@@ -3074,7 +3841,7 @@ function ThreadRow({
           onMouseDown={onPointerFusionStart}
           onDragStart={startThreadDrag}
           onClick={(event) => {
-            if (suppressClick) {
+            if (suppressClick || nativeDragClickSuppressRef.current) {
               event.preventDefault()
               event.stopPropagation()
               return
@@ -3119,5 +3886,29 @@ function ThreadRow({
         ) : null}
       </div>
     </li>
+  )
+}, areThreadRowPropsEqual)
+
+function areThreadRowPropsEqual(prev: ThreadRowProps, next: ThreadRowProps): boolean {
+  return (
+    prev.thread === next.thread &&
+    prev.selected === next.selected &&
+    prev.pinned === next.pinned &&
+    prev.indented === next.indented &&
+    prev.draggable === next.draggable &&
+    prev.fusionProjectKey === next.fusionProjectKey &&
+    prev.persistBackend === next.persistBackend &&
+    prev.onSelect === next.onSelect &&
+    prev.onOpenBeside === next.onOpenBeside &&
+    prev.onOpenInStage === next.onOpenInStage &&
+    prev.onFuseThreads === next.onFuseThreads &&
+    prev.onPointerFusionStart === next.onPointerFusionStart &&
+    prev.onDragThreadStart === next.onDragThreadStart &&
+    prev.onDragThreadEnd === next.onDragThreadEnd &&
+    prev.stageCompareAnchorId === next.stageCompareAnchorId &&
+    prev.stageDropActive === next.stageDropActive &&
+    prev.pointerFusionTarget === next.pointerFusionTarget &&
+    prev.suppressClick === next.suppressClick &&
+    prev.status === next.status
   )
 }

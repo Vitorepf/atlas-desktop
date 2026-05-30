@@ -83,9 +83,11 @@ function compactHttpError(status: number, body: string): string {
     if (
       bodyHint.includes('sqlstate[08006]') ||
       (bodyHint.includes('connection refused') &&
-        (bodyHint.includes('pgsql') || bodyHint.includes('postgres') || bodyHint.includes('5433')))
+        (bodyHint.includes('pgsql') || bodyHint.includes('postgres') || bodyHint.includes('5433'))) ||
+      bodyHint.includes('port: 5433') ||
+      bodyHint.includes('port 5433')
     ) {
-      return 'Atlas AI · serviço local indisponível. Inicie o serviço local do Atlas e tente de novo.'
+      return 'Atlas AI · serviço local indisponível: banco local ainda não respondeu.'
     }
 
     return 'Atlas AI · serviço local instável. Tente de novo em instantes.'
@@ -110,6 +112,55 @@ function compactHttpError(status: number, body: string): string {
   return `Atlas AI · http ${status}${compact ? `: ${compact}` : ''}`
 }
 
+function compactBridgeError(detail: string): string {
+  const bodyHint = detail.toLowerCase()
+  if (
+    bodyHint.includes('sqlstate[08006]') ||
+    bodyHint.includes('connection refused') ||
+    bodyHint.includes('port 5433') ||
+    bodyHint.includes('port: 5433') ||
+    bodyHint.includes('kernel responded with status 500')
+  ) {
+    return 'Atlas AI · serviço local indisponível: banco local ainda não respondeu.'
+  }
+  if (bodyHint.includes('status 500') || bodyHint.includes('http 500') || bodyHint.includes('internal server error')) {
+    return 'Atlas AI · serviço local instável. Tente de novo em instantes.'
+  }
+  return `Atlas AI não conseguiu falar com o serviço local (${detail || 'falha de bridge'}). Verifique se o Atlas local está rodando e tente de novo.`
+}
+
+function abortError(): Error {
+  if (typeof DOMException !== 'undefined') {
+    return new DOMException('Request aborted', 'AbortError')
+  }
+  const error = new Error('Request aborted')
+  error.name = 'AbortError'
+  return error
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortError()
+}
+
+function raceAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  throwIfAborted(signal)
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError())
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      },
+    )
+  })
+}
+
 export function atlasAiBridgeMode(): AtlasAiBridgeMode {
   return MODE
 }
@@ -118,14 +169,18 @@ async function fetchJson<T>(
   path: string,
   init?: { method?: string; body?: unknown; signal?: AbortSignal },
 ): Promise<T> {
+  throwIfAborted(init?.signal)
   if (MODE === 'tauri') {
     try {
       const tauri = await import('@tauri-apps/api/core')
-      return await tauri.invoke<T>('bridge_atlas_ai_http_json', {
-        method: init?.method ?? 'GET',
-        path,
-        body: init?.body ?? null,
-      })
+      return await raceAbort(
+        tauri.invoke<T>('bridge_atlas_ai_http_json', {
+          method: init?.method ?? 'GET',
+          path,
+          body: init?.body ?? null,
+        }),
+        init?.signal,
+      )
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error
@@ -139,9 +194,7 @@ async function fetchJson<T>(
           : typeof error === 'string'
             ? error.trim()
             : 'falha de bridge'
-      throw new Error(
-        `Atlas AI não conseguiu falar com o serviço local (${detail || 'falha de bridge'}). Verifique se o Atlas local está rodando e tente de novo.`,
-      )
+      throw new Error(compactBridgeError(detail))
     }
   }
 
@@ -353,6 +406,27 @@ export async function getAtlasAiRuntimeReadiness(): Promise<AtlasAiRuntimeReadin
   if (MODE === 'offline') return null
   try {
     return await fetchJson<AtlasAiRuntimeReadiness>('/atlas/ai/runtime-readiness')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * GET /atlas/patamar4/state — Patamar 4 autonomous loop aggregator
+ * (Constitutional Kernel · Admission · CognitiveFunctionAtlas · Reconciliation ·
+ * TEOS-I4 · Swarm · Temporary Domain Composition · Gateway Consultation ·
+ * Antifragility metric).
+ *
+ * Same silent-fallback philosophy: returns null on absence/error so the surface
+ * just doesn't render the Patamar 4 panel. Never propagates error to main UI.
+ */
+export async function getAtlasPatamar4State(
+  tail = 5,
+): Promise<unknown | null> {
+  if (MODE === 'offline') return null
+  try {
+    const t = Math.max(1, Math.min(50, tail))
+    return await fetchJson<unknown>(`/atlas/patamar4/state?tail=${t}`)
   } catch {
     return null
   }

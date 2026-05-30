@@ -429,6 +429,7 @@ export function AtlasAiConversation({
         m.created_at &&
         new Date(m.created_at).getTime() >= pendingUserMessage.startedAt - 2000,
     )
+  const messagesLoading = loading && messages.length === 0 && !showOptimistic && !showStreamingBubble
 
   return (
     <section className="atlas-ai-conversation" aria-live="polite">
@@ -498,7 +499,11 @@ export function AtlasAiConversation({
           </div>
         ) : null}
 
-        {messages.length === 0 && !showOptimistic && !showStreamingBubble ? (
+        {messagesLoading ? (
+          <p className="atlas-ai-empty-line">carregando conversa…</p>
+        ) : null}
+
+        {messages.length === 0 && !messagesLoading && !showOptimistic && !showStreamingBubble ? (
           <p className="atlas-ai-empty-line">primeira pergunta — escreva abaixo</p>
         ) : null}
 

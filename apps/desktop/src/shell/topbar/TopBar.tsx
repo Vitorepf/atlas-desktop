@@ -1,4 +1,5 @@
 import { BrandBlock } from './BrandBlock'
+import { SurfaceSwitcher } from './SurfaceSwitcher'
 import type { TopBarProps } from './topBarTypes'
 import { TopBarLocationTrail } from './TopBarLocationTrail'
 import { useTopBarLocationTrail } from './useTopBarLocationTrail'
@@ -9,6 +10,7 @@ export function TopBar({
   workspaces,
   activeWorkspace,
   activeWorkspaceSlug,
+  onSurfaceChange,
   onSelectWorkspace,
   onOpenWorkspaceProfile,
   loading,
@@ -24,6 +26,13 @@ export function TopBar({
           workspaceName={workspaceName}
           onOpenWorkspaceProfile={onOpenWorkspaceProfile}
         />
+        {onSurfaceChange ? (
+          <SurfaceSwitcher
+            surface={surface}
+            onSurfaceChange={onSurfaceChange}
+            enabledSurfaces={activeWorkspace?.surfacesEnabled ?? null}
+          />
+        ) : null}
         {onSelectWorkspace ? (
           <WorkspacePill
             workspaces={workspaces ?? null}

@@ -58,21 +58,57 @@ async function loadHighlighter(): Promise<ShikiAPI> {
   return highlighterPromise
 }
 
-export function useShikiHighlighter() {
+function scheduleShikiLoad(callback: () => void): () => void {
+  if (typeof window === 'undefined') {
+    callback()
+    return () => {}
+  }
+  let cancelled = false
+  let timeoutId: number | null = null
+  const win = window as Window & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number
+    cancelIdleCallback?: (id: number) => void
+  }
+  const run = () => {
+    if (!cancelled) callback()
+  }
+  if (typeof win.requestIdleCallback === 'function') {
+    const idleId = win.requestIdleCallback(run, { timeout: 900 })
+    return () => {
+      cancelled = true
+      win.cancelIdleCallback?.(idleId)
+    }
+  }
+  timeoutId = window.setTimeout(run, 500)
+  return () => {
+    cancelled = true
+    if (timeoutId !== null) window.clearTimeout(timeoutId)
+  }
+}
+
+export function useShikiHighlighter(enabled = true) {
   const [ready, setReady] = useState(false)
   const [hl, setHl] = useState<ShikiAPI | null>(null)
 
   useEffect(() => {
+    if (!enabled) {
+      setReady(false)
+      setHl(null)
+      return
+    }
     let cancelled = false
-    void loadHighlighter().then((api) => {
-      if (cancelled) return
-      setHl(api)
-      setReady(true)
+    const cancelScheduledLoad = scheduleShikiLoad(() => {
+      void loadHighlighter().then((api) => {
+        if (cancelled) return
+        setHl(api)
+        setReady(true)
+      })
     })
     return () => {
       cancelled = true
+      cancelScheduledLoad()
     }
-  }, [])
+  }, [enabled])
 
   function highlight(code: string, lang: string | null): string | null {
     if (!hl || !ready) return null

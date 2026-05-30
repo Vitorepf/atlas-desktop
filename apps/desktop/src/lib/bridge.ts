@@ -162,6 +162,21 @@ export interface AtlasWorkspaceBrainFile {
   kind: string
 }
 
+export interface AtlasWorkspaceBrainDocDigest {
+  path: string
+  kind: string
+  signals: string[]
+  obligations: string[]
+  summary: string
+}
+
+export interface AtlasWorkspaceBrainDependencyEdge {
+  from: string
+  to: string
+  kind: string
+  source: string
+}
+
 export interface AtlasWorkspaceBrainCommand {
   label: string
   command: string
@@ -183,6 +198,8 @@ export interface AtlasWorkspaceBrainSnapshot {
   languages: AtlasWorkspaceBrainLanguage[]
   signals: string[]
   importantFiles: AtlasWorkspaceBrainFile[]
+  docDigests: AtlasWorkspaceBrainDocDigest[]
+  dependencyEdges: AtlasWorkspaceBrainDependencyEdge[]
   commands: AtlasWorkspaceBrainCommand[]
   notes: string[]
 }
@@ -238,6 +255,7 @@ export function detectMode(): BridgeMode {
 const MODE: BridgeMode = detectMode()
 const HTTP_BASE = ENV.VITE_ATLAS_SERVER_URL ?? ''
 const LOCAL_WORKSPACE_PROFILES_KEY = 'atlas-desktop:local-workspace-profiles'
+const AWIS_WORKSPACE_MEMORY_STORAGE_KEY = 'atlas-desktop:atlas-ai-workspace-memory'
 
 function normalizeLocalFolderPath(value: unknown): string {
   if (typeof value !== 'string') return ''
@@ -313,7 +331,7 @@ function readLocalWorkspaceProfiles(): AtlasWorkspaceProfileList | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(LOCAL_WORKSPACE_PROFILES_KEY)
-    return raw ? adaptWorkspaceProfileList(JSON.parse(raw)) : null
+    return hydrateWorkspaceProfileListFromAwis(raw ? adaptWorkspaceProfileList(JSON.parse(raw)) : null)
   } catch (e) {
     console.warn('[bridge] local workspace profiles read failed', e)
     return null
@@ -331,6 +349,111 @@ function writeLocalWorkspaceProfiles(list: AtlasWorkspaceProfileList | null): vo
   } catch (e) {
     console.warn('[bridge] local workspace profiles write failed', e)
   }
+}
+
+function workspaceProfileKey(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  const clean = trimmed.replace(/\\/g, '/').replace(/\/+$/, '')
+  const base = clean.split('/').filter(Boolean).at(-1) ?? clean
+  return base.toLowerCase()
+}
+
+function recoverWorkspacePathFromAwisMemory(slug: string): string {
+  if (typeof window === 'undefined') return ''
+  const wanted = workspaceProfileKey(slug)
+  if (!wanted) return ''
+  try {
+    const raw = window.localStorage.getItem(AWIS_WORKSPACE_MEMORY_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return ''
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+      const memory = value as Record<string, unknown>
+      const memoryKey = typeof memory.workspaceKey === 'string' ? memory.workspaceKey : key
+      const rootPath = normalizeLocalFolderPath(memory.rootPath)
+      if (!rootPath) continue
+      if (
+        workspaceProfileKey(memoryKey) === wanted ||
+        workspaceProfileKey(rootPath) === wanted
+      ) {
+        return rootPath
+      }
+    }
+  } catch {
+    /* AWIS memory is opportunistic recovery; invalid cache must not block projects. */
+  }
+  return ''
+}
+
+function profileWithLocalFolderFallback(
+  remote: AtlasWorkspaceProfile,
+  local: AtlasWorkspaceProfile | null,
+): AtlasWorkspaceProfile {
+  const localPath = local?.workspacePath || recoverWorkspacePathFromAwisMemory(remote.slug)
+  if (!localPath) return remote
+  const remoteHasFolder = remote.workspacePath.trim() !== '' && remote.workspacePathExists === true
+  if (remoteHasFolder) return remote
+  return {
+    ...remote,
+    workspacePath: localPath,
+    repoRoot: remote.repoRoot || local?.repoRoot || localPath,
+    workspacePathExists: local?.workspacePathExists || remote.workspacePathExists || Boolean(localPath),
+    safety: {
+      ...remote.safety,
+      executionAllowed: local?.safety.executionAllowed || remote.safety.executionAllowed || Boolean(localPath),
+      executionBlockedReason: local?.safety.executionAllowed || localPath
+        ? null
+        : remote.safety.executionBlockedReason,
+    },
+  }
+}
+
+function mergeWorkspaceProfileLists(
+  remote: AtlasWorkspaceProfileList | null,
+  local: AtlasWorkspaceProfileList | null,
+): AtlasWorkspaceProfileList | null {
+  if (!remote) return local
+  const localBySlug = new Map((local?.profiles ?? []).map((profile) => [profile.slug, profile]))
+  const merged = remote.profiles.map((profile) => (
+    profileWithLocalFolderFallback(profile, localBySlug.get(profile.slug) ?? null)
+  ))
+  for (const localProfile of local?.profiles ?? []) {
+    if (!merged.some((profile) => profile.slug === localProfile.slug)) {
+      merged.push(localProfile)
+    }
+  }
+  return {
+    schemaVersion: remote.schemaVersion,
+    defaultSlug: remote.defaultSlug || local?.defaultSlug || merged[0]?.slug || '',
+    profiles: merged,
+  }
+}
+
+function hydrateWorkspaceProfileListFromAwis(
+  list: AtlasWorkspaceProfileList | null,
+): AtlasWorkspaceProfileList | null {
+  if (!list?.profiles.length) return list
+  return {
+    ...list,
+    profiles: list.profiles.map((profile) => profileWithLocalFolderFallback(profile, null)),
+  }
+}
+
+function consolidateWorkspaceProfileList(list: AtlasWorkspaceProfileList | null): AtlasWorkspaceProfileList | null {
+  if (list?.profiles.length) writeLocalWorkspaceProfiles(list)
+  return list
+}
+
+function mirrorLocalWorkspaceProfile(profile: AtlasWorkspaceProfile): void {
+  const current = readLocalWorkspaceProfiles()
+  const profiles = current?.profiles.filter((item) => item.slug !== profile.slug) ?? []
+  profiles.push(profile)
+  writeLocalWorkspaceProfiles({
+    schemaVersion: current?.schemaVersion ?? profile.schemaVersion,
+    defaultSlug: current?.defaultSlug ?? profile.slug,
+    profiles,
+  })
 }
 
 function localWorkspaceProfileFromPayload(payload: AtlasWorkspaceProfileWritePayload): AtlasWorkspaceProfile {
@@ -754,6 +877,8 @@ export const bridge = {
         languages: [],
         signals: [],
         importantFiles: [],
+        docDigests: [],
+        dependencyEdges: [],
         commands: [],
         notes: ['mapa local indisponível'],
       }
@@ -882,21 +1007,23 @@ export const bridge = {
         try {
           raw = await invokeTauri<unknown>('bridge_list_workspaces')
         } catch {
-          if (!HTTP_BASE) return readLocalWorkspaceProfiles()
+          if (!HTTP_BASE) return consolidateWorkspaceProfileList(readLocalWorkspaceProfiles())
           try {
             raw = await fetchHttp<unknown>('/atlas-code/projects/workspaces')
           } catch (e) {
             console.warn('[bridge] listWorkspaces HTTP fallback failed', e)
-            return readLocalWorkspaceProfiles()
+            return consolidateWorkspaceProfileList(readLocalWorkspaceProfiles())
           }
         }
       } else {
-        return readLocalWorkspaceProfiles()
+        return consolidateWorkspaceProfileList(readLocalWorkspaceProfiles())
       }
-      return adaptWorkspaceProfileList(raw) ?? readLocalWorkspaceProfiles()
+      return consolidateWorkspaceProfileList(
+        mergeWorkspaceProfileLists(adaptWorkspaceProfileList(raw), readLocalWorkspaceProfiles()),
+      )
     } catch (e) {
       console.warn('[bridge] listWorkspaces', e)
-      return readLocalWorkspaceProfiles()
+      return consolidateWorkspaceProfileList(readLocalWorkspaceProfiles())
     }
   },
 
@@ -921,7 +1048,12 @@ export const bridge = {
       return upsertLocalWorkspaceProfile(payload)
     }
     try {
-      return adaptWorkspaceProfileEnvelope(raw)
+      const profile = profileWithLocalFolderFallback(
+        adaptWorkspaceProfileEnvelope(raw),
+        localWorkspaceProfileFromPayload(payload),
+      )
+      mirrorLocalWorkspaceProfile(profile)
+      return profile
     } catch (e) {
       if (MODE === 'tauri') {
         console.warn('[bridge] createWorkspaceProfile native response invalid; using local profile fallback', e)
@@ -960,7 +1092,12 @@ export const bridge = {
       return upsertLocalWorkspaceProfile({ ...payload, slug: target })
     }
     try {
-      return adaptWorkspaceProfileEnvelope(raw)
+      const profile = profileWithLocalFolderFallback(
+        adaptWorkspaceProfileEnvelope(raw),
+        localWorkspaceProfileFromPayload({ ...payload, slug: target }),
+      )
+      mirrorLocalWorkspaceProfile(profile)
+      return profile
     } catch (e) {
       if (MODE === 'tauri') {
         console.warn('[bridge] updateWorkspaceProfile native response invalid; using local profile fallback', e)
@@ -2571,6 +2708,25 @@ function adaptWorkspaceBrainSnapshot(raw: unknown): AtlasWorkspaceBrainSnapshot 
         kind: stringValue(o.kind) || 'arquivo',
       }
     }).filter((item) => item.path !== ''),
+    docDigests: arrayValue(r.docDigests ?? r.doc_digests).map((item) => {
+      const o = objectValue(item)
+      return {
+        path: stringValue(o.path),
+        kind: stringValue(o.kind) || 'documento',
+        signals: arrayValue(o.signals).map(String).filter((value) => value.trim() !== ''),
+        obligations: arrayValue(o.obligations).map(String).filter((value) => value.trim() !== ''),
+        summary: stringValue(o.summary),
+      }
+    }).filter((item) => item.path !== '' && (item.signals.length > 0 || item.obligations.length > 0 || item.summary !== '')),
+    dependencyEdges: arrayValue(r.dependencyEdges ?? r.dependency_edges).map((item) => {
+      const o = objectValue(item)
+      return {
+        from: stringValue(o.from),
+        to: stringValue(o.to),
+        kind: stringValue(o.kind) || 'dependency',
+        source: stringValue(o.source),
+      }
+    }).filter((item) => item.from !== '' && item.to !== '' && item.source !== ''),
     commands: arrayValue(r.commands).map((item) => {
       const o = objectValue(item)
       return {

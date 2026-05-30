@@ -417,6 +417,66 @@ assert.match(
 
 assert.match(
   bridge,
+  /function mergeWorkspaceProfileLists\([\s\S]*const localBySlug = new Map\(\(local\?\.profiles \?\? \[\]\)[\s\S]*profileWithLocalFolderFallback/,
+  'Workspace reads must always pass remote/native profiles through local/AWIS folder hydration instead of returning a cold remote list.',
+)
+
+assert.match(
+  bridge,
+  /const remoteHasFolder = remote\.workspacePath\.trim\(\) !== '' && remote\.workspacePathExists === true[\s\S]*workspacePath: localPath/,
+  'A remote profile with no confirmed local folder must not erase a locally chosen Mac folder.',
+)
+
+assert.match(
+  bridge,
+  /const AWIS_WORKSPACE_MEMORY_STORAGE_KEY = 'atlas-desktop:atlas-ai-workspace-memory'[\s\S]*function recoverWorkspacePathFromAwisMemory\(slug: string\): string/,
+  'Workspace profile hydration must be able to recover the Mac folder from AWIS memory when the profile cache is incomplete.',
+)
+
+assert.match(
+  bridge,
+  /return hydrateWorkspaceProfileListFromAwis\(raw \? adaptWorkspaceProfileList\(JSON\.parse\(raw\)\) : null\)/,
+  'Local workspace profile fallback must also hydrate from AWIS memory so a native/backend miss cannot start the project cold.',
+)
+
+assert.match(
+  bridge,
+  /workspaceProfileKey\(memoryKey\) === wanted[\s\S]*workspaceProfileKey\(rootPath\) === wanted[\s\S]*return rootPath/,
+  'AWIS memory recovery must match both workspace keys and historical root paths before restoring a folder.',
+)
+
+assert.match(
+  bridge,
+  /return consolidateWorkspaceProfileList\(\s*mergeWorkspaceProfileLists\(adaptWorkspaceProfileList\(raw\), readLocalWorkspaceProfiles\(\)\),\s*\)/,
+  'listWorkspaces must preserve and re-mirror local folder intelligence even when the backend returns a workspace read-model.',
+)
+
+assert.match(
+  bridge,
+  /function consolidateWorkspaceProfileList\(list: AtlasWorkspaceProfileList \| null\): AtlasWorkspaceProfileList \| null \{[\s\S]*writeLocalWorkspaceProfiles\(list\)[\s\S]*return list/,
+  'Hydrated workspace profiles must be written back locally so the next startup does not depend on recovering the same folder again.',
+)
+
+assert.match(
+  bridge,
+  /if \(!HTTP_BASE\) return consolidateWorkspaceProfileList\(readLocalWorkspaceProfiles\(\)\)[\s\S]*return consolidateWorkspaceProfileList\(readLocalWorkspaceProfiles\(\)\)/,
+  'All workspace-list fallbacks must consolidate hydrated local profiles instead of returning a one-shot recovery.',
+)
+
+assert.match(
+  bridge,
+  /const profile = profileWithLocalFolderFallback\([\s\S]*adaptWorkspaceProfileEnvelope\(raw\),[\s\S]*localWorkspaceProfileFromPayload\(payload\),[\s\S]*\)[\s\S]*mirrorLocalWorkspaceProfile\(profile\)[\s\S]*return profile/,
+  'Successful remote workspace creation must mirror the locally selected folder even when the remote envelope is partial.',
+)
+
+assert.match(
+  bridge,
+  /const profile = profileWithLocalFolderFallback\([\s\S]*adaptWorkspaceProfileEnvelope\(raw\),[\s\S]*localWorkspaceProfileFromPayload\(\{ \.\.\.payload, slug: target \}\),[\s\S]*\)[\s\S]*mirrorLocalWorkspaceProfile\(profile\)[\s\S]*return profile/,
+  'Successful remote workspace updates must preserve the folder from the operator payload before mirroring locally.',
+)
+
+assert.match(
+  bridge,
   /if \(MODE === 'tauri'\) \{\s*console\.warn\('\[bridge\] createWorkspaceProfile native response invalid; using local profile fallback'/s,
   'Invalid native project creation envelopes in Tauri must fall back locally even when HTTP_BASE exists.',
 )

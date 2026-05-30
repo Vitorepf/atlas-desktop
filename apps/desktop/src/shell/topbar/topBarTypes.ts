@@ -21,6 +21,7 @@ export interface TopBarProps {
   workspaces?: AtlasWorkspaceProfileList | null
   activeWorkspace?: AtlasWorkspaceProfile | null
   activeWorkspaceSlug?: string | null
+  onSurfaceChange?: (surface: Surface) => void
   onSelectWorkspace?: (slug: string) => Promise<void> | void
   /**
    * Opens the Project Profile sheet (read-only inspector of the active

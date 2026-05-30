@@ -4,6 +4,26 @@ export interface WorkbenchThreadSelection {
   atLimit: boolean
 }
 
+export function workbenchBaseForStageDrop(
+  currentThreadIds: string[],
+  selectedThreadId: string | null,
+  active: boolean,
+): string[] {
+  if (active) return Array.from(new Set(currentThreadIds))
+  return selectedThreadId ? [selectedThreadId] : []
+}
+
+export function workbenchBaseForStageDropWithOpenThreadFallback(
+  currentThreadIds: string[],
+  selectedThreadId: string | null,
+  active: boolean,
+): string[] {
+  const selectedBase = workbenchBaseForStageDrop(currentThreadIds, selectedThreadId, active)
+  if (selectedBase.length > 0) return selectedBase
+  if (active) return selectedBase
+  return currentThreadIds.length === 1 ? currentThreadIds : []
+}
+
 export interface WorkbenchScopePruneInput {
   threadIds: string[]
   availableThreadIds: Set<string>

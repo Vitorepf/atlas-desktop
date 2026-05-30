@@ -1,0 +1,340 @@
+/* Stewardship Product Mode Cockpit · slate dark canon (AP-739).
+   Inscribed in apps/desktop/src/index.css SURFACE OPT-IN SLATE DARK.
+   Uses only --cc-* tokens. */
+
+.atlas-shell.surface-stewardship .stewardship-surface {
+  min-height: 100%;
+  overflow: auto;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-family: var(--cc-font-sans);
+  font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1;
+  -webkit-font-smoothing: antialiased;
+  padding: var(--cc-space-8) var(--cc-space-10) var(--cc-space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-5);
+}
+
+.atlas-shell.surface-stewardship .stewardship-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cc-space-5);
+  align-items: flex-start;
+  padding-bottom: var(--cc-space-4);
+  border-bottom: 1px solid var(--cc-border);
+}
+
+.atlas-shell.surface-stewardship .stewardship-header h1 {
+  margin: 0;
+  color: var(--cc-text-strong);
+  font-size: var(--cc-text-display);
+  font-variation-settings: 'wght' 580;
+  line-height: var(--cc-leading-tight);
+  letter-spacing: 0;
+}
+
+.atlas-shell.surface-stewardship .stewardship-header p {
+  margin: var(--cc-space-1) 0 0;
+  color: var(--cc-text-muted);
+  font-size: var(--cc-text-caption);
+  font-family: var(--cc-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.atlas-shell.surface-stewardship .stewardship-eyebrow {
+  margin: 0 0 var(--cc-space-1) !important;
+  color: var(--cc-text-faint) !important;
+  font-size: var(--cc-text-label) !important;
+  text-transform: uppercase;
+  letter-spacing: var(--cc-tracking-label);
+  font-family: var(--cc-font-sans) !important;
+}
+
+.atlas-shell.surface-stewardship .stewardship-header__actions,
+.atlas-shell.surface-stewardship .stewardship-safety,
+.atlas-shell.surface-stewardship .stewardship-queue-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cc-space-2);
+}
+
+.atlas-shell.surface-stewardship .stewardship-mode,
+.atlas-shell.surface-stewardship .stewardship-status,
+.atlas-shell.surface-stewardship .stewardship-review-item__ap {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cc-control-h-compact);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  padding: 0 var(--cc-space-2);
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-label);
+  letter-spacing: var(--cc-tracking-label);
+  text-transform: uppercase;
+  color: var(--cc-text-muted);
+  background: var(--cc-surface-sunken);
+}
+
+.atlas-shell.surface-stewardship .stewardship-status[data-tone='ready'] {
+  color: var(--cc-success-fg);
+  border-color: var(--cc-success-border);
+  background: var(--cc-success-veil);
+}
+
+.atlas-shell.surface-stewardship .stewardship-status[data-tone='review'] {
+  color: var(--cc-warning-fg);
+  border-color: var(--cc-warning-border);
+  background: var(--cc-warning-veil);
+}
+
+.atlas-shell.surface-stewardship .stewardship-status[data-tone='blocked'] {
+  color: var(--cc-danger-fg);
+  border-color: var(--cc-danger-border);
+  background: var(--cc-danger-veil);
+}
+
+.atlas-shell.surface-stewardship .stewardship-button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--cc-border);
+  color: var(--cc-accent);
+  border-radius: var(--cc-radius-sm);
+  min-height: var(--cc-control-h-compact);
+  padding: 0 var(--cc-space-3);
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-caption);
+  cursor: pointer;
+  transition: border-color 160ms var(--cc-ease-out), background 160ms var(--cc-ease-out);
+}
+
+.atlas-shell.surface-stewardship .stewardship-button:hover {
+  border-color: var(--cc-accent-border);
+  background: var(--cc-accent-veil);
+}
+
+.atlas-shell.surface-stewardship .stewardship-button:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring);
+  border-radius: var(--cc-radius-sm);
+}
+
+.atlas-shell.surface-stewardship .stewardship-safety {
+  padding: var(--cc-space-3) var(--cc-space-4);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: var(--cc-radius-lg);
+  background: var(--cc-surface-sunken);
+  color: var(--cc-text-muted);
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-caption);
+}
+
+.atlas-shell.surface-stewardship .stewardship-safety[data-safe='yes'] {
+  border-color: var(--cc-success-border);
+}
+
+.atlas-shell.surface-stewardship .stewardship-safety[data-safe='no'] {
+  border-color: var(--cc-danger-border);
+}
+
+.atlas-shell.surface-stewardship .stewardship-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-metric,
+.atlas-shell.surface-stewardship .stewardship-section,
+.atlas-shell.surface-stewardship .stewardship-review-item,
+.atlas-shell.surface-stewardship .stewardship-pipeline-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: var(--cc-radius-lg);
+  box-shadow: var(--cc-shadow-xs);
+}
+
+.atlas-shell.surface-stewardship .stewardship-metric {
+  padding: var(--cc-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-1);
+}
+
+.atlas-shell.surface-stewardship .stewardship-metric__value {
+  color: var(--cc-text-strong);
+  font-size: var(--cc-text-display);
+  font-family: var(--cc-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-shell.surface-stewardship .stewardship-metric__label {
+  color: var(--cc-text-faint);
+  font-size: var(--cc-text-label);
+  text-transform: uppercase;
+  letter-spacing: var(--cc-tracking-label);
+}
+
+.atlas-shell.surface-stewardship .stewardship-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: var(--cc-space-4);
+  align-items: start;
+}
+
+.atlas-shell.surface-stewardship .stewardship-section {
+  padding: var(--cc-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-section--wide {
+  grid-column: 1 / -1;
+}
+
+.atlas-shell.surface-stewardship .stewardship-section__header,
+.atlas-shell.surface-stewardship .stewardship-review-item__top,
+.atlas-shell.surface-stewardship .stewardship-pipeline-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-section__header h2,
+.atlas-shell.surface-stewardship .stewardship-review-item h3,
+.atlas-shell.surface-stewardship .stewardship-pipeline-card h3 {
+  margin: 0;
+  color: var(--cc-text-strong);
+  font-size: var(--cc-text-section);
+  font-variation-settings: 'wght' 580;
+  letter-spacing: 0;
+}
+
+.atlas-shell.surface-stewardship .stewardship-list,
+.atlas-shell.surface-stewardship .stewardship-review-item__meta,
+.atlas-shell.surface-stewardship .stewardship-command-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr);
+  gap: var(--cc-space-2) var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-kv {
+  display: contents;
+}
+
+.atlas-shell.surface-stewardship .stewardship-kv dt {
+  color: var(--cc-text-faint);
+  font-size: var(--cc-text-caption);
+}
+
+.atlas-shell.surface-stewardship .stewardship-kv dd {
+  margin: 0;
+  color: var(--cc-text);
+  font-size: var(--cc-text-caption);
+  font-family: var(--cc-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.atlas-shell.surface-stewardship .stewardship-queue-summary {
+  color: var(--cc-text-muted);
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-caption);
+}
+
+.atlas-shell.surface-stewardship .stewardship-queue-summary span {
+  padding: var(--cc-space-1) var(--cc-space-2);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-surface-sunken);
+}
+
+.atlas-shell.surface-stewardship .stewardship-review-list,
+.atlas-shell.surface-stewardship .stewardship-next-actions,
+.atlas-shell.surface-stewardship .stewardship-blockers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.atlas-shell.surface-stewardship .stewardship-review-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-review-item,
+.atlas-shell.surface-stewardship .stewardship-pipeline-card {
+  padding: var(--cc-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-3);
+}
+
+.atlas-shell.surface-stewardship .stewardship-pipeline-card__header > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-2);
+  min-width: 0;
+}
+
+.atlas-shell.surface-stewardship .stewardship-review-item__action,
+.atlas-shell.surface-stewardship .stewardship-empty {
+  margin: 0;
+  color: var(--cc-text-muted);
+  font-size: var(--cc-text-caption);
+}
+
+.atlas-shell.surface-stewardship .stewardship-blockers,
+.atlas-shell.surface-stewardship .stewardship-next-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-2);
+}
+
+.atlas-shell.surface-stewardship .stewardship-blockers li,
+.atlas-shell.surface-stewardship .stewardship-next-actions li {
+  border: 1px solid var(--cc-border-soft);
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-surface-sunken);
+  padding: var(--cc-space-2);
+  color: var(--cc-text-muted);
+  font-size: var(--cc-text-caption);
+}
+
+@media (max-width: 980px) {
+  .atlas-shell.surface-stewardship .stewardship-surface {
+    padding: var(--cc-space-5);
+  }
+
+  .atlas-shell.surface-stewardship .stewardship-header,
+  .atlas-shell.surface-stewardship .stewardship-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-shell.surface-stewardship .stewardship-metrics {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .atlas-shell.surface-stewardship .stewardship-metrics,
+  .atlas-shell.surface-stewardship .stewardship-review-list,
+  .atlas-shell.surface-stewardship .stewardship-pipeline {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-shell.surface-stewardship .stewardship-list,
+  .atlas-shell.surface-stewardship .stewardship-review-item__meta,
+  .atlas-shell.surface-stewardship .stewardship-command-list {
+    grid-template-columns: 1fr;
+  }
+}

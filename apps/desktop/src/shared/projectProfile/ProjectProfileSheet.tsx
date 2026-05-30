@@ -92,8 +92,10 @@ export function ProjectProfileSheet({
 
   const handleSelect = useCallback(
     async (slug: string) => {
-      if (slug === activeSlug) return
-      await onSelect(slug)
+      if (slug !== activeSlug) {
+        await onSelect(slug)
+      }
+      setMode('view')
     },
     [activeSlug, onSelect],
   )
@@ -150,6 +152,23 @@ export function ProjectProfileSheet({
   const profiles = workspaces?.profiles ?? []
   const defaultSlug = workspaces?.defaultSlug ?? null
   const detailTitle = mode === 'create' ? 'Novo projeto' : mode === 'edit' ? 'Editar projeto' : 'Configuração do projeto'
+  const headerTitle = mode === 'create' ? 'Novo projeto' : active?.name ?? activeSlug ?? 'Atlas'
+  const headerSub = mode === 'create' ? (
+    <p className="atlas-project-profile-sub atlas-project-profile-faint">
+      Criar repositório local configurado
+    </p>
+  ) : active ? (
+    <p className="atlas-project-profile-sub">
+      {kindLabel(active.kind)} ·
+      <span className={`atlas-project-profile-status status-${active.productionStatus}`}>
+        {productionStatusLabel(active.productionStatus)}
+      </span>
+    </p>
+  ) : (
+    <p className="atlas-project-profile-sub atlas-project-profile-faint">
+      Lista de projetos indisponível neste ambiente.
+    </p>
+  )
 
   return (
     <div
@@ -161,23 +180,12 @@ export function ProjectProfileSheet({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <section className="atlas-project-profile-sheet">
+      <section className="atlas-project-profile-sheet" data-mode={mode}>
         <header className="atlas-project-profile-header">
           <div>
             <p className="atlas-project-profile-eyebrow">Projeto / Pasta local</p>
-            <h2>{active?.name ?? activeSlug ?? 'Atlas'}</h2>
-            {active ? (
-              <p className="atlas-project-profile-sub">
-                {kindLabel(active.kind)} ·
-                <span className={`atlas-project-profile-status status-${active.productionStatus}`}>
-                  {productionStatusLabel(active.productionStatus)}
-                </span>
-              </p>
-            ) : (
-              <p className="atlas-project-profile-sub atlas-project-profile-faint">
-                Lista de projetos indisponível neste ambiente.
-              </p>
-            )}
+            <h2>{headerTitle}</h2>
+            {headerSub}
           </div>
           <button
             type="button"
@@ -195,9 +203,10 @@ export function ProjectProfileSheet({
               <h3>Projetos</h3>
               <button
                 type="button"
-                className="atlas-project-profile-mini-action"
+                className={`atlas-project-profile-mini-action${mode === 'create' ? ' is-active' : ''}`}
                 onClick={() => setMode('create')}
                 disabled={!onCreate}
+                aria-current={mode === 'create' ? 'true' : undefined}
               >
                 + novo
               </button>
@@ -210,7 +219,7 @@ export function ProjectProfileSheet({
             ) : (
               <ul role="list">
                 {profiles.map((p) => {
-                  const selected = p.slug === activeSlug
+                  const selected = mode !== 'create' && p.slug === activeSlug
                   const isDefault = defaultSlug !== null && defaultSlug === p.slug
                   return (
                     <li
@@ -219,6 +228,7 @@ export function ProjectProfileSheet({
                     >
                       <button
                         type="button"
+                        className="atlas-project-profile-list-main"
                         onClick={() => void handleSelect(p.slug)}
                         aria-current={selected ? 'true' : undefined}
                       >
@@ -229,6 +239,21 @@ export function ProjectProfileSheet({
                           {p.productionStatus === 'production' ? ' · produção' : ''}
                           {p.status === 'archived' ? ' · arquivado' : ''}
                         </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="atlas-project-profile-list-edit"
+                        disabled={!onUpdate}
+                        onClick={async (event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          if (p.slug !== activeSlug) {
+                            await onSelect(p.slug)
+                          }
+                          setMode('edit')
+                        }}
+                      >
+                        editar
                       </button>
                     </li>
                   )
@@ -457,11 +482,11 @@ function ProfileForm({ profile, saving, onSubmit, onCancel, onArchive, onPickWor
             const next = e.target.value
             setName(next)
             if (!profile && (slug.trim() === '' || slug === generatedSlug)) setSlug(slugify(next))
-          }} placeholder="Blackink" />
+          }} placeholder="Nome do projeto" />
         </label>
         <label>
           <span>identificador <InfoTip text="Chave técnica estável do projeto. Ela agrupa conversas, Spaces, obras e contexto interno. Depois de criado, não é ideal trocar." /></span>
-          <input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} placeholder="blackink" disabled={Boolean(profile)} />
+          <input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} placeholder="identificador-do-projeto" disabled={Boolean(profile)} />
         </label>
         <label>
           <span>tipo de projeto <InfoTip text="Define a natureza do workspace. Produto, cliente, biblioteca ou experimento mudam o nível de cuidado, o tom das respostas e o tipo de fluxo sugerido." /></span>

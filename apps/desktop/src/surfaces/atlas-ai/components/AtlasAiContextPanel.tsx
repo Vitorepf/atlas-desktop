@@ -17,6 +17,7 @@
 import { flowIdForMode, modelLabel, providerLabel } from '../contract'
 import { humanizeRuntimeSignal, type RuntimeReadinessView } from '../runtimeReadinessView'
 import { useHyperflowRuntime } from '../useHyperflowRuntime'
+import { usePatamar4State, patamar4StatusLabel } from '../usePatamar4State'
 import { useRuntimeReadiness } from '../useRuntimeReadiness'
 import { AtlasAiRuntimeStatusPill } from './AtlasAiRuntimeStatusPill'
 import type {
@@ -191,6 +192,8 @@ export function AtlasAiContextPanel({
   const hyperflow = useHyperflowRuntime(pendingTrace)
   const liveRuntimeReadiness = useRuntimeReadiness()
   const runtimeReadiness = runtimeReadinessOverride ?? liveRuntimeReadiness
+  const patamar4 = usePatamar4State()
+  const showPatamar4Block = patamar4.status === 'ready' || patamar4.status === 'stale'
   const showForgeBlock = hyperflow.isForgeHandoff
   const policyRefs = hyperflow.raw?.policy_refs ?? null
   const evidenceRefs = hyperflow.raw?.evidence_refs ?? null
@@ -361,6 +364,54 @@ export function AtlasAiContextPanel({
           ) : null}
           <p className="atlas-ai-context-note atlas-ai-faint" style={{ marginTop: 4 }}>
             <em>Leitura agregada de projeto, execução local, aprovações e aprendizado.</em>
+          </p>
+        </div>
+      ) : null}
+
+      {showPatamar4Block ? (
+        <div className={`atlas-ai-context-section atlas-ai-context-patamar4 atlas-ai-context-patamar4-${patamar4.status}`}>
+          <h3 className="atlas-ai-context-heading-with-pill">
+            <span>Patamar 4 · substrato cognitivo</span>
+            <span className="atlas-ai-context-runtime-pill">
+              <code>{patamar4StatusLabel(patamar4.status)}</code>
+            </span>
+          </h3>
+          <ul className="atlas-ai-context-list">
+            <li><span>subsistemas</span><code>{patamar4.subsystemCount}</code></li>
+            <li><span>grupos</span><code>{patamar4.groupCount}</code></li>
+            <li><span>kernel</span><code>{patamar4.kernel.invariantCount} invariantes</code></li>
+            {patamar4.kernel.violationCount > 0 ? (
+              <li>
+                <span>violações</span>
+                <code>{patamar4.kernel.violationCount}</code>
+              </li>
+            ) : null}
+            <li><span>ticks reconciliação</span><code>{patamar4.reconciliation.tickCount}</code></li>
+            {Object.entries(patamar4.reconciliation.outcomeTally).map(([outcome, count]) =>
+              count > 0 ? (
+                <li key={`p4-outcome-${outcome}`}>
+                  <span>{outcome.replace(/_/g, ' ')}</span>
+                  <code>{count}</code>
+                </li>
+              ) : null,
+            )}
+            <li><span>admissão</span><code>{patamar4.admissionTicketCount} tickets</code></li>
+            <li><span>TEOS-I4 árvores</span><code>{patamar4.teosI4TreeCount}</code></li>
+            <li><span>swarm dispatches</span><code>{patamar4.swarmDispatchCount}</code></li>
+            <li><span>TDC ativos</span><code>{patamar4.tdcActiveCapsules}</code></li>
+            {patamar4.antifragility.wrapperMultiplierM !== null ? (
+              <li>
+                <span>antifragilidade M</span>
+                <code>{patamar4.antifragility.wrapperMultiplierM.toFixed(2)}×</code>
+              </li>
+            ) : null}
+            <li>
+              <span>claim policy</span>
+              <code>{patamar4.claimPolicySafe ? 'safe' : 'AT RISK'}</code>
+            </li>
+          </ul>
+          <p className="atlas-ai-context-note atlas-ai-faint" style={{ marginTop: 4 }}>
+            <em>Loop fechado: Kernel → Admission → CFA → Reconciliação → AURG → ASCB.</em>
           </p>
         </div>
       ) : null}

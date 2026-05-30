@@ -166,6 +166,26 @@ assert.match(
 )
 assert.match(
   hook,
+  /const PENDING_TRACE_RESUME_STORAGE_KEY = 'atlas-desktop:atlas-ai:pending-trace-resume:v1'/,
+  'Pending traces must be durable enough for AWIS to learn after a surface reload.',
+)
+assert.match(
+  hook,
+  /function isSafePendingTraceResumeText[\s\S]*operator_input\|response_text\|raw\[_ \]conversation\|full\[_ \]message/,
+  'Pending trace resume storage must not persist raw prompt/response text.',
+)
+assert.match(
+  hook,
+  /savePendingTraceResume\(\{ traceId, threadId, workspaceSlug \}\)[\s\S]*clearPendingTraceResume\(traceId\)[\s\S]*setLastTerminalTrace\(trace\)/,
+  'Trace polling must persist the resume pointer and clear it only after publishing the terminal trace.',
+)
+assert.match(
+  hook,
+  /const entry = readPendingTraceResume\(\)[\s\S]*getAiTrace\(entry\.traceId\)[\s\S]*setPendingTrace\(trace\)[\s\S]*pollTrace\(entry\.traceId, entry\.threadId\)/,
+  'Startup must resume polling a pending trace instead of losing the outcome across reloads.',
+)
+assert.match(
+  hook,
   /function awisThreadMetadataFromContext\(conversationContext\?: unknown\[\]\)/,
   'New conversations must persist a compact AWIS metadata handshake instead of depending only on transient payload context.',
 )
@@ -176,13 +196,48 @@ assert.match(
 )
 assert.match(
   hook,
+  /awis_provider_strategy[\s\S]*awis_execution_doctrine[\s\S]*awis_memory_freshness[\s\S]*awis_confidence[\s\S]*awis_learning_flywheel[\s\S]*awis_launch_contract[\s\S]*awis_topology/,
+  'AWIS thread metadata must persist advanced brain projections, not only transient payload hints.',
+)
+assert.match(
+  hook,
+  /awis_never_start_cold[\s\S]*awis_launch_mode[\s\S]*awis_startup_context_mode[\s\S]*awis_startup_prefer_summary[\s\S]*awis_startup_load_sequence[\s\S]*awis_startup_revalidate_before_send[\s\S]*awis_startup_human_boundary[\s\S]*awis_startup_readiness/,
+  'AWIS thread metadata must persist the startup contract so future Spaces and sessions do not start cold.',
+)
+assert.match(
+  hook,
+  /function providerSafePercent[\s\S]*startup: providerSafePercent\(startupReadiness\?\.startup\)[\s\S]*context_kernel: providerSafePercent\(startupReadiness\?\.context_kernel\)[\s\S]*artifact_replay: providerSafePercent\(startupReadiness\?\.artifact_replay\)[\s\S]*next_session_brain: providerSafePercent\(startupReadiness\?\.next_session_brain\)/,
+  'AWIS thread metadata must persist bounded readiness scores for later Space and workspace learning.',
+)
+assert.match(
+  hook,
   /awis_space_focus[\s\S]*awis_space_continuity[\s\S]*awis_space_brain[\s\S]*awis_live_memory_hash[\s\S]*awis_live_load_first[\s\S]*awis_context_budget[\s\S]*awis_priority_load[\s\S]*awis_startup_gold/,
   'New thread metadata must preserve the living AWIS handoff: Spaces, Space brain, live memory, context kernel and startup gold.',
 )
 assert.match(
   hook,
-  /\.\.\.awisThreadMetadataFromContext\(options\?\.conversationContext\)/,
-  'Thread creation metadata must include the AWIS startup handshake.',
+  /const validate = providerSafeStringList\(space\.validate_before_use, 2\)[\s\S]*const automation = providerSafeStringList\(space\.automation_hooks, 2\)[\s\S]*const human = providerSafeStringList\(space\.human_boundary, 2\)[\s\S]*const artifacts = providerSafeStringList\(space\.artifact_refs, 2\)[\s\S]*validate,[\s\S]*automation,[\s\S]*human,[\s\S]*artifacts,/,
+  'Persisted AWIS Space brain metadata must carry validation, automation, human boundaries and artifact refs so future Spaces learn recursively.',
+)
+assert.match(
+  hook,
+  /awis_folder_focus[\s\S]*awis_task_context_budget[\s\S]*awis_evidence_gate[\s\S]*awis_working_set[\s\S]*awis_impact_radius[\s\S]*awis_next_session_contract[\s\S]*awis_continue_learning/,
+  'AWIS thread metadata must persist the task autopilot contract: focused folders, evidence gates, working set, impact and next-session learning.',
+)
+assert.match(
+  hook,
+  /const transferContract = objectRecord\(recommendedContext\?\.transfer_contract\)[\s\S]*awis_transfer_contract: \{[\s\S]*workspace_hints: providerSafeStringList\(transferContract\?\.workspace_hints, 4\)[\s\S]*reuse: providerSafeStringList\(transferContract\?\.reuse, 5\)[\s\S]*validate_before_use: providerSafeStringList\(transferContract\?\.validate_before_use, 5\)[\s\S]*never_transfer: providerSafeStringList\(transferContract\?\.never_transfer, 4\)/,
+  'AWIS thread metadata must persist provider-safe cross-workspace transfer contracts so Spaces can reuse relations without raw paths.',
+)
+assert.match(
+  hook,
+  /const awisMetadata = awisThreadMetadataFromContext\(options\?\.conversationContext\)[\s\S]*const awisMetadataForThread = Object\.keys\(awisMetadata\)\.length > 0[\s\S]*awis_context_refreshed_at: new Date\(\)\.toISOString\(\)[\s\S]*created_via: 'atlas_desktop_ai'[\s\S]*\.\.\.awisMetadataForThread/,
+  'Thread creation metadata must include the AWIS startup handshake and refresh receipt.',
+)
+assert.match(
+  hook,
+  /existingThreadIdBeforeSend && Object\.keys\(awisMetadataForThread\)\.length > 0[\s\S]*await updateAiThread\(existingThreadIdBeforeSend, \{[\s\S]*metadata: refreshedMetadata/,
+  'Existing conversations must refresh AWIS metadata before sending so sessions do not continue cold.',
 )
 assert.match(
   client,
@@ -261,6 +316,11 @@ assert.match(
 )
 assert.match(
   surface,
+  /awisAutoSavedArtifactHashesRef\.current\.has\(artifact\.artifact_hash\)[\s\S]*persistAwisWorkspaceArtifact\(artifact\)[\s\S]*artifactAlreadyRecorded[\s\S]*event\.evidence\.includes\(artifact\.artifact_hash\)[\s\S]*if \(!artifactAlreadyRecorded\) \{[\s\S]*rememberAwisMaintenance\(\{[\s\S]*action: 'preserve_artifact'[\s\S]*snapshot AWIS salvo automaticamente para próxima partida/,
+  'AWIS automatic artifact preservation must record maintenance evidence once per artifact hash so the brain does not confuse startup replay with new learning.',
+)
+assert.match(
+  surface,
   /getAtlasAwisNextSessionBrain\(workspace, task, \{ latest: true \}\)/,
   'Atlas AI surface must hydrate startup context from the persisted next-session brain.',
 )
@@ -318,6 +378,11 @@ assert.match(
   surface,
   /serverHealth: awisServerHealth/,
   'AWIS intelligence must receive local service health as a first-class input',
+)
+assert.match(
+  surface,
+  /compactOperationalMaintenance[\s\S]*event\.label\.trim\(\)\.toLocaleLowerCase\('pt-BR'\)[\s\S]*new Map<string, \{ event:[\s\S]*count: number \}>[\s\S]*count > 1 \? ` · \$\{count\}x`/,
+  'AWIS command center must compact repeated maintenance evidence instead of flooding the project brain with duplicate visual chips.',
 )
 assert.match(
   surface,
@@ -451,8 +516,8 @@ assert.match(
 )
 assert.match(
   surface,
-  /onDrop=\{\(event\) => \{[\s\S]*const threadId = threadIdFromDragEvent\(event\)[\s\S]*event\.preventDefault\(\)[\s\S]*setStageThreadDropActive\(false\)[\s\S]*clearThreadDragVisualState\(\)[\s\S]*if \(!threadId\) return[\s\S]*handleAddThreadToWorkbench\(threadId\)/,
-  'Stage drop must clear drag UI even when the WebView loses the dragged thread id.',
+  /onDrop=\{\(event\) => \{[\s\S]*const threadId = threadIdFromDragEvent\(event\)[\s\S]*const anchorThreadId = threadId \? resolveStageDropAnchorThreadId\(threadId, dragAnchorThreadIdFromEvent\(event\)\) : null[\s\S]*event\.preventDefault\(\)[\s\S]*setStageThreadDropTargetActive\(false\)[\s\S]*clearThreadDragVisualState\(\)[\s\S]*if \(!threadId\) return[\s\S]*handleAddThreadToWorkbench\(threadId, \{ anchorThreadId, guardFollowupSelect: true \}\)/,
+  'Stage drop must clear drag UI and repair the compare anchor before opening panes.',
 )
 assert.match(
   threadList,
@@ -671,6 +736,11 @@ assert.match(
 )
 assert.match(
   threadList,
+  /nativeProjectSpacesSaveTailRef[\s\S]*nativeProjectSpacesSaveVersionRef[\s\S]*bridge\.saveAwisProjectSpacesStore\(spacesSnapshot, receiptsSnapshot\)/,
+  'Native Project Space persistence must be serialized so the newest Space edit wins across app restarts.',
+)
+assert.match(
+  threadList,
   /onRenameSpace/,
   'Project Spaces must support renaming so generated names are not a dead end.',
 )
@@ -716,7 +786,7 @@ assert.match(
 )
 assert.match(
   threadList,
-  /window\.addEventListener\('blur', clearThreadDragState\)/,
+  /window\.addEventListener\('blur', clearThreadDragFromEvent\)/,
   'Thread drag state must clear when the window loses focus so no preview remains stuck.',
 )
 assert.match(
@@ -726,12 +796,12 @@ assert.match(
 )
 assert.match(
   threadList,
-  /document\.addEventListener\('mouseleave', clearThreadDragState\)/,
+  /document\.addEventListener\('mouseleave', clearThreadDragFromEvent\)/,
   'Thread drag state must clear when the pointer leaves the document during a drag.',
 )
 assert.match(
   threadList,
-  /window\.addEventListener\('dragcancel', clearThreadDragState\)/,
+  /window\.addEventListener\('dragcancel', clearThreadDragFromEvent\)/,
   'Thread drag state must clear when the WebView emits dragcancel.',
 )
 assert.match(
@@ -776,7 +846,7 @@ assert.match(
 )
 assert.match(
   threadList,
-  /const beginNativeThreadDrag = useCallback\(\(title: string\) => \{\n\s+clearThreadDragState\(\)/,
+  /const beginNativeThreadDrag = useCallback\(\(title: string, anchorThreadId: string \| null, draggedThreadId\?: string \| null\) => \{\n\s+clearThreadDragState\(\{ notifyEnd: false \}\)[\s\S]*onThreadDragStart\?\.\(anchorThreadId, draggedThreadId\)/,
   'Native drag must clear pointer-preview state before starting so ghost previews cannot remain stuck.',
 )
 assert.match(
@@ -786,18 +856,18 @@ assert.match(
 )
 assert.match(
   threadList,
-  /const finishThreadDrag = \(event: DragEvent<HTMLElement>\) => \{[\s\S]*target\?\.closest\('\.atlas-ai-stage'\)[\s\S]*onOpenInStage\?\.\(thread\.id\)/,
+  /const finishThreadDrag = \(event: DragEvent<HTMLElement>\) => \{[\s\S]*const droppedOnStage = stageDropActive \|\| Boolean\(target\?\.closest\('\.atlas-ai-stage'\)\)[\s\S]*onOpenInStage\?\.\(thread\.id, nativeDragAnchorRef\.current\)/,
   'Native dragend must open the thread in the stage when Tauri/WebView misses the normal drop event.',
 )
 assert.match(
   threadList,
-  /className="atlas-ai-thread-drag-handle"[\s\S]*draggable=\{false\}/,
-  'Thread drag handles must not trigger the WebView native drag ghost; pointer drag owns the visual feedback.',
+  /draggable=\{draggable\}[\s\S]*className="atlas-ai-thread-drag-handle"[\s\S]*onDragStart=\{startThreadDrag\}/,
+  'Thread drag handles must emit native AWIS drag data so conversation-to-stage drop works in Tauri/WebView.',
 )
 assert.doesNotMatch(
   threadList,
   /draggable=\{Boolean\(draggable\)\}/,
-  'Conversation rows must not opt into native draggable mode because it competes with the AWIS pointer drag engine.',
+  'Conversation rows must not opt into native draggable mode; only the drag handle owns native drag.',
 )
 assert.match(
   threadList,
@@ -826,8 +896,13 @@ assert.match(
 )
 assert.match(
   threadList,
-  /if \(suppressClick\) \{[\s\S]*event\.stopPropagation\(\)[\s\S]*return/,
+  /if \(suppressClick \|\| nativeDragClickSuppressRef\.current\) \{[\s\S]*event\.stopPropagation\(\)[\s\S]*return/,
   'Conversation row click handler must ignore the synthetic click that follows a successful drag.',
+)
+assert.match(
+  threadList,
+  /const nativeDragClickSuppressRef = useRef\(false\)[\s\S]*const suppressNativeDragClick = \(\) => \{[\s\S]*nativeDragClickSuppressRef\.current = true[\s\S]*500[\s\S]*const startThreadDrag[\s\S]*suppressNativeDragClick\(\)[\s\S]*const finishThreadDrag[\s\S]*suppressNativeDragClick\(\)/,
+  'Native drag must suppress the residual click so dropping a conversation in the center cannot degrade into opening a single conversation.',
 )
 assert.match(
   surface,
@@ -1006,8 +1081,13 @@ assert.doesNotMatch(
 )
 assert.match(
   errorBanner,
-  /function explainAtlasAiError[\s\S]*Serviço local indisponível[\s\S]*Serviço local instável[\s\S]*title=\{explained\.detail/,
-  'Atlas AI errors must render human operational copy while preserving technical detail for debugging.',
+  /function explainAtlasAiError[\s\S]*connection refused[\s\S]*sqlstate\[08006\][\s\S]*port 5433[\s\S]*Serviço local indisponível[\s\S]*status 500[\s\S]*Serviço local instável[\s\S]*title=\{explained\.detail/,
+  'Atlas AI errors must render human operational copy for database/kernel failures while preserving technical detail for debugging.',
+)
+assert.match(
+  client,
+  /function compactBridgeError[\s\S]*sqlstate\[08006\][\s\S]*connection refused[\s\S]*port 5433[\s\S]*serviço local indisponível[\s\S]*status 500[\s\S]*serviço local instável/,
+  'The Desktop bridge must not leak raw SQL/JSON kernel errors into Atlas AI user-facing banners.',
 )
 assert.match(
   threadList,

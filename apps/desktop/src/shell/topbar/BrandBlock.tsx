@@ -25,6 +25,9 @@ const SURFACE_LABEL: Record<Surface, string> = {
   atencao: 'Atenção',
   atlas_ai: 'Atlas AI',
   control_plane: 'Operação',
+  stewardship: 'Stewardship',
+  mission_control: 'Mission Control',
+  plan_visible: 'Plan Visible',
 }
 
 export function BrandBlock({ surface, workspaceName, onOpenWorkspaceProfile }: BrandBlockProps) {

@@ -1,0 +1,283 @@
+/* Plan-Visible surface · slate dark canon (AP-703).
+   Inscribed in apps/desktop/src/index.css SURFACE OPT-IN SLATE DARK.
+   Uses ONLY var(--cc-*) tokens. */
+
+.atlas-shell.surface-plan_visible .plan-visible-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 48px;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-family: var(--cc-font-sans);
+  font-feature-settings: 'cv11' 1, 'ss01' 1, 'kern' 1;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--cc-border);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__title {
+  font-size: var(--cc-text-display);
+  font-variation-settings: 'wght' 560;
+  letter-spacing: -0.012em;
+  color: var(--cc-text-strong);
+  margin: 0;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__subtitle {
+  display: block;
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text-faint);
+  margin-top: 4px;
+  letter-spacing: 0.03em;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__mode {
+  font-size: var(--cc-text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  color: var(--cc-text-faint);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__refresh {
+  background: transparent;
+  border: 1px solid var(--cc-border);
+  color: var(--cc-accent);
+  padding: 4px 10px;
+  font-size: var(--cc-text-caption);
+  border-radius: var(--cc-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 200ms var(--cc-ease-out);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__refresh:hover {
+  border-color: var(--cc-accent-border);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__refresh:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring);
+  border-radius: var(--cc-radius-sm);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__empty,
+.atlas-shell.surface-plan_visible .plan-visible-detail__empty,
+.atlas-shell.surface-plan_visible .plan-visible-list__empty {
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text-muted);
+  margin: 0;
+  font-style: normal;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-surface__layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--cc-radius-sm);
+  color: var(--cc-text);
+  font-family: inherit;
+  font-size: var(--cc-text-caption);
+  cursor: pointer;
+  text-align: left;
+  transition: background 160ms var(--cc-ease-out);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__button:hover {
+  background: var(--cc-surface-raised);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item--active .plan-visible-list-item__button {
+  background: var(--cc-surface-raised);
+  border-color: var(--cc-accent-border);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__button:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring);
+  border-radius: var(--cc-radius-sm);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__code {
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-data);
+  color: var(--cc-text-strong);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__band,
+.atlas-shell.surface-plan_visible .plan-visible-detail__band {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: var(--cc-radius-sm);
+  font-variation-settings: 'wght' 600;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__band--low,
+.atlas-shell.surface-plan_visible .plan-visible-detail__band--low {
+  background: var(--cc-success-veil);
+  color: var(--cc-success-fg);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__band--medium,
+.atlas-shell.surface-plan_visible .plan-visible-detail__band--medium {
+  background: var(--cc-warning-veil);
+  color: var(--cc-warning-fg);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__band--high,
+.atlas-shell.surface-plan_visible .plan-visible-detail__band--high {
+  background: var(--cc-danger-veil);
+  color: var(--cc-danger-fg);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-list-item__status,
+.atlas-shell.surface-plan_visible .plan-visible-detail__status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cc-text-muted);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__status--approved {
+  color: var(--cc-success-fg);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__status--rejected {
+  color: var(--cc-danger-fg);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__status--pending {
+  color: var(--cc-warning-fg);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__title {
+  font-size: var(--cc-text-title);
+  font-variation-settings: 'wght' 580;
+  color: var(--cc-text-strong);
+  margin: 0;
+  letter-spacing: -0.011em;
+  flex: 1;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__summary {
+  font-size: var(--cc-text-body);
+  line-height: 1.65;
+  color: var(--cc-text);
+  margin: 0;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__section h3 {
+  font-size: var(--cc-text-label);
+  font-variation-settings: 'wght' 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cc-text-strong);
+  margin: 0;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__file-list li {
+  padding: 4px 8px;
+  background: var(--cc-surface-sunken);
+  border-radius: var(--cc-radius-sm);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__file-list code {
+  font-family: var(--cc-font-mono);
+  font-size: var(--cc-text-data);
+  color: var(--cc-text);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__footer {
+  display: flex;
+  gap: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--cc-border-soft);
+  font-size: var(--cc-text-caption);
+  color: var(--cc-text-faint);
+}
+
+.atlas-shell.surface-plan_visible .plan-visible-detail__footer code {
+  font-family: var(--cc-font-mono);
+  color: var(--cc-text);
+}
