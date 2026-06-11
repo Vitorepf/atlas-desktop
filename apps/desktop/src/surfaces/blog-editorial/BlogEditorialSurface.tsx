@@ -92,6 +92,10 @@ export function BlogEditorialSurface(): ReactElement {
     : []
   const agentOperatingQueue = operations?.agent_operating_queue
   const agentQueueItems = Array.isArray(agentOperatingQueue?.items) ? agentOperatingQueue.items : []
+  const agentHandoffPacket = operations?.agent_handoff_packet
+  const handoffRefs = Array.isArray(agentHandoffPacket?.read_before_work)
+    ? agentHandoffPacket.read_before_work
+    : []
   const topicLedger = operations?.topic_ledger
   const topicRows = Array.isArray(topicLedger?.rows) ? topicLedger.rows : []
   const topicOpportunities = Array.isArray(topicLedger?.next_topic_opportunities)
@@ -431,6 +435,29 @@ export function BlogEditorialSurface(): ReactElement {
                 </div>
               </dl>
             </div>
+
+            {agentHandoffPacket ? (
+              <div className="blog-editorial-agent-handoff">
+                <div>
+                  <span>handoff para ia</span>
+                  <strong>{agentHandoffPacket.mission?.current_title ?? agentHandoffPacket.mission?.current_slug ?? 'sem tarefa liberada'}</strong>
+                  <p>{agentHandoffPacket.agent_prompt_seed?.task ?? 'Revise o contexto antes de qualquer escrita.'}</p>
+                  <small>
+                    {agentHandoffPacket.mission?.language ?? 'pt-BR'} · {agentHandoffPacket.mission?.lane?.replaceAll('_', ' ') ?? 'review'} · {agentHandoffPacket.evidence_bundle?.source_posture?.graph_posture ?? 'future_governed'}
+                  </small>
+                </div>
+                {handoffRefs.length > 0 ? (
+                  <ul>
+                    {handoffRefs.slice(0, 5).map((ref) => (
+                      <li key={ref.ref ?? ref.why ?? 'handoff-ref'}>
+                        <strong>{ref.ref ?? 'ref'}</strong>
+                        <small>{ref.why ?? 'ler antes de trabalhar'}</small>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
 
             {agentQueueItems.length > 0 ? (
               <ul className="blog-editorial-agent-queue__items">

@@ -1087,6 +1087,62 @@
   line-height: 1.65;
 }
 
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(320px, 1.08fr);
+  gap: 1px;
+  background: var(--cc-border-soft);
+  border-bottom: 1px solid var(--cc-border-soft);
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff > div,
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff ul {
+  min-width: 0;
+  margin: 0;
+  padding: 18px;
+  background: rgba(17, 36, 49, 0.56);
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--cc-accent);
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff strong {
+  display: block;
+  color: var(--cc-text-strong);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff p {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: var(--cc-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff small {
+  display: block;
+  margin-top: 8px;
+  color: var(--cc-text-faint);
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff ul {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+}
+
 .atlas-shell.surface-blog_editorial .blog-editorial-agent-queue__items {
   display: grid;
   margin: 0;
@@ -1339,6 +1395,7 @@
   .atlas-shell.surface-blog_editorial .blog-editorial-public-knowledge__summary,
   .atlas-shell.surface-blog_editorial .blog-editorial-public-knowledge__grid,
   .atlas-shell.surface-blog_editorial .blog-editorial-agent-queue__summary,
+  .atlas-shell.surface-blog_editorial .blog-editorial-agent-handoff,
   .atlas-shell.surface-blog_editorial .blog-editorial-topic-ledger__summary,
   .atlas-shell.surface-blog_editorial .blog-editorial-list--graph {
     grid-template-columns: 1fr;

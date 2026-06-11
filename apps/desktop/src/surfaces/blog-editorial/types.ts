@@ -636,6 +636,51 @@ export interface BlogEditorialOperationsPacket {
     agent_rules?: string[]
     guardrails?: Record<string, boolean | string | number | null>
   }
+  agent_handoff_packet?: {
+    schema_version?: string
+    mode?: string
+    status?: string
+    mission?: {
+      agent_role?: string
+      intent?: string
+      current_slug?: string | null
+      current_title?: string | null
+      lane?: string
+      action?: string
+      language?: string
+      human_gate?: boolean
+    }
+    read_before_work?: Array<{
+      ref?: string
+      why?: string
+    }>
+    current_reader_contract?: {
+      can_assume?: string[]
+      must_introduce_now?: string[]
+      must_not_assume_yet?: string[]
+      dependency_missing_prerequisites?: string[]
+      rule?: string
+    }
+    evidence_bundle?: {
+      writing_packet_schema?: string
+      concept_progression_schema?: string
+      draft_seed_schema?: string
+      source_posture?: {
+        graph_posture?: string
+        next_safe_action?: string
+        source_count?: number
+      }
+      open_brain_command?: string
+      open_brain_invoked_by_this_command?: boolean
+    }
+    execution_checklist?: string[]
+    agent_prompt_seed?: {
+      system_intent?: string
+      task?: string
+      forbidden?: string[]
+    }
+    guardrails?: Record<string, boolean | string | number | null>
+  }
   [key: string]: unknown
 }
 
