@@ -90,6 +90,8 @@ export function BlogEditorialSurface(): ReactElement {
   const notYetAssumableTopics = Array.isArray(publicKnowledgeMap?.not_yet_assumable_topics)
     ? publicKnowledgeMap.not_yet_assumable_topics
     : []
+  const agentOperatingQueue = operations?.agent_operating_queue
+  const agentQueueItems = Array.isArray(agentOperatingQueue?.items) ? agentOperatingQueue.items : []
   const topicLedger = operations?.topic_ledger
   const topicRows = Array.isArray(topicLedger?.rows) ? topicLedger.rows : []
   const topicOpportunities = Array.isArray(topicLedger?.next_topic_opportunities)
@@ -392,6 +394,65 @@ export function BlogEditorialSurface(): ReactElement {
           </div>
         ) : (
           <p className="blog-editorial-empty">Mapa de conhecimento publico ainda nao carregado.</p>
+        )}
+      </section>
+
+      <section className="blog-editorial-panel blog-editorial-panel--wide">
+        <PanelHeader
+          label="fila do agente"
+          meta={`${agentOperatingQueue?.summary?.write_now_count ?? 0} agora · ${agentOperatingQueue?.summary?.hold_count ?? 0} segurados`}
+        />
+        {agentOperatingQueue ? (
+          <div className="blog-editorial-agent-queue">
+            <div className="blog-editorial-agent-queue__summary">
+              <div>
+                <span>proxima decisao segura</span>
+                <strong>{agentOperatingQueue.summary?.next_action?.replaceAll('_', ' ') ?? 'revisar contexto'}</strong>
+                <p>
+                  A fila orienta Atlas, Claude e Codex sem escrever backlog, publicar, reordenar ou usar Graph/RAG nesta fase.
+                </p>
+              </div>
+              <dl className="blog-editorial-kv">
+                <div>
+                  <dt>agora</dt>
+                  <dd>{agentOperatingQueue.summary?.write_now_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>preparar</dt>
+                  <dd>{agentOperatingQueue.summary?.prepare_next_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>revisar</dt>
+                  <dd>{agentOperatingQueue.summary?.review_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>segurar</dt>
+                  <dd>{agentOperatingQueue.summary?.hold_count ?? 0}</dd>
+                </div>
+              </dl>
+            </div>
+
+            {agentQueueItems.length > 0 ? (
+              <ul className="blog-editorial-agent-queue__items">
+                {agentQueueItems.slice(0, 10).map((item) => (
+                  <li key={`${item.lane ?? 'lane'}-${item.slug ?? item.title ?? 'item'}`} data-lane={item.lane ?? 'unknown'}>
+                    <span>{item.lane?.replaceAll('_', ' ') ?? 'fila'}</span>
+                    <div>
+                      <strong>{item.title ?? item.slug ?? 'item editorial'}</strong>
+                      <p>{item.reason ?? 'Aguardando contexto editorial.'}</p>
+                      <small>
+                        {item.action?.replaceAll('_', ' ') ?? 'observar'} · {item.status?.replaceAll('_', ' ') ?? 'sem status'} · {item.source ?? 'operations'}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="blog-editorial-empty">Nenhuma acao operacional calculada para agentes.</p>
+            )}
+          </div>
+        ) : (
+          <p className="blog-editorial-empty">Fila operacional do agente ainda nao carregada.</p>
         )}
       </section>
 

@@ -603,6 +603,39 @@ export interface BlogEditorialOperationsPacket {
     rules?: string[]
     guardrails?: Record<string, boolean | string | number | null>
   }
+  agent_operating_queue?: {
+    schema_version?: string
+    mode?: string
+    status?: string
+    summary?: {
+      item_count?: number
+      write_now_count?: number
+      prepare_next_count?: number
+      review_count?: number
+      hold_count?: number
+      current_unlocked_slug?: string | null
+      next_action?: string
+      graph_posture?: string
+      public_reader_known_topics?: number
+    }
+    lanes?: Record<string, Array<Record<string, string | number | boolean | null>>>
+    items?: Array<{
+      lane?: string
+      action?: string
+      slug?: string
+      title?: string
+      order?: number | null
+      status?: string
+      reason?: string
+      source?: string
+      human_gate?: boolean
+      can_write_draft?: boolean
+      can_publish?: boolean
+      can_reorder?: boolean
+    }>
+    agent_rules?: string[]
+    guardrails?: Record<string, boolean | string | number | null>
+  }
   [key: string]: unknown
 }
 
