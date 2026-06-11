@@ -17,6 +17,7 @@ export interface AtlasSurfaceDefinition {
  *   Code        →  aprofundar       (cabine de programação)
  *   Atenção     →  decidir          (fila humana entre Obras)
  *   Cartografia →  entender/auditar (mapa da verdade canônica)
+ *   Blog        →  publicar         (ordem editorial pública)
  */
 export const ATLAS_SURFACES: AtlasSurfaceDefinition[] = [
   {
@@ -80,6 +81,14 @@ export const ATLAS_SURFACES: AtlasSurfaceDefinition[] = [
     label: 'Plan',
     shortcut: '⌘8',
     sub: 'Atlas Dev · plano',
+    authority: 'kernel',
+    requiresKernel: true,
+  },
+  {
+    id: 'blog_editorial',
+    label: 'Blog',
+    shortcut: '⌘9',
+    sub: 'publicar · ordem editorial',
     authority: 'kernel',
     requiresKernel: true,
   },

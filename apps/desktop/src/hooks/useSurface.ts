@@ -25,6 +25,7 @@ export type Surface =
   | 'stewardship'
   | 'mission_control'
   | 'plan_visible'
+  | 'blog_editorial'
 
 const STORAGE_KEY = 'atlas-desktop:surface'
 
@@ -39,7 +40,8 @@ function readInitial(): Surface {
       v === 'control_plane' ||
       v === 'stewardship' ||
       v === 'mission_control' ||
-      v === 'plan_visible'
+      v === 'plan_visible' ||
+      v === 'blog_editorial'
     )
       return v
   } catch {
@@ -66,8 +68,7 @@ export function useSurface(): {
     }
   }, [])
 
-  // Cmd+1..5 keyboard shortcuts mirror the SurfaceSwitcher reading order
-  // (Atlas AI → Code → Atenção → Cartografia → Control Plane).
+  // Cmd+1..9 keyboard shortcuts mirror the SurfaceSwitcher reading order.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
@@ -95,6 +96,9 @@ export function useSurface(): {
       } else if (e.key === '8') {
         e.preventDefault()
         setSurface('plan_visible')
+      } else if (e.key === '9') {
+        e.preventDefault()
+        setSurface('blog_editorial')
       }
     }
     document.addEventListener('keydown', onKey)

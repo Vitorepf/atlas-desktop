@@ -11,6 +11,9 @@ const AtencaoSurface = lazy(() =>
 const AtlasAiSurface = lazy(() =>
   import('../surfaces/atlas-ai/AtlasAiSurface').then((mod) => ({ default: mod.AtlasAiSurface })),
 )
+const BlogEditorialSurface = lazy(() =>
+  import('../surfaces/blog-editorial').then((mod) => ({ default: mod.BlogEditorialSurface })),
+)
 const CartografiaSurface = lazy(() =>
   import('../surfaces/cartografia/CartografiaSurface').then((mod) => ({ default: mod.CartografiaSurface })),
 )
@@ -224,6 +227,16 @@ export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWork
       <ErrorBoundary label="Plan Visible">
         <Suspense fallback={<SurfaceLoading label="Plan Visible" />}>
           <PlanVisibleSurface />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
+
+  if (surface === 'blog_editorial') {
+    return (
+      <ErrorBoundary label="Blog Editorial">
+        <Suspense fallback={<SurfaceLoading label="Blog Editorial" />}>
+          <BlogEditorialSurface />
         </Suspense>
       </ErrorBoundary>
     )
