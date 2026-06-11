@@ -446,6 +446,48 @@ export interface BlogEditorialOperationsPacket {
     next_topic_opportunities?: Array<Record<string, string | number | null>>
     guardrails?: Record<string, boolean | string | number | null>
   }
+  editorial_dependency_matrix?: {
+    schema_version?: string
+    mode?: string
+    status?: string
+    summary?: {
+      post_count?: number
+      current_unlocked_slug?: string | null
+      blocked_post_count?: number
+      foundation_warning_count?: number
+      phase_count?: number
+    }
+    rows?: Array<{
+      order?: number
+      slug?: string
+      title?: string
+      status?: string
+      readiness?: string
+      complexity_level?: string
+      depth?: number
+      phase?: {
+        key?: string
+        label?: string
+        position?: number
+      }
+      depends_on?: {
+        previous_slug?: string | null
+        next_slug?: string | null
+        explicit_prerequisites?: string[]
+        missing_prerequisites?: string[]
+      }
+      reader_contract?: {
+        must_introduce?: string[]
+        already_available?: string[]
+        published_available?: string[]
+        avoid_until_later?: string[]
+        rule?: string
+      }
+      position_reason?: string
+      depth_warning?: string | null
+    }>
+    guardrails?: Record<string, boolean | string | number | null>
+  }
   [key: string]: unknown
 }
 

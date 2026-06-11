@@ -74,6 +74,8 @@ export function BlogEditorialSurface(): ReactElement {
   const publishingSlots = Array.isArray(publishingPlan?.next_slots) ? publishingPlan.next_slots : []
   const editorialRoadmap = operations?.editorial_roadmap
   const roadmapPhases = Array.isArray(editorialRoadmap?.phases) ? editorialRoadmap.phases : []
+  const dependencyMatrix = operations?.editorial_dependency_matrix
+  const dependencyRows = Array.isArray(dependencyMatrix?.rows) ? dependencyMatrix.rows : []
   const topicLedger = operations?.topic_ledger
   const topicRows = Array.isArray(topicLedger?.rows) ? topicLedger.rows : []
   const topicOpportunities = Array.isArray(topicLedger?.next_topic_opportunities)
@@ -283,6 +285,72 @@ export function BlogEditorialSurface(): ReactElement {
           </div>
         ) : (
           <p className="blog-editorial-empty">Jornada editorial ainda nao carregada.</p>
+        )}
+      </section>
+
+      <section className="blog-editorial-panel blog-editorial-panel--wide">
+        <PanelHeader
+          label="escada de dependencias"
+          meta={`${dependencyMatrix?.summary?.blocked_post_count ?? 0} bloqueados`}
+        />
+        {dependencyMatrix ? (
+          <div className="blog-editorial-dependency-matrix">
+            <div className="blog-editorial-dependency-matrix__summary">
+              <div>
+                <span>proximo liberado</span>
+                <strong>{dependencyMatrix.summary?.current_unlocked_slug ?? 'nenhum'}</strong>
+                <p>
+                  A matriz protege a ordem: cada texto sabe o que precisa existir antes, o que deve introduzir agora e o que ainda deve ficar para depois.
+                </p>
+              </div>
+              <dl className="blog-editorial-kv">
+                <div>
+                  <dt>posts</dt>
+                  <dd>{dependencyMatrix.summary?.post_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>fases</dt>
+                  <dd>{dependencyMatrix.summary?.phase_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>alertas</dt>
+                  <dd>{dependencyMatrix.summary?.foundation_warning_count ?? 0}</dd>
+                </div>
+              </dl>
+            </div>
+            {dependencyRows.length > 0 ? (
+              <ol className="blog-editorial-dependency-rows">
+                {dependencyRows.slice(0, 7).map((row) => {
+                  const missing = asStringList(row.depends_on?.missing_prerequisites)
+                  const avoid = asStringList(row.reader_contract?.avoid_until_later)
+
+                  return (
+                    <li key={`${row.order ?? 0}-${row.slug ?? row.title ?? 'dependency'}`} data-readiness={row.readiness ?? 'planned'}>
+                      <span>{String(row.order ?? '--').padStart(2, '0')}</span>
+                      <div>
+                        <strong>{row.title ?? row.slug ?? 'Post sem titulo'}</strong>
+                        <small>
+                          {row.phase?.label ?? 'fase aberta'} · {row.complexity_level ?? 'nivel aberto'} · {row.readiness ?? 'planejado'}
+                        </small>
+                        <p>{row.position_reason ?? row.reader_contract?.rule ?? 'Manter a progressao do leitor.'}</p>
+                        <em>
+                          {missing.length > 0
+                            ? `depende de ${missing.join(', ')}`
+                            : avoid.length > 0
+                              ? `evitar por enquanto: ${avoid.slice(0, 3).join(', ')}`
+                              : 'sem prerequisito pendente'}
+                        </em>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : (
+              <p className="blog-editorial-empty">Matriz de dependencias ainda nao carregada.</p>
+            )}
+          </div>
+        ) : (
+          <p className="blog-editorial-empty">Escada de dependencias ainda nao carregada.</p>
         )}
       </section>
 
