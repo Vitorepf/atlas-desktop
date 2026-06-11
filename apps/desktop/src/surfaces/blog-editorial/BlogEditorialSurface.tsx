@@ -76,6 +76,8 @@ export function BlogEditorialSurface(): ReactElement {
   const roadmapPhases = Array.isArray(editorialRoadmap?.phases) ? editorialRoadmap.phases : []
   const dependencyMatrix = operations?.editorial_dependency_matrix
   const dependencyRows = Array.isArray(dependencyMatrix?.rows) ? dependencyMatrix.rows : []
+  const backlogIntake = operations?.backlog_intake
+  const backlogIntakeItems = Array.isArray(backlogIntake?.items) ? backlogIntake.items : []
   const topicLedger = operations?.topic_ledger
   const topicRows = Array.isArray(topicLedger?.rows) ? topicLedger.rows : []
   const topicOpportunities = Array.isArray(topicLedger?.next_topic_opportunities)
@@ -632,6 +634,62 @@ export function BlogEditorialSurface(): ReactElement {
             <p className="blog-editorial-empty">Nenhum candidato de grafo pronto. O sistema mantem a sequencia atual.</p>
           )}
         </div>
+      </section>
+
+      <section className="blog-editorial-panel blog-editorial-panel--wide">
+        <PanelHeader
+          label="alimentar lista"
+          meta={`${backlogIntake?.summary?.item_count ?? 0} sinais`}
+        />
+        {backlogIntake ? (
+          <div className="blog-editorial-intake">
+            <div className="blog-editorial-intake__summary">
+              <dl className="blog-editorial-kv">
+                <div>
+                  <dt>revisao</dt>
+                  <dd>{backlogIntake.summary?.ready_for_review_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>segurar</dt>
+                  <dd>{backlogIntake.summary?.hold_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>fila</dt>
+                  <dd>{backlogIntake.summary?.review_queue_items ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>feed</dt>
+                  <dd>{backlogIntake.summary?.candidate_feed_items ?? 0}</dd>
+                </div>
+              </dl>
+              <p>
+                {backlogIntake.summary?.dependency_ladder_blocked
+                  ? 'A escada atual ainda tem bloqueios; temas profundos ficam guardados para depois.'
+                  : 'A fila pode receber novos candidatos, sempre com revisao humana antes de promover.'}
+              </p>
+            </div>
+            {backlogIntakeItems.length > 0 ? (
+              <ul className="blog-editorial-intake-list">
+                {backlogIntakeItems.slice(0, 6).map((item) => (
+                  <li key={`${item.lane ?? 'intake'}-${item.slug ?? item.title ?? 'item'}`} data-action={item.recommended_action ?? 'review'}>
+                    <div>
+                      <span>{item.recommended_action?.replaceAll('_', ' ') ?? 'revisar'}</span>
+                      <strong>{item.title ?? item.slug ?? 'Sinal sem titulo'}</strong>
+                      <p>{item.reason ?? item.promotion_rule ?? 'Aguardando leitura humana.'}</p>
+                    </div>
+                    <small>
+                      depois de {item.suggested_after_slug ?? 'arco atual'} · {item.source_type ?? item.lane ?? 'sinal'} · {item.complexity_level ?? 'nivel aberto'}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="blog-editorial-empty">Nenhum sinal novo para alimentar a lista agora.</p>
+            )}
+          </div>
+        ) : (
+          <p className="blog-editorial-empty">Intake da lista ainda nao carregado.</p>
+        )}
       </section>
 
       <div className="blog-editorial-grid blog-editorial-grid--bottom">

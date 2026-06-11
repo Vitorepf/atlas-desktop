@@ -837,6 +837,84 @@
   color: var(--cc-text-muted);
 }
 
+.atlas-shell.surface-blog_editorial .blog-editorial-intake {
+  display: grid;
+  gap: 18px;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake__summary {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  padding: 18px;
+  border-bottom: 1px solid var(--cc-border-soft);
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake__summary p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--cc-text-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list {
+  display: grid;
+  margin: 0;
+  padding: 0 18px 18px;
+  list-style: none;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.36fr);
+  gap: 18px;
+  min-height: 112px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--cc-border-soft);
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list li:last-child {
+  border-bottom: 0;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--cc-accent);
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list strong {
+  display: block;
+  color: var(--cc-text-strong);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list p {
+  max-width: 820px;
+  margin: 8px 0 0;
+  color: var(--cc-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list small {
+  align-self: start;
+  color: var(--cc-text-faint);
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.atlas-shell.surface-blog_editorial .blog-editorial-intake-list li[data-action^='hold'] strong {
+  color: var(--cc-text-muted);
+}
+
 .atlas-shell.surface-blog_editorial .blog-editorial-topic-ledger {
   display: grid;
   gap: 18px;
