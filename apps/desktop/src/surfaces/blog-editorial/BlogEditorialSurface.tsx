@@ -80,6 +80,16 @@ export function BlogEditorialSurface(): ReactElement {
   const backlogIntakeItems = Array.isArray(backlogIntake?.items) ? backlogIntake.items : []
   const atlasSignalMesh = operations?.atlas_signal_mesh
   const atlasSignalSources = Array.isArray(atlasSignalMesh?.sources) ? atlasSignalMesh.sources : []
+  const publicKnowledgeMap = operations?.public_knowledge_map
+  const publicKnowledgePosts = Array.isArray(publicKnowledgeMap?.published_posts)
+    ? publicKnowledgeMap.published_posts
+    : []
+  const assumableTopics = Array.isArray(publicKnowledgeMap?.assumable_topics)
+    ? publicKnowledgeMap.assumable_topics
+    : []
+  const notYetAssumableTopics = Array.isArray(publicKnowledgeMap?.not_yet_assumable_topics)
+    ? publicKnowledgeMap.not_yet_assumable_topics
+    : []
   const topicLedger = operations?.topic_ledger
   const topicRows = Array.isArray(topicLedger?.rows) ? topicLedger.rows : []
   const topicOpportunities = Array.isArray(topicLedger?.next_topic_opportunities)
@@ -293,6 +303,95 @@ export function BlogEditorialSurface(): ReactElement {
           </div>
         ) : (
           <p className="blog-editorial-empty">Malha de sinais ainda nao carregada.</p>
+        )}
+      </section>
+
+      <section className="blog-editorial-panel blog-editorial-panel--wide">
+        <PanelHeader
+          label="memoria publica do leitor"
+          meta={`${publicKnowledgeMap?.summary?.assumable_topic_count ?? 0} assuntos assumiveis`}
+        />
+        {publicKnowledgeMap ? (
+          <div className="blog-editorial-public-knowledge">
+            <div className="blog-editorial-public-knowledge__summary">
+              <div>
+                <span>contrato do leitor</span>
+                <strong>{publicKnowledgeMap.reader_contract?.current_unlocked_title ?? publicKnowledgeMap.reader_contract?.current_unlocked_slug ?? 'proximo texto protegido'}</strong>
+                <p>
+                  {publicKnowledgeMap.reader_contract?.rule
+                    ?? 'O Atlas so pode assumir o que ja apareceu publicamente; o resto precisa ser introduzido antes de aprofundar.'}
+                </p>
+              </div>
+              <dl className="blog-editorial-kv">
+                <div>
+                  <dt>arquivo</dt>
+                  <dd>{publicKnowledgeMap.summary?.public_archive_posts ?? publicKnowledgePosts.length}</dd>
+                </div>
+                <div>
+                  <dt>planejados</dt>
+                  <dd>{publicKnowledgeMap.summary?.planned_published_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>externos</dt>
+                  <dd>{publicKnowledgeMap.summary?.external_published_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>nao assumir</dt>
+                  <dd>{publicKnowledgeMap.summary?.not_yet_assumable_topic_count ?? notYetAssumableTopics.length}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="blog-editorial-public-knowledge__grid">
+              <div className="blog-editorial-public-knowledge__column">
+                <span>ja pode aparecer sem explicar do zero</span>
+                {assumableTopics.length > 0 ? (
+                  <ul>
+                    {assumableTopics.slice(0, 8).map((topic) => (
+                      <li key={topic.topic ?? 'assumable'}>
+                        <strong>{topic.topic?.replaceAll('-', ' ') ?? 'assunto publicado'}</strong>
+                        <small>{topic.published_count ?? 0} publicacoes · {topic.next_action?.replaceAll('_', ' ') ?? 'usar como contexto'}</small>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Nada deve ser assumido ainda; a base publica precisa comecar simples.</p>
+                )}
+              </div>
+
+              <div className="blog-editorial-public-knowledge__column">
+                <span>ainda precisa ser introduzido</span>
+                {notYetAssumableTopics.length > 0 ? (
+                  <ul>
+                    {notYetAssumableTopics.slice(0, 8).map((topic) => (
+                      <li key={topic.topic ?? 'not-yet'}>
+                        <strong>{topic.topic?.replaceAll('-', ' ') ?? 'assunto futuro'}</strong>
+                        <small>{topic.planned_count ?? 0} planejados · {topic.next_action?.replaceAll('_', ' ') ?? 'introduzir antes'}</small>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Nenhum assunto pendente calculado.</p>
+                )}
+              </div>
+            </div>
+
+            {publicKnowledgePosts.length > 0 ? (
+              <ul className="blog-editorial-public-knowledge__posts">
+                {publicKnowledgePosts.slice(0, 6).map((post) => (
+                  <li key={`${post.source ?? 'archive'}-${post.slug ?? post.title ?? 'post'}`}>
+                    <span>{post.source === 'planned_backlog' ? String(post.planned_order ?? '--').padStart(2, '0') : 'ext'}</span>
+                    <div>
+                      <strong>{post.title ?? post.slug ?? 'Post publico'}</strong>
+                      <small>{post.kind ?? 'post'} · {post.collection ?? 'sem colecao'} · {post.date ?? 'sem data'}</small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : (
+          <p className="blog-editorial-empty">Mapa de conhecimento publico ainda nao carregado.</p>
         )}
       </section>
 

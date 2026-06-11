@@ -550,6 +550,59 @@ export interface BlogEditorialOperationsPacket {
     rules?: string[]
     guardrails?: Record<string, boolean | string | number | null>
   }
+  public_knowledge_map?: {
+    schema_version?: string
+    mode?: string
+    status?: string
+    summary?: {
+      planned_posts?: number
+      public_archive_posts?: number
+      planned_published_count?: number
+      external_published_count?: number
+      bridge_candidate_count?: number
+      assumable_topic_count?: number
+      not_yet_assumable_topic_count?: number
+      current_unlocked_slug?: string | null
+      blocked_post_count?: number
+    }
+    reader_contract?: {
+      current_unlocked_slug?: string | null
+      current_unlocked_title?: string | null
+      can_assume?: string[]
+      must_introduce_now?: string[]
+      must_not_assume_yet?: string[]
+      rule?: string
+    }
+    published_posts?: Array<{
+      slug?: string
+      title?: string
+      kind?: string
+      date?: string
+      collection?: string
+      source?: string
+      planned_order?: number | null
+      terms?: string[]
+    }>
+    assumable_topics?: Array<{
+      topic?: string
+      published_count?: number
+      published_slugs?: string[]
+      planned_count?: number
+      next_action?: string
+    }>
+    not_yet_assumable_topics?: Array<{
+      topic?: string
+      planned_count?: number
+      candidate_count?: number
+      review_queue_count?: number
+      first_planned_order?: number | null
+      next_action?: string
+    }>
+    bridge_candidates?: Array<Record<string, string | number | string[] | null>>
+    sequence_warnings?: Array<Record<string, string | string[] | null>>
+    rules?: string[]
+    guardrails?: Record<string, boolean | string | number | null>
+  }
   [key: string]: unknown
 }
 
