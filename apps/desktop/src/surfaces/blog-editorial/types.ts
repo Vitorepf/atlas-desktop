@@ -520,6 +520,36 @@ export interface BlogEditorialOperationsPacket {
     }>
     guardrails?: Record<string, boolean | string | number | null>
   }
+  atlas_signal_mesh?: {
+    schema_version?: string
+    mode?: string
+    status?: string
+    summary?: {
+      source_count?: number
+      ready_source_count?: number
+      blocked_or_future_source_count?: number
+      candidate_signal_count?: number
+      review_queue_count?: number
+      intake_hold_count?: number
+      dependency_ladder_blocked?: boolean
+      graph_posture?: string
+      next_safe_action?: string
+    }
+    sources?: Array<{
+      id?: string
+      label?: string
+      status?: string
+      authority?: string
+      role?: string
+      signal_count?: number
+      can_suggest?: boolean
+      can_write?: boolean
+      can_publish?: boolean
+      next_action?: string
+    }>
+    rules?: string[]
+    guardrails?: Record<string, boolean | string | number | null>
+  }
   [key: string]: unknown
 }
 

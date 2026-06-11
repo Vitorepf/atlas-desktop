@@ -78,6 +78,8 @@ export function BlogEditorialSurface(): ReactElement {
   const dependencyRows = Array.isArray(dependencyMatrix?.rows) ? dependencyMatrix.rows : []
   const backlogIntake = operations?.backlog_intake
   const backlogIntakeItems = Array.isArray(backlogIntake?.items) ? backlogIntake.items : []
+  const atlasSignalMesh = operations?.atlas_signal_mesh
+  const atlasSignalSources = Array.isArray(atlasSignalMesh?.sources) ? atlasSignalMesh.sources : []
   const topicLedger = operations?.topic_ledger
   const topicRows = Array.isArray(topicLedger?.rows) ? topicLedger.rows : []
   const topicOpportunities = Array.isArray(topicLedger?.next_topic_opportunities)
@@ -234,6 +236,65 @@ export function BlogEditorialSurface(): ReactElement {
           </dl>
         </section>
       </div>
+
+      <section className="blog-editorial-panel blog-editorial-panel--wide">
+        <PanelHeader
+          label="malha de sinais"
+          meta={atlasSignalMesh?.summary?.graph_posture ?? 'fontes atlas'}
+        />
+        {atlasSignalMesh ? (
+          <div className="blog-editorial-signal-mesh">
+            <div className="blog-editorial-signal-mesh__summary">
+              <div>
+                <span>proxima acao segura</span>
+                <strong>{atlasSignalMesh.summary?.next_safe_action?.replaceAll('_', ' ') ?? 'manter ordem editorial'}</strong>
+                <p>
+                  A malha mostra quais partes do Atlas podem informar o blog agora. Ela coordena sinais, mas nao escreve,
+                  reordena ou publica.
+                </p>
+              </div>
+              <dl className="blog-editorial-kv">
+                <div>
+                  <dt>fontes</dt>
+                  <dd>{atlasSignalMesh.summary?.source_count ?? atlasSignalSources.length}</dd>
+                </div>
+                <div>
+                  <dt>prontas</dt>
+                  <dd>{atlasSignalMesh.summary?.ready_source_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>futuras</dt>
+                  <dd>{atlasSignalMesh.summary?.blocked_or_future_source_count ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>sinais</dt>
+                  <dd>{atlasSignalMesh.summary?.candidate_signal_count ?? 0}</dd>
+                </div>
+              </dl>
+            </div>
+            {atlasSignalSources.length > 0 ? (
+              <ul className="blog-editorial-signal-sources">
+                {atlasSignalSources.slice(0, 8).map((source) => (
+                  <li key={source.id ?? source.label ?? 'signal'} data-status={source.status ?? 'unknown'}>
+                    <div>
+                      <span>{source.status ?? 'unknown'}</span>
+                      <strong>{source.label ?? source.id ?? 'Fonte sem nome'}</strong>
+                      <p>{source.role ?? 'Fonte editorial governada.'}</p>
+                    </div>
+                    <small>
+                      {source.signal_count ?? 0} sinais · {source.authority ?? 'sem autoridade'} · {source.next_action?.replaceAll('_', ' ') ?? 'observar'}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="blog-editorial-empty">Nenhuma fonte editorial calculada.</p>
+            )}
+          </div>
+        ) : (
+          <p className="blog-editorial-empty">Malha de sinais ainda nao carregada.</p>
+        )}
+      </section>
 
       <section className="blog-editorial-panel blog-editorial-panel--wide">
         <PanelHeader
