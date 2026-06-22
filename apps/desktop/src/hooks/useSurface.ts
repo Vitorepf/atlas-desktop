@@ -26,6 +26,7 @@ export type Surface =
   | 'mission_control'
   | 'plan_visible'
   | 'blog_editorial'
+  | 'active_loops'
 
 const STORAGE_KEY = 'atlas-desktop:surface'
 
@@ -41,7 +42,8 @@ function readInitial(): Surface {
       v === 'stewardship' ||
       v === 'mission_control' ||
       v === 'plan_visible' ||
-      v === 'blog_editorial'
+      v === 'blog_editorial' ||
+      v === 'active_loops'
     )
       return v
   } catch {
@@ -99,6 +101,10 @@ export function useSurface(): {
       } else if (e.key === '9') {
         e.preventDefault()
         setSurface('blog_editorial')
+      } else if (e.key === '0') {
+        // ⌘0 · the Frota (active loops + DESLIGAR) — the fleet governance surface.
+        e.preventDefault()
+        setSurface('active_loops')
       }
     }
     document.addEventListener('keydown', onKey)

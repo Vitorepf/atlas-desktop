@@ -239,7 +239,11 @@
   .atlas-shell.surface-control_plane,
   .atlas-shell.surface-mission_control,
   .atlas-shell.surface-plan_visible,
-  .atlas-shell.surface-stewardship {
+  .atlas-shell.surface-blog_editorial,
+  .atlas-shell.surface-stewardship,
+  .atlas-shell.surface-active_loops,
+  .atlas-ai-awis-portal,
+  .atlas-ai-space-edit-portal {
     /* Legacy token bridge · Atlas Code roda em slate teal (Codex-inspired).
        Redefinir cream/ink/bronze/hair propaga o tema para painels legacy
        que ainda nao migraram para cc-*. Cartografia intocada. */
@@ -365,8 +369,7 @@
     outline: none;
     box-shadow:
       0 0 0 2px var(--cc-bg),
-      0 0 0 4px rgba(230, 185, 102, 0.45),
-      0 0 24px rgba(230, 185, 102, 0.18);
+      0 0 0 4px rgba(230, 185, 102, 0.45);
     border-radius: var(--cc-radius-sm);
   }
 
@@ -379,7 +382,9 @@
   .atlas-shell.surface-control_plane *::-webkit-scrollbar,
   .atlas-shell.surface-mission_control *::-webkit-scrollbar,
   .atlas-shell.surface-plan_visible *::-webkit-scrollbar,
-  .atlas-shell.surface-stewardship *::-webkit-scrollbar {
+  .atlas-shell.surface-blog_editorial *::-webkit-scrollbar,
+  .atlas-shell.surface-stewardship *::-webkit-scrollbar,
+  .atlas-shell.surface-active_loops *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
@@ -390,6 +395,7 @@
   .atlas-shell.surface-control_plane *::-webkit-scrollbar-track,
   .atlas-shell.surface-mission_control *::-webkit-scrollbar-track,
   .atlas-shell.surface-plan_visible *::-webkit-scrollbar-track,
+  .atlas-shell.surface-blog_editorial *::-webkit-scrollbar-track,
   .atlas-shell.surface-stewardship *::-webkit-scrollbar-track {
     background: transparent;
   }
@@ -400,6 +406,7 @@
   .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-mission_control *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-plan_visible *::-webkit-scrollbar-thumb,
+  .atlas-shell.surface-blog_editorial *::-webkit-scrollbar-thumb,
   .atlas-shell.surface-stewardship *::-webkit-scrollbar-thumb {
     background: rgba(149, 163, 172, 0.18);
     border: 2px solid transparent;
@@ -414,6 +421,7 @@
   .atlas-shell.surface-control_plane *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-mission_control *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-plan_visible *::-webkit-scrollbar-thumb:hover,
+  .atlas-shell.surface-blog_editorial *::-webkit-scrollbar-thumb:hover,
   .atlas-shell.surface-stewardship *::-webkit-scrollbar-thumb:hover {
     background: rgba(149, 163, 172, 0.32);
     background-clip: padding-box;
@@ -426,6 +434,7 @@
   .atlas-shell.surface-control_plane *,
   .atlas-shell.surface-mission_control *,
   .atlas-shell.surface-plan_visible *,
+  .atlas-shell.surface-blog_editorial *,
   .atlas-shell.surface-stewardship * {
     scrollbar-color: rgba(149, 163, 172, 0.22) transparent;
     scrollbar-width: thin;
@@ -475,7 +484,7 @@
     min-height: 0;
   }
   .atlas-shell.surface-code .ops-tab {
-    padding: 10px 6px;
+    padding: 10px 13px;
     font-size: 11.5px;
     font-weight: var(--cc-weight-medium);
     color: var(--cc-text-muted);
@@ -2662,9 +2671,12 @@
     pointer-events: none;
   }
 
-  /* — Premium · subtle pulse nos status dots blocked (alert sem ser cafona). */
+  /* — status dot blocked · estático (canon: dots não pulsam; cor+glow fixo
+     comunica o alerta sem o pulse cafona de SaaS). */
   .atlas-shell.surface-code .cc-status-dot[data-status='blocked'] {
-    animation: cc-blocked-soft-pulse 3s var(--cc-ease-in-out) infinite;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 6px rgba(208, 90, 82, 0.5);
   }
   @keyframes cc-blocked-soft-pulse {
     0%, 100% {
@@ -3489,13 +3501,11 @@
     font-feature-settings: 'kern' 1, 'liga' 1, 'cv11' 1;
   }
 
-  /* — Premium · obra-id em hover com glow gold. */
+  /* — obra-id em hover · realce neutro (gold = ativo, não hover; ≤2 camadas). */
   .atlas-shell.surface-code .obra-bar:hover .obra-id {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.10),
-      0 1px 2px rgba(0, 0, 0, 0.20),
-      0 0 0 1px rgba(212, 168, 90, 0.30),
-      0 0 12px rgba(212, 168, 90, 0.15);
+      0 1px 2px rgba(0, 0, 0, 0.20);
   }
 
   /* — Premium · subtle inner gloss em send-btn. */
@@ -3538,8 +3548,7 @@
   .atlas-shell.surface-code [aria-label*='Checklist'] span[style*='var(--cc-success'][style*='border-radius'] {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 1px 2px rgba(0, 0, 0, 0.20),
-      0 0 6px rgba(130, 181, 119, 0.15);
+      0 1px 2px rgba(0, 0, 0, 0.20);
   }
 }
 
@@ -4367,6 +4376,9 @@
   .kernel-pill.kernel-booting .kernel-dot {
     animation: live-pulse 1.4s ease-in-out infinite;
   }
+  @media (prefers-reduced-motion: reduce) {
+    .kernel-pill.kernel-booting .kernel-dot { animation: none; }
+  }
   .kernel-pill.kernel-ready {
     color: var(--moss);
     border-color: var(--moss-soft);
@@ -4498,7 +4510,6 @@
     border-radius: 50%;
     background: var(--moss);
     margin-right: 6px;
-    animation: live-pulse 2.4s ease-in-out infinite;
   }
   .folio .div { color: var(--bronze); margin: 0 5px; }
 
@@ -4803,15 +4814,20 @@
   /* — RightRail · ops panel (Visual Ergonomics v1) */
   .ops-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     border-bottom: 1px solid var(--cc-border-soft);
     background: var(--cc-surface);
     position: sticky;
     top: 0;
     z-index: 2;
   }
+  .ops-tabs::-webkit-scrollbar { display: none; }
   .ops-tab {
-    flex: 1;
-    padding: 12px 8px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 12px 14px;
     font-family: var(--cc-font-sans);
     font-size: 12px;
     font-weight: var(--cc-weight-medium);
@@ -5365,6 +5381,10 @@
   @keyframes pulseDot {
     0%, 100% { opacity: 0.35; transform: scale(0.8); }
     50% { opacity: 1; transform: scale(1.1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .term-status-running::before,
+    .term-status-pending::before { animation: none; }
   }
 
   .pty-badge {
@@ -6002,8 +6022,9 @@ html.code-terminal-hidden .atlas-shell.surface-code.terminal-right .right-rail {
    Aplica APENAS quando há Obra ativa (.obra-bar-active). Loading/Create
    states mantêm seu CSS legacy original.
    Grid: [toggle+id] [título centralizado] [vazio simétrico].
-   Título: Cormorant Garamond italic 26px wght 540 cool cream forte —
-   peso digno de NOME DA OBRA, não chip metadata.
+   Título: Inter sans 22px wght 600 (ss01/cv11) cool cream forte — peso
+   digno de NOME DA OBRA, não chip metadata. Canon: Cormorant só em ✦
+   glyph + numerais romanos; título operacional = Inter (ref Atlas AI hero h2).
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .atlas-shell.surface-code .obra-bar.obra-bar-active {
   display: grid;
@@ -6024,19 +6045,23 @@ html.code-terminal-hidden .atlas-shell.surface-code.terminal-right .right-rail {
 }
 .atlas-shell.surface-code .obra-bar-active .obra-objective {
   margin: 0 !important;
-  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif !important;
-  font-style: italic !important;
-  font-variation-settings: 'wght' 540 !important;
-  font-weight: 540 !important;
-  font-size: 26px !important;
+  /* Canon: Inter is the only operational font — Cormorant is reserved for the
+     ✦ glyph + roman numerals. Presence comes from weight + negative tracking,
+     not italic serif (which was illegible/off-canon in a dense 12h bar). */
+  font-family: var(--cc-font-sans) !important;
+  font-style: normal !important;
+  font-variation-settings: 'wght' 600 !important;
+  font-weight: 600 !important;
+  font-size: 22px !important;
   letter-spacing: -0.014em !important;
-  line-height: 1.1 !important;
+  line-height: 1.15 !important;
+  /* Inter premium stylistic sets — same treatment as Atlas AI hero h2. */
+  font-feature-settings: 'ss01' 1, 'cv11' 1, 'kern' 1 !important;
   color: var(--cc-text-strong, #f0f4f7) !important;
   text-align: center !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   max-width: 720px !important;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24) !important;
   justify-self: center;
 }

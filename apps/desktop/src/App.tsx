@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect } from 'react'
+import { ActiveLoopsBadge } from './components/ActiveLoopsBadge'
 import { TopBar } from './components/TopBar'
 import { useBoot } from './hooks/useBoot'
 import { useBridge } from './hooks/useBridge'
@@ -109,6 +110,9 @@ function App() {
           onOpenWorkspaceProfile={(mode) => projectProfile.show(mode ?? 'view')}
         />
 
+        {/* PERSISTENT FLEET ALARM — fixed, on every surface, visible only while agents run. */}
+        <ActiveLoopsBadge onOpen={() => setSurface('active_loops')} />
+
         {projectProfile.open ? (
           <Suspense fallback={null}>
             <ProjectProfileSheet
@@ -122,7 +126,10 @@ function App() {
               onCreate={b.createWorkspaceProfile}
               onUpdate={b.updateWorkspaceProfile}
               onArchive={b.archiveWorkspaceProfile}
-              onPickWorkspaceFolder={b.pickWorkspaceFolder}
+              // Native folder picking only exists inside the Tauri shell; in
+              // browser/http dev the CTAs must disable instead of no-op'ing.
+              onPickWorkspaceFolder={b.mode === 'tauri' ? b.pickWorkspaceFolder : undefined}
+              onRefreshWorkspaces={b.refreshWorkspaces}
             />
           </Suspense>
         ) : null}

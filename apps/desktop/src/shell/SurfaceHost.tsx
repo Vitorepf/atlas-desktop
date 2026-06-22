@@ -32,6 +32,9 @@ const PlanVisibleSurface = lazy(() =>
 const StewardshipSurface = lazy(() =>
   import('../surfaces/stewardship').then((mod) => ({ default: mod.StewardshipSurface })),
 )
+const ActiveLoopsSurface = lazy(() =>
+  import('../surfaces/active-loops').then((mod) => ({ default: mod.ActiveLoopsSurface })),
+)
 
 interface SurfaceHostProps {
   surface: Surface
@@ -86,7 +89,10 @@ function slugifyProjectName(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return slug || 'atlas'
+  // Backend requires >= 3 chars (422 invalid_workspace_slug) \u2014 a 1-2 char
+  // folder name like "AI" would otherwise mint a slug the server rejects.
+  if (slug.length >= 3) return slug
+  return slug ? `${slug}-local` : 'atlas'
 }
 
 function workspacePayloadFromFolder(workspacePath: string, preferredSlug?: string | null): AtlasWorkspaceProfileWritePayload {
@@ -160,17 +166,23 @@ export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWork
       const profile = bridge.activeWorkspace
       const selected = await bridge.pickWorkspaceFolder()
       if (!selected) return false
-      const updated = profile
-        ? await bridge.updateWorkspaceProfile(
-            profile.slug,
-            workspacePayloadFromProfile(profile, selected),
-          )
-        : await bridge.createWorkspaceProfile(
-            workspacePayloadFromFolder(selected, bridge.activeWorkspaceSlug ?? bridge.workspaces?.defaultSlug ?? null),
-          )
-      if (!updated?.slug) return false
-      await bridge.setActiveWorkspaceSlug(updated.slug)
-      return true
+      try {
+        const updated = profile
+          ? await bridge.updateWorkspaceProfile(
+              profile.slug,
+              workspacePayloadFromProfile(profile, selected),
+            )
+          : await bridge.createWorkspaceProfile(
+              workspacePayloadFromFolder(selected, bridge.activeWorkspaceSlug ?? bridge.workspaces?.defaultSlug ?? null),
+            )
+        if (!updated?.slug) return false
+        await bridge.setActiveWorkspaceSlug(updated.slug)
+        return true
+      } catch {
+        // The bridge wrappers re-throw real failures so the Project sheet can
+        // explain them; this CTA reports honestly via its boolean instead.
+        return false
+      }
     }
 
     return (
@@ -237,6 +249,16 @@ export function SurfaceHost({ surface, bridge, boot, onSurfaceChange, onOpenWork
       <ErrorBoundary label="Blog Editorial">
         <Suspense fallback={<SurfaceLoading label="Blog Editorial" />}>
           <BlogEditorialSurface />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
+
+  if (surface === 'active_loops') {
+    return (
+      <ErrorBoundary label="Frota">
+        <Suspense fallback={<SurfaceLoading label="Frota" />}>
+          <ActiveLoopsSurface />
         </Suspense>
       </ErrorBoundary>
     )
