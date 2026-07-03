@@ -9,6 +9,14 @@
 @layer reset {
   * { box-sizing: border-box; }
   html, body, #root { height: 100%; }
+  /* WebView backdrop = window backgroundColor (#1d2b34). O app é um dark IDE; o
+     token claro legado --cc-bg pintava o <body> de cream (#f4ede0), então
+     qualquer sub-preenchimento do shell no WKWebView do Tauri revelava uma
+     FAIXA CLARA no rodapé (screenshot do operador 03/07). Pintando html/body/
+     #root com a cor da janela, a área não coberta pelo shell fica
+     indistinguível da moldura — nunca mais cream. Correção na FONTE da pintura,
+     não na geometria (ver também o override do body em @layer base). */
+  html, body, #root { background: #1d2b34; }
   body { margin: 0; }
   button, input, textarea { font: inherit; color: inherit; }
 }
@@ -3554,7 +3562,11 @@
 
 @layer base {
   body {
-    background: var(--cc-bg);
+    /* NUNCA o cream --cc-bg aqui: o <body> é o backdrop do WebView atrás do
+       shell dark; cream vazava como faixa clara no rodapé (Tauri/WKWebView).
+       Backdrop = cor da janela (#1d2b34). Surfaces pintam o próprio canvas por
+       cima; só o vão não-coberto usa esta cor, agora indistinguível da moldura. */
+    background: #1d2b34;
     color: var(--cc-text);
     font-family: var(--cc-font-sans);
     font-size: var(--cc-text-body);
