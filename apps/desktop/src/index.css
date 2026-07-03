@@ -3613,9 +3613,16 @@
 @layer layout {
   .atlas-shell {
     display: grid;
-    /* 100% chain (html/body/#root), NUNCA vh/vw: no WKWebView do Tauri as
-       unidades de viewport congelam após resize/troca de display — o shell
-       ficava mais curto que a janela e o canvas branco aparecia no rodapé. */
+    /* PIN AO VIEWPORT (position:fixed + inset:0): a cadeia height:100% (e vh/vw)
+       resolve MAIS CURTA que a janela no WKWebView do Tauro — o shell não
+       chegava no fundo, deixando uma faixa morta no rodapé (cream antes do fix
+       de backdrop; escura depois, mas o vão continuava). position:fixed usa o
+       LAYOUT VIEWPORT real (a área-cliente da janela), imune ao bug do 100%.
+       inset:0 dá exatamente os limites do viewport, então descendentes
+       absolutos (resizers/floaters) não deslocam. height/width 100% ficam como
+       fallback redundante. */
+    position: fixed;
+    inset: 0;
     height: 100%;
     width: 100%;
     overflow: hidden;
