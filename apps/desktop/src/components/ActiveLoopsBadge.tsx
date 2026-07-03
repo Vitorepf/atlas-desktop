@@ -4,18 +4,25 @@ import { useActiveAgentCount } from '../surfaces/active-loops'
 // PERSISTENT FLEET ALARM — a fixed, always-on-top badge shown on EVERY surface whenever any autonomous agent
 // is running. The operator's hard requirement: nothing spends a provider account silently. Clicking it opens
 // the Frota surface (loops ativos + histórico + DESLIGAR). Renders nothing when the machine is idle.
+//
+// Polish (03/07): capped width so it stays in the bottom-right gutter and never overlaps the composer's
+// primary "enviar" action (it used to straddle the send button); crisp CSS status dot instead of the
+// inconsistently-rendered 🔴 emoji; refined border/shadow; the spending detail truncates with a full-text
+// tooltip so the count + DESLIGAR are always legible.
 export function ActiveLoopsBadge({ onOpen }: { onOpen: () => void }) {
   const { count, accounts } = useActiveAgentCount()
   if (count <= 0) return null
 
   const accountLabel = accounts.join(' · ') || 'provider'
+  const full = `${count} ${count === 1 ? 'agente ativo' : 'agentes ativos'} gastando ${accountLabel} — clique para DESLIGAR`
   return (
-    <button type="button" style={styles.badge} onClick={onOpen} title="Abrir a Frota (loops ativos + DESLIGAR)">
-      <span aria-hidden>🔴</span>
-      <span>
-        {count} {count === 1 ? 'agente ativo' : 'agentes ativos'} gastando {accountLabel}
+    <button type="button" style={styles.badge} onClick={onOpen} title={full} aria-label={full}>
+      <span style={styles.dot} aria-hidden />
+      <span style={styles.label}>
+        <strong style={styles.count}>{count}</strong> {count === 1 ? 'ativo' : 'ativos'}
+        <span style={styles.spend}> · {accountLabel}</span>
       </span>
-      <span style={styles.cta}>DESLIGAR ›</span>
+      <span style={styles.cta}>DESLIGAR&nbsp;›</span>
     </button>
   )
 }
@@ -26,19 +33,41 @@ const styles: Record<string, CSSProperties> = {
     bottom: 16,
     right: 16,
     zIndex: 9999,
+    // Capped so the alarm lives in the right gutter and never reaches the
+    // composer's send button (measured overlap regression, 03/07).
+    maxWidth: 'min(340px, 42vw)',
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    padding: '9px 14px',
-    borderRadius: 11,
-    border: 'none',
+    gap: 9,
+    padding: '8px 13px',
+    borderRadius: 999,
+    border: '1px solid rgba(255, 255, 255, 0.16)',
     cursor: 'pointer',
     background: 'var(--cc-danger, #8a3025)',
     color: '#fff',
     fontWeight: 600,
     fontSize: 'var(--cc-text-body, 13px)',
     fontFamily: 'var(--cc-font-sans, sans-serif)',
-    boxShadow: '0 6px 22px rgba(0,0,0,0.28)',
+    lineHeight: 1.2,
+    boxShadow: '0 8px 26px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+    WebkitBackdropFilter: 'saturate(1.1)',
   },
-  cta: { fontWeight: 700, opacity: 0.92 },
+  dot: {
+    flexShrink: 0,
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: '#ff6a5a',
+    boxShadow: '0 0 0 3px rgba(255, 106, 90, 0.28), 0 0 7px rgba(255, 106, 90, 0.9)',
+  },
+  // The spending detail truncates; count + DESLIGAR stay pinned and legible.
+  label: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  count: { fontWeight: 700 },
+  spend: { opacity: 0.9 },
+  cta: { flexShrink: 0, fontWeight: 700, letterSpacing: '0.01em' },
 }
