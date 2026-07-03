@@ -6502,6 +6502,10 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  /* min-width:0 permite os filhos encolherem; sem isso um título longo empurra
+     o badge de contagem (ex.: "568 violações") pra fora do painel e da tela. */
+  min-width: 0;
+  overflow: hidden;
   padding: 9px 4px;
   background: none;
   border: 0;
@@ -6543,7 +6547,10 @@
 }
 
 .atlas-ai-disclosure-title {
-  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .atlas-ai-disclosure-count {
