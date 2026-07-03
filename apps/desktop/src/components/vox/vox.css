@@ -36,7 +36,7 @@
   right: 0;
   /* V6-VISUAL-POLISH-FINAL · respeita também o viewport (não só o pai).
      Em viewport estreito o overlay encolhe sem overflow horizontal feio. */
-  width: min(440px, calc(100% - 24px), calc(100vw - 32px));
+  width: min(440px, calc(100% - 24px), calc(100dvw - 32px));
   max-height: 70vh;
   overflow-y: auto;
   background: var(--cc-surface-raised, #232f37);

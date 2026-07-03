@@ -3601,8 +3601,11 @@
 @layer layout {
   .atlas-shell {
     display: grid;
-    height: 100vh;
-    width: 100vw;
+    /* 100% chain (html/body/#root), NUNCA vh/vw: no WKWebView do Tauri as
+       unidades de viewport congelam após resize/troca de display — o shell
+       ficava mais curto que a janela e o canvas branco aparecia no rodapé. */
+    height: 100%;
+    width: 100%;
     overflow: hidden;
   }
   /* Code surface · 4 rows × 3 cols */
@@ -3969,7 +3972,7 @@
     align-self: end;
     height: var(--terminal-side-height);
     min-height: 120px;
-    max-height: calc(100vh - 214px);
+    max-height: calc(100dvh - 214px);
     z-index: 3;
     border-top: 1px solid var(--cc-border-soft);
     border-left: 1px solid var(--cc-border-soft);
@@ -4400,7 +4403,7 @@
     top: 110%;
     z-index: 1000;
     width: 460px;
-    max-width: min(460px, calc(100vw - 32px));
+    max-width: min(460px, calc(100dvw - 32px));
     padding: 14px 16px;
     background: var(--cream-deep);
     border: 1px solid var(--bronze-soft);

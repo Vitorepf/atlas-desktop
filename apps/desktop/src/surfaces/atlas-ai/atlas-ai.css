@@ -191,6 +191,27 @@
   color: var(--cc-text-strong);
 }
 
+.atlas-ai-rail-toggle:active {
+  transform: scale(0.92);
+  transition-duration: 90ms;
+}
+
+/* Press feedback for the close affordances (modal ✕ + workbench ✕). */
+.atlas-ai-awis-modal-close:active,
+.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:active,
+.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:active {
+  transform: scale(0.88);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-rail-toggle:active,
+  .atlas-ai-awis-modal-close:active,
+  .atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:active,
+  .atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:active {
+    transform: none;
+  }
+}
+
 .atlas-ai-rail-toggle-right svg { transform: scaleX(-1); }
 
 .atlas-ai-calmaria-toggle {
@@ -213,10 +234,165 @@
 
 .atlas-ai-rail-left {
   border-right: 1px solid var(--cc-border-soft);
+  animation: atlas-ai-rail-left-in 360ms var(--cc-ease-out) both;
 }
 
 .atlas-ai-rail-right {
   border-left: 1px solid var(--cc-border-soft);
+  animation: atlas-ai-rail-right-in 360ms var(--cc-ease-out) both;
+}
+
+/* Fluidity baseline · clickable affordances that otherwise snapped on
+   hover/press now ease + give tactile press feedback. */
+.atlas-ai-awis-queue-item button,
+.atlas-ai-workspace-picker-add,
+.atlas-ai-workspace-scope-toggle,
+.atlas-ai-workspace-fusion-button,
+.atlas-ai-history-loader button,
+.atlas-ai-plan-action,
+.atlas-ai-att-thumb,
+.atlas-ai-att-preview-sheet header button,
+.atlas-ai-voice-live-close,
+.atlas-ai-voice-live-danger,
+.atlas-ai-response-audit > summary {
+  transition:
+    background 180ms var(--cc-ease-out),
+    border-color 180ms var(--cc-ease-out),
+    color 180ms var(--cc-ease-out),
+    box-shadow 180ms var(--cc-ease-out),
+    transform 160ms var(--cc-ease-out);
+}
+
+.atlas-ai-awis-queue-item button:active,
+.atlas-ai-workspace-picker-add:active,
+.atlas-ai-workspace-scope-toggle:active,
+.atlas-ai-workspace-fusion-button:active,
+.atlas-ai-history-loader button:active,
+.atlas-ai-plan-action:active,
+.atlas-ai-att-thumb:active,
+.atlas-ai-att-preview-sheet header button:active,
+.atlas-ai-voice-live-close:active,
+.atlas-ai-voice-live-danger:active {
+  transform: scale(0.96);
+  transition-duration: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-awis-queue-item button:active,
+  .atlas-ai-workspace-picker-add:active,
+  .atlas-ai-workspace-scope-toggle:active,
+  .atlas-ai-workspace-fusion-button:active,
+  .atlas-ai-history-loader button:active,
+  .atlas-ai-plan-action:active,
+  .atlas-ai-att-thumb:active,
+  .atlas-ai-att-preview-sheet header button:active,
+  .atlas-ai-voice-live-close:active,
+  .atlas-ai-voice-live-danger:active {
+    transform: none;
+  }
+}
+
+.atlas-ai-decision-text,
+.atlas-ai-quality-text {
+  transition: color 180ms var(--cc-ease-out), background 180ms var(--cc-ease-out);
+}
+
+/* Fluidity baseline · second wave (panel buttons + space controls + links). */
+.atlas-ai-action-primary,
+.atlas-ai-action-ghost,
+.atlas-ai-project-space-title-button,
+.atlas-ai-saved-space-refresh,
+.atlas-ai-project-space-remove {
+  transition:
+    background 180ms var(--cc-ease-out),
+    border-color 180ms var(--cc-ease-out),
+    color 180ms var(--cc-ease-out),
+    box-shadow 180ms var(--cc-ease-out),
+    transform 160ms var(--cc-ease-out);
+}
+
+.atlas-ai-danger-link {
+  transition: color 180ms var(--cc-ease-out), background 180ms var(--cc-ease-out);
+}
+
+/* Keyboard accessibility · consistent gold focus ring across every clickable
+   affordance that lacked one. :focus-visible only — never shows on mouse. */
+.atlas-ai-action:focus-visible,
+.atlas-ai-att-remove:focus-visible,
+.atlas-ai-att-thumb:focus-visible,
+.atlas-ai-attach-btn:focus-visible,
+.atlas-ai-awis-action:focus-visible,
+.atlas-ai-awis-queue-item button:focus-visible,
+.atlas-ai-cmenu-item:focus-visible,
+.atlas-ai-ctxmenu-item:focus-visible,
+.atlas-ai-decision-chip:focus-visible,
+.atlas-ai-error-retry:focus-visible,
+.atlas-ai-filter-tab:focus-visible,
+.atlas-ai-folder-head:focus-visible,
+.atlas-ai-hero-chip:focus-visible,
+.atlas-ai-history-loader button:focus-visible,
+.atlas-ai-link:focus-visible,
+.atlas-ai-new-thread:focus-visible,
+.atlas-ai-plan-action:focus-visible,
+.atlas-ai-promotion-close:focus-visible,
+.atlas-ai-promotion-target-option:focus-visible,
+.atlas-ai-quality-chip:focus-visible,
+.atlas-ai-reasoning-trigger:focus-visible,
+.atlas-ai-segment:focus-visible,
+.atlas-ai-show-more:focus-visible,
+.atlas-ai-side-tab:focus-visible,
+.atlas-ai-slash-item:focus-visible,
+.atlas-ai-streaming-cancel:focus-visible,
+.atlas-ai-tool-receipts-summary:focus-visible,
+.atlas-ai-url-hint:focus-visible,
+.atlas-ai-voice-live-close:focus-visible,
+.atlas-ai-voice-live-danger:focus-visible,
+.atlas-ai-voice-live-primary:focus-visible,
+.atlas-ai-voice-live-secondary:focus-visible,
+.atlas-ai-workspace-fusion-button:focus-visible,
+.atlas-ai-workspace-picker-add:focus-visible,
+.atlas-ai-workspace-picker-button:focus-visible,
+.atlas-ai-workspace-picker-item:focus-visible,
+.atlas-ai-workspace-scope-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring, 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(230, 185, 102, 0.55));
+}
+
+.atlas-ai-action-primary:active,
+.atlas-ai-action-ghost:active,
+.atlas-ai-saved-space-refresh:active,
+.atlas-ai-project-space-remove:active {
+  transform: scale(0.96);
+  transition-duration: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-action-primary:active,
+  .atlas-ai-action-ghost:active,
+  .atlas-ai-saved-space-refresh:active,
+  .atlas-ai-project-space-remove:active {
+    transform: none;
+  }
+}
+
+/* Opacity-only (NO transform): a lingering transform on the rail would create a
+   containing block that traps position:fixed modals rendered inside it (e.g. the
+   Space editor) to the rail's width. Fade keeps the entrance without that trap. */
+@keyframes atlas-ai-rail-left-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes atlas-ai-rail-right-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-rail-left,
+  .atlas-ai-rail-right {
+    animation: none;
+  }
 }
 
 /* Inner cards dentro dos rails ficam sem background extra
@@ -321,6 +497,18 @@
   font-variation-settings: 'wght' 560;
   letter-spacing: 0;
   text-align: center;
+  animation: atlas-ai-notice-in 260ms var(--cc-ease-spring) both;
+}
+
+@keyframes atlas-ai-notice-in {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-workbench-notice {
+    animation: none;
+  }
 }
 
 .atlas-ai-stage-drop-target span {
@@ -346,6 +534,13 @@
   overflow-y: auto;
   min-height: 0;
   padding: 12px 24px 6px;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-stage-scroll {
+    scroll-behavior: auto;
+  }
 }
 
 .atlas-ai-awis-command-center {
@@ -392,12 +587,22 @@
     color-mix(in srgb, var(--cc-panel) 88%, #000 12%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   cursor: pointer;
-  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  transition:
+    border-color 180ms var(--cc-ease-out),
+    transform 220ms var(--cc-ease-spring),
+    box-shadow 220ms var(--cc-ease-out);
+  animation: atlas-ai-awis-trigger-in 320ms var(--cc-ease-out) both;
 }
 
 .atlas-ai-awis-trigger:hover {
   border-color: color-mix(in srgb, var(--cc-accent) 50%, var(--cc-border));
   transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.atlas-ai-awis-trigger:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 90ms;
 }
 
 .atlas-ai-awis-trigger:focus-visible {
@@ -449,51 +654,140 @@
   overflow: auto;
   background: rgba(8, 12, 14, 0.52);
   backdrop-filter: blur(2px);
-  animation: atlas-ai-awis-modal-fade 140ms ease;
+  animation: atlas-ai-awis-modal-fade 200ms var(--cc-ease-out) both;
+}
+
+.atlas-ai-awis-modal-backdrop.is-closing {
+  animation: atlas-ai-awis-modal-fade-out 200ms var(--cc-ease-out) both;
+  pointer-events: none;
 }
 
 .atlas-ai-awis-modal {
   position: relative;
-  width: min(1240px, calc(100vw - 48px));
-  max-height: calc(100vh - 72px);
-  overflow: auto;
-  padding: 22px 22px 18px;
-  border: 1px solid color-mix(in srgb, var(--cc-border) 88%, transparent);
+  width: min(980px, calc(100dvw - 48px));
+  max-height: calc(100dvh - 96px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--cc-border);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 60%),
-    color-mix(in srgb, var(--cc-panel) 92%, #000 8%);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
-  animation: atlas-ai-awis-modal-rise 160ms ease;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 38%),
+    color-mix(in srgb, var(--cc-surface) 96%, #000 4%);
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.5);
+  transform-origin: center top;
+  animation: atlas-ai-awis-modal-rise 260ms var(--cc-ease-out) both;
 }
 
-.atlas-ai-awis-modal-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 1;
-  display: inline-flex;
+.atlas-ai-awis-modal.is-closing {
+  animation: atlas-ai-awis-modal-sink 200ms var(--cc-ease-out) both;
+}
+
+/* ── Header band ── */
+.atlas-ai-awis-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid var(--cc-border-soft);
+}
+
+.atlas-ai-awis-modal-headline {
+  min-width: 0;
+}
+
+.atlas-ai-awis-modal-eyebrow {
+  margin: 0 0 8px;
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+}
+
+.atlas-ai-awis-modal-header h2 {
+  margin: 0;
+  font-family: var(--cc-font-sans);
+  font-size: 25px;
+  font-variation-settings: 'wght' 600;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+  color: var(--cc-text-strong);
+}
+
+.atlas-ai-awis-modal-sub {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--cc-text-muted);
+  max-width: 56ch;
+}
+
+.atlas-ai-awis-modal-aside {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--cc-border) 82%, transparent);
-  background: color-mix(in srgb, var(--cc-panel) 80%, transparent);
-  color: var(--cc-text);
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
+  gap: 16px;
+  flex-shrink: 0;
 }
 
-.atlas-ai-awis-modal-close:hover {
-  border-color: color-mix(in srgb, var(--cc-accent) 50%, var(--cc-border));
+.atlas-ai-awis-modal-score {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: var(--cc-font-mono);
+}
+
+.atlas-ai-awis-modal-score span {
+  font-size: 26px;
+  font-variation-settings: 'wght' 600;
   color: var(--cc-accent);
 }
 
-/* Inside the modal the command center provides the content only — the sheet
-   already supplies the framing, so drop the inner card chrome and let it fill. */
-.atlas-ai-awis-modal .atlas-ai-awis-command-center {
+.atlas-ai-awis-modal-score small {
+  font-size: 12px;
+  color: var(--cc-text-faint);
+}
+
+.atlas-ai-awis-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--cc-border) 88%, transparent);
+  background: color-mix(in srgb, var(--cc-surface) 58%, transparent);
+  color: var(--cc-text-faint);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 140ms var(--cc-ease-out), border-color 140ms var(--cc-ease-out), background 140ms var(--cc-ease-out), transform 140ms var(--cc-ease-out);
+}
+
+.atlas-ai-awis-modal-close:hover {
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 46%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+}
+
+.atlas-ai-awis-modal-close:focus-visible {
+  outline: none;
+  border-color: var(--cc-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-accent) 30%, transparent);
+}
+
+/* ── Body · re-lays the command bar into breathing sections ── */
+.atlas-ai-awis-modal-body {
+  padding: 22px 26px 24px;
+  overflow: auto;
+}
+
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  gap: 12px;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -502,19 +796,200 @@
   box-shadow: none;
 }
 
+/* Identity is carried by the header band. */
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-command-main,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-score {
+  display: none;
+}
+
+/* Stat cards: Atlas/pasta · Mapa local · Memória local · loop vivo */
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-context,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-map,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-memory,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-live {
+  grid-column: span 1;
+  grid-row: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--cc-border-soft);
+  border-left: 1px solid var(--cc-border-soft);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cc-panel) 58%, transparent);
+}
+
+/* Full-width sections (chips + every living/learning row) */
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-chips,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-brain-signals,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-living-queue,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-transfer-map,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-operational-learning,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-consolidation {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-next {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--cc-border-soft);
+}
+
+/* Actions become a right-aligned footer row */
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-actions {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 4px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--cc-border-soft);
+}
+
+/* Section eyebrows · give the modal body the same labeled hierarchy as the
+   project sheet. Each living/learning row gets a mono-caps title on its own
+   line (the sections are flex-wrap, so a full-basis ::before becomes a header). */
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-chips::before,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-brain-signals::before,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-living-queue::before,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-transfer-map::before,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-operational-learning::before,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-consolidation::before,
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-next::before {
+  flex-basis: 100%;
+  width: 100%;
+  margin: 2px 0 1px;
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  font-variation-settings: 'wght' 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+}
+
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-chips::before { content: 'Capacidades ativas'; }
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-brain-signals::before { content: 'Sinais vivos'; }
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-living-queue::before { content: 'Fila viva'; }
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-transfer-map::before { content: 'Aprendizado entre workspaces'; }
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-operational-learning::before { content: 'Aprendizado operacional'; }
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-consolidation::before { content: 'Ouro & revisão'; }
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-awis-next::before { content: 'Próximos saltos'; }
+
+/* "Aprendizado & memória" accordion · the lower wall collapses into one block. */
+.atlas-ai-awis-modal-body .atlas-ai-awis-command-center > .atlas-ai-disclosure {
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-transfer-map,
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-operational-learning,
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-consolidation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-consolidation {
+  margin-bottom: 0;
+}
+
+/* Sub-eyebrow per nested block inside the accordion. */
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-transfer-map::before,
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-operational-learning::before,
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-consolidation::before {
+  flex-basis: 100%;
+  width: 100%;
+  margin: 0 0 1px;
+  font-family: var(--cc-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+}
+
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-transfer-map::before { content: 'Entre workspaces'; }
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-operational-learning::before { content: 'Operacional'; }
+.atlas-ai-awis-modal-body .atlas-ai-disclosure-region > .atlas-ai-awis-consolidation::before { content: 'Ouro & revisão'; }
+
+@media (max-width: 760px) {
+  .atlas-ai-awis-modal-body .atlas-ai-awis-command-center {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Staggered reveal of the modal sections — cascades in after the sheet rises. */
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > * {
+  animation: atlas-ai-awis-section-in 380ms var(--cc-ease-out) backwards;
+}
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(3) { animation-delay: 60ms; }
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(4) { animation-delay: 95ms; }
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(5) { animation-delay: 130ms; }
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(6) { animation-delay: 165ms; }
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(7) { animation-delay: 200ms; }
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(8) { animation-delay: 235ms; }
+.atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > *:nth-child(n+9) { animation-delay: 265ms; }
+
+@keyframes atlas-ai-awis-section-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-awis-modal:not(.is-closing) .atlas-ai-awis-command-center > * {
+    animation: none;
+  }
+}
+
 @keyframes atlas-ai-awis-modal-fade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 @keyframes atlas-ai-awis-modal-rise {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  from { opacity: 0; transform: translateY(14px) scale(0.965); }
+  60% { opacity: 1; }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes atlas-ai-awis-modal-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes atlas-ai-awis-modal-sink {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.975); }
+}
+
+@keyframes atlas-ai-awis-trigger-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .atlas-ai-awis-modal-backdrop,
-  .atlas-ai-awis-modal {
+  .atlas-ai-awis-modal-backdrop.is-closing,
+  .atlas-ai-awis-modal,
+  .atlas-ai-awis-modal.is-closing,
+  .atlas-ai-awis-trigger {
     animation: none;
   }
   .atlas-ai-awis-trigger {
@@ -1104,17 +1579,45 @@
   letter-spacing: 0;
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    border-color 180ms var(--cc-ease-out),
+    color 180ms var(--cc-ease-out),
+    background 180ms var(--cc-ease-out),
+    transform 200ms var(--cc-ease-spring),
+    box-shadow 200ms var(--cc-ease-out);
 }
 
 .atlas-ai-awis-action:hover {
   border-color: color-mix(in srgb, var(--cc-accent) 54%, var(--cc-border));
   color: var(--cc-text-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+}
+
+.atlas-ai-awis-action:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 90ms;
 }
 
 .atlas-ai-awis-action.is-primary {
   background: color-mix(in srgb, var(--cc-accent) 18%, var(--cc-bg));
   border-color: color-mix(in srgb, var(--cc-accent) 58%, var(--cc-border));
   color: var(--cc-accent);
+}
+
+.atlas-ai-awis-action.is-primary:hover {
+  background: color-mix(in srgb, var(--cc-accent) 26%, var(--cc-bg));
+  color: var(--cc-accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-awis-action {
+    transition: border-color 180ms var(--cc-ease-out), color 180ms var(--cc-ease-out), background 180ms var(--cc-ease-out);
+  }
+  .atlas-ai-awis-action:hover,
+  .atlas-ai-awis-action:active {
+    transform: none;
+  }
 }
 
 .atlas-ai-stage.is-workbench {
@@ -1578,6 +2081,22 @@
   box-shadow: none;
 }
 
+/* Hero arrives with editorial weight — a slow, deliberate settle. */
+.atlas-ai-conversation-col.is-hero .atlas-ai-hero {
+  animation: atlas-ai-hero-in 460ms var(--cc-ease-out) both;
+}
+
+@keyframes atlas-ai-hero-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-conversation-col.is-hero .atlas-ai-hero {
+    animation: none;
+  }
+}
+
 /* ===== HISTORY (left column) ===== */
 
 .atlas-ai-history {
@@ -1822,6 +2341,26 @@
   border: 1px dashed rgba(212, 168, 90, 0.24);
   border-radius: 7px;
   background: linear-gradient(180deg, rgba(212, 168, 90, 0.045), rgba(10, 19, 24, 0.16));
+  transition:
+    border-color 200ms var(--cc-ease-out),
+    background 200ms var(--cc-ease-out),
+    box-shadow 240ms var(--cc-ease-out),
+    transform 240ms var(--cc-ease-out);
+}
+
+.atlas-ai-space-card:hover {
+  border-color: rgba(212, 168, 90, 0.42);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-space-card {
+    transition: border-color 200ms var(--cc-ease-out), background 200ms var(--cc-ease-out);
+  }
+  .atlas-ai-space-card:hover {
+    transform: none;
+  }
 }
 
 .atlas-ai-space-card.is-empty {
@@ -2018,6 +2557,17 @@
   color: rgba(155, 231, 190, 0.9);
 }
 
+/* "dispensar" · quiet secondary action (no gold — it's a dismissal, not a CTA). */
+.atlas-ai-project-space-action.is-dismiss {
+  color: var(--cc-text-faint);
+  letter-spacing: 0;
+}
+
+.atlas-ai-project-space-action.is-dismiss:hover {
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 40%, var(--cc-border));
+}
+
 .atlas-ai-project-space-action:disabled {
   cursor: default;
   opacity: 0.62;
@@ -2027,6 +2577,13 @@
   width: auto;
   padding: 0 7px;
   font-size: 9.75px;
+}
+
+/* Primed-to-delete state · 2-click confirm reads as danger, not gold. */
+.atlas-ai-project-space-remove.is-confirming {
+  border-color: color-mix(in srgb, var(--cc-danger) 55%, transparent);
+  background: color-mix(in srgb, var(--cc-danger) 16%, transparent);
+  color: var(--cc-danger);
 }
 
 .atlas-ai-project-space-action:hover,
@@ -2066,10 +2623,14 @@
   color: var(--cc-text-strong);
 }
 
+.atlas-ai-space-edit-portal { position: relative; }
+
 .atlas-ai-space-edit-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* Above every surface chrome, the AWIS modal (1000) and the drag preview
+     (9999). The dialog is portaled to <body>, so this is the app-wide top. */
+  z-index: 10000;
   display: grid;
   place-items: center;
   padding: 32px;
@@ -2080,8 +2641,8 @@
 }
 
 .atlas-ai-space-edit-modal {
-  width: min(720px, calc(100vw - 56px));
-  max-height: min(760px, calc(100vh - 56px));
+  width: min(720px, calc(100dvw - 56px));
+  max-height: min(760px, calc(100dvh - 56px));
   overflow: auto;
   display: grid;
   gap: 18px;
@@ -2233,6 +2794,12 @@
 .atlas-ai-space-edit-footer button.is-danger,
 .atlas-ai-space-edit-sessions button {
   color: rgba(240, 184, 171, 0.92);
+}
+
+.atlas-ai-space-edit-footer button.is-danger.is-confirming {
+  border-color: color-mix(in srgb, var(--cc-danger) 55%, transparent);
+  background: color-mix(in srgb, var(--cc-danger) 16%, transparent);
+  color: var(--cc-danger);
 }
 
 .atlas-ai-space-edit-footer button:disabled {
@@ -2407,6 +2974,28 @@
   font-family: var(--cc-font-mono);
   font-size: 9px;
   letter-spacing: 0.04em;
+}
+
+/* "+N sessões" expander — inherits the faint/mono look, lit on hover. Collapsed
+   by default, so at rest it reads identically to the old static count. */
+.atlas-ai-project-space-thread-more-toggle {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: color 120ms var(--cc-ease-out);
+}
+
+.atlas-ai-project-space-thread-more-toggle:hover {
+  color: var(--cc-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-project-space-thread-more-toggle { transition: none; }
 }
 
 .atlas-ai-project-space-thread-list li::before {
@@ -2909,7 +3498,21 @@
   gap: 4px;
 }
 
-.atlas-ai-thread-item { border: none; }
+.atlas-ai-thread-item {
+  border: none;
+  animation: atlas-ai-thread-item-in 300ms var(--cc-ease-out) backwards;
+}
+
+@keyframes atlas-ai-thread-item-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-thread-item {
+    animation: none;
+  }
+}
 
 .atlas-ai-thread-item.is-fusion-target .atlas-ai-thread-button {
   border-color: rgba(212, 168, 90, 0.55);
@@ -2963,6 +3566,13 @@
 .atlas-ai-thread-button:hover {
   background: rgba(233, 238, 242, 0.035);
   border-color: var(--cc-border-soft);
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-thread-button:hover {
+    transform: none;
+  }
 }
 
 .atlas-ai-thread-open-beside {
@@ -3121,6 +3731,60 @@
   animation: atlas-ai-thread-running-pulse 940ms ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  /* Canon: no unguarded infinite motion. Hold the "running" dot lit instead of
+     pulsing it forever (vestibular-safe, ADHD/12h-session friendly). */
+  .atlas-ai-thread-status-dots.is-running {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Cold-start skeleton (loading && zero threads) — honest "fetching" state so the
+   rail is never a blank panel indistinguishable from "no conversations". */
+.atlas-ai-thread-skeletons {
+  display: grid;
+  gap: 6px;
+  padding: 8px 6px;
+}
+
+.atlas-ai-thread-skeleton {
+  display: grid;
+  gap: 7px;
+  padding: 10px 11px;
+  border: 1px solid var(--cc-border-soft);
+  border-radius: var(--cc-radius-lg);
+  background: var(--cc-surface-sunken);
+}
+
+.atlas-ai-thread-skeleton-title,
+.atlas-ai-thread-skeleton-meta {
+  height: 9px;
+  border-radius: var(--cc-radius-sm);
+  background: linear-gradient(90deg, var(--cc-border) 0%, var(--cc-border-strong) 50%, var(--cc-border) 100%);
+  background-size: 220% 100%;
+  animation: atlas-ai-thread-skeleton-shimmer 1500ms ease-in-out infinite;
+}
+
+.atlas-ai-thread-skeleton-title { width: 70%; }
+.atlas-ai-thread-skeleton-meta { width: 40%; height: 7px; }
+.atlas-ai-thread-skeleton:nth-child(2) .atlas-ai-thread-skeleton-title { width: 56%; }
+.atlas-ai-thread-skeleton:nth-child(3) .atlas-ai-thread-skeleton-title { width: 64%; }
+.atlas-ai-thread-skeleton:nth-child(4) .atlas-ai-thread-skeleton-title { width: 48%; }
+.atlas-ai-thread-skeleton:nth-child(5) .atlas-ai-thread-skeleton-title { width: 60%; }
+
+@keyframes atlas-ai-thread-skeleton-shimmer {
+  0% { background-position: 220% 0; }
+  100% { background-position: -220% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-thread-skeleton-title,
+  .atlas-ai-thread-skeleton-meta {
+    animation: none;
+  }
+}
+
 .atlas-ai-thread-button:hover .atlas-ai-thread-drag-handle,
 .atlas-ai-thread-drag-handle:hover,
 .atlas-ai-thread-item.is-fusion-target .atlas-ai-thread-drag-handle,
@@ -3172,7 +3836,7 @@
   pointer-events: none;
   display: grid;
   gap: 2px;
-  width: min(280px, calc(100vw - 28px));
+  width: min(280px, calc(100dvw - 28px));
   padding: 9px 11px;
   border: 1px solid rgba(235, 196, 124, 0.65);
   border-radius: 10px;
@@ -3304,6 +3968,18 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
     0 0 0 1px transparent;
+  animation: atlas-ai-error-banner-in 280ms var(--cc-ease-out) both;
+}
+
+@keyframes atlas-ai-error-banner-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-error-banner {
+    animation: none;
+  }
 }
 
 .atlas-ai-error-icon {
@@ -3509,6 +4185,18 @@
   position: relative;
   content-visibility: auto;
   contain-intrinsic-size: 180px;
+  animation: atlas-ai-message-in 320ms var(--cc-ease-out) backwards;
+}
+
+@keyframes atlas-ai-message-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-message {
+    animation: none;
+  }
 }
 
 /* User bubble · barra mais robusta + texto Inter peso 460 (legível mas
@@ -4082,6 +4770,29 @@
   opacity: 0.7;
 }
 
+/* Suggestion chips cascade in just after the hero settles. */
+.atlas-ai-hero-chip {
+  animation: atlas-ai-hero-chip-in 360ms var(--cc-ease-out) backwards;
+}
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(1) { animation-delay: 220ms; }
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(2) { animation-delay: 260ms; }
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(3) { animation-delay: 300ms; }
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(4) { animation-delay: 340ms; }
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(5) { animation-delay: 380ms; }
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(6) { animation-delay: 420ms; }
+.atlas-ai-hero-chips .atlas-ai-hero-chip:nth-child(n+7) { animation-delay: 450ms; }
+
+@keyframes atlas-ai-hero-chip-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-hero-chip {
+    animation: none;
+  }
+}
+
 /* ===== CONTEXT PANEL (right column · agrupado em seções) ===== */
 
 .atlas-ai-context {
@@ -4360,6 +5071,11 @@
   letter-spacing: 0;
 }
 
+.atlas-shell.surface-atlas_ai .atlas-project-strip-interactive,
+.atlas-shell.surface-atlas-ai .atlas-project-strip-interactive {
+  transition: border-color 180ms var(--cc-ease-out), color 180ms var(--cc-ease-out), background 180ms var(--cc-ease-out);
+}
+
 .atlas-shell.surface-atlas_ai .atlas-project-strip-interactive:hover,
 .atlas-shell.surface-atlas-ai .atlas-project-strip-interactive:hover {
   border-color: var(--cc-accent-border);
@@ -4420,7 +5136,7 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 112px);
+  max-height: calc(100dvh - 112px);
   animation: atlas-ai-sheet-in 280ms var(--cc-ease-out);
 }
 @keyframes atlas-ai-sheet-in {
@@ -4994,6 +5710,10 @@
   line-height: 1.3;
   text-transform: uppercase;
   opacity: 0.72;
+  transition:
+    background 180ms var(--cc-ease-out),
+    border-color 180ms var(--cc-ease-out),
+    opacity 180ms var(--cc-ease-out);
 }
 
 .atlas-ai-folder-context:hover,
@@ -5323,6 +6043,10 @@
 
 .atlas-ai-md-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.atlas-ai-md-table tbody td {
+  transition: background 160ms var(--cc-ease-out);
 }
 
 .atlas-ai-md-table tbody tr:hover td {
@@ -5715,6 +6439,176 @@
   gap: 6px;
 }
 
+/* "+N mais" · progressive disclosure for lists that were silently truncated.
+   Nothing is hidden anymore — overflow is one click away. Canon slate. */
+.atlas-ai-plan-more {
+  margin-top: 6px;
+}
+
+.atlas-ai-plan-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  list-style: none;
+  cursor: pointer;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--cc-border) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cc-bg) 38%, transparent);
+  color: var(--cc-text-muted);
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  transition: border-color 160ms var(--cc-ease-out), color 160ms var(--cc-ease-out), background 160ms var(--cc-ease-out);
+}
+
+.atlas-ai-plan-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.atlas-ai-plan-more > summary::before {
+  content: '+';
+  font-variation-settings: 'wght' 600;
+  color: var(--cc-accent);
+}
+
+.atlas-ai-plan-more[open] > summary::before {
+  content: '−';
+}
+
+.atlas-ai-plan-more > summary:hover {
+  border-color: color-mix(in srgb, var(--cc-accent) 44%, var(--cc-border));
+  color: var(--cc-text-strong);
+}
+
+.atlas-ai-plan-more > summary:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring, 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(230, 185, 102, 0.55));
+}
+
+.atlas-ai-plan-more > .atlas-ai-plan-list {
+  margin-top: 7px;
+}
+
+/* ───── DisclosureSection · primitivo de disclosure progressivo (3 surfaces) ─────
+   Cabeçalho de barra inteira clicável; conteúdo desce de peso sem sumir. */
+.atlas-ai-disclosure {
+  display: block;
+}
+
+.atlas-ai-disclosure-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 4px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--cc-border-soft);
+  color: var(--cc-text);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--cc-font-sans);
+  font-size: 13px;
+  font-variation-settings: 'wght' 560;
+  transition: color 160ms var(--cc-ease-out), border-color 160ms var(--cc-ease-out);
+}
+
+.atlas-ai-disclosure-head:hover {
+  color: var(--cc-text-strong);
+  border-bottom-color: var(--cc-border);
+}
+
+.atlas-ai-disclosure-head:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus-ring, 0 0 0 2px var(--cc-bg), 0 0 0 4px rgba(230, 185, 102, 0.55));
+  border-radius: 6px;
+}
+
+.atlas-ai-disclosure-chevron {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0.5;
+  transition: transform 180ms var(--cc-ease-out), opacity 160ms var(--cc-ease-out);
+}
+
+.atlas-ai-disclosure-head[aria-expanded='true'] .atlas-ai-disclosure-chevron {
+  transform: rotate(90deg);
+  opacity: 0.9;
+}
+
+.atlas-ai-disclosure-title {
+  flex-shrink: 0;
+}
+
+.atlas-ai-disclosure-count {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--cc-border-soft);
+  border-radius: 999px;
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+}
+
+.atlas-ai-disclosure-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cc-text-faint);
+  font-size: 12px;
+  font-variation-settings: 'wght' 400;
+}
+
+.atlas-ai-disclosure-badge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--cc-accent) 40%, transparent);
+  background: var(--cc-accent-veil);
+  color: var(--cc-accent);
+  font-family: var(--cc-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.atlas-ai-disclosure-region {
+  padding: 11px 4px 14px;
+}
+
+.atlas-ai-disclosure.is-empty .atlas-ai-disclosure-head {
+  color: var(--cc-text-faint);
+  cursor: default;
+}
+
+.atlas-ai-disclosure.is-empty .atlas-ai-disclosure-chevron {
+  visibility: hidden;
+}
+
+.atlas-ai-disclosure.is-reopened .atlas-ai-disclosure-title::after {
+  content: ' · nova atenção';
+  color: var(--cc-accent);
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  font-variation-settings: 'wght' 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-disclosure-head,
+  .atlas-ai-disclosure-chevron {
+    transition: none;
+  }
+}
+
 .atlas-ai-plan-list li {
   padding-left: 14px;
   position: relative;
@@ -5973,7 +6867,7 @@
   border: 1px solid var(--cc-border);
   border-radius: 10px;
   max-width: min(960px, 100%);
-  max-height: calc(100vh - 120px);
+  max-height: calc(100dvh - 120px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -6117,14 +7011,28 @@
   border: 1px solid rgba(233, 238, 242, 0.08);
   border-radius: 8px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  transition: border-color 180ms var(--cc-ease-out), box-shadow 180ms var(--cc-ease-out);
+  transition:
+    border-color 220ms var(--cc-ease-out),
+    box-shadow 220ms var(--cc-ease-out),
+    transform 220ms var(--cc-ease-out);
 }
 
 .atlas-ai-composer-v2:focus-within {
   border-color: rgba(212, 168, 90, 0.32);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(212, 168, 90, 0.18);
+    0 0 0 1px rgba(212, 168, 90, 0.18),
+    0 8px 24px rgba(0, 0, 0, 0.16);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-composer.atlas-ai-composer-v2 {
+    transition: border-color 220ms var(--cc-ease-out), box-shadow 220ms var(--cc-ease-out);
+  }
+  .atlas-ai-composer-v2:focus-within {
+    transform: none;
+  }
 }
 
 .atlas-ai-composer-v2 .atlas-ai-textarea-v2 {
@@ -6239,7 +7147,7 @@
   position: absolute;
   bottom: calc(100% + 10px);
   right: 0;
-  width: min(520px, calc(100% - 24px), calc(100vw - 32px));
+  width: min(520px, calc(100% - 24px), calc(100dvw - 32px));
   max-height: 72vh;
   overflow-y: auto;
   z-index: 42;
@@ -6481,17 +7389,37 @@
   font-variation-settings: 'wght' 620;
   letter-spacing: 0;
   cursor: pointer;
-  transition: background 180ms var(--cc-ease-out);
+  transition:
+    background 180ms var(--cc-ease-out),
+    transform 200ms var(--cc-ease-spring),
+    box-shadow 200ms var(--cc-ease-out),
+    opacity 200ms var(--cc-ease-out);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .atlas-ai-send-btn:hover:not(:disabled) {
   background: var(--cc-accent-strong);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 20px rgba(212, 168, 90, 0.22);
 }
 
 .atlas-ai-send-btn:active:not(:disabled) {
   background: var(--cc-accent);
+  transform: translateY(0) scale(0.96);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition-duration: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-send-btn {
+    transition: background 180ms var(--cc-ease-out), opacity 200ms var(--cc-ease-out);
+  }
+  .atlas-ai-send-btn:hover:not(:disabled),
+  .atlas-ai-send-btn:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .atlas-ai-send-btn:disabled {
@@ -6544,6 +7472,17 @@
   background: var(--cc-accent-veil);
   border-color: var(--cc-accent-border);
   color: var(--cc-accent-strong);
+}
+
+.atlas-ai-cmenu-trigger:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-cmenu-trigger:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .atlas-ai-cmenu-trigger:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -8216,6 +9155,18 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   min-height: 0;
   overflow: hidden;
   padding: 0;
+  animation: atlas-ai-workbench-grid-in 280ms var(--cc-ease-out) both;
+}
+
+@keyframes atlas-ai-workbench-grid-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-workbench-grid {
+    animation: none;
+  }
 }
 
 .atlas-ai-workbench-grid.is-count-2 {
@@ -8249,10 +9200,12 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   opacity: 0.74;
   filter: saturate(0.9);
   transition:
-    opacity 160ms ease,
-    filter 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    opacity 220ms var(--cc-ease-out),
+    filter 220ms var(--cc-ease-out),
+    border-color 220ms var(--cc-ease-out),
+    box-shadow 260ms var(--cc-ease-out),
+    transform 260ms var(--cc-ease-out);
+  animation: atlas-ai-workbench-pane-in 320ms var(--cc-ease-out) backwards;
 }
 
 .atlas-ai-workbench-pane.is-focused {
@@ -8262,6 +9215,17 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--cc-accent) 18%, transparent),
     0 14px 36px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes atlas-ai-workbench-pane-in {
+  from { transform: scale(0.975) translateY(6px); }
+  to { transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ai-workbench-pane {
+    animation: none;
+  }
 }
 
 .atlas-ai-workbench-pane-scroll {
@@ -8312,6 +9276,166 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
 
 .atlas-ai-workbench-composer .atlas-ai-composer-error {
   margin-top: 8px;
+}
+
+/* ───── Density mode · 3+ panes ─────
+   With 3–4 panes the cells are small. Shrink the header chrome and composer so
+   the message column (grid 1fr) keeps the room. Title truncates instead of
+   wrapping. Single source of truth: the .is-count-3/4 classes on the grid.
+   Prefixed with .atlas-shell to outrank the surface-scoped base rules. */
+.atlas-shell .atlas-ai-workbench-grid.is-count-3,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 {
+  --workbench-gap: 8px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane .atlas-ai-conversation,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane .atlas-ai-conversation {
+  padding: 10px 12px 8px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane .atlas-ai-conversation-header,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane .atlas-ai-conversation-header {
+  padding: 8px 10px 8px 38px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane .atlas-ai-conversation-header h2,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane .atlas-ai-conversation-header h2 {
+  font-size: 13.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane .atlas-ai-conversation-meta,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane .atlas-ai-conversation-meta {
+  font-size: 10.5px;
+  margin-top: 3px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane > .atlas-ai-workbench-close,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane > .atlas-ai-workbench-close {
+  top: 9px !important;
+  left: 9px !important;
+  inset-inline-start: 9px !important;
+  width: 22px;
+  height: 22px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-composer,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-composer {
+  padding: 6px 8px 7px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-composer .atlas-ai-composer.atlas-ai-composer-v2,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-composer .atlas-ai-composer.atlas-ai-composer-v2 {
+  padding: 5px 8px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-composer .atlas-ai-composer-v2 .atlas-ai-textarea-v2,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-composer .atlas-ai-composer-v2 .atlas-ai-textarea-v2 {
+  min-height: 22px;
+  max-height: 88px;
+  font-size: 13px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-composer .atlas-ai-composer-bar,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-composer .atlas-ai-composer-bar {
+  gap: 6px;
+  padding: 1px;
+}
+
+/* ───── Drag-to-reorder · grip handle + drop feedback ───── */
+.atlas-shell .atlas-ai-workbench-pane > .atlas-ai-workbench-grip {
+  position: absolute;
+  top: 12px;
+  left: 42px;
+  z-index: 2;
+  display: inline-flex;
+  width: 18px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--cc-text-faint);
+  opacity: 0.55;
+  cursor: grab;
+  transition: opacity 140ms ease, color 140ms ease;
+}
+
+.atlas-shell .atlas-ai-workbench-pane > .atlas-ai-workbench-grip::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 9px;
+  height: 15px;
+  background-image: radial-gradient(currentColor 1.1px, transparent 1.5px);
+  background-size: 4.5px 5px;
+  background-position: center;
+}
+
+.atlas-shell .atlas-ai-workbench-pane > .atlas-ai-workbench-grip:hover {
+  opacity: 1;
+  color: var(--cc-accent);
+}
+
+.atlas-shell .atlas-ai-workbench-pane > .atlas-ai-workbench-grip:active {
+  cursor: grabbing;
+}
+
+.atlas-shell .atlas-ai-workbench-pane > .atlas-ai-workbench-grip:focus-visible {
+  outline: none;
+  opacity: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-accent) 30%, transparent);
+  border-radius: 4px;
+}
+
+.atlas-shell .atlas-ai-workbench-pane.is-dragging {
+  opacity: 0.42;
+  filter: saturate(0.85);
+}
+
+.atlas-shell .atlas-ai-workbench-pane.is-drag-over {
+  border-color: color-mix(in srgb, var(--cc-accent) 70%, var(--cc-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--cc-accent) 34%, transparent),
+    0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+/* Make room for the grip beside the close button in the header gutter. */
+.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane .atlas-ai-conversation-header,
+.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane .atlas-ai-conversation-header {
+  padding-left: 70px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane > .atlas-ai-workbench-grip,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane > .atlas-ai-workbench-grip {
+  top: 9px;
+  left: 34px;
+  width: 16px;
+  height: 22px;
+}
+
+.atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane .atlas-ai-conversation-header,
+.atlas-shell .atlas-ai-workbench-grid.is-count-4 .atlas-ai-workbench-pane .atlas-ai-conversation-header {
+  padding-left: 56px;
+}
+
+/* ───── 3 panes · feature + stack (no dead cell) ─────
+   Wide screens only; below 1380px the existing breakpoint stacks to 1 column.
+   Pane[0] is the feature (large, full height, left); panes 2-3 stack on the
+   right. Drag a pane to the front to make it the feature. */
+@media (min-width: 1381px) {
+  .atlas-shell .atlas-ai-workbench-grid.is-count-3 {
+    grid-template-columns: 1.55fr 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .atlas-shell .atlas-ai-workbench-grid.is-count-3 .atlas-ai-workbench-pane:first-child {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
 }
 
 .atlas-ai-workbench-close {
@@ -8997,41 +10121,62 @@ body.atlas-calmaria .atlas-ai-conversation-header .atlas-ai-conversation-meta {
   right: auto !important;
   inset-inline-start: 12px !important;
   inset-inline-end: auto !important;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  border-color: rgba(151, 177, 189, 0.18);
-  background:
-    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.18), transparent 42%),
-    rgba(18, 35, 45, 0.92);
-  color: rgba(222, 232, 237, 0.72);
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border-color: color-mix(in srgb, var(--cc-border) 92%, transparent);
+  background: color-mix(in srgb, var(--cc-surface) 64%, transparent);
+  color: var(--cc-text-faint);
+  font-size: 0;
+  box-shadow: none;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+/* Premium close glyph · two crisp hairline strokes (✕), not a red dot. */
+.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::before,
+.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::before,
+.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::after,
+.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  box-shadow: none;
 }
 
 .atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::before,
 .atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::before {
-  content: '';
-  position: absolute;
-  inset: 7px;
-  border-radius: inherit;
-  background: rgba(235, 116, 101, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transform: translate(-50%, -50%) rotate(45deg);
 }
 
-.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close,
-.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close {
-  font-size: 0;
+.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::after,
+.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:hover,
 .atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:hover {
-  border-color: rgba(235, 116, 101, 0.5);
-  background:
-    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22), transparent 42%),
-    rgba(101, 42, 40, 0.92);
-  color: #ffd8d2;
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 46%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+}
+
+.atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:focus-visible,
+.atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close:focus-visible {
+  outline: none;
+  border-color: var(--cc-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-accent) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-shell.surface-atlas_ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close,
+  .atlas-shell.surface-atlas-ai .atlas-ai-workbench-pane > .atlas-ai-workbench-close {
+    transition: none;
+  }
 }
 
 @media (max-width: 1380px) {

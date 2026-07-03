@@ -1720,7 +1720,7 @@ body.cart-resizing .cart-resize-handle {
   top: calc(100% + 8px) !important;
   left: 0 !important;
   width: 100% !important;
-  max-height: min(284px, calc(100vh - 180px)) !important;
+  max-height: min(284px, calc(100dvh - 180px)) !important;
   overflow: auto !important;
   background:
     linear-gradient(180deg, rgba(13, 24, 32, 0.985) 0%, rgba(9, 17, 24, 0.985) 100%) !important;
@@ -1836,7 +1836,7 @@ body.cart-resizing .cart-resize-handle {
   .cartografia-surface .cartography-top-rail .search-floater {
     grid-area: search !important;
     width: 420px !important;
-    max-width: min(420px, calc(100vw - 72px)) !important;
+    max-width: min(420px, calc(100dvw - 72px)) !important;
     justify-self: start !important;
   }
 }

@@ -122,8 +122,8 @@
 }
 
 .atlas-project-profile-sheet {
-  width: min(1440px, calc(100vw - 48px));
-  max-height: calc(100vh - 48px);
+  width: min(1440px, calc(100dvw - 48px));
+  max-height: calc(100dvh - 48px);
   background: var(--cc-surface, #faf5e8);
   color: var(--cc-text, #1d1a16);
   border: 1px solid var(--cc-border, rgba(26, 23, 20, 0.16));
@@ -220,7 +220,7 @@
   padding: 24px 22px;
   background: var(--cc-surface-sunken, #ece4d3);
   overflow-y: auto;
-  max-height: calc(100vh - 220px);
+  max-height: calc(100dvh - 220px);
 }
 
 .atlas-project-profile-list-head {
@@ -283,7 +283,7 @@
   gap: 2px;
 }
 
-.atlas-project-profile-list-item button {
+.atlas-project-profile-list-item .atlas-project-profile-list-main {
   width: 100%;
   text-align: left;
   background: transparent;
@@ -296,28 +296,39 @@
   color: var(--cc-text, #1d1a16);
 }
 
-.atlas-project-profile-list-item button:hover {
+.atlas-project-profile-list-item .atlas-project-profile-list-main:hover {
   border-color: var(--cc-border-soft, rgba(26, 23, 20, 0.08));
   background: var(--cc-surface-raised, #fcfaf4);
 }
 
-.atlas-project-profile-list-item.is-selected button {
+.atlas-project-profile-list-item.is-selected .atlas-project-profile-list-main {
   background: var(--cc-accent-veil, rgba(107, 74, 30, 0.08));
   border-color: var(--cc-accent-border, rgba(107, 74, 30, 0.32));
 }
 
 .atlas-project-profile-list-name {
   font-family: var(--cc-font-sans, system-ui, sans-serif);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 650;
+  letter-spacing: -0.006em;
   color: var(--cc-text-strong, #0f0e0c);
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .atlas-project-profile-list-meta {
   font-family: var(--cc-font-sans, system-ui, sans-serif);
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0;
   color: var(--cc-text-faint, rgba(26, 23, 20, 0.5));
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .atlas-project-profile-detail {
@@ -326,7 +337,7 @@
   flex-direction: column;
   gap: 18px;
   overflow-y: auto;
-  max-height: calc(100vh - 220px);
+  max-height: calc(100dvh - 220px);
 }
 
 .atlas-project-profile-detail-head {
@@ -790,7 +801,7 @@
   bottom: calc(100% + 10px);
   z-index: 20;
   width: max-content;
-  max-width: min(320px, calc(100vw - 80px));
+  max-width: min(320px, calc(100dvw - 80px));
   transform: translate(-50%, 4px);
   opacity: 0;
   pointer-events: none;
@@ -884,8 +895,8 @@
   --pp-text-faint: rgba(151, 169, 181, 0.54);
   --pp-gold: #d7ad5c;
   --pp-green: #8bc28e;
-  width: min(1360px, calc(100vw - 36px));
-  max-height: calc(100vh - 36px);
+  width: min(1360px, calc(100dvw - 36px));
+  max-height: calc(100dvh - 36px);
   background: var(--pp-bg);
   color: var(--pp-text);
   border-color: var(--pp-border);
@@ -959,7 +970,7 @@
 
 .atlas-project-profile-list,
 .atlas-project-profile-detail {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100dvh - 200px);
 }
 
 .atlas-project-profile-list {
@@ -979,7 +990,7 @@
   border-bottom-color: var(--pp-border);
 }
 
-.atlas-project-profile-list-item button {
+.atlas-project-profile-list-item .atlas-project-profile-list-main {
   border-radius: 6px;
   color: var(--pp-text);
 }
@@ -994,12 +1005,12 @@
   color: var(--pp-text-strong);
 }
 
-.atlas-project-profile-list-item button:hover {
+.atlas-project-profile-list-item .atlas-project-profile-list-main:hover {
   background: rgba(255, 255, 255, 0.035);
   border-color: var(--pp-border);
 }
 
-.atlas-project-profile-list-item.is-selected button {
+.atlas-project-profile-list-item.is-selected .atlas-project-profile-list-main {
   background: rgba(215, 173, 92, 0.055);
   border-color: var(--pp-border-strong);
   box-shadow: inset 3px 0 0 rgba(215, 173, 92, 0.78);
@@ -1142,6 +1153,18 @@
   outline: none;
 }
 
+/* Keyboard parity: the tooltip must be reachable without a mouse, and the
+   button needs a visible ring — invisible tab stops are a11y dead-ends. */
+.atlas-project-profile-info:focus-visible {
+  outline: 1px solid rgba(235, 196, 124, 0.85);
+  outline-offset: 1px;
+}
+
+.atlas-project-profile-info:focus-visible > span[role='tooltip'] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .atlas-project-profile-form label .atlas-project-profile-info > span[role='tooltip'] {
   color: rgba(235, 242, 247, 0.92);
   font-size: 12px;
@@ -1215,8 +1238,8 @@
 }
 
 .atlas-project-profile-sheet {
-  width: min(1120px, calc(100vw - 48px));
-  max-height: min(860px, calc(100vh - 48px));
+  width: min(1120px, calc(100dvw - 48px));
+  max-height: min(860px, calc(100dvh - 48px));
   border-radius: 10px;
   border-color: rgba(181, 150, 86, 0.38);
   background:
@@ -1230,7 +1253,7 @@
 
 .atlas-project-profile-sheet[data-mode='create'],
 .atlas-project-profile-sheet[data-mode='edit'] {
-  width: min(880px, calc(100vw - 48px));
+  width: min(880px, calc(100dvw - 48px));
 }
 
 .atlas-project-profile-header {
@@ -1269,7 +1292,7 @@
 
 .atlas-project-profile-list,
 .atlas-project-profile-detail {
-  max-height: min(680px, calc(100vh - 184px));
+  max-height: min(680px, calc(100dvh - 184px));
 }
 
 .atlas-project-profile-list {
@@ -1402,16 +1425,22 @@
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
 }
 
-.atlas-project-profile-list-item button {
+.atlas-project-profile-list-item .atlas-project-profile-list-main {
   border-radius: 8px;
   padding: 13px 14px;
 }
 
-.atlas-project-profile-list-item.is-selected button {
-  background: rgba(215, 173, 92, 0.06);
+.atlas-project-profile-list-item.is-selected .atlas-project-profile-list-main {
+  background: rgba(215, 173, 92, 0.12);
+  border-color: rgba(235, 196, 124, 0.34);
   box-shadow:
-    inset 3px 0 0 rgba(215, 173, 92, 0.82),
-    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    inset 3px 0 0 rgba(235, 196, 124, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.atlas-project-profile-list-item.is-selected .atlas-project-profile-list-name {
+  color: #f3d9a4;
+  font-variation-settings: 'wght' 650;
 }
 
 .atlas-project-profile-list-item {
@@ -1422,8 +1451,16 @@
   gap: 8px;
 }
 
+/* Inline validation feedback under a form field (e.g. invalid identificador). */
+.atlas-project-profile-field-error {
+  color: #f0b8ab;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
 .atlas-project-profile-list-main {
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .atlas-project-profile-list-edit {
@@ -1441,6 +1478,9 @@
   text-transform: uppercase;
   cursor: pointer;
   opacity: 0;
+  /* Hidden until hover/focus/selected — must NOT be clickable or tab-focusable
+     while invisible, or it becomes a dead strip that swallows clicks/keyboard. */
+  pointer-events: none;
   transform: translateX(-4px);
   transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease, color 140ms ease;
 }
@@ -1449,7 +1489,12 @@
 .atlas-project-profile-list-item:focus-within .atlas-project-profile-list-edit,
 .atlas-project-profile-list-item.is-selected .atlas-project-profile-list-edit {
   opacity: 1;
+  pointer-events: auto;
   transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-project-profile-list-edit { transition: none; }
 }
 
 .atlas-project-profile-list-edit:hover:not(:disabled) {
@@ -1470,7 +1515,7 @@
 
 .atlas-project-profile-sheet[data-mode='create'],
 .atlas-project-profile-sheet[data-mode='edit'] {
-  width: min(1120px, calc(100vw - 48px));
+  width: min(1120px, calc(100dvw - 48px));
 }
 
 .atlas-project-profile-sheet[data-mode='create'] .atlas-project-profile-grid,
@@ -1492,8 +1537,8 @@
   .atlas-project-profile-sheet,
   .atlas-project-profile-sheet[data-mode='create'],
   .atlas-project-profile-sheet[data-mode='edit'] {
-    width: calc(100vw - 28px);
-    max-height: calc(100vh - 28px);
+    width: calc(100dvw - 28px);
+    max-height: calc(100dvh - 28px);
   }
 
   .atlas-project-profile-grid {
@@ -1510,4 +1555,64 @@
   .atlas-project-profile-sheet[data-mode='edit'] .atlas-project-profile-detail {
     padding: 12px 20px 22px;
   }
+}
+
+/* ── Inteligência da pasta · "nascer inteligente" ───────────────────────────
+   Fatos git + retrato estrutural (repo) ou repos administrados (guarda-chuva).
+   Hairlines e peso decrescente — informação densa sem ruído visual. */
+.atlas-project-profile-intel-mono {
+  font-family: var(--pp-mono, ui-monospace, monospace);
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid rgba(159, 188, 202, 0.14);
+  border-radius: 4px;
+  color: rgba(214, 221, 226, 0.88);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.atlas-project-profile-intel-subject {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+}
+
+.atlas-project-profile-intel-children {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.atlas-project-profile-intel-children li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 2px;
+  border-bottom: 1px solid rgba(233, 238, 242, 0.05);
+}
+
+.atlas-project-profile-intel-children li:last-child {
+  border-bottom: 0;
+}
+
+.atlas-project-profile-intel-children strong {
+  font-size: 13px;
+  font-weight: 640;
+  color: var(--pp-text-strong, #f0f4f7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-project-profile-intel-children span {
+  margin-left: auto;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* AP-818 — linha do cérebro de código (peso, não cor: gold continua escasso). */
+.atlas-project-profile-intel-strong {
+  font-weight: 650;
+  color: var(--pp-text-strong, #f0f4f7);
 }
