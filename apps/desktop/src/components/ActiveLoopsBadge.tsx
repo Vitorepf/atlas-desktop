@@ -31,10 +31,14 @@ const styles: Record<string, CSSProperties> = {
   badge: {
     position: 'fixed',
     bottom: 16,
-    right: 16,
+    // BOTTOM-LEFT, não right: o composer é docado no rodapé e sua ação primária
+    // (enviar) fica no canto inferior DIREITO. Com o painel de contexto recolhido
+    // o composer se estende pra direita e um alarme bottom-right volta a encostar
+    // no enviar (medido no app real 03/07). No canto esquerdo o alarme fica sobre
+    // a trilha de navegação (scrollável, sem ação primária) — nunca bloqueia o
+    // send em nenhum estado de painel. Padrão consagrado p/ status persistente.
+    left: 16,
     zIndex: 9999,
-    // Capped so the alarm lives in the right gutter and never reaches the
-    // composer's send button (measured overlap regression, 03/07).
     maxWidth: 'min(340px, 42vw)',
     display: 'flex',
     alignItems: 'center',
