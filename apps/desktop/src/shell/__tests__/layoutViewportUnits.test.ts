@@ -47,4 +47,21 @@ assert.deepStrictEqual(
     offenders.join('\n'),
 )
 
-console.log('layout guard OK — zero static viewport units in desktop src')
+// SHELL-FILL INVARIANT: the `.atlas-shell` rule MUST pin itself to the layout
+// viewport with `position: fixed` + inset 0 (top/bottom/left/right: 0). The
+// height:100% chain resolves SHORTER than the window in the Tauri WKWebView, so
+// without this pin the shell doesn't reach the window bottom and a dead band
+// appears at the footer (the exact regression that hit the operator 3× on
+// 03/07). This guard fails the build if anyone drops the pin.
+const indexCss = readFileSync(join(SRC, 'index.css'), 'utf8')
+const shellRule = indexCss.match(/\.atlas-shell\s*\{[^}]*\}/)
+assert.ok(shellRule, '.atlas-shell rule not found in index.css')
+const body = shellRule![0]
+assert.match(body, /position:\s*fixed/, '.atlas-shell must be position: fixed (pins to the WKWebView window)')
+assert.ok(
+  /inset:\s*0/.test(body) ||
+    (/top:\s*0/.test(body) && /bottom:\s*0/.test(body) && /left:\s*0/.test(body) && /right:\s*0/.test(body)),
+  '.atlas-shell must pin all four edges (inset: 0) so it fills the window',
+)
+
+console.log('layout guard OK — zero static viewport units + shell pinned to viewport')
