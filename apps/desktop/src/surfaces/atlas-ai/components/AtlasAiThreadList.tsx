@@ -29,6 +29,7 @@
  *   - Folder collapse permite focar em 1 projeto sem fechar outros
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { AtlasAiErrorBanner } from './AtlasAiErrorBanner'
 import { formatRelativeShort } from '../timeFormat'
 import { bridge } from '../../../lib/bridge'
@@ -114,6 +115,7 @@ const MAX_PROJECT_SPACE_CONTEXT_PACKS = 12
 const SAVED_SPACE_RECEIPTS_STORAGE = 'atlas-desktop:atlas-ai-saved-space-receipts'
 const SAVED_SPACE_RECEIPTS_SCHEMA_VERSION = 'atlas.desktop_ai.saved_space_receipts.v1'
 const THREAD_SEEN_STORAGE = 'atlas-desktop:atlas-ai-thread-seen-at'
+const SUGGESTED_SPACE_DISMISSED_STORAGE = 'atlas-desktop:atlas-ai-suggested-space-dismissed'
 const DEFAULT_VISIBLE_PER_PROJECT = 5
 const THREAD_PREFETCH_HOVER_DELAY_MS = 90
 export const ATLAS_AI_THREAD_DRAG_CLEAR_EVENT = 'atlas-ai:thread-drag-clear'
@@ -665,6 +667,16 @@ function threadTimestamp(thread: AiThreadSummary): string | null {
   return thread.last_message_at ?? thread.updated_at ?? thread.created_at ?? null
 }
 
+// UNREAD (gold dot) semantics, pure + testable. A thread glows ONLY when there
+// is a recorded "seen" timestamp AND the thread gained newer activity than it.
+// The ABSENCE of a seen record means SEEN (baseline doctrine: threads present
+// when you open Atlas count as seen), never unread — otherwise a thread whose
+// persisted seenAt was lost (stale/empty localStorage) falsely glows though
+// already viewed. Guards the exact regression the operator reported.
+export function isThreadUnread(lastTouchedAt: number, seenAt: number | undefined): boolean {
+  return seenAt !== undefined && lastTouchedAt > 0 && lastTouchedAt > seenAt
+}
+
 function threadTimestampMs(thread: AiThreadSummary): number {
   const value = threadTimestamp(thread)
   if (!value) return 0
@@ -674,9 +686,10 @@ function threadTimestampMs(thread: AiThreadSummary): number {
 
 function loadThreadSeenAt(): Record<string, number> | null {
   try {
-    const raw =
-      localStorage.getItem(THREAD_SEEN_STORAGE) ??
-      sessionStorage.getItem(THREAD_SEEN_STORAGE)
+    // Each store is read independently (helpers swallow access errors), so a
+    // throwing localStorage never discards a perfectly readable sessionStorage
+    // copy — which would otherwise reset everything to "unread" (M5).
+    const raw = getLocalStorageItem(THREAD_SEEN_STORAGE) ?? getSessionStorageItem(THREAD_SEEN_STORAGE)
     if (!raw) return null
     const parsed = JSON.parse(raw) as unknown
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
@@ -700,6 +713,40 @@ function saveThreadSeenAt(seenAt: Record<string, number>) {
     } catch {
       /* ignore */
     }
+  }
+}
+
+// Suggested-space dismissal. The suggested Space is re-derived from workspace
+// fusion every load, so "make it go away" needs a persisted signature of the
+// thread set the operator dismissed. A materially different suggestion (new
+// thread set) gets a fresh signature and can surface again.
+function suggestionSignature(threadIds: string[]): string {
+  return threadIds.slice().sort().join('|')
+}
+
+function loadDismissedSuggestions(): string[] {
+  try {
+    const raw =
+      getLocalStorageItem(SUGGESTED_SPACE_DISMISSED_STORAGE) ??
+      getSessionStorageItem(SUGGESTED_SPACE_DISMISSED_STORAGE)
+    const parsed = raw ? JSON.parse(raw) : null
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function saveDismissedSuggestions(signatures: string[]) {
+  const payload = JSON.stringify(signatures.slice(-50))
+  try {
+    localStorage.setItem(SUGGESTED_SPACE_DISMISSED_STORAGE, payload)
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.setItem(SUGGESTED_SPACE_DISMISSED_STORAGE, payload)
+  } catch {
+    /* ignore */
   }
 }
 
@@ -1610,12 +1657,31 @@ export function recordLocalProjectSpaceOutcome(
   const artifactRefs = safeProviderStringList(input.artifactRefs ?? [], 10)
   const learnedSignals = safeProviderStringList(input.learnedSignals ?? [], 10)
   const timestamp = input.timestamp ?? nowIso()
+  // Attribute the outcome to a SINGLE Space. An explicit spaceId wins; otherwise a
+  // thread-based outcome (the send-outcome event carries only a thread id, never a
+  // spaceId) goes to the most recently active Space that contains the thread —
+  // NOT every overlapping Space. Crediting all overlaps would inflate each Space's
+  // outcome/success/failure counters from one send when a conversation is shared.
+  let targetSpaceId = input.spaceId ?? null
+  if (!targetSpaceId && sourceThreadSet.size > 0) {
+    let best: LocalProjectSpace | null = null
+    for (const space of spaces) {
+      if (space.projectKey !== projectKey) continue
+      if (!space.threadIds.some((threadId) => sourceThreadSet.has(threadId))) continue
+      if (
+        !best ||
+        (space.updatedAt ?? '') > (best.updatedAt ?? '') ||
+        ((space.updatedAt ?? '') === (best.updatedAt ?? '') && space.id > best.id)
+      ) {
+        best = space
+      }
+    }
+    targetSpaceId = best?.id ?? null
+  }
+  if (!targetSpaceId) return spaces
   let changed = false
   const next = spaces.map((space) => {
-    if (space.projectKey !== projectKey) return space
-    const matchesById = Boolean(input.spaceId && space.id === input.spaceId)
-    const matchesByThreads = sourceThreadSet.size > 0 && space.threadIds.some((threadId) => sourceThreadSet.has(threadId))
-    if (!matchesById && !matchesByThreads) return space
+    if (space.projectKey !== projectKey || space.id !== targetSpaceId) return space
     changed = true
     const outcomeCount = (space.outcomeCount ?? 0) + 1
     const successCount = (space.successCount ?? 0) + (input.status === 'succeeded' ? 1 : 0)
@@ -1822,11 +1888,22 @@ export function AtlasAiThreadList({
   const pointerFusionActiveRef = useRef(false)
   const pointerFusionLastTargetRef = useRef<PointerFusionDropSnapshot>(emptyPointerFusionDropSnapshot())
   const [workspaceToolsOpen] = useState(false)
+  // Dismissed suggested-Spaces (by thread-set signature). Lives here so the flat
+  // thread list keeps the dismissed suggestion's conversations VISIBLE (they
+  // become "loose" again) instead of vanishing with the hidden card.
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>(() => loadDismissedSuggestions())
+  const dismissSuggestion = useCallback((sig: string) => {
+    setDismissedSuggestions((prev) => {
+      if (!sig || prev.includes(sig)) return prev
+      const next = [...prev, sig]
+      saveDismissedSuggestions(next)
+      return next
+    })
+  }, [])
   const [projectSpaces, setProjectSpaces] = useState<LocalProjectSpace[]>(() => loadProjectSpaces())
   const [savedSpaceReceipts, setSavedSpaceReceipts] = useState<LocalSavedProjectSpaceReceipt[]>(() => loadSavedSpaceReceipts())
   const [nativeProjectSpacesHydrated, setNativeProjectSpacesHydrated] = useState(false)
   const [threadSeenAt, setThreadSeenAt] = useState<Record<string, number>>(() => loadThreadSeenAt() ?? {})
-  const threadSeenAtInitializedRef = useRef(loadThreadSeenAt() !== null)
   const nativeProjectSpacesSaveTailRef = useRef<Promise<unknown>>(Promise.resolve())
   const nativeProjectSpacesSaveVersionRef = useRef(0)
 
@@ -1913,16 +1990,39 @@ export function AtlasAiThreadList({
   useEffect(() => saveSavedSpaceReceipts(savedSpaceReceipts), [savedSpaceReceipts])
   useEffect(() => saveThreadSeenAt(threadSeenAt), [threadSeenAt])
 
+  // Any thread we've never recorded a "seen" timestamp for is baselined to its
+  // current timestamp the first time it appears — i.e. threads already present
+  // when you open Atlas count as SEEN, not unread. The gold "unread" glow then
+  // only fires when a thread you've seen before gains NEWER activity than your
+  // last view. (Previously a one-time guard meant any unknown id — e.g. after a
+  // DB reset or cross-device thread — stayed unread forever, so everything
+  // glowed on every launch.)
   useEffect(() => {
-    if (threadSeenAtInitializedRef.current || threads.length === 0) return
-    threadSeenAtInitializedRef.current = true
-    const baseline: Record<string, number> = {}
-    for (const thread of threads) baseline[thread.id] = threadTimestampMs(thread)
-    setThreadSeenAt(baseline)
+    if (threads.length === 0) return
+    setThreadSeenAt((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const thread of threads) {
+        if (next[thread.id] === undefined) {
+          next[thread.id] = threadTimestampMs(thread)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
   }, [threads])
 
+  // Mark a thread seen only when the SELECTION changes — not on every thread
+  // refresh. Otherwise newer activity arriving on the open thread would be
+  // silently marked read and never glow once you leave it (H2).
+  const lastSeenBaselineRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!selectedId) return
+    if (!selectedId) {
+      lastSeenBaselineRef.current = null
+      return
+    }
+    if (lastSeenBaselineRef.current === selectedId) return
+    lastSeenBaselineRef.current = selectedId
     const selectedThread = threads.find((thread) => thread.id === selectedId)
     const seenAt = selectedThread ? threadTimestampMs(selectedThread) : Date.now()
     setThreadSeenAt((prev) => {
@@ -1939,7 +2039,7 @@ export function AtlasAiThreadList({
     if (runningThreadIds?.has(thread.id)) return 'running'
     if (thread.id === selectedId) return 'idle'
     const lastTouchedAt = threadTimestampMs(thread)
-    if (lastTouchedAt > 0 && lastTouchedAt > (threadSeenAt[thread.id] ?? 0)) return 'unread'
+    if (isThreadUnread(lastTouchedAt, threadSeenAt[thread.id])) return 'unread'
     return 'idle'
   }, [runningThreadIds, selectedId, threadSeenAt])
 
@@ -2120,6 +2220,18 @@ export function AtlasAiThreadList({
       )
       return changed ? next : prev
     })
+    // Cap seen-at by recency so it can never grow toward the localStorage quota
+    // (the failure that would silently break unread persistence). Keep newest 500.
+    // Do NOT drop entries merely absent from `threadById`: that set is the
+    // mode-FILTERED view, so dropping by absence + the re-baseline fill above would
+    // silently mark every off-filter thread as seen on each filter toggle, erasing
+    // genuine unread state. A stale entry for a truly deleted thread is harmless
+    // and rotates out via the recency cap.
+    setThreadSeenAt((prev) => {
+      const entries = Object.entries(prev)
+      if (entries.length <= 500) return prev
+      return Object.fromEntries(entries.sort((a, b) => b[1] - a[1]).slice(0, 500))
+    })
   }, [loading, threadById, threads.length])
 
   const handleFuseThreads = useCallback((
@@ -2280,6 +2392,12 @@ export function AtlasAiThreadList({
 
   useEffect(() => {
     if (!pointerFusionThread) return
+    // A mouse release dispatches BOTH `pointerup` and `mouseup` (distinct events,
+    // so stopPropagation can't merge them); without this the drop body — backend
+    // fuse, add-to-Space, open-in-stage, maintenance receipts — runs twice. The
+    // flag is closure-local to this effect run = one drag gesture (the effect
+    // re-subscribes when pointerFusionThread changes), so it resets per gesture.
+    let pointerUpHandled = false
 
     const targetAtPoint = (x: number, y: number) => {
       const target = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-atlas-thread-id]')
@@ -2305,7 +2423,10 @@ export function AtlasAiThreadList({
       const distance = Math.hypot(event.clientX - pointerFusionThread.startX, event.clientY - pointerFusionThread.startY)
       if (distance < 7) return
       if (!pointerFusionThread.active) {
-        setPointerFusionThread((current) => (current ? { ...current, active: true } : current))
+        // Idempotent: once active, return the SAME object so identity is stable.
+        // Otherwise a new object every move re-runs the drag effect and churns
+        // the 7 global listeners on each pointermove (H1).
+        setPointerFusionThread((current) => (current && !current.active ? { ...current, active: true } : current))
         setDraggingThreadTitle(pointerFusionThread.title)
       }
       const threadTarget = targetAtPoint(event.clientX, event.clientY)
@@ -2330,6 +2451,8 @@ export function AtlasAiThreadList({
     }
 
     const handlePointerUp = (event: globalThis.PointerEvent | MouseEvent) => {
+      if (pointerUpHandled) return
+      pointerUpHandled = true
       const active = pointerFusionThread.active || Math.hypot(event.clientX - pointerFusionThread.startX, event.clientY - pointerFusionThread.startY) >= 7
       if (active) {
         event.preventDefault()
@@ -2344,7 +2467,10 @@ export function AtlasAiThreadList({
             spaceId: spaceAtPoint(event.clientX, event.clientY)?.dataset.atlasSpaceId ?? null,
             stage: Boolean(stageAtPoint(event.clientX, event.clientY)),
           },
-          last: pointerFusionLastTargetRef.current,
+          // At RELEASE the cursor position is authoritative — never fall back to
+          // the last-hovered target, or releasing in dead space would silently
+          // fuse/add against a stale target the user already left (C2).
+          last: emptyPointerFusionDropSnapshot(),
           fallbackProjectKey: pointerFusionThread.projectKey,
         })
         const targetId = dropTarget.threadId
@@ -2471,18 +2597,21 @@ export function AtlasAiThreadList({
     <section
       className={`atlas-ai-history${draggingThreadTitle ? ' is-dragging-thread' : ''}`}
       aria-label="Histórico Atlas AI"
+      aria-busy={loading || undefined}
     >
       <div className="atlas-ai-list-toolbar">
         <div className="atlas-ai-list-toolbar-leading">
           {headerLeading}
         </div>
-        <div className="atlas-ai-filter-row" role="tablist" aria-label="Filtro por modo">
+        {/* Filter is a toggle group, not a tablist: it re-queries the same list and
+            owns no tabpanel, so tab roles would mislead assistive tech (and demand
+            arrow-key nav this isn't). aria-pressed states the on/off honestly. */}
+        <div className="atlas-ai-filter-row" role="group" aria-label="Filtro por modo">
           {(['all', 'general', 'operational', 'programming'] as const).map((value) => (
             <button
               key={value}
               type="button"
-              role="tab"
-              aria-selected={modeFilter === value}
+              aria-pressed={modeFilter === value}
               className={`atlas-ai-filter-tab${modeFilter === value ? ' is-active' : ''}`}
               onClick={() => onModeFilter(value)}
             >
@@ -2501,8 +2630,19 @@ export function AtlasAiThreadList({
         />
       ) : null}
 
+      {!error && threads.length === 0 && loading ? (
+        <div className="atlas-ai-thread-skeletons" role="status" aria-label="Carregando conversas">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div className="atlas-ai-thread-skeleton" key={index} aria-hidden="true">
+              <span className="atlas-ai-thread-skeleton-title" />
+              <span className="atlas-ai-thread-skeleton-meta" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {!error && threads.length === 0 && !loading ? (
-        <p className="atlas-ai-empty-line">Nenhuma conversa neste filtro.</p>
+        <p className="atlas-ai-empty-line" aria-live="polite">Nenhuma conversa neste filtro.</p>
       ) : null}
 
       {threads.length > 0 ? (
@@ -2592,10 +2732,33 @@ export function AtlasAiThreadList({
                 const isExpandedAll = expandedAll.has(key)
                 const isActiveProject = activeProjectKey === key
                 const spacesForProject = projectSpaces.filter((space) => space.projectKey === key)
-                const suggestedSpaceThreadIds = isActiveProject && spacesForProject.length === 0
+                // Backend-derived suggestion for this project, computed even while a
+                // Space is adopted (spacesForProject.length > 0). The gated
+                // `rawSuggestedSpaceThreadIds` below is [] in that case, so without this
+                // the remove handlers couldn't dismiss the rebound: emptying an adopted
+                // Space drops spaces to 0, which re-derives this same suggestion with
+                // all threads and only "dispensar" ("volta todos sem opção de remover").
+                const liveSuggestionThreadIds = isActiveProject
                   ? suggestedProjectSpaceThreadIds(conversationFusion, conversationFusionArtifact)
                     .filter((threadId) => threadById.has(threadId))
                   : []
+                const liveSuggestionSig = suggestionSignature(liveSuggestionThreadIds)
+                const rawSuggestedSpaceThreadIds = spacesForProject.length === 0 ? liveSuggestionThreadIds : []
+                const suggestionSig = suggestionSignature(rawSuggestedSpaceThreadIds)
+                // Removing a Space that overlaps the live suggestion AND empties the
+                // project must also dismiss the suggestion, or it rebounds next render.
+                const dismissReboundOnEmpty = (removedSpace: LocalProjectSpace | undefined, spaceSurvives: boolean) => {
+                  if (spaceSurvives || liveSuggestionThreadIds.length < 2) return
+                  if (spacesForProject.length > 1) return
+                  if (!removedSpace || !removedSpace.threadIds.some((id) => liveSuggestionThreadIds.includes(id))) return
+                  dismissSuggestion(liveSuggestionSig)
+                }
+                // Dismissed → treat as no suggestion: ids drop out of groupedThreadIds
+                // so the conversations stay in the flat list (never disappear).
+                const suggestedSpaceThreadIds =
+                  rawSuggestedSpaceThreadIds.length >= 2 && !dismissedSuggestions.includes(suggestionSig)
+                    ? rawSuggestedSpaceThreadIds
+                    : []
                 const projectSpacePanelCount = spacesForProject.length + (suggestedSpaceThreadIds.length >= 2 ? 1 : 0)
                 const projectSpacePanelLabel = projectSpacePanelCount > 0
                   ? `${projectSpacePanelCount} ${projectSpacePanelCount === 1 ? 'Space' : 'Spaces'}`
@@ -2688,6 +2851,8 @@ export function AtlasAiThreadList({
                             artifactLoading={conversationFusionArtifactLoading}
                             artifactError={conversationFusionArtifactError}
                             onPersistConversationFusion={isActiveProject ? handlePersistProjectConversationFusion : undefined}
+                            onDismissSuggestion={() => dismissSuggestion(suggestionSig)}
+                            suggestionDismissed={dismissedSuggestions.includes(suggestionSig)}
                             savedSpaceReceipts={savedSpaceReceipts}
                             projectKey={key}
                             spaces={spacesForProject}
@@ -2696,9 +2861,20 @@ export function AtlasAiThreadList({
                             onSelect={onSelect}
                             onPrefetch={onPrefetch}
                             onOpenSpace={onOpenSpace}
-                            onRemoveSpace={removeProjectSpace}
+                            onRemoveSpace={(spaceId) => {
+                              const removed = spacesForProject.find((space) => space.id === spaceId)
+                              removeProjectSpace(spaceId)
+                              dismissReboundOnEmpty(removed, false)
+                            }}
                             onRenameSpace={renameProjectSpace}
-                            onRemoveThreadFromSpace={removeThreadFromProjectSpace}
+                            onRemoveThreadFromSpace={(spaceId, threadId) => {
+                              const target = spacesForProject.find((space) => space.id === spaceId)
+                              const survives = target
+                                ? target.threadIds.filter((id) => id !== threadId).length >= 2
+                                : true
+                              removeThreadFromProjectSpace(spaceId, threadId)
+                              dismissReboundOnEmpty(target, survives)
+                            }}
                             onAddThreadToSpace={addThreadToProjectSpace}
                             onAdoptSuggestedSpace={(threadIds) => handleProjectFuseThreads(threadIds, 'suggested')}
                             onProjectSpaceMaintenance={onProjectSpaceMaintenance}
@@ -2845,12 +3021,16 @@ interface WorkspaceToolsProps {
   artifactLoading?: boolean
   artifactError?: string | null
   onPersistConversationFusion?: () => AtlasWorkspaceConversationFusion | null | void | Promise<AtlasWorkspaceConversationFusion | null | void>
+  onDismissSuggestion?: () => void
+  suggestionDismissed?: boolean
 }
 
 function ProjectSpacesPanel({
   projectKey,
   projectThreadCount,
   spaces,
+  onDismissSuggestion,
+  suggestionDismissed = false,
   savedSpaceReceipts = [],
   threadById,
   selectedId,
@@ -2882,7 +3062,12 @@ function ProjectSpacesPanel({
   const suggestedSpaceThreads = suggestedThreadIds
     .map((id) => threadById.get(id))
     .filter((thread): thread is AiThreadSummary => Boolean(thread))
-  const showSuggestedSpace = spaces.length === 0 && suggestedSpaceThreads.length >= 2
+  // Dismissal is owned by the parent (so the flat thread list keeps the
+  // dismissed suggestion's conversations visible instead of hiding them). The
+  // parent only gates whether this panel mounts (the "criar Space" tools keep
+  // it mounted), so the dismissed flag must also suppress this internal re-show
+  // — otherwise a dismissed/removed suggestion rebounds here ("volta todos").
+  const showSuggestedSpace = !suggestionDismissed && spaces.length === 0 && suggestedSpaceThreads.length >= 2
   const showBackgroundSpaceStatus = spaces.length === 0 && !showSuggestedSpace && (fusionLoading || artifactLoading)
   const showCreationGuide = buildingSpace && spaces.length === 0 && !showSuggestedSpace && !showBackgroundSpaceStatus
   const suggestedSpaceSavedKey = savedProjectSpaceKeyFromFusion(fusion)
@@ -2892,8 +3077,21 @@ function ProjectSpacesPanel({
   const suggestedSpaceSaved = artifactReady || Boolean(fusion?.persisted_artifact) || Boolean(savedSpaceReceipt)
   const [spaceDropTargetId, setSpaceDropTargetId] = useState<string | null>(null)
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
+  // 2-click confirm for deleting a whole Space (mirrors the thread context menu).
+  const [confirmRemoveSpaceId, setConfirmRemoveSpaceId] = useState<string | null>(null)
   const [editingSpaceTitle, setEditingSpaceTitle] = useState('')
   const [copiedSpacePackId, setCopiedSpacePackId] = useState<string | null>(null)
+  // Progressive disclosure for Spaces with >4 sessions: collapsed by default (no
+  // added visual noise) so conversations beyond the 4th stay individually
+  // reachable on demand instead of only via "comparar".
+  const [expandedSpaceIds, setExpandedSpaceIds] = useState<Set<string>>(() => new Set())
+  const toggleSpaceExpanded = (spaceId: string) =>
+    setExpandedSpaceIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(spaceId)) next.delete(spaceId)
+      else next.add(spaceId)
+      return next
+    })
   const editingSpace = editingSpaceId ? spaces.find((space) => space.id === editingSpaceId) ?? null : null
   const editingSpaceThreads = editingSpace
     ? editingSpace.threadIds
@@ -2920,7 +3118,8 @@ function ProjectSpacesPanel({
   const copySpacePack = async (space: LocalProjectSpace, threads: AiThreadSummary[], source: LocalProjectSpaceContextPack['source']) => {
     const pack = buildLocalProjectSpaceContextPack({ title: space.title, threads, source, space })
     try {
-      await navigator.clipboard?.writeText(localProjectSpaceContextPackMarkdown(pack))
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard indisponível neste contexto')
+      await navigator.clipboard.writeText(localProjectSpaceContextPackMarkdown(pack))
       setCopiedSpacePackId(space.id)
       onRecordSpaceLearning?.({
         projectKey: space.projectKey,
@@ -2972,7 +3171,9 @@ function ProjectSpacesPanel({
             const spaceThreads = space.threadIds
               .map((id) => threadById.get(id))
               .filter((thread): thread is AiThreadSummary => Boolean(thread))
-            const visibleSpaceThreads = spaceThreads.slice(0, 4)
+            const spaceExpanded = expandedSpaceIds.has(space.id)
+            const visibleSpaceThreads = spaceExpanded ? spaceThreads : spaceThreads.slice(0, 4)
+            const collapsibleThreadCount = Math.max(0, spaceThreads.length - 4)
             const hiddenSpaceThreadCount = Math.max(0, space.threadIds.length - visibleSpaceThreads.length)
             const intelligence = evaluateLocalProjectSpaceIntelligence(spaceThreads)
             return (
@@ -3069,16 +3270,22 @@ function ProjectSpacesPanel({
                       </button>
                       <button
                         type="button"
-                        className="atlas-ai-project-space-remove"
+                        className={`atlas-ai-project-space-remove${confirmRemoveSpaceId === space.id ? ' is-confirming' : ''}`}
                         onClick={(event) => {
                           event.preventDefault()
                           event.stopPropagation()
-                          onRemoveSpace?.(space.id)
+                          if (confirmRemoveSpaceId === space.id) {
+                            setConfirmRemoveSpaceId(null)
+                            onRemoveSpace?.(space.id)
+                          } else {
+                            setConfirmRemoveSpaceId(space.id)
+                          }
                         }}
-                        title={`Desfazer ${space.title}`}
-                        aria-label={`Desfazer Space ${space.title}`}
+                        onBlur={() => setConfirmRemoveSpaceId((current) => (current === space.id ? null : current))}
+                        title={confirmRemoveSpaceId === space.id ? `Confirmar: desfazer o Space ${space.title}` : `Desfazer ${space.title}`}
+                        aria-label={confirmRemoveSpaceId === space.id ? `Confirmar: desfazer Space ${space.title}` : `Desfazer Space ${space.title}`}
                       >
-                        desfazer
+                        {confirmRemoveSpaceId === space.id ? 'confirmar?' : 'desfazer'}
                       </button>
                     </span>
                   </span>
@@ -3105,6 +3312,7 @@ function ProjectSpacesPanel({
                           <button
                             type="button"
                             className={thread.id === selectedId ? 'is-selected' : undefined}
+                            aria-current={thread.id === selectedId ? 'true' : undefined}
                             title="Abrir somente esta conversa"
                             onPointerEnter={() => onPrefetch?.(thread.id)}
                             onFocus={() => onPrefetch?.(thread.id)}
@@ -3131,7 +3339,22 @@ function ProjectSpacesPanel({
                           </button>
                         </li>
                       ))}
-                      {hiddenSpaceThreadCount > 0 ? (
+                      {collapsibleThreadCount > 0 ? (
+                        <li className="atlas-ai-project-space-thread-more">
+                          <button
+                            type="button"
+                            className="atlas-ai-project-space-thread-more-toggle"
+                            aria-expanded={spaceExpanded}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              toggleSpaceExpanded(space.id)
+                            }}
+                          >
+                            {spaceExpanded ? 'mostrar menos' : `+ ${collapsibleThreadCount} sessões`}
+                          </button>
+                        </li>
+                      ) : hiddenSpaceThreadCount > 0 ? (
                         <li className="atlas-ai-project-space-thread-more">
                           + {hiddenSpaceThreadCount} sessões
                         </li>
@@ -3151,11 +3374,13 @@ function ProjectSpacesPanel({
           title={suggestSpaceTitle(suggestedSpaceThreads)}
           saved={suggestedSpaceSaved}
           saving={Boolean(fusionLoading)}
+          selectedId={selectedId}
           onOpenSpace={onOpenSpace}
           onSelect={onSelect}
           onPrefetch={onPrefetch}
           onEditSpace={openSuggestedSpaceEditor}
           onSaveSpace={onPersistConversationFusion}
+          onDismiss={onDismissSuggestion}
         />
       ) : null}
       {showCreationGuide ? (
@@ -3195,8 +3420,16 @@ function ProjectSpacesPanel({
             closeSpaceEditor()
           }}
           onRemoveThread={(threadId) => {
-            if (editingSpace.threadIds.length <= 2) closeSpaceEditor()
+            const nextThreadIds = editingSpace.threadIds.filter((id) => id !== threadId)
             onRemoveThreadFromSpace?.(editingSpace.id, threadId)
+            // Keep the editor open on the surviving Space — its id is recomputed
+            // from the remaining threads — and close only when it drops below the
+            // 2-session minimum (the Space is then dissolved upstream).
+            if (nextThreadIds.length >= 2) {
+              setEditingSpaceId(nextThreadIds.slice().sort().join('|'))
+            } else {
+              closeSpaceEditor()
+            }
           }}
         />
       ) : null}
@@ -3217,9 +3450,9 @@ function ProjectSpaceBrainSignals({
   if (signals.length === 0) return null
   return (
     <span className="atlas-ai-project-space-brain" aria-label="Memória viva deste Space">
-      {signals.map((signal) => (
+      {signals.map((signal, index) => (
         <span
-          key={`${signal.tone}:${signal.label}:${signal.detail}`}
+          key={`${index}:${signal.tone}:${signal.label}`}
           className={`atlas-ai-project-space-brain-chip is-${signal.tone}`}
           title={`${signal.label}: ${signal.detail}`}
         >
@@ -3251,17 +3484,66 @@ function SpaceEditDialog({
   onRemoveThread: (threadId: string) => void
 }) {
   const canSave = titleDraft.trim().length > 0
+  // 2-click confirm for the destructive "desfazer Space", mirroring the saved-card
+  // inline confirm so the same destructive act has the same guard everywhere.
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const dialogRef = useRef<HTMLFormElement>(null)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      // Focus trap: aria-modal="true" promises AT that nothing outside is
+      // reachable, so Tab/Shift+Tab must cycle within the dialog (WCAG 2.4.3 +
+      // the WAI-ARIA dialog pattern). Without this, Tab leaks to the rail behind
+      // the backdrop and the user can silently operate the obscured list.
+      if (event.key !== 'Tab') return
+      const root = dialogRef.current
+      if (!root) return
+      const focusables = Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null || el === document.activeElement)
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const activeEl = document.activeElement as HTMLElement | null
+      if (activeEl && !root.contains(activeEl)) {
+        event.preventDefault()
+        first.focus()
+      } else if (event.shiftKey && activeEl === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && activeEl === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  return (
+  // Restore focus to the invoking element ("editar") on close — captured at first
+  // render (before the input autofocuses), restored on unmount only (M2 a11y).
+  const returnFocusRef = useRef<HTMLElement | null>(
+    typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null,
+  )
+  useEffect(() => () => {
+    const el = returnFocusRef.current
+    if (el && typeof el.focus === 'function') el.focus()
+  }, [])
+
+  // Portal to <body> so the dialog escapes every ancestor stacking context /
+  // containing block (a rail/stage transform or `contain` would otherwise trap
+  // `position: fixed` and let surface chrome paint over the modal). It must be
+  // above everything — see z-index in atlas-ai.css.
+  return createPortal(
+    <div className="atlas-ai-space-edit-portal">
     <div className="atlas-ai-space-edit-backdrop" role="presentation" onMouseDown={onClose}>
       <form
+        ref={dialogRef}
         className="atlas-ai-space-edit-modal"
         role="dialog"
         aria-modal="true"
@@ -3314,8 +3596,14 @@ function SpaceEditDialog({
         </section>
 
         <footer className="atlas-ai-space-edit-footer">
-          <button type="button" className="is-danger" onClick={onRemoveSpace}>
-            desfazer Space
+          <button
+            type="button"
+            className={`is-danger${confirmRemove ? ' is-confirming' : ''}`}
+            onClick={() => (confirmRemove ? onRemoveSpace() : setConfirmRemove(true))}
+            onBlur={() => setConfirmRemove(false)}
+            aria-label={confirmRemove ? `Confirmar: desfazer Space ${space.title}` : `Desfazer Space ${space.title}`}
+          >
+            {confirmRemove ? 'confirmar?' : 'desfazer Space'}
           </button>
           <span />
           <button type="button" onClick={onClose}>
@@ -3327,6 +3615,8 @@ function SpaceEditDialog({
         </footer>
       </form>
     </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -3335,35 +3625,47 @@ function SuggestedProjectSpaceCard({
   title,
   saved,
   saving,
+  selectedId,
   onOpenSpace,
   onSelect,
   onPrefetch,
   onEditSpace,
   onSaveSpace,
+  onDismiss,
 }: {
   threads: AiThreadSummary[]
   title: string
   saved?: boolean
   saving?: boolean
+  selectedId?: string | null
   onOpenSpace?: (threadIds: string[]) => void
   onSelect: (id: string) => void
   onPrefetch?: (id: string) => void
   onEditSpace?: (threadIds: string[], title: string) => void | Promise<void>
   onSaveSpace?: () => AtlasWorkspaceConversationFusion | null | void | Promise<AtlasWorkspaceConversationFusion | null | void>
+  onDismiss?: () => void
 }) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const threadIds = threads.map((thread) => thread.id)
   const intelligence = evaluateLocalProjectSpaceIntelligence(threads)
-  const visibleThreads = threads.slice(0, 4)
-  const hiddenCount = Math.max(0, threads.length - visibleThreads.length)
+  const visibleThreads = expanded ? threads : threads.slice(0, 4)
+  const collapsibleCount = Math.max(0, threads.length - 4)
   const copySuggestedPack = async () => {
     const pack = buildLocalProjectSpaceContextPack({ title, threads, source: 'suggested_space' })
     try {
-      await navigator.clipboard?.writeText(localProjectSpaceContextPackMarkdown(pack))
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard indisponível neste contexto')
+      await navigator.clipboard.writeText(localProjectSpaceContextPackMarkdown(pack))
+      setCopyError(false)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1600)
     } catch {
+      // Surface the failure (the saved-card twin records a maintenance event; here
+      // the card has no such channel, so at minimum flash an honest label).
       setCopied(false)
+      setCopyError(true)
+      window.setTimeout(() => setCopyError(false), 1600)
     }
   }
   return (
@@ -3391,7 +3693,7 @@ function SuggestedProjectSpaceCard({
               onClick={() => void copySuggestedPack()}
               title="Copiar contexto seguro deste Space"
             >
-              {copied ? 'copiado' : 'contexto'}
+              {copied ? 'copiado' : copyError ? 'falhou' : 'contexto'}
             </button>
             {saved ? (
               <button
@@ -3410,7 +3712,7 @@ function SuggestedProjectSpaceCard({
                 disabled={saving}
                 title="Salvar este Space para reutilizar depois"
               >
-                {saving ? 'salvando' : 'salvar'}
+                {saving ? 'salvando…' : 'salvar'}
               </button>
             ) : null}
 	            <button
@@ -3421,6 +3723,16 @@ function SuggestedProjectSpaceCard({
 	            >
 	              editar
 	            </button>
+            {onDismiss ? (
+              <button
+                type="button"
+                className="atlas-ai-project-space-action is-dismiss"
+                onClick={onDismiss}
+                title="Esconde esta sugestão de Space. As conversas continuam intactas na lista."
+              >
+                dispensar
+              </button>
+            ) : null}
           </span>
         </span>
         <span className="atlas-ai-project-space-title-button is-static">
@@ -3444,6 +3756,8 @@ function SuggestedProjectSpaceCard({
             <li key={thread.id}>
               <button
                 type="button"
+                className={thread.id === selectedId ? 'is-selected' : undefined}
+                aria-current={thread.id === selectedId ? 'true' : undefined}
                 title="Abrir somente esta conversa"
                 onPointerEnter={() => onPrefetch?.(thread.id)}
                 onFocus={() => onPrefetch?.(thread.id)}
@@ -3453,9 +3767,16 @@ function SuggestedProjectSpaceCard({
               </button>
             </li>
           ))}
-          {hiddenCount > 0 ? (
+          {collapsibleCount > 0 ? (
             <li className="atlas-ai-project-space-thread-more">
-              + {hiddenCount} sessões
+              <button
+                type="button"
+                className="atlas-ai-project-space-thread-more-toggle"
+                aria-expanded={expanded}
+                onClick={() => setExpanded((value) => !value)}
+              >
+                {expanded ? 'mostrar menos' : `+ ${collapsibleCount} sessões`}
+              </button>
             </li>
           ) : null}
         </ul>
