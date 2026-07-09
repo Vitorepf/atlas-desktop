@@ -214,6 +214,39 @@ export interface AtlasAiPayloadBuildResult {
   provider: AtlasAiProvider | undefined
 }
 
+/**
+ * Provider-safe Open Brain injection hint for Desktop → server
+ * (`AtlasOpenBrainContextInjectionService` / AOBG context_delivery_policy).
+ *
+ * Mirrors atlas-app `openBrainPayloadForRouting`: surface declares mode +
+ * provider_safe_only; backend owns context composition and ATER/ACRS policy.
+ * Never attach raw memory, docs, logs, secrets, or conversation text here.
+ */
+export function openBrainPayloadForRouting(input: {
+  mode: AtlasAiMode
+  task: AtlasAiTask
+}): Record<string, unknown> | undefined {
+  const shouldInject =
+    input.mode === 'programming'
+    || input.task === 'dev'
+    || input.task === 'debug'
+    || input.task === 'review'
+  if (!shouldInject) return undefined
+
+  return {
+    mode: 'auto',
+    // Server allowlist: cli_dev | cli_continue | cli_chat | app_ai | api | system
+    surface: 'app_ai',
+    provider_safe_only: true,
+    policy: {
+      provider_safe_only: true,
+      raw_text_exposed: false,
+      raw_logs_allowed: false,
+      providers_invoked: false,
+    },
+  }
+}
+
 function compactProviderSafeString(value: unknown, limit = 160): string | null {
   if (typeof value !== 'string') return null
   const text = value.trim().replace(/\s+/g, ' ').slice(0, limit)
@@ -1119,6 +1152,11 @@ export function buildInteractionPayload(input: AtlasAiPayloadInput): AtlasAiPayl
     operator_compute_effort: computeEffort,
     conversation_context: input.conversationContext ?? undefined,
     awis_runtime_context: awisContextHint,
+  }
+
+  const openBrain = openBrainPayloadForRouting({ mode: input.mode, task: input.task })
+  if (openBrain) {
+    payload.open_brain = openBrain
   }
 
   if (requestedComputeEffort) {

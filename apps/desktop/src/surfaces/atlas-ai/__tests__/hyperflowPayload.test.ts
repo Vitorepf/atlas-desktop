@@ -17,6 +17,7 @@ import {
   flowIdForMode,
   isTaskAllowedForMode,
   MODE_OPTIONS,
+  openBrainPayloadForRouting,
   taskOptionsForMode,
 } from '../contract.ts'
 
@@ -164,4 +165,90 @@ test('cyber + review NÃO ativa programming_harness mesmo com workspace presente
   assert.equal(payload.atlas_mode, 'cyber')
   assert.equal(payload.flow_id, 'cyber.defensive')
   assert.equal('programming_harness' in payload, false)
+})
+
+test('OB-05: programming/dev/debug/review inject open_brain provider-safe hint', () => {
+  const programming = buildInteractionPayload({
+    mode: 'programming',
+    task: 'dev',
+    provider: 'auto',
+    workspaceSlug: '/Users/op/atlas',
+  })
+  const openBrain = programming.payload.open_brain as Record<string, unknown>
+  assert.ok(openBrain, 'open_brain block required for programming')
+  assert.equal(openBrain.mode, 'auto')
+  assert.equal(openBrain.surface, 'app_ai')
+  assert.equal(openBrain.provider_safe_only, true)
+  assert.deepEqual(openBrain.policy, {
+    provider_safe_only: true,
+    raw_text_exposed: false,
+    raw_logs_allowed: false,
+    providers_invoked: false,
+  })
+
+  const review = buildInteractionPayload({
+    mode: 'operational',
+    task: 'review',
+    provider: 'auto',
+    workspaceSlug: null,
+  })
+  assert.ok(review.payload.open_brain, 'open_brain required for review task')
+
+  const debug = buildInteractionPayload({
+    mode: 'programming',
+    task: 'debug',
+    provider: 'auto',
+    workspaceSlug: null,
+  })
+  assert.ok(debug.payload.open_brain, 'open_brain required for debug task')
+})
+
+test('OB-05: auto/direct and light modes omit open_brain (no spurious injection)', () => {
+  const auto = buildInteractionPayload({
+    mode: 'auto',
+    task: 'auto',
+    provider: 'auto',
+    workspaceSlug: null,
+  })
+  assert.equal('open_brain' in auto.payload, false)
+
+  const general = buildInteractionPayload({
+    mode: 'general',
+    task: 'direct',
+    provider: 'auto',
+    workspaceSlug: null,
+  })
+  assert.equal('open_brain' in general.payload, false)
+  assert.equal(openBrainPayloadForRouting({ mode: 'research', task: 'plan' }), undefined)
+})
+
+test('OB-05: open_brain hint never carries raw sensitive leakage keys', () => {
+  const { payload } = buildInteractionPayload({
+    mode: 'programming',
+    task: 'dev',
+    provider: 'auto',
+    workspaceSlug: '/Users/op/secret-workspace',
+  })
+  const openBrain = payload.open_brain as Record<string, unknown>
+  const keys = Object.keys(openBrain)
+  assert.deepEqual(keys.sort(), ['mode', 'policy', 'provider_safe_only', 'surface'].sort())
+  assert.equal(openBrain.provider_safe_only, true)
+  assert.equal((openBrain.policy as Record<string, unknown>).raw_text_exposed, false)
+  assert.equal((openBrain.policy as Record<string, unknown>).raw_logs_allowed, false)
+  for (const forbidden of [
+    'prompt_section',
+    'raw_content',
+    'memory_text',
+    'secret',
+    'api_key',
+    'password',
+    'conversation_context',
+    'context_pack',
+    'context_delivery_policy',
+  ]) {
+    assert.equal(keys.includes(forbidden), false, `open_brain must not expose key ${forbidden}`)
+  }
+  const serialized = JSON.stringify(openBrain)
+  assert.equal(serialized.includes('/Users/'), false, 'open_brain must not embed workspace paths')
+  assert.equal(serialized.includes('secret-workspace'), false, 'open_brain must not embed workspace slug')
 })
